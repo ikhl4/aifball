@@ -128,23 +128,21 @@ a {
   background-clip: text;
   text-fill-color: transparent;
 }
-/* 1. إخفاء عبارة وشعار Dify نهائياً من الشات والقائمة */
-footer, 
-[class*="footer"], 
-a[href*="dify.ai"], 
+/* إخفاء شريط Dify */
+a[href*="dify.ai"],
 a[href*="langgenius"],
-div[class*="powered-by"] {
+div[class*="powered-by"],
+footer {
   display: none !important;
 }
 
-/* 2. ثيم فوتبلاي الرياضي الداكن (Carbon Theme) */
+/* ثيم فوتبلاي الداكن */
 html, body {
   background-color: #0b0f19 !important;
   color: #f1f5f9 !important;
   direction: rtl;
 }
 
-/* خلفية الشات والقوائم باللون الداكن الفخم */
 .bg-white {
   background-color: #111827 !important;
 }
@@ -153,7 +151,6 @@ html, body {
   background-color: #1f2937 !important;
 }
 
-/* ألوان النصوص والحدود */
 .text-gray-800, .text-gray-900 {
   color: #f8fafc !important;
 }
@@ -164,9 +161,4 @@ html, body {
 
 .border-gray-200, .border-gray-100 {
   border-color: #374151 !important;
-}
-
-/* لون الأزرار واللمسات الرياضية */
-.text-primary-600 {
-  color: #10b981 !important;
 }
