@@ -1,7 +1,7 @@
 import type { AppInfo } from '@/types/app'
 export const APP_ID = 'PbVwPlcKXpYsroe1'
 export const API_KEY = 'app-zkNGXfedLH1xJm11kJezunZC'
-export const API_URL = 'https://udify.app/v1'
+export const API_URL = 'https://api.dify.ai/v1'
 export const APP_INFO: AppInfo = {
   title: 'AiFootball',
   description: 'منصة الذكاء الاصطناعي لتحليل مباريات وإحصائيات وتكتيكات كرة القدم',
