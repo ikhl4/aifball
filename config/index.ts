@@ -1,7 +1,7 @@
 import type { AppInfo } from '@/types/app'
-export const APP_ID = `${process.env.NEXT_PUBLIC_APP_ID}`
-export const API_KEY = `${process.env.NEXT_PUBLIC_APP_KEY}`
-export const API_URL = `${process.env.NEXT_PUBLIC_API_URL}`
+export const APP_ID = '01a05721-22a6-7534-af40-ba48f16eb1fc'
+export const API_KEY = 'app-mVkeSPmFP8yJRvzW70QLWeTc'
+export const API_URL = 'https://api.dify.ai/v1'
 export const APP_INFO: AppInfo = {
   title: 'AiFootball',
   description: 'منصة الذكاء الاصطناعي لتحليل مباريات وإحصائيات وتكتيكات كرة القدم',
