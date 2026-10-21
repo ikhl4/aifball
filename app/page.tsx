@@ -1,15 +1,11 @@
-import type { FC } from 'react'
 import React from 'react'
 
-import type { IMainProps } from '@/app/components'
-import Main from '@/app/components'
-
-const App: FC<IMainProps> = ({
-  params,
-}: any) => {
+export default function App() {
   return (
-    <Main params={params} />
+    <iframe
+      src="https://udify.app/chatbot/PbVwPlcKXpYsroe1"
+      style={{ width: '100%', height: '100vh', border: 'none' }}
+      allow="microphone"
+    />
   )
 }
-
-export default React.memo(App)
