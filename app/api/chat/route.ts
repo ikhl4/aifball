@@ -1,42 +1,17 @@
-import { NextResponse } from 'next/server';
+'use client';
+import React from 'react';
 
-export async function POST(req: Request) {
-  try {
-    const { query, conversation_id } = await req.json();
-
-    const response = await fetch('https://api.dify.ai/v1/chat-messages', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer app-pNLwAcQVrAoXmAaCM7EF7pfL',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs: {},
-        query: query,
-        response_mode: 'blocking', // استخدام blocking لضمان استقبال الرد كاملاً ومباشرة
-        conversation_id: conversation_id || '',
-        user: 'aifball-user',
-      }),
-    });
-
-    if (!response.ok) {
-      const errDetail = await response.text();
-      console.error('Dify Agent API Error:', errDetail);
-      return NextResponse.json({ answer: 'عذراً، لمطابقة الـ Agent حدث خطأ في الخادم.' }, { status: 500 });
-    }
-
-    const data = await response.json();
-    
-    // استخراج الإجابة بدقة تناسب هيكل رد الـ Agent في Dify
-    const answerText = data.answer || data.data?.outputs?.text || 'لم يتم العثور على إجابة من المحلل.';
-
-    return NextResponse.json({
-      answer: answerText,
-      conversation_id: data.conversation_id || conversation_id
-    });
-
-  } catch (error) {
-    console.error('API Route Catch Error:', error);
-    return NextResponse.json({ answer: 'حدث خطأ في الاتصال بالخادم.' }, { status: 500 });
-  }
+export default function FootPlayEmbed() {
+  return (
+    <div dir="rtl" className="flex flex-col h-screen bg-[#131314] text-[#E3E3E3] font-sans m-0 p-0 overflow-hidden">
+      {/* شاشة العرض المباشر للـ Agent الأصلي */}
+      <div className="flex-1 w-full h-full">
+        <iframe
+          src="https://udify.app/agent/xSpnNgWgRTmqQ0A3"
+          style={{ width: '100%', height: '100%', border: 'none' }}
+          allow="microphone; clipboard-write"
+        />
+      </div>
+    </div>
+  );
 }
