@@ -13,30 +13,49 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         inputs: {},
         query: query,
-        response_mode: 'blocking', // تم تحويله إلى blocking لضمان استلام الرد كاملاً بدفعة واحدة وتجنب أي تقطيع
+        response_mode: 'streaming', // ضروري جداً لتطبيقات الـ Agent
         conversation_id: conversation_id || '',
         user: 'aifball-user',
       }),
     });
 
     if (!response.ok) {
-      const errText = await response.text();
-      console.error('Dify API Error:', errText);
-      return NextResponse.json({ answer: 'عذراً، استجابة الخادم غير متوفرة حالياً.' }, { status: 500 });
+      return NextResponse.json({ answer: 'تعذر الاتصال بالمحلل الذكي.' }, { status: 500 });
     }
 
-    const data = await response.json();
-    
-    // استخراج الإجابة بدقة من هيكل بيانات Dify
-    const answerText = data.answer || data.data?.outputs?.text || 'لم يتم العثور على إجابة.';
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    let fullAnswer = '';
+    let newConversationId = conversation_id;
+
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const json = JSON.parse(line.substring(6));
+              if (json.answer) fullAnswer += json.answer;
+              if (json.conversation_id) newConversationId = json.conversation_id;
+            } catch (e) {
+              // تجاوز الأجزاء غير المكتملة
+            }
+          }
+        }
+      }
+    }
 
     return NextResponse.json({
-      answer: answerText,
-      conversation_id: data.conversation_id || conversation_id
+      answer: fullAnswer || 'عذراً، لم أتمكن من استخراج الإجابة.',
+      conversation_id: newConversationId
     });
 
   } catch (error) {
-    console.error('Server Catch Error:', error);
-    return NextResponse.json({ answer: 'عذراً، حدث خطأ في الاتصال بالمحلل الذكي.' }, { status: 500 });
+    return NextResponse.json({ answer: 'حدث خطأ في الاتصال بالخادم.' }, { status: 500 });
   }
 }
