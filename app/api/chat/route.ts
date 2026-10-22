@@ -13,19 +13,48 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         inputs: {},
         query: query,
-        response_mode: 'streaming', // تم التعديل هنا لتتوافق مع تطبيق Agent
+        response_mode: 'streaming',
         conversation_id: conversation_id || '',
         user: 'aifball-user',
       }),
     });
 
-    const data = await response.json();
-    const answerText = data.answer || data.data?.outputs?.text || data.message || JSON.stringify(data);
+    if (!response.ok) {
+      return NextResponse.json({ answer: 'تعذر الاتصال بخادم المحلل الذكي.' }, { status: 500 });
+    }
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    let fullAnswer = '';
+    let newConversationId = conversation_id;
+
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const json = JSON.parse(line.substring(6));
+              if (json.answer) fullAnswer += json.answer;
+              if (json.conversation_id) newConversationId = json.conversation_id;
+            } catch (e) {
+              // تجاوز أسطر البيانات غير الكاملة
+            }
+          }
+        }
+      }
+    }
 
     return NextResponse.json({
-      answer: answerText,
-      conversation_id: data.conversation_id || conversation_id
+      answer: fullAnswer || 'لم يتم استلام رد من المحلل.',
+      conversation_id: newConversationId
     });
+
   } catch (error) {
     return NextResponse.json({ answer: 'عذراً، حدث خطأ في الاتصال بالمحلل الذكي.' }, { status: 500 });
   }
