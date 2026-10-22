@@ -1,25 +1,21 @@
-import { getLocaleOnServer } from '@/i18n/server'
+import './styles/globals.css';
+import React from 'react';
 
-import './styles/globals.css'
-import './styles/markdown.scss'
+export const metadata = {
+  title: 'AiFBall | المحلل الرياضي الذكي',
+  description: 'منصة الذكاء الاصطناعي للتحليل الفني وإحصائيات وتاريخ كرة القدم',
+};
 
-const LocaleLayout = async ({
+export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
-}) => {
-  const locale = await getLocaleOnServer()
+  children: React.ReactNode;
+}) {
   return (
-    <html lang={locale ?? 'en'} className="h-full">
-      <body className="h-full">
-        <div className="overflow-x-auto">
-          <div className="w-screen h-screen min-w-[300px]">
-            {children}
-          </div>
-        </div>
+    <html lang="ar" dir="rtl">
+      <body className="bg-[#131314] text-[#E3E3E3] antialiased selection:bg-[#006C35] selection:text-white">
+        {children}
       </body>
     </html>
-  )
+  );
 }
-
-export default LocaleLayout
