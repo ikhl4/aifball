@@ -145,7 +145,7 @@ export default function FootPlayGemini() {
             </button>
           </div>
           <p className="text-center text-[11px] text-[#8E918F] mt-2">
-            منصة فوتبلاي للذكاء الاصطناعي الرياضي • جميع المواسم والتاريخ الكروي
+            منصة فوتبلاي للذكاء الاصطناعي الرياضي • by خالد العايش
           </p>
         </div>
       </footer>
