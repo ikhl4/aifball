@@ -20,13 +20,15 @@ export async function POST(req: Request) {
     });
 
     if (!response.ok) {
-      const errData = await response.text();
-      console.error('Dify Backend Error:', errData);
-      return NextResponse.json({ answer: 'عذراً، تعذر الاتصال بالمحلل الذكي.' }, { status: 500 });
+      const errText = await response.text();
+      console.error('Dify API Error:', errText);
+      return NextResponse.json({ answer: 'عذراً، واجه المحلل الذكي مشكلة مؤقتة في الاستجابة.' }, { status: 500 });
     }
 
     const data = await response.json();
-    const answerText = data.answer || data.data?.outputs?.text || 'لم يتم العثور على إجابة.';
+    
+    // استخراج الإجابة بشكل دقيق ومتوافق مع وكلاء Dify
+    const answerText = data.answer || data.data?.outputs?.text || 'تم استلام طلبك ولكن لم يتم إرجاع نص.';
 
     return NextResponse.json({
       answer: answerText,
@@ -34,7 +36,7 @@ export async function POST(req: Request) {
     });
 
   } catch (error) {
-    console.error('Server Error:', error);
+    console.error('Server Route Error:', error);
     return NextResponse.json({ answer: 'حدث خطأ في الاتصال بالخادم.' }, { status: 500 });
   }
 }
