@@ -13,22 +13,22 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         inputs: {},
         query: query,
-        response_mode: 'blocking',
+        response_mode: 'blocking', // استخدام blocking لضمان استقبال الرد كاملاً ومباشرة
         conversation_id: conversation_id || '',
         user: 'aifball-user',
       }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Dify Error Response:', errorText);
-      return NextResponse.json({ answer: 'عذراً، تعذر استجابة المحلل الذكي حالياً.' }, { status: 500 });
+      const errDetail = await response.text();
+      console.error('Dify Agent API Error:', errDetail);
+      return NextResponse.json({ answer: 'عذراً، لمطابقة الـ Agent حدث خطأ في الخادم.' }, { status: 500 });
     }
 
     const data = await response.json();
     
-    // استخراج الإجابة من هيكل بيانات Dify الـ Agent
-    const answerText = data.answer || data.data?.outputs?.text || 'لم يتم العثور على إجابة.';
+    // استخراج الإجابة بدقة تناسب هيكل رد الـ Agent في Dify
+    const answerText = data.answer || data.data?.outputs?.text || 'لم يتم العثور على إجابة من المحلل.';
 
     return NextResponse.json({
       answer: answerText,
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     });
 
   } catch (error) {
-    console.error('API Route Error:', error);
+    console.error('API Route Catch Error:', error);
     return NextResponse.json({ answer: 'حدث خطأ في الاتصال بالخادم.' }, { status: 500 });
   }
 }
