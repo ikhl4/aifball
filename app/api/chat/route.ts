@@ -20,7 +20,14 @@ export async function POST(req: Request) {
     });
 
     const data = await response.json();
-    return NextResponse.json(data);
+    
+    // دعم جميع صيغ الردود المحتملة من Dify لضمان ظهور الإجابة فوراً
+    const answerText = data.answer || data.data?.outputs?.text || data.message || JSON.stringify(data);
+
+    return NextResponse.json({
+      answer: answerText,
+      conversation_id: data.conversation_id || conversation_id
+    });
   } catch (error) {
     return NextResponse.json({ answer: 'عذراً، حدث خطأ في الاتصال بالمحلل الذكي.' }, { status: 500 });
   }
