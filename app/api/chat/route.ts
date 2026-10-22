@@ -4,10 +4,10 @@ export async function POST(req: Request) {
   try {
     const { query, conversation_id } = await req.json();
 
-    const response =حاب await fetch('https://api.dify.ai/v1/chat-messages', {
+    const response = await fetch('https://api.dify.ai/v1/chat-messages', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer app-AcQVrAoXmAaCM7EF7pfL', // تأكد من وضع المفتاح الكامل هنا
+        'Authorization': 'Bearer app-SPmFP8yJRvzW70QLWeTc',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
