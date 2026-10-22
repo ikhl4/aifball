@@ -96,3 +96,59 @@ export default function FootPlayGemini() {
           ) : (
             <div className="space-y-8 pb-32">
               {messages.map((msg, i) => (
+                <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {msg.role === 'ai' && (
+                    <div className="w-8 h-8 rounded-full bg-[#006C35] flex-shrink-0 flex items-center justify-center text-sm mt-1">
+                      ⚽
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[85%] rounded-3xl px-5 py-3.5 leading-relaxed whitespace-pre-wrap text-[15px] md:text-base ${
+                      msg.role === 'user'
+                        ? 'bg-[#282A2C] text-white rounded-tl-sm'
+                        : 'bg-[#1E1F20]/60 border border-gray-800/60 text-[#E3E3E3] w-full'
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {loading && (
+                <div className="flex gap-4 items-center text-gray-400 animate-pulse">
+                  <div className="w-8 h-8 rounded-full bg-[#006C35] flex items-center justify-center text-sm">⚽</div>
+                  <span className="text-sm">جاري التحليل واستخراج الإحصائيات...</span>
+                </div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+          )}
+        </div>
+      </main>
+
+      <footer className="p-4 bg-gradient-to-t from-[#131314] via-[#131314] to-transparent">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center bg-[#1E1F20] focus-within:bg-[#282A2C] rounded-full px-5 py-2.5 border border-gray-800 focus-within:border-gray-600 transition shadow-xl">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+              placeholder="اسأل فوتبلاي عن أي إحصائية، تكتيك، أو تاريخ نادي..."
+              className="flex-1 bg-transparent text-white placeholder-[#8E918F] focus:outline-none text-base px-2"
+            />
+            <button
+              onClick={() => sendMessage()}
+              disabled={loading || !input.trim()}
+              className="w-10 h-10 rounded-full bg-[#006C35] hover:bg-[#008542] disabled:bg-gray-700 text-white flex items-center justify-center transition flex-shrink-0"
+            >
+              ➤
+            </button>
+          </div>
+          <p className="text-center text-[11px] text-[#8E918F] mt-2">
+            منصة فوتبلاي للذكاء الاصطناعي الرياضي • جميع المواسم والتاريخ الكروي
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+}
