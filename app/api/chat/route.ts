@@ -13,15 +13,13 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         inputs: {},
         query: query,
-        response_mode: 'blocking',
+        response_mode: 'streaming', // تم التعديل هنا لتتوافق مع تطبيق Agent
         conversation_id: conversation_id || '',
         user: 'aifball-user',
       }),
     });
 
     const data = await response.json();
-    
-    // دعم جميع صيغ الردود المحتملة من Dify لضمان ظهور الإجابة فوراً
     const answerText = data.answer || data.data?.outputs?.text || data.message || JSON.stringify(data);
 
     return NextResponse.json({
