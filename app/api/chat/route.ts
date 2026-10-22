@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         inputs: {},
         query: query,
-        response_mode: 'streaming',
+        response_mode: 'blocking', // وضع الانتظار لضمان استلام الإجابة كاملة بدون تقطيع
         conversation_id: conversation_id || '',
         user: 'aifball-user',
       }),
@@ -23,36 +23,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ answer: 'تعذر الاتصال بالمحلل الذكي.' }, { status: 500 });
     }
 
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    let fullAnswer = '';
-    let newConversationId = conversation_id;
-
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const json = JSON.parse(line.substring(6));
-              if (json.answer) fullAnswer += json.answer;
-              if (json.conversation_id) newConversationId = json.conversation_id;
-            } catch (e) {
-              // تجاوز الأجزاء غير المكتملة
-            }
-          }
-        }
-      }
-    }
+    const data = await response.json();
+    
+    // استخراج النص من رد Dify مباشرة
+    const answerText = data.answer || data.data?.outputs?.text || 'لم يتم العثور على إجابة.';
 
     return NextResponse.json({
-      answer: fullAnswer || 'عذراً، لم أتمكن من استخراج الإجابة.',
-      conversation_id: newConversationId
+      answer: answerText,
+      conversation_id: data.conversation_id || conversation_id
     });
 
   } catch (error) {
