@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         inputs: {},
         query: query,
-        response_mode: 'streaming', // ضروري جداً لتطبيقات الـ Agent
+        response_mode: 'streaming',
         conversation_id: conversation_id || '',
         user: 'aifball-user',
       }),
