@@ -4,11 +4,11 @@ export async function POST(req: Request) {
   try {
     const { query, conversation_id } = await req.json();
 
-    // استخدام رابط تطبيق الويب المباشر الخاص بك في Dify
-    const apiRes = await fetch('https://udify.app/v1/chat-messages', {
+    // الاتصال المباشر برابط المحلل الذكي المعتمد في Dify
+    const apiRes = await fetch('https://api.dify.ai/v1/chat-messages', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer xSpnNgWgRTmqQ0A3', // توكن الـ Web App الخاص بك
+        'Authorization': 'Bearer app-SPmFP8yJRvzW70QLWeTc',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -23,14 +23,14 @@ export async function POST(req: Request) {
     const data = await apiRes.json();
 
     if (!apiRes.ok) {
-      console.error('Dify WebApp Error:', data);
+      console.error('Dify Error Response:', data);
       return NextResponse.json({ 
-        answer: data.message || 'عذراً، حدث خطأ في استجابة المحلل الذكي.' 
+        answer: 'عذراً يا أبو سميرة، المحلل الذكي مشغول حالياً، حاول مرة أخرى.' 
       }, { status: 200 });
     }
 
     return NextResponse.json({
-      answer: data.answer || 'تم الرد بنجاح.',
+      answer: data.answer || 'تم استلام الرد بنجاح.',
       conversation_id: data.conversation_id || ''
     });
 
