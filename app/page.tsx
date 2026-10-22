@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  feedback?: 'like' | 'dislike' | null;
 }
 
 interface ChatSession {
@@ -14,7 +15,7 @@ interface ChatSession {
   updatedAt: string;
 }
 
-// شعار AiFBall الرسمي (يعرض /logo.png أو يرسم الشعار بدقة عالية تلقائياً)
+// شعار AiFBall الرسمي
 function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const [imgError, setImgError] = useState(false);
 
@@ -90,7 +91,7 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
-// دالة تحويل النصوص الخام والرموز إلى جداول وتنسيقات احترافية
+// تحويل النصوص الخام والرموز إلى جداول وتنسيقات احترافية
 function renderFormattedText(text: string) {
   const lines = text.split('\n');
   const elements: React.ReactNode[] = [];
@@ -224,6 +225,12 @@ export default function FootPlayChat() {
   const [currentSessionId, setCurrentSessionId] = useState<string>('');
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // حالات شريط الأدوات التفاعلي تحت الردود
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+  const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const suggestionCards = [
@@ -249,7 +256,6 @@ export default function FootPlayChat() {
     },
   ];
 
-  // تحميل سجل المحادثات المحفوظة عند فتح الموقع
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -257,11 +263,10 @@ export default function FootPlayChat() {
         setSessions(JSON.parse(saved));
       }
     } catch {
-      // تجاهل أخطاء التخزين المحلي
+      // تجاهل
     }
   }, []);
 
-  // حفظ المحادثة الحالية تلقائياً في السجل عند كل تحديث
   useEffect(() => {
     if (messages.length === 0) return;
 
@@ -308,6 +313,84 @@ export default function FootPlayChat() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
+
+  const cleanTextForShareOrSpeech = (raw: string) =>
+    raw
+      .replace(/[#*|]/g, ' ')
+      .replace(/-{2,}/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  // 1. نسخ الرد
+  const handleCopy = async (text: string, idx: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(idx);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch {
+      // تجاهل
+    }
+  };
+
+  // 2. مشاركة الرد
+  const handleShare = async (text: string) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'فوتبلاي - صديقك الرياضي',
+          text: `${text}\n\nعبر منصة فوتبلاي (aifball.com)`,
+        });
+        return;
+      } catch {
+        // إذا ألغى المستخدم المشاركة
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // تجاهل
+    }
+  };
+
+  // 3. قراءة الرد صوتياً
+  const handleSpeak = (text: string, idx: number) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    if (speakingIndex === idx) {
+      window.speechSynthesis.cancel();
+      setSpeakingIndex(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(cleanTextForShareOrSpeech(text));
+    utterance.lang = 'ar-SA';
+    utterance.rate = 1.0;
+    utterance.onend = () => setSpeakingIndex(null);
+    utterance.onerror = () => setSpeakingIndex(null);
+    setSpeakingIndex(idx);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // 4. تقييم الرد (إعجاب / عدم إعجاب)
+  const handleFeedback = (idx: number, type: 'like' | 'dislike') => {
+    setMessages((prev) =>
+      prev.map((m, i) =>
+        i === idx ? { ...m, feedback: m.feedback === type ? null : type } : m
+      )
+    );
+  };
+
+  // 5. إعادة توليد الرد من قائمة الخيارات (...)
+  const handleRegenerate = (assistantIdx: number) => {
+    setOpenMenuIndex(null);
+    for (let i = assistantIdx - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        sendMessage(messages[i].content);
+        break;
+      }
+    }
+  };
 
   const sendMessage = async (textToSend?: string) => {
     const query = (textToSend ?? input).trim();
@@ -370,6 +453,10 @@ export default function FootPlayChat() {
   };
 
   const startNewChat = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setSpeakingIndex(null);
     setMessages([]);
     setConversationId('');
     setCurrentSessionId('');
@@ -412,7 +499,7 @@ export default function FootPlayChat() {
 
   return (
     <div dir="rtl" className="flex flex-col h-[100dvh] bg-[#131314] text-[#E3E3E3] font-sans relative overflow-hidden">
-      {/* القائمة الجانبية (Sidebar) لسجل البحوث والمحادثات القديمة */}
+      {/* القائمة الجانبية لسجل البحوث والمحادثات */}
       {sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
@@ -494,10 +581,9 @@ export default function FootPlayChat() {
         )}
       </aside>
 
-      {/* الهيدر العلوي مع زر الخيارات والسجل */}
+      {/* الهيدر العلوي مع عبارة "صديقك الرياضي" */}
       <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-gray-800/80 bg-[#131314]/95 backdrop-blur sticky top-0 z-20">
         <div className="flex items-center gap-2.5">
-          {/* زر فتح القائمة الجانبية للبحوث القديمة */}
           <button
             onClick={() => setSidebarOpen(true)}
             title="سجل البحوث والخيارات"
@@ -511,7 +597,7 @@ export default function FootPlayChat() {
           <AiFBallLogo size="md" />
           <div>
             <h1 className="text-sm sm:text-base font-bold text-white leading-tight">فوتبلاي</h1>
-            <p className="text-[10px] sm:text-[11px] text-emerald-400 font-medium">المحلل الذكي المعتمد</p>
+            <p className="text-[10px] sm:text-[11px] text-emerald-400 font-medium">صديقك الرياضي</p>
           </div>
         </div>
 
@@ -527,7 +613,6 @@ export default function FootPlayChat() {
       <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
-            {/* العنوان والوصف بحجم متناسق يظهر بالكامل */}
             <div className="text-right space-y-1.5 mb-5 px-1">
               <h2 className="text-2xl sm:text-4xl font-extrabold text-[#22C55E] tracking-tight">
                 أهلاً بك في فوتبلاي
@@ -537,7 +622,6 @@ export default function FootPlayChat() {
               </p>
             </div>
 
-            {/* شبكة البطاقات 2×2 بحجم ملموم وأنيق على الجوال والكمبيوتر */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 w-full">
               {suggestionCards.map((card, i) => (
                 <button
@@ -561,7 +645,7 @@ export default function FootPlayChat() {
             </div>
           </div>
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-6">
             {messages.map((msg, i) => (
               <div
                 key={i}
@@ -574,20 +658,152 @@ export default function FootPlayChat() {
                     <AiFBallLogo size="sm" />
                   </div>
                 )}
+
                 <div
-                  className={`rounded-2xl px-4 py-3 max-w-[90%] sm:max-w-[85%] text-sm ${
-                    msg.role === 'user'
-                      ? 'bg-[#282A2C] text-white rounded-tr-sm'
-                      : 'bg-[#1E1F20] text-gray-100 border border-gray-800/90 w-full overflow-hidden'
+                  className={`flex flex-col ${
+                    msg.role === 'user' ? 'max-w-[85%]' : 'w-full max-w-[90%] sm:max-w-[85%]'
                   }`}
                 >
-                  {msg.role === 'user' ? (
-                    <p className="leading-relaxed">{msg.content}</p>
-                  ) : msg.content ? (
-                    renderFormattedText(msg.content)
-                  ) : (
-                    <div className="flex items-center gap-2 py-1 text-emerald-400 text-xs">
-                      <span className="animate-pulse">جاري تحليل البيانات والإحصائيات...</span>
+                  <div
+                    className={`rounded-2xl px-4 py-3 text-sm ${
+                      msg.role === 'user'
+                        ? 'bg-[#282A2C] text-white rounded-tr-sm'
+                        : 'bg-[#1E1F20] text-gray-100 border border-gray-800/90 w-full overflow-hidden'
+                    }`}
+                  >
+                    {msg.role === 'user' ? (
+                      <p className="leading-relaxed">{msg.content}</p>
+                    ) : msg.content ? (
+                      renderFormattedText(msg.content)
+                    ) : (
+                      <div className="flex items-center gap-2 py-1 text-emerald-400 text-xs">
+                        <span className="animate-pulse">جاري تحليل البيانات والإحصائيات...</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* شريط الأدوات التفاعلي تحت ردود المحلل الذكي (نسخ، مشاركة، قراءة صوتية، إعجاب، خيارات) */}
+                  {msg.role === 'assistant' && msg.content && (
+                    <div className="flex items-center gap-1 mt-1.5 px-1 text-gray-400 relative select-none">
+                      {/* 1. زر النسخ */}
+                      <button
+                        onClick={() => handleCopy(msg.content, i)}
+                        title="نسخ النص"
+                        className="p-1.5 rounded-lg hover:bg-gray-800/70 hover:text-white transition"
+                      >
+                        {copiedIndex === i ? (
+                          <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" strokeWidth={1.8} />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                          </svg>
+                        )}
+                      </button>
+
+                      {/* 2. زر المشاركة */}
+                      <button
+                        onClick={() => handleShare(msg.content)}
+                        title="مشاركة"
+                        className="p-1.5 rounded-lg hover:bg-gray-800/70 hover:text-white transition"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 3v12m0-12L8 7m4-4l4 4" />
+                        </svg>
+                      </button>
+
+                      {/* 3. زر القراءة الصوتية */}
+                      <button
+                        onClick={() => handleSpeak(msg.content, i)}
+                        title={speakingIndex === i ? 'إيقاف القراءة' : 'استماع للرد'}
+                        className={`p-1.5 rounded-lg hover:bg-gray-800/70 transition ${
+                          speakingIndex === i ? 'text-emerald-400 bg-gray-800/50' : 'hover:text-white'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.8}
+                            d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"
+                          />
+                        </svg>
+                      </button>
+
+                      {/* 4. زر الإعجاب */}
+                      <button
+                        onClick={() => handleFeedback(i, 'like')}
+                        title="أعجبني"
+                        className={`p-1.5 rounded-lg hover:bg-gray-800/70 transition ${
+                          msg.feedback === 'like' ? 'text-emerald-400' : 'hover:text-white'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.8}
+                            d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"
+                          />
+                        </svg>
+                      </button>
+
+                      {/* 5. زر عدم الإعجاب */}
+                      <button
+                        onClick={() => handleFeedback(i, 'dislike')}
+                        title="لم يعجبني"
+                        className={`p-1.5 rounded-lg hover:bg-gray-800/70 transition ${
+                          msg.feedback === 'dislike' ? 'text-red-400' : 'hover:text-white'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.8}
+                            d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"
+                          />
+                        </svg>
+                      </button>
+
+                      {/* 6. زر المزيد (...) */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpenMenuIndex(openMenuIndex === i ? null : i)}
+                          title="خيارات إضافية"
+                          className="p-1.5 rounded-lg hover:bg-gray-800/70 hover:text-white transition"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <circle cx="5" cy="12" r="1.8" />
+                            <circle cx="12" cy="12" r="1.8" />
+                            <circle cx="19" cy="12" r="1.8" />
+                          </svg>
+                        </button>
+
+                        {openMenuIndex === i && (
+                          <div className="absolute right-0 bottom-9 w-40 rounded-xl bg-[#232527] border border-gray-700 shadow-xl py-1.5 z-20 text-xs text-gray-200">
+                            <button
+                              onClick={() => handleRegenerate(i)}
+                              className="w-full text-right px-3.5 py-2 hover:bg-gray-700/60 transition flex items-center gap-2"
+                            >
+                              <span>🔄</span>
+                              <span>إعادة توليد الرد</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleCopy(msg.content, i);
+                                setOpenMenuIndex(null);
+                              }}
+                              className="w-full text-right px-3.5 py-2 hover:bg-gray-700/60 transition flex items-center gap-2"
+                            >
+                              <span>📋</span>
+                              <span>نسخ النص الكامل</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
