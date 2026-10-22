@@ -6,50 +6,82 @@ interface Message {
   content: string;
 }
 
-// أيقونة شعار AiFBall المطابقة للصورة تماماً (SVG عالي الدقة)
+interface ChatSession {
+  id: string;
+  title: string;
+  conversationId: string;
+  messages: Message[];
+  updatedAt: string;
+}
+
+// شعار AiFBall الرسمي (يعرض /logo.png أو يرسم الشعار بدقة عالية تلقائياً)
 function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+  const [imgError, setImgError] = useState(false);
+
   const dimensions =
-    size === 'sm' ? 'w-8 h-8 rounded-lg' : size === 'lg' ? 'w-14 h-14 rounded-2xl' : 'w-10 h-10 rounded-xl';
+    size === 'sm'
+      ? 'w-8 h-8 rounded-[9px]'
+      : size === 'lg'
+      ? 'w-14 h-14 rounded-[16px]'
+      : 'w-10 h-10 rounded-[11px]';
+
+  if (!imgError) {
+    return (
+      <img
+        src="/logo.png"
+        alt="AiFBall"
+        onError={() => setImgError(true)}
+        className={`${dimensions} object-cover shadow-md flex-shrink-0 select-none`}
+      />
+    );
+  }
 
   return (
     <div
-      className={`${dimensions} bg-[#236B38] flex flex-col items-center justify-center shadow-md border border-emerald-500/20 flex-shrink-0 select-none overflow-hidden p-1`}
+      className={`${dimensions} bg-[#1D6B35] flex items-center justify-center shadow-md flex-shrink-0 select-none overflow-hidden`}
     >
-      <svg viewBox="0 0 100 105" className="w-full h-full">
-        {/* الكرة البيضاء المضلعة */}
-        <circle cx="50" cy="38" r="27" fill="#FFFFFF" stroke="#236B38" strokeWidth="2" />
-        {/* المضلع الأوسط */}
-        <polygon
-          points="50,24 63,33 58,48 42,48 37,33"
-          fill="none"
-          stroke="#236B38"
-          strokeWidth="3.2"
-          strokeLinejoin="round"
-        />
-        {/* الخطوط والمضلعات المحيطة */}
-        <line x1="50" y1="24" x2="50" y2="11" stroke="#236B38" strokeWidth="3.2" />
-        <line x1="63" y1="33" x2="75" y2="27" stroke="#236B38" strokeWidth="3.2" />
-        <line x1="58" y1="48" x2="68" y2="59" stroke="#236B38" strokeWidth="3.2" />
-        <line x1="42" y1="48" x2="32" y2="59" stroke="#236B38" strokeWidth="3.2" />
-        <line x1="37" y1="33" x2="25" y2="27" stroke="#236B38" strokeWidth="3.2" />
-        <path
-          d="M38,14 L50,18 L62,14 M73,20 L74,30 L77,38 M64,61 L50,57 L36,61 M23,38 L26,30 L27,20"
-          fill="none"
-          stroke="#236B38"
-          strokeWidth="2.8"
-          strokeLinecap="round"
-        />
-        {/* نص AiFBall في الأسفل */}
+      <svg viewBox="0 0 200 200" className="w-full h-full">
+        <rect width="200" height="200" rx="42" fill="#1D6B35" />
+        <g transform="translate(100, 74)">
+          <circle r="48" fill="#FFFFFF" />
+          <polygon
+            points="0,-19 18,-6 11,15 -11,15 -18,-6"
+            fill="#FFFFFF"
+            stroke="#1D6B35"
+            strokeWidth="5.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M0,-19 L0,-37 M18,-6 L35,-12 M11,15 L22,31 M-11,15 L-22,31 M-18,-6 L-35,-12"
+            stroke="#1D6B35"
+            strokeWidth="5.5"
+            strokeLinecap="round"
+          />
+          <path
+            d="M-19,-35 L0,-37 L19,-35 M19,-35 L35,-12 L37,8 M37,8 L22,31 L0,38 M0,38 L-22,31 L-37,8 M-37,8 L-35,-12 L-19,-35"
+            fill="none"
+            stroke="#1D6B35"
+            strokeWidth="5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M-19,-35 L-26,-43 M19,-35 L26,-43 M35,-12 L46,-16 M37,8 L47,15 M22,31 L29,40 M0,38 L0,48 M-22,31 L-29,40 M-37,8 L-47,15 M-35,-12 L-46,-16"
+            stroke="#1D6B35"
+            strokeWidth="5"
+            strokeLinecap="round"
+          />
+          <circle r="47" fill="none" stroke="#1D6B35" strokeWidth="4" />
+        </g>
         <text
-          x="50"
-          y="91"
+          x="100"
+          y="168"
           textAnchor="middle"
           fill="#FFFFFF"
-          fontSize="24"
+          fontSize="43"
           fontWeight="900"
           fontStyle="italic"
-          fontFamily="sans-serif"
-          letterSpacing="-0.5"
+          fontFamily="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+          letterSpacing="-1"
         >
           AiFBall
         </text>
@@ -182,14 +214,18 @@ function renderFormattedText(text: string) {
   return elements;
 }
 
+const STORAGE_KEY = 'aifball_chat_history_v1';
+
 export default function FootPlayChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState('');
+  const [currentSessionId, setCurrentSessionId] = useState<string>('');
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // البطاقات التفاعلية الأربع بنفس تصميم الشاشة الرئيسية القديمة مع الإيموجيز والوسوم
   const suggestionCards = [
     {
       question: 'ما هو جدول ترتيب دوري روشن السعودي لموسم 2026-2027 وأبرز الإحصائيات؟',
@@ -212,6 +248,62 @@ export default function FootPlayChat() {
       icon: '⚽',
     },
   ];
+
+  // تحميل سجل المحادثات المحفوظة عند فتح الموقع
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        setSessions(JSON.parse(saved));
+      }
+    } catch {
+      // تجاهل أخطاء التخزين المحلي
+    }
+  }, []);
+
+  // حفظ المحادثة الحالية تلقائياً في السجل عند كل تحديث
+  useEffect(() => {
+    if (messages.length === 0) return;
+
+    const sessionId = currentSessionId || Date.now().toString();
+    if (!currentSessionId) {
+      setCurrentSessionId(sessionId);
+    }
+
+    const firstUserMsg = messages.find((m) => m.role === 'user')?.content || 'محادثة جديدة';
+    const nowStr = new Date().toLocaleDateString('ar-SA', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    setSessions((prev) => {
+      const existingIndex = prev.findIndex((s) => s.id === sessionId);
+      const updatedSession: ChatSession = {
+        id: sessionId,
+        title: firstUserMsg.slice(0, 55),
+        conversationId,
+        messages,
+        updatedAt: nowStr,
+      };
+
+      let newList: ChatSession[];
+      if (existingIndex >= 0) {
+        newList = [...prev];
+        newList[existingIndex] = updatedSession;
+      } else {
+        newList = [updatedSession, ...prev];
+      }
+
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newList.slice(0, 30)));
+      } catch {
+        // تجاهل
+      }
+      return newList;
+    });
+  }, [messages, conversationId, currentSessionId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -280,58 +372,187 @@ export default function FootPlayChat() {
   const startNewChat = () => {
     setMessages([]);
     setConversationId('');
+    setCurrentSessionId('');
     setInput('');
+    setSidebarOpen(false);
+  };
+
+  const loadSession = (session: ChatSession) => {
+    setCurrentSessionId(session.id);
+    setConversationId(session.conversationId);
+    setMessages(session.messages);
+    setSidebarOpen(false);
+  };
+
+  const deleteSession = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setSessions((prev) => {
+      const filtered = prev.filter((s) => s.id !== id);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      } catch {
+        // تجاهل
+      }
+      return filtered;
+    });
+    if (currentSessionId === id) {
+      startNewChat();
+    }
+  };
+
+  const clearAllHistory = () => {
+    setSessions([]);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // تجاهل
+    }
+    startNewChat();
   };
 
   return (
-    <div dir="rtl" className="flex flex-col h-[100dvh] bg-[#131314] text-[#E3E3E3] font-sans">
-      {/* الهيدر مع شعار AiFBall الجديد */}
-      <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-gray-800/80 bg-[#131314]/95 backdrop-blur sticky top-0 z-20">
-        <div className="flex items-center gap-3">
+    <div dir="rtl" className="flex flex-col h-[100dvh] bg-[#131314] text-[#E3E3E3] font-sans relative overflow-hidden">
+      {/* القائمة الجانبية (Sidebar) لسجل البحوث والمحادثات القديمة */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-30 transition-opacity"
+        />
+      )}
+
+      <aside
+        className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-[#18191A] border-l border-gray-800 z-40 transform transition-transform duration-300 ease-in-out flex flex-col ${
+          sidebarOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-800">
+          <div className="flex items-center gap-2.5">
+            <AiFBallLogo size="sm" />
+            <span className="font-bold text-white text-sm">سجل البحوث والمحادثات</span>
+          </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="w-8 h-8 rounded-lg bg-[#232527] hover:bg-gray-700 flex items-center justify-center text-gray-300 text-sm"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="p-3">
+          <button
+            onClick={startNewChat}
+            className="w-full py-2.5 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow transition"
+          >
+            <span>+</span>
+            <span>بدء محادثة جديدة</span>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5">
+          {sessions.length === 0 ? (
+            <div className="text-center py-12 px-4 text-gray-500 text-xs leading-relaxed">
+              لا توجد بحوث سابقة محفوظة حتى الآن. أي سؤال تطرحه سيُحفظ هنا تلقائياً للرجوع إليه في أي وقت.
+            </div>
+          ) : (
+            sessions.map((session) => (
+              <div
+                key={session.id}
+                onClick={() => loadSession(session)}
+                className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition border ${
+                  currentSessionId === session.id
+                    ? 'bg-[#232628] border-emerald-500/40 text-white'
+                    : 'bg-[#1E1F20]/60 hover:bg-[#232527] border-transparent text-gray-300'
+                }`}
+              >
+                <div className="flex-1 min-w-0 pl-2">
+                  <p className="text-xs font-bold truncate">{session.title}</p>
+                  <span className="text-[10px] text-gray-500 mt-0.5 block">
+                    {session.updatedAt} • {Math.ceil(session.messages.length / 2)} أسئلة
+                  </span>
+                </div>
+                <button
+                  onClick={(e) => deleteSession(e, session.id)}
+                  title="حذف المحادثة"
+                  className="opacity-60 group-hover:opacity-100 hover:text-red-400 text-gray-500 p-1 text-xs transition"
+                >
+                  🗑️
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        {sessions.length > 0 && (
+          <div className="p-3 border-t border-gray-800">
+            <button
+              onClick={clearAllHistory}
+              className="w-full py-2 rounded-lg text-xs text-gray-400 hover:text-red-400 hover:bg-red-950/20 transition"
+            >
+              مسح السجل بالكامل
+            </button>
+          </div>
+        )}
+      </aside>
+
+      {/* الهيدر العلوي مع زر الخيارات والسجل */}
+      <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-gray-800/80 bg-[#131314]/95 backdrop-blur sticky top-0 z-20">
+        <div className="flex items-center gap-2.5">
+          {/* زر فتح القائمة الجانبية للبحوث القديمة */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            title="سجل البحوث والخيارات"
+            className="w-9 h-9 rounded-xl bg-[#1E1F20] hover:bg-gray-800 border border-gray-700/70 flex items-center justify-center text-gray-200 transition"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h10" />
+            </svg>
+          </button>
+
           <AiFBallLogo size="md" />
           <div>
-            <h1 className="text-base sm:text-lg font-bold text-white leading-tight">فوتبلاي</h1>
-            <p className="text-[11px] text-emerald-400 font-medium">المحلل الذكي المعتمد</p>
+            <h1 className="text-sm sm:text-base font-bold text-white leading-tight">فوتبلاي</h1>
+            <p className="text-[10px] sm:text-[11px] text-emerald-400 font-medium">المحلل الذكي المعتمد</p>
           </div>
         </div>
+
         <button
           onClick={startNewChat}
-          className="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#1E1F20] hover:bg-gray-800 text-gray-200 border border-gray-700/70 transition"
+          className="px-3 py-1.5 rounded-full text-xs font-medium bg-[#1E1F20] hover:bg-gray-800 text-gray-200 border border-gray-700/70 transition"
         >
           + محادثة جديدة
         </button>
       </header>
 
       {/* منطقة المحادثة والشاشة الرئيسية */}
-      <main className="flex-1 overflow-y-auto px-4 py-6 max-w-4xl w-full mx-auto flex flex-col">
+      <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col">
         {messages.length === 0 ? (
-          /* الشاشة الرئيسية المطابقة للصورة تماماً */
-          <div className="flex-1 flex flex-col justify-center my-auto py-6">
-            <div className="text-right space-y-2 mb-8 px-1">
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#22C55E] tracking-tight">
+          <div className="flex-1 flex flex-col justify-center my-auto py-2">
+            {/* العنوان والوصف بحجم متناسق يظهر بالكامل */}
+            <div className="text-right space-y-1.5 mb-5 px-1">
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-[#22C55E] tracking-tight">
                 أهلاً بك في فوتبلاي
               </h2>
-              <p className="text-base sm:text-xl font-bold text-gray-200 leading-relaxed">
+              <p className="text-xs sm:text-lg font-bold text-gray-300 leading-relaxed">
                 محللك التكتيكي ومرجعك الإحصائي والتاريخي لكرة القدم.. كيف أساعدك اليوم؟
               </p>
             </div>
 
-            {/* شبكة البطاقات الأربع مع الإيموجيز والوسوم الخضراء */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full">
+            {/* شبكة البطاقات 2×2 بحجم ملموم وأنيق على الجوال والكمبيوتر */}
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 w-full">
               {suggestionCards.map((card, i) => (
                 <button
                   key={i}
                   onClick={() => sendMessage(card.question)}
-                  className="group flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-[#1E1F20] hover:bg-[#26282A] border border-gray-800/90 hover:border-emerald-500/40 transition-all duration-200 shadow-sm min-h-[115px]"
+                  className="group flex flex-col justify-between text-right p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#1E1F20] hover:bg-[#26282A] border border-gray-800/90 hover:border-emerald-500/40 transition-all duration-200 shadow-sm min-h-[88px] sm:min-h-[105px]"
                 >
-                  <p className="text-sm sm:text-base font-bold text-gray-100 group-hover:text-white leading-relaxed line-clamp-2">
+                  <p className="text-[11px] sm:text-sm font-bold text-gray-100 group-hover:text-white leading-snug line-clamp-2">
                     {card.question}
                   </p>
-                  <div className="flex items-center justify-between w-full mt-4 pt-1">
-                    <span className="text-xs font-bold text-[#22C55E]">
+                  <div className="flex items-center justify-between w-full mt-2.5 pt-1">
+                    <span className="text-[10px] sm:text-xs font-bold text-[#22C55E] truncate pl-1">
                       {card.tag}
                     </span>
-                    <span className="w-7 h-7 rounded-lg bg-[#131314]/80 flex items-center justify-center text-base shadow-inner">
+                    <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[#131314]/80 flex items-center justify-center text-xs sm:text-sm shadow-inner flex-shrink-0">
                       {card.icon}
                     </span>
                   </div>
@@ -340,7 +561,6 @@ export default function FootPlayChat() {
             </div>
           </div>
         ) : (
-          /* عرض الرسائل والجداول */
           <div className="space-y-5">
             {messages.map((msg, i) => (
               <div
@@ -393,7 +613,7 @@ export default function FootPlayChat() {
             <button
               onClick={() => sendMessage()}
               disabled={loading || !input.trim()}
-              className="w-9 h-9 rounded-full bg-[#236B38] hover:bg-emerald-600 disabled:opacity-40 flex items-center justify-center text-white transition flex-shrink-0"
+              className="w-9 h-9 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:opacity-40 flex items-center justify-center text-white transition flex-shrink-0"
             >
               ➤
             </button>
