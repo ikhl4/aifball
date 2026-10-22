@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 
-export default function AiFBallGemini() {
+export default function FootPlayGemini() {
   const [messages, setMessages] = useState<{ role: 'user' | 'ai'; content: string }[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -10,9 +10,9 @@ export default function AiFBallGemini() {
 
   const suggestions = [
     { icon: '📊', title: 'ترتيب دوري روشن', prompt: 'ما هو جدول ترتيب دوري روشن السعودي لموسم 2026-2027 وأبرز الإحصائيات؟' },
-    { icon: '📋', title: 'تحليل تكتيكي', prompt: 'قدم لي تحليلاً تكتيكياً لأسلوب لعب الاتحاد والنصر هذا الموسم ومفاتيح اللعب.' },
-    { icon: '🏆', title: 'سجل الأبطال التاريخي', prompt: 'ما هو السجل التاريخي الكامل لأبطال الدوري السعودي منذ تأسيسه؟' },
-    { icon: '⚽', title: 'صراع الهدافين', prompt: 'من هم متصدرو قائمة الهدافين وصناع اللعب في الدوري السعودي حالياً؟' },
+    { icon: '📋', title: 'تحليل تكتيكي', prompt: 'قدم لي تحليلاً تكتيكياً لأسلوب لعب الاتحاد مع الالماني فيسينغ.' },
+    { icon: '🏆', title: 'سجل الأبطال التاريخي', prompt: 'ما هو السجل التاريخي الكامل لأبطال الدوري الإنجليزي؟' },
+    { icon: '⚽', title: 'العمل الجماعي', prompt: 'أعلى xg لفريق هذا الموسم في الدوريات الخمسة الكبرى' },
   ];
 
   useEffect(() => {
@@ -51,7 +51,7 @@ export default function AiFBallGemini() {
             ⚽
           </div>
           <span className="text-xl font-bold tracking-wide bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-            AiFBall
+            فوتبلاي
           </span>
         </div>
         <button
@@ -68,7 +68,7 @@ export default function AiFBallGemini() {
             <div className="mt-10 md:mt-16 space-y-10">
               <div className="space-y-3">
                 <h1 className="text-4xl md:text-5xl font-extrabold bg-gradient-to-l from-[#00A859] via-[#4ADE80] to-white bg-clip-text text-transparent pb-2">
-                  أهلاً بك في AiFBall
+                  أهلاً بك في فوتبلاي
                 </h1>
                 <p className="text-xl md:text-2xl text-[#8E918F] font-medium">
                   محللك التكتيكي ومرجعك الإحصائي والتاريخي لكرة القدم.. كيف أساعدك اليوم؟
@@ -96,59 +96,3 @@ export default function AiFBallGemini() {
           ) : (
             <div className="space-y-8 pb-32">
               {messages.map((msg, i) => (
-                <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  {msg.role === 'ai' && (
-                    <div className="w-8 h-8 rounded-full bg-[#006C35] flex-shrink-0 flex items-center justify-center text-sm mt-1">
-                      ⚽
-                    </div>
-                  )}
-                  <div
-                    className={`max-w-[85%] rounded-3xl px-5 py-3.5 leading-relaxed whitespace-pre-wrap text-[15px] md:text-base ${
-                      msg.role === 'user'
-                        ? 'bg-[#282A2C] text-white rounded-tl-sm'
-                        : 'bg-[#1E1F20]/60 border border-gray-800/60 text-[#E3E3E3] w-full'
-                    }`}
-                  >
-                    {msg.content}
-                  </div>
-                </div>
-              ))}
-              {loading && (
-                <div className="flex gap-4 items-center text-gray-400 animate-pulse">
-                  <div className="w-8 h-8 rounded-full bg-[#006C35] flex items-center justify-center text-sm">⚽</div>
-                  <span className="text-sm">جاري التحليل واستخراج الإحصائيات...</span>
-                </div>
-              )}
-              <div ref={bottomRef} />
-            </div>
-          )}
-        </div>
-      </main>
-
-      <footer className="p-4 bg-gradient-to-t from-[#131314] via-[#131314] to-transparent">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex items-center bg-[#1E1F20] focus-within:bg-[#282A2C] rounded-full px-5 py-2.5 border border-gray-800 focus-within:border-gray-600 transition shadow-xl">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="اسأل AiFBall عن أي إحصائية، تكتيك، أو تاريخ نادي..."
-              className="flex-1 bg-transparent text-white placeholder-[#8E918F] focus:outline-none text-base px-2"
-            />
-            <button
-              onClick={() => sendMessage()}
-              disabled={loading || !input.trim()}
-              className="w-10 h-10 rounded-full bg-[#006C35] hover:bg-[#008542] disabled:bg-gray-700 text-white flex items-center justify-center transition flex-shrink-0"
-            >
-              ➤
-            </button>
-          </div>
-          <p className="text-center text-[11px] text-[#8E918F] mt-2">
-            منصة AiFBall للذكاء الاصطناعي الرياضي • جميع المواسم والتاريخ الكروي
-          </p>
-        </div>
-      </footer>
-    </div>
-  );
-}
