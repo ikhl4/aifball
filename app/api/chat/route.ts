@@ -13,19 +13,21 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         inputs: {},
         query: query,
-        response_mode: 'blocking', // وضع الانتظار لضمان استلام الإجابة كاملة بدون تقطيع
+        response_mode: 'blocking',
         conversation_id: conversation_id || '',
         user: 'aifball-user',
       }),
     });
 
     if (!response.ok) {
-      return NextResponse.json({ answer: 'تعذر الاتصال بالمحلل الذكي.' }, { status: 500 });
+      const errorText = await response.text();
+      console.error('Dify Error Response:', errorText);
+      return NextResponse.json({ answer: 'عذراً، تعذر استجابة المحلل الذكي حالياً.' }, { status: 500 });
     }
 
     const data = await response.json();
     
-    // استخراج النص من رد Dify مباشرة
+    // استخراج الإجابة من هيكل بيانات Dify الـ Agent
     const answerText = data.answer || data.data?.outputs?.text || 'لم يتم العثور على إجابة.';
 
     return NextResponse.json({
@@ -34,6 +36,7 @@ export async function POST(req: Request) {
     });
 
   } catch (error) {
+    console.error('API Route Error:', error);
     return NextResponse.json({ answer: 'حدث خطأ في الاتصال بالخادم.' }, { status: 500 });
   }
 }
