@@ -91,25 +91,98 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
-// تحويل النصوص الخام والرموز إلى جداول وتنسيقات احترافية
+// استخراج معرفات يوتيوب
+function extractYouTubeIds(text: string): string[] {
+  const regex =
+    /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+  const ids: string[] = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    if (match[1] && !ids.includes(match[1])) {
+      ids.push(match[1]);
+    }
+  }
+  return ids;
+}
+
+// استخراج روابط تويتر / X
+function extractTwitterLinks(text: string): { url: string; id: string }[] {
+  const regex = /https?:\/(?:\/(?:www\.)?(?:twitter|x)\.com\/[a-zA-Z0-9_]+\/status\/([0-9]+))([^\s]*)?/g;
+  const links: { url: string; id: string }[] = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    if (match[1]) {
+      const fullUrl = match[0].split(/[)\]}>,]/)[0];
+      if (!links.some((l) => l.id === match[1])) {
+        links.push({ url: fullUrl, id: match[1] });
+      }
+    }
+  }
+  return links;
+}
+
+// دالة معالجة وعرض النصوص والروابط
 function renderFormattedText(text: string) {
-  const lines = text.split('\n');
+  let processedText = text.replace(/\]\s*\n\s*\(/g, '](');
+  const lines = processedText.split('\n');
   const elements: React.ReactNode[] = [];
   let tableRows: string[][] = [];
   let inTable = false;
 
   const formatInline = (str: string) => {
-    const parts = str.split(/(\*\*.*?\*\*)/g);
-    return parts.map((part, idx) => {
+    const regex = /(\*\*.*?\*\*|\[([^\]]+)\]\((https?:\/\/[^\)]+)\)|https?:\/\/[^\s]+)/g;
+    const parts = str.split(regex);
+    const result: React.ReactNode[] = [];
+
+    let i = 0;
+    while (i < parts.length) {
+      const part = parts[i];
+      if (!part) {
+        i++;
+        continue;
+      }
+
       if (part.startsWith('**') && part.endsWith('**')) {
-        return (
-          <strong key={idx} className="font-bold text-white">
+        result.push(
+          <strong key={`strong-${i}`} className="font-bold text-white">
             {part.slice(2, -2)}
           </strong>
         );
+      } else if (parts[i + 1] !== undefined && parts[i + 2] !== undefined && parts[i + 1].length > 0 && parts[i + 2].startsWith('http')) {
+        const label = parts[i + 1];
+        const url = parts[i + 2];
+        result.push(
+          <a
+            key={`link-${i}`}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 my-0.5 px-2.5 py-1 rounded-lg bg-[#006C35]/20 hover:bg-[#006C35]/40 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold transition shadow-sm"
+          >
+            <span>🔗</span>
+            <span>{label}</span>
+            <span className="text-[10px] opacity-70">↗</span>
+          </a>
+        );
+        i += 2;
+      } else if (/^https?:\/\//.test(part)) {
+        result.push(
+          <a
+            key={`url-${i}`}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 my-0.5 px-2.5 py-1 rounded-lg bg-gray-800/80 hover:bg-gray-700 text-emerald-400 text-xs underline break-all font-medium transition"
+          >
+            <span>🔗 رابط المصدر ↗</span>
+          </a>
+        );
+      } else {
+        result.push(part);
       }
-      return part;
-    });
+      i++;
+    }
+    return result;
   };
 
   const flushTable = (keyIndex: number) => {
@@ -124,8 +197,8 @@ function renderFormattedText(text: string) {
         <table className="w-full text-right border-collapse text-xs sm:text-sm">
           <thead>
             <tr className="bg-[#006C35]/40 text-emerald-300 border-b border-gray-700">
-              {headers.map((h, i) => (
-                <th key={i} className="py-2.5 px-3 font-bold whitespace-nowrap">
+              {headers.map((h, idx) => (
+                <th key={idx} className="py-2.5 px-3 font-bold whitespace-nowrap">
                   {formatInline(h)}
                 </th>
               ))}
@@ -194,8 +267,8 @@ function renderFormattedText(text: string) {
       );
     } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
       elements.push(
-        <div key={index} className="flex items-start gap-2 my-1 pr-2">
-          <span className="text-emerald-500 mt-1">•</span>
+        <div key={index} className="flex items-start gap-2 my-1.5 pr-2">
+          <span className="text-emerald-500 mt-0.5">•</span>
           <span className="flex-1 leading-relaxed">{formatInline(trimmed.slice(2))}</span>
         </div>
       );
@@ -212,6 +285,84 @@ function renderFormattedText(text: string) {
     flushTable(lines.length);
   }
 
+  const youtubeIds = extractYouTubeIds(text);
+  if (youtubeIds.length > 0) {
+    elements.push(
+      <div key="youtube-embeds" className="mt-4 space-y-3">
+        {youtubeIds.map((vid) => (
+          <div
+            key={vid}
+            className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-[#131314] shadow-lg"
+          >
+            <div className="flex items-center justify-between px-3.5 py-2 bg-[#1D6B35]/20 border-b border-gray-800">
+              <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                <span>🎥</span>
+                <span>ملخص وفيديو المباراة (يوتيوب)</span>
+              </span>
+              <a
+                href={`https://www.youtube.com/watch?v=${vid}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-gray-300 hover:text-white underline"
+              >
+                فتح في يوتيوب ↗
+              </a>
+            </div>
+            <div className="relative w-full aspect-video">
+              <iframe
+                src={`https://www.youtube.com/embed/${vid}`}
+                title="YouTube video player"
+                className="w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const twitterLinks = extractTwitterLinks(text);
+  if (twitterLinks.length > 0) {
+    elements.push(
+      <div key="twitter-embeds" className="mt-4 space-y-3">
+        {twitterLinks.map((item) => (
+          <div
+            key={item.id}
+            className="rounded-2xl overflow-hidden border border-sky-500/30 bg-[#15202B] p-4 shadow-lg text-right"
+          >
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-800">
+              <span className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+                <span>𝕏</span>
+                <span>مقاطع وفيديو من منصة X (تويتر)</span>
+              </span>
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-gray-300 hover:text-white underline"
+              >
+                عرض التغريدة الأصلية ↗
+              </a>
+            </div>
+            <div className="text-sm text-gray-200 py-2">
+              <p>تم جلب التغريدة المرئية بنجاح عبر المحلل الرياضي.</p>
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-3 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold transition shadow"
+              >
+                شاهد الفيديو على تويتر ↗
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return elements;
 }
 
@@ -226,33 +377,33 @@ export default function FootPlayChat() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // حالات شريط الأدوات التفاعلي تحت الردود
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // البطاقات الرئيسية مع التركيز على أهداف وملخصات المباريات
   const suggestionCards = [
+    {
+      question: 'اعرض لي أهداف وملخصات أبرز مباريات اليوم في الدوريات الكبرى',
+      tag: 'أهداف وملخصات المباريات',
+      icon: '🎬',
+    },
     {
       question: 'ما هو جدول ترتيب دوري روشن السعودي لموسم 2026-2027 وأبرز الإحصائيات؟',
       tag: 'ترتيب دوري روشن',
       icon: '📊',
     },
     {
-      question: 'قدم لي تحليلاً تكتيكياً لأسلوب لعب الاتحاد مع المدرب هذا الموسم',
+      question: 'قدم لي تحليلاً تكتيكياً لإحصائيات وأسلوب لعب الأندية هذا الموسم مثال الاتحاد مع الالماني فيسينغ',
       tag: 'تحليل تكتيكي',
       icon: '📋',
     },
     {
-      question: 'ما هو السجل التاريخي الكامل لأبطال الدوري الإنجليزي؟',
+      question: 'ما هو السجل التاريخي الكامل لأبطال دوري أبطال أوروبا؟',
       tag: 'سجل الأبطال التاريخي',
       icon: '🏆',
-    },
-    {
-      question: 'أعلى فريق في xG هذا الموسم في الدوريات الخمسة الكبرى',
-      tag: 'العمل الجماعي',
-      icon: '⚽',
     },
   ];
 
@@ -321,7 +472,6 @@ export default function FootPlayChat() {
       .replace(/\s+/g, ' ')
       .trim();
 
-  // 1. نسخ الرد
   const handleCopy = async (text: string, idx: number) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -332,7 +482,6 @@ export default function FootPlayChat() {
     }
   };
 
-  // 2. مشاركة الرد
   const handleShare = async (text: string) => {
     if (navigator.share) {
       try {
@@ -342,7 +491,7 @@ export default function FootPlayChat() {
         });
         return;
       } catch {
-        // إذا ألغى المستخدم المشاركة
+        // تجاهل
       }
     }
     try {
@@ -352,7 +501,6 @@ export default function FootPlayChat() {
     }
   };
 
-  // 3. قراءة الرد صوتياً
   const handleSpeak = (text: string, idx: number) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
@@ -372,7 +520,6 @@ export default function FootPlayChat() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // 4. تقييم الرد (إعجاب / عدم إعجاب)
   const handleFeedback = (idx: number, type: 'like' | 'dislike') => {
     setMessages((prev) =>
       prev.map((m, i) =>
@@ -381,7 +528,6 @@ export default function FootPlayChat() {
     );
   };
 
-  // 5. إعادة توليد الرد من قائمة الخيارات (...)
   const handleRegenerate = (assistantIdx: number) => {
     setOpenMenuIndex(null);
     for (let i = assistantIdx - 1; i >= 0; i--) {
@@ -390,6 +536,15 @@ export default function FootPlayChat() {
         break;
       }
     }
+  };
+
+  const getRelatedUserQuery = (assistantIdx: number) => {
+    for (let i = assistantIdx - 1; i >= 0; i--) {
+      if (messages[i]?.role === 'user') {
+        return messages[i].content;
+      }
+    }
+    return 'ملخص مباريات اليوم';
   };
 
   const sendMessage = async (textToSend?: string) => {
@@ -438,7 +593,7 @@ export default function FootPlayChat() {
               setConversationId(parsed.conversation_id);
             }
           } catch {
-            // تجاهل الأسطر غير المكتملة
+            // تجاهل
           }
         }
       }
@@ -499,7 +654,6 @@ export default function FootPlayChat() {
 
   return (
     <div dir="rtl" className="flex flex-col h-[100dvh] bg-[#131314] text-[#E3E3E3] font-sans relative overflow-hidden">
-      {/* القائمة الجانبية لسجل البحوث والمحادثات */}
       {sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
@@ -581,7 +735,6 @@ export default function FootPlayChat() {
         )}
       </aside>
 
-      {/* الهيدر العلوي مع عبارة "صديقك الرياضي" */}
       <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-gray-800/80 bg-[#131314]/95 backdrop-blur sticky top-0 z-20">
         <div className="flex items-center gap-2.5">
           <button
@@ -609,7 +762,6 @@ export default function FootPlayChat() {
         </button>
       </header>
 
-      {/* منطقة المحادثة والشاشة الرئيسية */}
       <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
@@ -618,7 +770,7 @@ export default function FootPlayChat() {
                 أهلاً بك في فوتبلاي
               </h2>
               <p className="text-xs sm:text-lg font-bold text-gray-300 leading-relaxed">
-                محللك التكتيكي ومرجعك الإحصائي والتاريخي لكرة القدم.. كيف أساعدك اليوم؟
+                وجهتك الأولى لمشاهدة أهداف وملخصات مباريات كرة القدم والتحليل الإحصائي والتكتيكي.. كيف أساعدك اليوم؟
               </p>
             </div>
 
@@ -677,132 +829,152 @@ export default function FootPlayChat() {
                       renderFormattedText(msg.content)
                     ) : (
                       <div className="flex items-center gap-2 py-1 text-emerald-400 text-xs">
-                        <span className="animate-pulse">جاري تحليل البيانات والإحصائيات...</span>
+                        <span className="animate-pulse">جاري جلب أهداف وملخصات المباريات والبيانات...</span>
                       </div>
                     )}
                   </div>
 
-                  {/* شريط الأدوات التفاعلي تحت ردود المحلل الذكي (نسخ، مشاركة، قراءة صوتية، إعجاب، خيارات) */}
                   {msg.role === 'assistant' && msg.content && (
-                    <div className="flex items-center gap-1 mt-1.5 px-1 text-gray-400 relative select-none">
-                      {/* 1. زر النسخ */}
-                      <button
-                        onClick={() => handleCopy(msg.content, i)}
-                        title="نسخ النص"
-                        className="p-1.5 rounded-lg hover:bg-gray-800/70 hover:text-white transition"
-                      >
-                        {copiedIndex === i ? (
-                          <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" strokeWidth={1.8} />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                          </svg>
-                        )}
-                      </button>
-
-                      {/* 2. زر المشاركة */}
-                      <button
-                        onClick={() => handleShare(msg.content)}
-                        title="مشاركة"
-                        className="p-1.5 rounded-lg hover:bg-gray-800/70 hover:text-white transition"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 3v12m0-12L8 7m4-4l4 4" />
-                        </svg>
-                      </button>
-
-                      {/* 3. زر القراءة الصوتية */}
-                      <button
-                        onClick={() => handleSpeak(msg.content, i)}
-                        title={speakingIndex === i ? 'إيقاف القراءة' : 'استماع للرد'}
-                        className={`p-1.5 rounded-lg hover:bg-gray-800/70 transition ${
-                          speakingIndex === i ? 'text-emerald-400 bg-gray-800/50' : 'hover:text-white'
-                        }`}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.8}
-                            d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"
-                          />
-                        </svg>
-                      </button>
-
-                      {/* 4. زر الإعجاب */}
-                      <button
-                        onClick={() => handleFeedback(i, 'like')}
-                        title="أعجبني"
-                        className={`p-1.5 rounded-lg hover:bg-gray-800/70 transition ${
-                          msg.feedback === 'like' ? 'text-emerald-400' : 'hover:text-white'
-                        }`}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.8}
-                            d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"
-                          />
-                        </svg>
-                      </button>
-
-                      {/* 5. زر عدم الإعجاب */}
-                      <button
-                        onClick={() => handleFeedback(i, 'dislike')}
-                        title="لم يعجبني"
-                        className={`p-1.5 rounded-lg hover:bg-gray-800/70 transition ${
-                          msg.feedback === 'dislike' ? 'text-red-400' : 'hover:text-white'
-                        }`}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.8}
-                            d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"
-                          />
-                        </svg>
-                      </button>
-
-                      {/* 6. زر المزيد (...) */}
-                      <div className="relative">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mt-1.5 px-1 text-gray-400 relative select-none">
+                      <div className="flex items-center gap-1">
                         <button
-                          onClick={() => setOpenMenuIndex(openMenuIndex === i ? null : i)}
-                          title="خيارات إضافية"
+                          onClick={() => handleCopy(msg.content, i)}
+                          title="نسخ النص"
                           className="p-1.5 rounded-lg hover:bg-gray-800/70 hover:text-white transition"
                         >
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                            <circle cx="5" cy="12" r="1.8" />
-                            <circle cx="12" cy="12" r="1.8" />
-                            <circle cx="19" cy="12" r="1.8" />
+                          {copiedIndex === i ? (
+                            <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" strokeWidth={1.8} />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                            </svg>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => handleShare(msg.content)}
+                          title="مشاركة"
+                          className="p-1.5 rounded-lg hover:bg-gray-800/70 hover:text-white transition"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 3v12m0-12L8 7m4-4l4 4" />
                           </svg>
                         </button>
 
-                        {openMenuIndex === i && (
-                          <div className="absolute right-0 bottom-9 w-40 rounded-xl bg-[#232527] border border-gray-700 shadow-xl py-1.5 z-20 text-xs text-gray-200">
-                            <button
-                              onClick={() => handleRegenerate(i)}
-                              className="w-full text-right px-3.5 py-2 hover:bg-gray-700/60 transition flex items-center gap-2"
-                            >
-                              <span>🔄</span>
-                              <span>إعادة توليد الرد</span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                handleCopy(msg.content, i);
-                                setOpenMenuIndex(null);
-                              }}
-                              className="w-full text-right px-3.5 py-2 hover:bg-gray-700/60 transition flex items-center gap-2"
-                            >
-                              <span>📋</span>
-                              <span>نسخ النص الكامل</span>
-                            </button>
-                          </div>
-                        )}
+                        <button
+                          onClick={() => handleSpeak(msg.content, i)}
+                          title={speakingIndex === i ? 'إيقاف القراءة' : 'استماع للرد'}
+                          className={`p-1.5 rounded-lg hover:bg-gray-800/70 transition ${
+                            speakingIndex === i ? 'text-emerald-400 bg-gray-800/50' : 'hover:text-white'
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.8}
+                              d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"
+                            />
+                          </svg>
+                        </button>
+
+                        <button
+                          onClick={() => handleFeedback(i, 'like')}
+                          title="أعجبني"
+                          className={`p-1.5 rounded-lg hover:bg-gray-800/70 transition ${
+                            msg.feedback === 'like' ? 'text-emerald-400' : 'hover:text-white'
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.8}
+                              d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"
+                            />
+                          </svg>
+                        </button>
+
+                        <button
+                          onClick={() => handleFeedback(i, 'dislike')}
+                          title="لم يعجبني"
+                          className={`p-1.5 rounded-lg hover:bg-gray-800/70 transition ${
+                            msg.feedback === 'dislike' ? 'text-red-400' : 'hover:text-white'
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.8}
+                              d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"
+                            />
+                          </svg>
+                        </button>
+
+                        <div className="relative">
+                          <button
+                            onClick={() => setOpenMenuIndex(openMenuIndex === i ? null : i)}
+                            title="خيارات إضافية"
+                            className="p-1.5 rounded-lg hover:bg-gray-800/70 hover:text-white transition"
+                          >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <circle cx="5" cy="12" r="1.8" />
+                              <circle cx="12" cy="12" r="1.8" />
+                              <circle cx="19" cy="12" r="1.8" />
+                            </svg>
+                          </button>
+
+                          {openMenuIndex === i && (
+                            <div className="absolute right-0 bottom-9 w-44 rounded-xl bg-[#232527] border border-gray-700 shadow-xl py-1.5 z-20 text-xs text-gray-200">
+                              <button
+                                onClick={() => handleRegenerate(i)}
+                                className="w-full text-right px-3.5 py-2 hover:bg-gray-700/60 transition flex items-center gap-2"
+                              >
+                                <span>🔄</span>
+                                <span>إعادة توليد الرد</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  handleCopy(msg.content, i);
+                                  setOpenMenuIndex(null);
+                                }}
+                                className="w-full text-right px-3.5 py-2 hover:bg-gray-700/60 transition flex items-center gap-2"
+                              >
+                                <span>📋</span>
+                                <span>نسخ النص الكامل</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <a
+                          href={`https://www.youtube.com/results?search_query=${encodeURIComponent(
+                            'أهداف وملخص مباريات ' + getRelatedUserQuery(i)
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#1E1F20] hover:bg-[#1D6B35]/30 border border-gray-700/80 hover:border-emerald-500/50 text-[11px] text-emerald-400 font-medium transition"
+                        >
+                          <span>🎬</span>
+                          <span>يوتيوب</span>
+                        </a>
+                        <a
+                          href={`https://x.com/search?q=${encodeURIComponent(
+                            getRelatedUserQuery(i) + ' أهداف ملخص'
+                          )}&f=live`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#1E1F20] hover:bg-sky-500/20 border border-gray-700/80 hover:border-sky-500/50 text-[11px] text-sky-400 font-medium transition"
+                        >
+                          <span>𝕏</span>
+                          <span>مقاطع X</span>
+                        </a>
                       </div>
                     </div>
                   )}
@@ -814,7 +986,6 @@ export default function FootPlayChat() {
         )}
       </main>
 
-      {/* شريط الإدخال السفلي */}
       <footer className="p-3 bg-[#131314] border-t border-gray-800/60">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-2 bg-[#1E1F20] border border-gray-700/70 rounded-full px-3 py-1.5">
@@ -823,7 +994,7 @@ export default function FootPlayChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="اسأل فوتبلاي عن التكتيك، الإحصائيات، أو المباريات..."
+              placeholder="اطلب أهداف، ملخصات مباريات، أو اسأل عن التكتيك والإحصائيات..."
               className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder-gray-400 focus:outline-none"
             />
             <button
