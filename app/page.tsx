@@ -76,7 +76,7 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
             d="M-19,-35 L-26,-43 M19,-35 L26,-43 M35,-12 L46,-16 M37,8 L47,15 M22,31 L29,40 M0,38 L0,48 M-22,31 L-29,40 M-37,8 L-47,15 M-35,-12 L-46,-16"
             stroke="#1D6B35"
             strokeWidth="5"
-            strokeLinecap="round"
+            strokeLinejoin="round"
           />
           <circle r="47" fill="none" stroke="#1D6B35" strokeWidth="4" />
         </g>
@@ -406,8 +406,6 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
 
   const youtubeIds = extractYouTubeIds(text);
   const twitterLinks = extractTwitterLinks(text);
-  const isVideoRequested = /أهداف|اهداف|ملخص|فيديو|مقطع|هدف/i.test(userQuery);
-  const isLineupRequested = /تشكيلة|تشكيل|خريطة|مراكز/i.test(userQuery);
 
   if (youtubeIds.length > 0) {
     elements.push(
@@ -420,7 +418,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
             <div className="flex items-center justify-between px-3.5 py-2 bg-[#1D6B35]/20 border-b border-gray-800">
               <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                 <span>🎥</span>
-                <span>ملخص وفيديو المباراة (يوتيوب)</span>
+                <span>ملخص الأهداف والمباراة (beIN / YouTube)</span>
               </span>
               <a
                 href={`https://www.youtube.com/watch?v=${vid}`}
@@ -482,38 +480,6 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
     );
   }
 
-  if (isLineupRequested) {
-    elements.push(
-      <div
-        key="lineup-card"
-        className="mt-4 p-4 rounded-2xl bg-[#0f2818] border border-emerald-500/40 shadow-xl font-najdi"
-      >
-        <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-emerald-900/60">
-          <span className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
-            <span>🛡️</span>
-            <span>خريطة التشكيلة التكتيكية (AiFBall Pitch Visualizer)</span>
-          </span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/40">
-            Pro Lineup
-          </span>
-        </div>
-        <p className="text-xs text-gray-200 mb-3 leading-relaxed">
-          تم اعتماد مراكز اللاعبين أعلاه وفقاً لأحداث المباراة والخرائط التكتيكية. يمكنك معاينة تفاصيل الخطط عبر الرابط أدناه:
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <a
-            href={`https://www.google.com/search?q=${encodeURIComponent(userQuery + ' تشكيلة مباراة')}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-1.5 bg-[#1D6B35] hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow"
-          >
-            📋 تفاصيل التشكيلة والتقييمات ↗
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   return elements;
 }
 
@@ -534,17 +500,12 @@ export default function FootPlayChat() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // البطاقات الأربع المطابقة للصورة رقم 3
+  // البطاقات الأربع المطابقة تماماً لطلبك وترتيب الصورة الجديدة
   const suggestionCards = [
     {
-      question: 'اعرض لي تشكيلة ريال مدريد التكتيكية في المباراة الأخيرة مع تقييم اللاعبين',
-      tag: 'التشكيلة وخرائط الملعب',
-      icon: '🛡️',
-    },
-    {
-      question: 'قارن إحصائياً بأسلوب DataMB بين كريستيانو رونالدو وألكسندر ميتروفيتش في xG والصناعة',
-      tag: 'مقارنة لاعبين (DataMB)',
-      icon: '📈',
+      question: 'قدم لي تحليلاً تكتيكياً وإحصائياً لأسلوب لعب الاتحاد وفلسفة المدربين',
+      tag: 'تحليل تكتيكي',
+      icon: '📋',
     },
     {
       question: 'اعرض لي أهداف وملخصات أبرز مباريات اليوم في الدوريات الكبرى',
@@ -555,6 +516,11 @@ export default function FootPlayChat() {
       question: 'ما هو جدول ترتيب دوري روشن السعودي لموسم 2026-2027 وأبرز الإحصائيات؟',
       tag: 'ترتيب دوري روشن',
       icon: '📊',
+    },
+    {
+      question: 'ما هو السجل التاريخي الكامل لأبطال دوري أبطال أوروبا؟',
+      tag: 'سجل الأبطال التاريخي',
+      icon: '🏆',
     },
   ];
 
@@ -734,28 +700,12 @@ export default function FootPlayChat() {
         }
       }
 
-      let sampleRadar = undefined;
-      if (/قارن|مقارنة/i.test(query)) {
-        sampleRadar = {
-          player1Name: 'اللاعب الأول',
-          player2Name: 'اللاعب الثاني',
-          metrics: [
-            { metric: 'xG (الأهداف المتوقعة)', player1: 85, player2: 78, fullMark: 100 },
-            { metric: 'التمريرات التقدمية', player1: 70, player2: 90, fullMark: 100 },
-            { metric: 'الفوز بالثنائيات', player1: 65, player2: 80, fullMark: 100 },
-            { metric: 'صناعة الفرص (Key Passes)', player1: 92, player2: 75, fullMark: 100 },
-            { metric: 'الضغط العالي (PPDA)', player1: 78, player2: 88, fullMark: 100 },
-          ],
-        };
-      }
-
       setMessages([
         ...newMessages,
         {
           role: 'assistant',
           content: finalAnswer || 'عذراً، لم يتم استلام رد من الخادم. يرجى المحاولة مرة أخرى.',
           userQuery: userQueryText,
-          radarData: sampleRadar,
         },
       ]);
 
@@ -956,10 +906,10 @@ export default function FootPlayChat() {
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
             <div className="text-right space-y-3 mb-6 px-1">
               <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-[#22C55E]">
-                مرحباً بك
+                أهلاً بك في فوتبلاي
               </h2>
               <p className="text-sm sm:text-lg text-gray-200 leading-relaxed">
-                تحليل تكتيكي، تشكيلات مباريات، مقارنات إحصائية متقدمة بمعايير (StatsBomb & DataMB)، أسلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
+                تحليل تكتيكي وإحصائي لأَسْلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
               </p>
             </div>
 
@@ -1018,7 +968,7 @@ export default function FootPlayChat() {
                       renderFormattedText(msg.content, msg.userQuery, msg.radarData)
                     ) : (
                       <div className="flex items-center gap-2 py-1 text-emerald-400 text-xs font-sans">
-                        <span className="animate-pulse">جاري معالجة التحليل وتوليد رسومات الرادار الإحصائية...</span>
+                        <span className="animate-pulse">جاري جلب التحليل الفني وروابط الملخصات الاحترافية...</span>
                       </div>
                     )}
                   </div>
@@ -1158,7 +1108,7 @@ export default function FootPlayChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="اطلب تشكيلة فريق، مقارنة DataMB، أو إحصائيات xG..."
+              placeholder="اطلب ملخص مباراة، تحليل تكتيكي، أو إحصائيات..."
               className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder-gray-400 focus:outline-none"
             />
             <button
