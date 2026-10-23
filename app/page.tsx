@@ -500,7 +500,7 @@ export default function FootPlayChat() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // البطاقات الأربع المطابقة تماماً لطلبك وترتيب الصورة الجديدة
+  // البطاقات الأربع المطابقة تماماً لترتيب الصورة الجديدة المطلوبة
   const suggestionCards = [
     {
       question: 'قدم لي تحليلاً تكتيكياً وإحصائياً لأسلوب لعب الاتحاد وفلسفة المدربين',
@@ -772,7 +772,7 @@ export default function FootPlayChat() {
   };
 
   return (
-    <div dir="rtl" className="flex flex-col h-[100dvh] bg-[#131314] text-[#E3E3E3] relative overflow-hidden">
+    <div dir="rtl" className="flex flex-col h-[100dvh] bg-[#131314] text-[#E3E3E3] relative overflow-hidden font-najdi">
       <style jsx global>{`
         @font-face {
           font-family: 'SaudiFont';
@@ -799,7 +799,7 @@ export default function FootPlayChat() {
       )}
 
       <aside
-        className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-[#18191A] border-l border-gray-800 z-40 transform transition-transform duration-300 ease-in-out flex flex-col font-najdi ${
+        className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-[#18191A] border-l border-gray-800 z-40 transform transition-transform duration-300 ease-in-out flex flex-col ${
           sidebarOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -872,7 +872,7 @@ export default function FootPlayChat() {
         )}
       </aside>
 
-      <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-gray-800/80 bg-[#131314]/95 backdrop-blur sticky top-0 z-20 font-najdi">
+      <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-gray-800/80 bg-[#131314]/95 backdrop-blur sticky top-0 z-20">
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -901,7 +901,7 @@ export default function FootPlayChat() {
         </button>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col font-najdi">
+      <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
             <div className="text-right space-y-3 mb-6 px-1">
@@ -1100,7 +1100,7 @@ export default function FootPlayChat() {
         )}
       </main>
 
-      <footer className="p-3 bg-[#131314] border-t border-gray-800/60 font-najdi">
+      <footer className="p-3 bg-[#131314] border-t border-gray-800/60">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-2 bg-[#1E1F20] border border-gray-700/70 rounded-full px-3 py-1.5">
             <input
