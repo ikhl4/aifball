@@ -110,7 +110,7 @@ function parseStatNumber(val: string): number | null {
   return cleaned ? parseFloat(cleaned[0]) : null;
 }
 
-// معالجة النصوص، القوائم المنقطة، والجداول الاحترافية
+// معالجة النصوص والروابط باللون الأزرق الاحترافي
 function renderFormattedText(text: string) {
   let processedText = text.replace(/\]\s*\n\s*\(/g, '](');
   const lines = processedText.split('\n');
@@ -133,16 +133,18 @@ function renderFormattedText(text: string) {
       } else if (parts[i + 1] !== undefined && parts[i + 2] !== undefined && parts[i + 1].length > 0 && parts[i + 2].startsWith('http')) {
         const label = parts[i + 1];
         const url = parts[i + 2];
+        const isYoutube = url.includes('youtu');
         result.push(
-          <a key={`link-${i}`} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-0.5 px-2.5 py-1 rounded-lg bg-[#006C35]/25 hover:bg-[#006C35]/40 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold transition shadow-sm">
-            <span>🔗</span><span>{label}</span><span className="text-[10px] opacity-70">↗</span>
+          <a key={`link-${i}`} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/20 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
+            <span>{isYoutube ? '▶️' : '🔗'}</span><span>{label}</span><span className="text-[10px] opacity-70">↗</span>
           </a>
         );
         i += 2;
       } else if (/^https?:\/\//.test(part)) {
+        const isYoutube = part.includes('youtu');
         result.push(
-          <a key={`url-${i}`} href={part} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 my-0.5 px-2.5 py-1 rounded-lg bg-gray-800/80 hover:bg-gray-700 text-emerald-400 text-xs underline break-all font-medium transition">
-            <span>🔗 فتح الرابط ↗</span>
+          <a key={`url-${i}`} href={part} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/20 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
+            <span>{isYoutube ? '▶️' : '🔗'}</span><span>{isYoutube ? 'مشاهدة ملخص المباراة على يوتيوب' : 'فتح الرابط المباشر'}</span><span className="text-[10px] opacity-70">↗</span>
           </a>
         );
       } else {
@@ -225,7 +227,6 @@ function renderFormattedText(text: string) {
         </div>
       );
     } else {
-      // الجدول الاحترافي الكامل القابل للسحب (مثل الصورة رقم 3 المرفقة)
       elements.push(
         <div key={`table-${keyIndex}`} className="my-5 w-full overflow-x-auto custom-scrollbar rounded-2xl border border-gray-700/60 shadow-xl bg-[#131415]">
           <table className="w-full text-right border-collapse text-sm min-w-max">
@@ -275,7 +276,6 @@ function renderFormattedText(text: string) {
     } else if (trimmed.startsWith('# ')) {
       elements.push(<h1 key={index} className="text-2xl font-bold text-emerald-400 mt-5 mb-3">{formatInline(trimmed.replace(/^#\s+/, ''))}</h1>);
     } 
-    // معالجة القوائم المنقطة والمرقمة بشكل احترافي
     else if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
       const isNumbered = /^\d+\.\s+/.test(trimmed);
       const textPart = trimmed.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '');
@@ -293,6 +293,7 @@ function renderFormattedText(text: string) {
 
   if (inTable) flushTable(lines.length);
 
+  // نُبقي المشغل المرئي المدمج لليوتيوب في النهاية لجمال الواجهة (إلى جانب الرابط الأزرق فوق)
   const youtubeIds = extractYouTubeIds(text);
   if (youtubeIds.length > 0) {
     elements.push(
@@ -300,9 +301,9 @@ function renderFormattedText(text: string) {
         {youtubeIds.map((vid) => (
           <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-[#131314] shadow-xl">
             <div className="flex items-center justify-between px-4 py-2.5 bg-[#1D6B35]/20 border-b border-gray-800/80">
-              <span className="text-xs sm:text-sm font-bold text-emerald-400">🎥 ملخص وأهداف المباراة</span>
+              <span className="text-xs sm:text-sm font-bold text-emerald-400">🎥 مشاهدة الملخص المدمج</span>
               <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
-                فتح في يوتيوب ↗
+                فتح في تطبيق يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video">
@@ -317,7 +318,7 @@ function renderFormattedText(text: string) {
   return elements;
 }
 
-const STORAGE_KEY = 'aifball_chat_history_v7';
+const STORAGE_KEY = 'aifball_chat_history_v8';
 
 export default function FootPlayChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -422,7 +423,6 @@ export default function FootPlayChat() {
       let finalAnswer = '';
       let newConvId = '';
 
-      // فلتر ذكي يمنع تكرار الردود من Dify
       try {
         const parsed = JSON.parse(rawText);
         finalAnswer = parsed.text || parsed.answer || '';
@@ -434,7 +434,6 @@ export default function FootPlayChat() {
           if (!t || t === '[DONE]') continue;
           try {
             const p = JSON.parse(t);
-            // التقاط الحزم الصحيحة فقط وعدم تكرار الرسالة النهائية
             if (p.event === 'message' || p.event === 'agent_message' || p.event === 'text_chunk') {
               finalAnswer += (p.answer || p.text || '');
             } else if (p.event === 'message_replace') {
@@ -502,7 +501,6 @@ export default function FootPlayChat() {
         .animate-pulse-slow {
           animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
-        /* تصميم شريط التمرير الأفقي للجداول */
         .custom-scrollbar::-webkit-scrollbar {
           height: 6px;
         }
@@ -620,13 +618,11 @@ export default function FootPlayChat() {
           )}
 
           <div className="flex items-center gap-2 bg-[#1E1F20] border border-gray-700/80 rounded-full px-3 py-2 shadow-lg">
-            {/* زر الزائد (+) لرفع الصور والملفات */}
             <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*,.pdf,.doc,.docx" className="hidden" />
             <button onClick={() => fileInputRef.current?.click()} title="إرفاق ملف" className="w-10 h-10 rounded-full bg-[#2A2C2E] hover:bg-gray-700 text-gray-300 hover:text-white flex items-center justify-center font-bold text-xl flex-shrink-0 transition">
               +
             </button>
 
-            {/* زر البحث الصوتي (الميكروفون) بالأيقونة المطلوبة واللون الأخضر */}
             <button onClick={handleVoiceSearch} title="بحث صوتي" className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition shadow-sm ${isListening ? 'bg-emerald-600 text-white animate-pulse' : 'bg-[#2A2C2E] hover:bg-gray-700 text-emerald-400 hover:text-emerald-300'}`}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
