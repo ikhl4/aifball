@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'interface' in window ? undefined : ({} as any);
+import React, { useState, useRef, useEffect } from 'react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -149,7 +149,12 @@ function renderFormattedText(text: string, userQuery: string = '') {
             {part.slice(2, -2)}
           </strong>
         );
-      } else if (parts[i + 1] !== undefined && parts[i + 2] !== undefined && parts[i + 1].length > 0 && parts[i + 2].startsWith('http')) {
+      } else if (
+        parts[i + 1] !== undefined &&
+        parts[i + 2] !== undefined &&
+        parts[i + 1].length > 0 &&
+        parts[i + 2].startsWith('http')
+      ) {
         const label = parts[i + 1];
         const url = parts[i + 2];
         result.push(
@@ -158,7 +163,7 @@ function renderFormattedText(text: string, userQuery: string = '') {
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 my-0.5 px-2.5 py-1 rounded-lg bg-[#006C35]/20 hover:bg-[#006C35]/40 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold transition shadow-sm"
+            className="inline-flex items-center gap-1.5 my-0.5 px-2.5 py-1 rounded-lg bg-[#006C35]/20 hover:bg-[#006C35]/40 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold transition shadow-sm font-sans"
           >
             <span>🔗</span>
             <span>{label}</span>
@@ -173,9 +178,9 @@ function renderFormattedText(text: string, userQuery: string = '') {
             href={part}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 my-0.5 px-2.5 py-1 rounded-lg bg-gray-800/80 hover:bg-gray-700 text-emerald-400 text-xs underline break-all font-medium transition"
+            className="inline-flex items-center gap-1 my-0.5 px-2.5 py-1 rounded-lg bg-gray-800/80 hover:bg-gray-700 text-emerald-400 text-xs underline break-all font-medium transition font-sans"
           >
-            <span>🔗 رابط المصدر ↗</span>
+            <span>🔗 فتح الرابط المباشر ↗</span>
           </a>
         );
       } else {
@@ -193,7 +198,7 @@ function renderFormattedText(text: string, userQuery: string = '') {
     elements.push(
       <div
         key={`table-${keyIndex}`}
-        className="my-3 overflow-x-auto rounded-xl border border-gray-700/80 shadow-md"
+        className="my-3 overflow-x-auto rounded-xl border border-gray-700/80 shadow-md font-sans"
       >
         <table className="w-full text-right border-collapse text-xs sm:text-sm">
           <thead>
@@ -250,19 +255,19 @@ function renderFormattedText(text: string, userQuery: string = '') {
       elements.push(<hr key={index} className="my-3 border-gray-700/60" />);
     } else if (trimmed.startsWith('### ')) {
       elements.push(
-        <h3 key={index} className="text-base font-bold text-emerald-400 mt-4 mb-1.5">
+        <h3 key={index} className="text-lg font-bold text-emerald-400 mt-4 mb-1.5">
           {formatInline(trimmed.replace(/^###\s+/, ''))}
         </h3>
       );
     } else if (trimmed.startsWith('## ')) {
       elements.push(
-        <h2 key={index} className="text-lg font-bold text-emerald-400 mt-4 mb-2">
+        <h2 key={index} className="text-xl font-bold text-emerald-400 mt-4 mb-2">
           {formatInline(trimmed.replace(/^##\s+/, ''))}
         </h2>
       );
     } else if (trimmed.startsWith('# ')) {
       elements.push(
-        <h1 key={index} className="text-xl font-bold text-emerald-400 mt-4 mb-2">
+        <h1 key={index} className="text-2xl font-bold text-emerald-400 mt-4 mb-2">
           {formatInline(trimmed.replace(/^#\s+/, ''))}
         </h1>
       );
@@ -270,12 +275,12 @@ function renderFormattedText(text: string, userQuery: string = '') {
       elements.push(
         <div key={index} className="flex items-start gap-2 my-1.5 pr-2">
           <span className="text-emerald-500 mt-0.5">•</span>
-          <span className="flex-1 leading-relaxed">{formatInline(trimmed.slice(2))}</span>
+          <span className="flex-1 leading-relaxed text-base">{formatInline(trimmed.slice(2))}</span>
         </div>
       );
     } else {
       elements.push(
-        <p key={index} className="leading-relaxed my-1">
+        <p key={index} className="leading-relaxed my-1 text-base">
           {formatInline(trimmed)}
         </p>
       );
@@ -286,12 +291,14 @@ function renderFormattedText(text: string, userQuery: string = '') {
     flushTable(lines.length);
   }
 
+  // لا يعرض فيديوهات أو أزرار يوتيوب وتويتر إلا إذا طلب المستخدم أهداف/ملخصات أو أرسل البوت رابط فيديو فعلي
   const youtubeIds = extractYouTubeIds(text);
-  const isVideoRequested = /أهداف|ملخص|فيديو|مقطع|هدف/i.test(userQuery);
+  const twitterLinks = extractTwitterLinks(text);
+  const isVideoRequested = /أهداف|اهداف|ملخص|فيديو|مقطع|هدف/i.test(userQuery);
 
   if (youtubeIds.length > 0) {
     elements.push(
-      <div key="youtube-embeds" className="mt-4 space-y-3">
+      <div key="youtube-embeds" className="mt-4 space-y-3 font-sans">
         {youtubeIds.map((vid) => (
           <div
             key={vid}
@@ -324,29 +331,70 @@ function renderFormattedText(text: string, userQuery: string = '') {
         ))}
       </div>
     );
-  } else if (isVideoRequested) {
+  }
+
+  if (twitterLinks.length > 0) {
     elements.push(
-      <div key="video-request-card" className="mt-4 p-3 rounded-xl bg-[#1D6B35]/15 border border-emerald-500/30 flex items-center justify-between">
-        <span className="text-xs font-bold text-emerald-300 flex items-center gap-2">
+      <div key="twitter-embeds" className="mt-4 space-y-3 font-sans">
+        {twitterLinks.map((item) => (
+          <div
+            key={item.id}
+            className="rounded-2xl overflow-hidden border border-sky-500/30 bg-[#15202B] p-4 shadow-lg text-right"
+          >
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-800">
+              <span className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+                <span>𝕏</span>
+                <span>مقطع فيديو من منصة X</span>
+              </span>
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-gray-300 hover:text-white underline"
+              >
+                فتح التغريدة ↗
+              </a>
+            </div>
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-1 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold transition shadow"
+            >
+              شاهد الفيديو على منصة X ↗
+            </a>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (youtubeIds.length === 0 && twitterLinks.length === 0 && isVideoRequested) {
+    elements.push(
+      <div
+        key="video-request-card"
+        className="mt-4 p-3 rounded-xl bg-[#1D6B35]/15 border border-emerald-500/30 flex flex-wrap items-center justify-between gap-2 font-sans"
+      >
+        <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
           <span>🎬</span>
-          <span>شاهد الأهداف والملخصات المباشرة:</span>
+          <span>روابط مباشرة للأهداف والملخصات المطلوبة:</span>
         </span>
         <div className="flex gap-2">
           <a
-            href={`https://www.youtube.com/results?search_query=${encodeURIComponent('أهداف وملخص ' + userQuery)}`}
+            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(userQuery)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1 bg-[#1D6B35] hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition"
+            className="px-3 py-1.5 bg-[#1D6B35] hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition"
           >
-            يوتيوب ↗
+            🎬 أهداف يوتيوب ↗
           </a>
           <a
-            href={`https://x.com/search?q=${encodeURIComponent(userQuery + ' أهداف ملخص')}&f=live`}
+            href={`https://x.com/search?q=${encodeURIComponent(userQuery)}&f=video`}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg transition"
+            className="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg transition"
           >
-            منصة X ↗
+            𝕏 فيديو تويتر ↗
           </a>
         </div>
       </div>
@@ -476,7 +524,7 @@ export default function FootPlayChat() {
       try {
         await navigator.share({
           title: 'فوتبلاي - صديقك الرياضي',
-          text: `${text}\n\nعبر منصة فوتبلاي (aifball.com)`,
+          text: `${text}\n\nعبر منصة فوتبلاي (AiFBall.com)`,
         });
         return;
       } catch {
@@ -527,22 +575,20 @@ export default function FootPlayChat() {
     }
   };
 
-  const getRelatedUserQuery = (assistantIdx: number) => {
-    for (let i = assistantIdx - 1; i >= 0; i--) {
-      if (messages[i]?.role === 'user') {
-        return messages[i].content;
-      }
-    }
-    return 'مباريات اليوم';
-  };
-
+  // دالة إرسال موحدة ومحمية تقبل JSON المباشر أو الـ Stream بدون أن تعلق أبداً
   const sendMessage = async (textToSend?: string) => {
     const query = (textToSend ?? input).trim();
     if (!query || loading) return;
 
     const userQueryText = query;
-    const newMessages: Message[] = [...messages, { role: 'user', content: query, userQuery: userQueryText }];
-    setMessages([...newMessages, { role: 'assistant', content: '', userQuery: userQueryText }]);
+    const newMessages: Message[] = [
+      ...messages,
+      { role: 'user', content: query, userQuery: userQueryText },
+    ];
+    setMessages([
+      ...newMessages,
+      { role: 'assistant', content: '', userQuery: userQueryText },
+    ]);
     setInput('');
     setLoading(true);
 
@@ -553,44 +599,50 @@ export default function FootPlayChat() {
         body: JSON.stringify({ query, conversation_id: conversationId }),
       });
 
-      if (!res.ok || !res.body) {
-        throw new Error('فشل الاتصال');
-      }
+      const rawText = await res.text();
+      let finalAnswer = '';
+      let newConvId = '';
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let accumulatedText = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-
+      try {
+        // محاولة قراءته كـ JSON موحد أولاً
+        const parsed = JSON.parse(rawText);
+        if (parsed.text) finalAnswer = parsed.text;
+        if (parsed.conversation_id) newConvId = parsed.conversation_id;
+      } catch {
+        // إذا كان الرد عدة أسطر متدفقة (NDJSON)
+        const lines = rawText.split('\n');
         for (const line of lines) {
           if (!line.trim()) continue;
           try {
-            const parsed = JSON.parse(line);
-            if (parsed.text) {
-              accumulatedText += parsed.text;
-              setMessages([
-                ...newMessages,
-                { role: 'assistant', content: accumulatedText, userQuery: userQueryText },
-              ]);
-            }
-            if (parsed.conversation_id) {
-              setConversationId(parsed.conversation_id);
-            }
+            const p = JSON.parse(line);
+            if (p.text) finalAnswer += p.text;
+            if (p.conversation_id) newConvId = p.conversation_id;
           } catch {
             // تجاهل
           }
         }
       }
+
+      setMessages([
+        ...newMessages,
+        {
+          role: 'assistant',
+          content: finalAnswer || 'عذراً، لم يتم استلام رد من الخادم. يرجى المحاولة مرة أخرى.',
+          userQuery: userQueryText,
+        },
+      ]);
+
+      if (newConvId) {
+        setConversationId(newConvId);
+      }
     } catch {
       setMessages([
         ...newMessages,
-        { role: 'assistant', content: 'عذراً، تعذر استلام الرد، يرجى المحاولة مرة أخرى.', userQuery: userQueryText },
+        {
+          role: 'assistant',
+          content: 'عذراً، تعذر الاتصال بالخادم، يرجى المحاولة مرة أخرى.',
+          userQuery: userQueryText,
+        },
       ]);
     } finally {
       setLoading(false);
@@ -643,7 +695,15 @@ export default function FootPlayChat() {
   };
 
   return (
-    <div dir="rtl" className="flex flex-col h-[100dvh] bg-[#131314] text-[#E3E3E3] font-sans relative overflow-hidden">
+    <div dir="rtl" className="flex flex-col h-[100dvh] bg-[#131314] text-[#E3E3E3] relative overflow-hidden">
+      {/* استيراد الخط النجدي / النسخ الأصيل */}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Scheherazade+New:wght@400;700&display=swap');
+        .font-najdi {
+          font-family: 'Amiri', 'Scheherazade New', 'Traditional Arabic', 'Geeza Pro', serif;
+        }
+      `}</style>
+
       {sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
@@ -725,6 +785,7 @@ export default function FootPlayChat() {
         )}
       </aside>
 
+      {/* الهيدر العلوي */}
       <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-gray-800/80 bg-[#131314]/95 backdrop-blur sticky top-0 z-20">
         <div className="flex items-center gap-2.5">
           <button
@@ -739,7 +800,7 @@ export default function FootPlayChat() {
 
           <AiFBallLogo size="md" />
           <div>
-            <h1 className="text-sm sm:text-base font-extrabold text-white leading-tight tracking-wide">
+            <h1 className="text-base sm:text-lg font-bold text-white leading-tight font-najdi">
               فوتبلاي
             </h1>
             <p className="text-[10px] sm:text-[11px] text-emerald-400 font-medium">صديقك الرياضي</p>
@@ -757,14 +818,15 @@ export default function FootPlayChat() {
       <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
-            <div className="text-right space-y-1.5 mb-5 px-1">
-              <p className="text-sm sm:text-base font-extrabold text-emerald-400 tracking-wider">
-                AiFBall.com
-              </p>
-              <h2 className="text-2xl sm:text-4xl font-black text-[#22C55E] tracking-tight">
-                أهلاً بك في فوتبلاي
+            {/* العنوان الترحيبي وبجانبه AiFBall.com باللون الأبيض */}
+            <div className="text-right space-y-2 mb-6 px-1">
+              <h2 className="text-2xl sm:text-4xl font-bold tracking-tight flex flex-wrap items-center justify-start gap-2.5 font-najdi">
+                <span className="text-[#22C55E]">أهلاً بك في فوتبلاي</span>
+                <span dir="ltr" className="text-white font-sans font-extrabold text-xl sm:text-3xl">
+                  AiFBall.com
+                </span>
               </h2>
-              <p className="text-xs sm:text-lg font-bold text-gray-300 leading-relaxed">
+              <p className="text-base sm:text-xl text-gray-200 leading-relaxed font-najdi">
                 تحليل تكتيكي وإحصائي لأسلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
               </p>
             </div>
@@ -774,13 +836,13 @@ export default function FootPlayChat() {
                 <button
                   key={i}
                   onClick={() => sendMessage(card.question)}
-                  className="group flex flex-col justify-between text-right p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#1E1F20] hover:bg-[#26282A] border border-gray-800/90 hover:border-emerald-500/40 transition-all duration-200 shadow-sm min-h-[88px] sm:min-h-[105px]"
+                  className="group flex flex-col justify-between text-right p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#1E1F20] hover:bg-[#26282A] border border-gray-800/90 hover:border-emerald-500/40 transition-all duration-200 shadow-sm min-h-[92px] sm:min-h-[110px]"
                 >
-                  <p className="text-[11px] sm:text-sm font-bold text-gray-100 group-hover:text-white leading-snug line-clamp-2">
+                  <p className="text-sm sm:text-base font-bold text-gray-100 group-hover:text-white leading-snug line-clamp-2 font-najdi">
                     {card.question}
                   </p>
                   <div className="flex items-center justify-between w-full mt-2.5 pt-1">
-                    <span className="text-[10px] sm:text-xs font-bold text-[#22C55E] truncate pl-1">
+                    <span className="text-[11px] sm:text-xs font-bold text-[#22C55E] truncate pl-1">
                       {card.tag}
                     </span>
                     <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[#131314]/80 flex items-center justify-center text-xs sm:text-sm shadow-inner flex-shrink-0">
@@ -812,10 +874,10 @@ export default function FootPlayChat() {
                   }`}
                 >
                   <div
-                    className={`rounded-2xl px-4 py-3 text-sm ${
+                    className={`rounded-2xl px-4 py-3 font-najdi ${
                       msg.role === 'user'
-                        ? 'bg-[#282A2C] text-white rounded-tr-sm'
-                        : 'bg-[#1E1F20] text-gray-100 border border-gray-800/90 w-full overflow-hidden'
+                        ? 'bg-[#282A2C] text-white rounded-tr-sm text-base'
+                        : 'bg-[#1E1F20] text-gray-100 border border-gray-800/90 w-full overflow-hidden text-base'
                     }`}
                   >
                     {msg.role === 'user' ? (
@@ -823,12 +885,13 @@ export default function FootPlayChat() {
                     ) : msg.content ? (
                       renderFormattedText(msg.content, msg.userQuery)
                     ) : (
-                      <div className="flex items-center gap-2 py-1 text-emerald-400 text-xs">
+                      <div className="flex items-center gap-2 py-1 text-emerald-400 text-xs font-sans">
                         <span className="animate-pulse">جاري جلب التحليل الرياضي من الخادم...</span>
                       </div>
                     )}
                   </div>
 
+                  {/* شريط الأدوات التفاعلي السفلي بدون أزرار يوتيوب وتويتر الثابتة */}
                   {msg.role === 'assistant' && msg.content && (
                     <div className="flex flex-wrap items-center justify-between gap-2 mt-1.5 px-1 text-gray-400 relative select-none">
                       <div className="flex items-center gap-1">
@@ -946,31 +1009,6 @@ export default function FootPlayChat() {
                           )}
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <a
-                          href={`https://www.youtube.com/results?search_query=${encodeURIComponent(
-                            'تحليل تكتيكي أهداف ' + getRelatedUserQuery(i)
-                          )}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#1E1F20] hover:bg-[#1D6B35]/30 border border-gray-700/80 hover:border-emerald-500/50 text-[11px] text-emerald-400 font-medium transition"
-                        >
-                          <span>🎬</span>
-                          <span>يوتيوب</span>
-                        </a>
-                        <a
-                          href={`https://x.com/search?q=${encodeURIComponent(
-                            getRelatedUserQuery(i) + ' تكتيك تحليل'
-                          )}&f=live`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#1E1F20] hover:bg-sky-500/20 border border-gray-700/80 hover:border-sky-500/50 text-[11px] text-sky-400 font-medium transition"
-                        >
-                          <span>𝕏</span>
-                          <span>مقاطع X</span>
-                        </a>
-                      </div>
                     </div>
                   )}
                 </div>
@@ -990,7 +1028,7 @@ export default function FootPlayChat() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
               placeholder="اسأل عن فلسفة المدربين، تكتيك الفرق، أو ملخصات المباريات..."
-              className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder-gray-400 focus:outline-none"
+              className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder-gray-400 focus:outline-none font-najdi"
             />
             <button
               onClick={() => sendMessage()}
