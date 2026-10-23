@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         inputs: {},
         query: query,
-        response_mode: 'blocking', // استخدام وضع الحظر لضمان وصول الرد كاملاً وسريعاً بدون تعليق
+        response_mode: 'blocking',
         conversation_id: conversation_id || '',
         user: 'aifball-user',
       }),
