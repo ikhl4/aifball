@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'interface' in window ? undefined : ({} as any);
 
 interface Message {
   role: 'user' | 'assistant';
@@ -286,7 +286,6 @@ function renderFormattedText(text: string, userQuery: string = '') {
     flushTable(lines.length);
   }
 
-  // عرض الفيديوهات فقط إذا وجد رابط يوتيوب فعلي أو طلب المستخدم أهداف/ملخصات
   const youtubeIds = extractYouTubeIds(text);
   const isVideoRequested = /أهداف|ملخص|فيديو|مقطع|هدف/i.test(userQuery);
 
@@ -326,7 +325,6 @@ function renderFormattedText(text: string, userQuery: string = '') {
       </div>
     );
   } else if (isVideoRequested) {
-    // إذا طلب أهداف ولم يرفق البوت رابط، نعرض زر مباشر للبحث عن الأهداف والملخصات
     elements.push(
       <div key="video-request-card" className="mt-4 p-3 rounded-xl bg-[#1D6B35]/15 border border-emerald-500/30 flex items-center justify-between">
         <span className="text-xs font-bold text-emerald-300 flex items-center gap-2">
@@ -760,6 +758,9 @@ export default function FootPlayChat() {
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
             <div className="text-right space-y-1.5 mb-5 px-1">
+              <p className="text-sm sm:text-base font-extrabold text-emerald-400 tracking-wider">
+                AiFBall.com
+              </p>
               <h2 className="text-2xl sm:text-4xl font-black text-[#22C55E] tracking-tight">
                 أهلاً بك في فوتبلاي
               </h2>
