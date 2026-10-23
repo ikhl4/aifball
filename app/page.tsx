@@ -121,7 +121,7 @@ function extractTwitterLinks(text: string): { url: string; id: string }[] {
   return links;
 }
 
-// دالة معالجة وعرض النصوص والروابط
+// معالجة النصوص والروابط لجعلها أزرار ضغط مباشر
 function renderFormattedText(text: string) {
   let processedText = text.replace(/\]\s*\n\s*\(/g, '](');
   const lines = processedText.split('\n');
@@ -383,8 +383,12 @@ export default function FootPlayChat() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // البطاقات الرئيسية مع التركيز على أهداف وملخصات المباريات
   const suggestionCards = [
+    {
+      question: 'قدم لي تحليلاً تكتيكياً وإحصائياً لأسلوب لعب الاتحاد وفلسفة المدرب الألماني فيسينغ هذا الموسم',
+      tag: 'تحليل تكتيكي (فيسينغ والاتحاد)',
+      icon: '📋',
+    },
     {
       question: 'اعرض لي أهداف وملخصات أبرز مباريات اليوم في الدوريات الكبرى',
       tag: 'أهداف وملخصات المباريات',
@@ -394,11 +398,6 @@ export default function FootPlayChat() {
       question: 'ما هو جدول ترتيب دوري روشن السعودي لموسم 2026-2027 وأبرز الإحصائيات؟',
       tag: 'ترتيب دوري روشن',
       icon: '📊',
-    },
-    {
-      question: 'قدم لي تحليلاً تكتيكياً لإحصائيات وأسلوب لعب الأندية هذا الموسم مثال الاتحاد مع الالماني فيسينغ',
-      tag: 'تحليل تكتيكي',
-      icon: '📋',
     },
     {
       question: 'ما هو السجل التاريخي الكامل لأبطال دوري أبطال أوروبا؟',
@@ -544,7 +543,7 @@ export default function FootPlayChat() {
         return messages[i].content;
       }
     }
-    return 'ملخص مباريات اليوم';
+    return 'تحليل تكتيكي للمباريات';
   };
 
   const sendMessage = async (textToSend?: string) => {
@@ -749,7 +748,10 @@ export default function FootPlayChat() {
 
           <AiFBallLogo size="md" />
           <div>
-            <h1 className="text-sm sm:text-base font-bold text-white leading-tight">فوتبلاي</h1>
+            <h1 className="text-sm sm:text-base font-bold text-white leading-tight flex items-center gap-1.5">
+              <span>فوتبلاي</span>
+              <span className="text-xs font-semibold text-emerald-400 opacity-90">FootBall Ai</span>
+            </h1>
             <p className="text-[10px] sm:text-[11px] text-emerald-400 font-medium">صديقك الرياضي</p>
           </div>
         </div>
@@ -766,11 +768,12 @@ export default function FootPlayChat() {
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
             <div className="text-right space-y-1.5 mb-5 px-1">
-              <h2 className="text-2xl sm:text-4xl font-extrabold text-[#22C55E] tracking-tight">
-                أهلاً بك في فوتبلاي
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-[#22C55E] tracking-tight flex flex-wrap items-center gap-2">
+                <span>أهلاً بك في فوتبلاي</span>
+                <span className="text-xl sm:text-2xl font-bold text-emerald-300 opacity-90">FootBall Ai</span>
               </h2>
               <p className="text-xs sm:text-lg font-bold text-gray-300 leading-relaxed">
-                وجهتك الأولى لمشاهدة أهداف وملخصات مباريات كرة القدم والتحليل الإحصائي والتكتيكي.. كيف أساعدك اليوم؟
+                تحليل تكتيكي وإحصائي لأسلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
               </p>
             </div>
 
@@ -829,7 +832,7 @@ export default function FootPlayChat() {
                       renderFormattedText(msg.content)
                     ) : (
                       <div className="flex items-center gap-2 py-1 text-emerald-400 text-xs">
-                        <span className="animate-pulse">جاري جلب أهداف وملخصات المباريات والبيانات...</span>
+                        <span className="animate-pulse">جاري إعداد التحليل التكتيكي وإحصائيات المدربين...</span>
                       </div>
                     )}
                   </div>
@@ -955,7 +958,7 @@ export default function FootPlayChat() {
                       <div className="flex items-center gap-1.5">
                         <a
                           href={`https://www.youtube.com/results?search_query=${encodeURIComponent(
-                            'أهداف وملخص مباريات ' + getRelatedUserQuery(i)
+                            'تحليل تكتيكي أهداف ' + getRelatedUserQuery(i)
                           )}`}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -966,7 +969,7 @@ export default function FootPlayChat() {
                         </a>
                         <a
                           href={`https://x.com/search?q=${encodeURIComponent(
-                            getRelatedUserQuery(i) + ' أهداف ملخص'
+                            getRelatedUserQuery(i) + ' تكتيك تحليل'
                           )}&f=live`}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -994,7 +997,7 @@ export default function FootPlayChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="اطلب أهداف، ملخصات مباريات، أو اسأل عن التكتيك والإحصائيات..."
+              placeholder="اسأل عن فلسفة المدربين، تكتيك الفرق، أو ملخصات المباريات..."
               className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder-gray-400 focus:outline-none"
             />
             <button
