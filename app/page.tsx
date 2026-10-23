@@ -748,9 +748,9 @@ export default function FootPlayChat() {
 
           <AiFBallLogo size="md" />
           <div>
-            <h1 className="text-sm sm:text-base font-bold text-white leading-tight flex items-center gap-1.5">
+            <h1 className="text-sm sm:text-base font-extrabold text-white leading-tight flex items-center gap-1.5 tracking-wide">
               <span>فوتبلاي</span>
-              <span className="text-xs font-semibold text-emerald-400 opacity-90">FootBall Ai</span>
+              <span className="text-sm sm:text-base font-extrabold text-white tracking-wide">FootBall Ai</span>
             </h1>
             <p className="text-[10px] sm:text-[11px] text-emerald-400 font-medium">صديقك الرياضي</p>
           </div>
@@ -768,9 +768,9 @@ export default function FootPlayChat() {
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
             <div className="text-right space-y-1.5 mb-5 px-1">
-              <h2 className="text-2xl sm:text-4xl font-extrabold text-[#22C55E] tracking-tight flex flex-wrap items-center gap-2">
+              <h2 className="text-2xl sm:text-4xl font-black text-[#22C55E] tracking-tight flex flex-wrap items-center gap-2">
                 <span>أهلاً بك في فوتبلاي</span>
-                <span className="text-xl sm:text-2xl font-bold text-emerald-300 opacity-90">FootBall Ai</span>
+                <span className="text-2xl sm:text-3xl font-black text-white tracking-wide">FootBall Ai</span>
               </h2>
               <p className="text-xs sm:text-lg font-bold text-gray-300 leading-relaxed">
                 تحليل تكتيكي وإحصائي لأسلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
