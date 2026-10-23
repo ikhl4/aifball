@@ -1,17 +1,11 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
-import PlayerRadarChart from '@/components/PlayerRadarChart';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
   userQuery?: string;
   feedback?: 'like' | 'dislike' | null;
-  radarData?: {
-    player1Name: string;
-    player2Name: string;
-    metrics: { metric: string; player1: number; player2: number; fullMark: number }[];
-  };
 }
 
 interface ChatSession {
@@ -76,7 +70,7 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
             d="M-19,-35 L-26,-43 M19,-35 L26,-43 M35,-12 L46,-16 M37,8 L47,15 M22,31 L29,40 M0,38 L0,48 M-22,31 L-29,40 M-37,8 L-47,15 M-35,-12 L-46,-16"
             stroke="#1D6B35"
             strokeWidth="5"
-            strokeLinejoin="round"
+            strokeLinecap="round"
           />
           <circle r="47" fill="none" stroke="#1D6B35" strokeWidth="4" />
         </g>
@@ -88,7 +82,7 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
           fontSize="43"
           fontWeight="900"
           fontStyle="italic"
-          fontFamily="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+          fontFamily="system-ui, -apple-system, sans-serif"
           letterSpacing="-1"
         >
           AiFBall
@@ -98,6 +92,7 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
+// استخراج معرفات يوتيوب لعرض مشغل الفيديو مباشرة
 function extractYouTubeIds(text: string): string[] {
   const regex =
     /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
@@ -111,6 +106,7 @@ function extractYouTubeIds(text: string): string[] {
   return ids;
 }
 
+// استخراج روابط تويتر / X
 function extractTwitterLinks(text: string): { url: string; id: string }[] {
   const regex = /https?:\/(?:\/(?:www\.)?(?:twitter|x)\.com\/[a-zA-Z0-9_]+\/status\/([0-9]+))([^\s]*)?/g;
   const links: { url: string; id: string }[] = [];
@@ -131,7 +127,7 @@ function parseStatNumber(val: string): number | null {
   return cleaned ? parseFloat(cleaned[0]) : null;
 }
 
-function renderFormattedText(text: string, userQuery: string = '', radarData?: Message['radarData']) {
+function renderFormattedText(text: string) {
   let processedText = text.replace(/\]\s*\n\s*\(/g, '](');
   const lines = processedText.split('\n');
   const elements: React.ReactNode[] = [];
@@ -171,7 +167,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 my-0.5 px-2.5 py-1 rounded-lg bg-[#006C35]/25 hover:bg-[#006C35]/40 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold transition shadow-sm font-najdi"
+            className="inline-flex items-center gap-1.5 my-0.5 px-2.5 py-1 rounded-lg bg-[#006C35]/25 hover:bg-[#006C35]/40 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold transition shadow-sm"
           >
             <span>🔗</span>
             <span>{label}</span>
@@ -186,7 +182,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
             href={part}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 my-0.5 px-2.5 py-1 rounded-lg bg-gray-800/80 hover:bg-gray-700 text-emerald-400 text-xs underline break-all font-medium transition font-najdi"
+            className="inline-flex items-center gap-1 my-0.5 px-2.5 py-1 rounded-lg bg-gray-800/80 hover:bg-gray-700 text-emerald-400 text-xs underline break-all font-medium transition"
           >
             <span>🔗 فتح الرابط المباشر ↗</span>
           </a>
@@ -211,97 +207,90 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
         Math.ceil(body.length * 0.5);
 
     if (isComparisonTable) {
+      const p1Title = headers[1]?.replace(/\*\*/g, '').trim() || 'الطرف الأول';
+      const p2Title = headers[2]?.replace(/\*\*/g, '').trim() || 'الطرف الثاني';
+
       elements.push(
-        <div key={`datamb-${keyIndex}`} className="space-y-4 my-4 font-najdi">
-          {radarData && radarData.metrics && radarData.metrics.length > 0 && (
-            <PlayerRadarChart
-              player1Name={radarData.player1Name}
-              player2Name={radarData.player2Name}
-              data={radarData.metrics}
-            />
-          )}
+        <div key={`datamb-${keyIndex}`} className="my-4 p-4 rounded-2xl bg-[#141618] border border-emerald-500/30 shadow-xl">
+          <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-800">
+            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+              <span>📊</span>
+              <span>مقارنة الأداء الإحصائي</span>
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/40">
+              AiFBall Pro
+            </span>
+          </div>
 
-          <div className="p-4 rounded-2xl bg-[#141618] border border-emerald-500/30 shadow-xl">
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-800">
-              <span className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
-                <span>📊</span>
-                <span>مقارنة الأداء الإحصائي (DataMB Comparison Bars)</span>
-              </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/40">
-                AiFBall Pro Stats
+          <div className="grid grid-cols-2 gap-3 mb-4 text-center">
+            <div className="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30">
+              <span className="text-xs sm:text-sm font-bold text-emerald-400 block truncate">
+                {p1Title}
               </span>
             </div>
-
-            <div className="grid grid-cols-2 gap-3 mb-4 text-center">
-              <div className="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30">
-                <span className="text-xs sm:text-sm font-extrabold text-emerald-400 block truncate">
-                  {headers[1]?.replace(/\*\*/g, '')}
-                </span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-sky-950/30 border border-sky-500/30">
-                <span className="text-xs sm:text-sm font-extrabold text-sky-400 block truncate">
-                  {headers[2]?.replace(/\*\*/g, '')}
-                </span>
-              </div>
+            <div className="p-2.5 rounded-xl bg-sky-950/30 border border-sky-500/30">
+              <span className="text-xs sm:text-sm font-bold text-sky-400 block truncate">
+                {p2Title}
+              </span>
             </div>
+          </div>
 
-            <div className="space-y-3.5">
-              {body.map((row, rIdx) => {
-                const metric = row[0]?.replace(/\*\*/g, '') || '';
-                const val1Str = row[1]?.replace(/\*\*/g, '') || '-';
-                const val2Str = row[2]?.replace(/\*\*/g, '') || '-';
-                const n1 = parseStatNumber(val1Str);
-                const n2 = parseStatNumber(val2Str);
+          <div className="space-y-3.5">
+            {body.map((row, rIdx) => {
+              const metric = row[0]?.replace(/\*\*/g, '') || '';
+              const val1Str = row[1]?.replace(/\*\*/g, '') || '-';
+              const val2Str = row[2]?.replace(/\*\*/g, '') || '-';
+              const n1 = parseStatNumber(val1Str);
+              const n2 = parseStatNumber(val2Str);
 
-                if (n1 !== null && n2 !== null && n1 + n2 > 0) {
-                  const total = Math.abs(n1) + Math.abs(n2);
-                  const p1 = Math.round((Math.abs(n1) / total) * 100);
-                  const p2 = 100 - p1;
-                  const p1Wins = n1 >= n2;
-
-                  return (
-                    <div key={rIdx} className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className={`font-bold ${p1Wins ? 'text-emerald-400' : 'text-gray-400'}`}>
-                          {val1Str}
-                        </span>
-                        <span className="text-gray-200 font-semibold text-center px-2">
-                          {metric}
-                        </span>
-                        <span className={`font-bold ${!p1Wins ? 'text-sky-400' : 'text-gray-400'}`}>
-                          {val2Str}
-                        </span>
-                      </div>
-                      <div className="w-full h-2.5 rounded-full bg-gray-800 overflow-hidden flex gap-0.5 p-0.5">
-                        <div
-                          style={{ width: `${p1}%` }}
-                          className={`h-full rounded-r-full transition-all duration-500 ${
-                            p1Wins ? 'bg-emerald-500' : 'bg-emerald-800/50'
-                          }`}
-                        />
-                        <div
-                          style={{ width: `${p2}%` }}
-                          className={`h-full rounded-l-full transition-all duration-500 ${
-                            !p1Wins ? 'bg-sky-500' : 'bg-sky-800/50'
-                          }`}
-                        />
-                      </div>
-                    </div>
-                  );
-                }
+              if (n1 !== null && n2 !== null && n1 + n2 > 0) {
+                const total = Math.abs(n1) + Math.abs(n2);
+                const p1 = Math.round((Math.abs(n1) / total) * 100);
+                const p2 = 100 - p1;
+                const p1Wins = n1 >= n2;
 
                 return (
-                  <div
-                    key={rIdx}
-                    className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-[#1C1E20] text-xs"
-                  >
-                    <span className="text-emerald-300 font-bold">{val1Str}</span>
-                    <span className="text-gray-400">{metric}</span>
-                    <span className="text-sky-300 font-bold">{val2Str}</span>
+                  <div key={rIdx} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={`font-bold ${p1Wins ? 'text-emerald-400' : 'text-gray-400'}`}>
+                        {val1Str}
+                      </span>
+                      <span className="text-gray-200 font-bold text-center px-2">
+                        {metric}
+                      </span>
+                      <span className={`font-bold ${!p1Wins ? 'text-sky-400' : 'text-gray-400'}`}>
+                        {val2Str}
+                      </span>
+                    </div>
+                    <div className="w-full h-2.5 rounded-full bg-gray-800 overflow-hidden flex gap-0.5 p-0.5">
+                      <div
+                        style={{ width: `${p1}%` }}
+                        className={`h-full rounded-r-full transition-all duration-500 ${
+                          p1Wins ? 'bg-emerald-500' : 'bg-emerald-800/50'
+                        }`}
+                      />
+                      <div
+                        style={{ width: `${p2}%` }}
+                        className={`h-full rounded-l-full transition-all duration-500 ${
+                          !p1Wins ? 'bg-sky-500' : 'bg-sky-800/50'
+                        }`}
+                      />
+                    </div>
                   </div>
                 );
-              })}
-            </div>
+              }
+
+              return (
+                <div
+                  key={rIdx}
+                  className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-[#1C1E20] text-xs"
+                >
+                  <span className="text-emerald-300 font-bold">{val1Str}</span>
+                  <span className="text-gray-400">{metric}</span>
+                  <span className="text-sky-300 font-bold">{val2Str}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       );
@@ -309,7 +298,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
       elements.push(
         <div
           key={`table-${keyIndex}`}
-          className="my-3 overflow-x-auto rounded-xl border border-gray-700/80 shadow-md font-najdi"
+          className="my-3 overflow-x-auto rounded-xl border border-gray-700/80 shadow-md"
         >
           <table className="w-full text-right border-collapse text-xs sm:text-sm">
             <thead>
@@ -409,7 +398,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
 
   if (youtubeIds.length > 0) {
     elements.push(
-      <div key="youtube-embeds" className="mt-4 space-y-3 font-najdi">
+      <div key="youtube-embeds" className="mt-4 space-y-3">
         {youtubeIds.map((vid) => (
           <div
             key={vid}
@@ -418,7 +407,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
             <div className="flex items-center justify-between px-3.5 py-2 bg-[#1D6B35]/20 border-b border-gray-800">
               <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                 <span>🎥</span>
-                <span>ملخص الأهداف والمباراة (beIN / YouTube)</span>
+                <span>ملخص وأهداف المباراة (مشغل يوتيوب المباشر)</span>
               </span>
               <a
                 href={`https://www.youtube.com/watch?v=${vid}`}
@@ -446,7 +435,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
 
   if (twitterLinks.length > 0) {
     elements.push(
-      <div key="twitter-embeds" className="mt-4 space-y-3 font-najdi">
+      <div key="twitter-embeds" className="mt-4 space-y-3">
         {twitterLinks.map((item) => (
           <div
             key={item.id}
@@ -500,7 +489,7 @@ export default function FootPlayChat() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // البطاقات الأربع المطابقة تماماً لترتيب الصورة الجديدة المطلوبة
+  // البطاقات الأربع المطابقة تماماً للواجهة المطلوبة
   const suggestionCards = [
     {
       question: 'قدم لي تحليلاً تكتيكياً وإحصائياً لأسلوب لعب الاتحاد وفلسفة المدربين',
@@ -685,14 +674,17 @@ export default function FootPlayChat() {
       try {
         const parsed = JSON.parse(rawText);
         if (parsed.text) finalAnswer = parsed.text;
+        else if (parsed.answer) finalAnswer = parsed.answer;
         if (parsed.conversation_id) newConvId = parsed.conversation_id;
       } catch {
         const lines = rawText.split('\n');
         for (const line of lines) {
-          if (!line.trim()) continue;
+          const trimmedLine = line.replace(/^data:\s*/, '').trim();
+          if (!trimmedLine || trimmedLine === '[DONE]') continue;
           try {
-            const p = JSON.parse(line);
+            const p = JSON.parse(trimmedLine);
             if (p.text) finalAnswer += p.text;
+            else if (p.answer) finalAnswer += p.answer;
             if (p.conversation_id) newConvId = p.conversation_id;
           } catch {
             // تجاهل
@@ -772,22 +764,30 @@ export default function FootPlayChat() {
   };
 
   return (
-    <div dir="rtl" className="flex flex-col h-[100dvh] bg-[#131314] text-[#E3E3E3] relative overflow-hidden font-najdi">
+    <div dir="rtl" className="flex flex-col h-[100dvh] bg-[#131314] text-[#E3E3E3] relative overflow-hidden font-saudi">
       <style jsx global>{`
         @font-face {
-          font-family: 'SaudiFont';
-          src: url('/Saudi-Regular.otf') format('opentype');
-          font-weight: normal;
+          font-family: 'Saudi';
+          src: url('/SaudiWeb-Regular.woff2') format('woff2'),
+               url('/Saudi-Regular.otf') format('opentype'),
+               url('/Saudi-Regular.ttf') format('truetype');
+          font-weight: 400;
           font-style: normal;
+          font-display: swap;
         }
         @font-face {
-          font-family: 'SaudiFont';
-          src: url('/Saudi-Bold.otf') format('opentype');
-          font-weight: bold;
+          font-family: 'Saudi';
+          src: url('/SaudiWeb-Bold.woff2') format('woff2'),
+               url('/Saudi-Bold.otf') format('opentype'),
+               url('/Saudi-Bold.ttf') format('truetype');
+          font-weight: 700;
           font-style: normal;
+          font-display: swap;
         }
-        .font-najdi {
-          font-family: 'SaudiFont', 'Amiri', 'Traditional Arabic', serif;
+        .font-saudi, body, input, button, textarea, h1, h2, h3, p, span, div {
+          font-family: 'Saudi', -apple-system, BlinkMacSystemFont, sans-serif !important;
+          font-feature-settings: "calt" 1, "liga" 1, "dlig" 1, "swsh" 1;
+          -webkit-font-smoothing: antialiased;
         }
       `}</style>
 
@@ -904,30 +904,32 @@ export default function FootPlayChat() {
       <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
-            <div className="text-right space-y-3 mb-6 px-1">
-              <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-[#22C55E]">
+            {/* العنوان والترحيب المطابق للصورة الثانية */}
+            <div className="text-right space-y-3 mb-7 px-1">
+              <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-[#22C55E]">
                 أهلاً بك في فوتبلاي
               </h2>
-              <p className="text-sm sm:text-lg text-gray-200 leading-relaxed">
-                تحليل تكتيكي وإحصائي لأَسْلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
+              <p className="text-base sm:text-xl text-gray-200 leading-relaxed font-normal">
+                تحليل تكتيكي، تشكيلات مباريات، مقارنات إحصائية متقدمة، أسلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 w-full">
+            {/* البطاقات الأربع بنفس ترتيب وأيقونات الواجهة المطلوبة */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
                 <button
                   key={i}
                   onClick={() => sendMessage(card.question)}
-                  className="group flex flex-col justify-between text-right p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#1E1F20] hover:bg-[#26282A] border border-gray-800/90 hover:border-emerald-500/40 transition-all duration-200 shadow-sm min-h-[92px] sm:min-h-[110px]"
+                  className="group flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-[#1E1F20] hover:bg-[#26282A] border border-gray-800/90 hover:border-emerald-500/40 transition-all duration-200 shadow-sm min-h-[115px] sm:min-h-[130px]"
                 >
-                  <p className="text-sm sm:text-base font-bold text-gray-100 group-hover:text-white leading-snug line-clamp-2">
+                  <p className="text-sm sm:text-base font-bold text-gray-100 group-hover:text-white leading-relaxed line-clamp-2">
                     {card.question}
                   </p>
-                  <div className="flex items-center justify-between w-full mt-2.5 pt-1">
-                    <span className="text-[11px] sm:text-xs font-bold text-[#22C55E] truncate pl-1">
+                  <div className="flex items-center justify-between w-full mt-3 pt-1">
+                    <span className="text-xs sm:text-sm font-bold text-[#22C55E] truncate pl-1">
                       {card.tag}
                     </span>
-                    <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[#131314]/80 flex items-center justify-center text-xs sm:text-sm shadow-inner flex-shrink-0">
+                    <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#131314] flex items-center justify-center text-sm sm:text-base shadow-inner flex-shrink-0">
                       {card.icon}
                     </span>
                   </div>
@@ -965,10 +967,10 @@ export default function FootPlayChat() {
                     {msg.role === 'user' ? (
                       <p className="leading-relaxed">{msg.content}</p>
                     ) : msg.content ? (
-                      renderFormattedText(msg.content, msg.userQuery, msg.radarData)
+                      renderFormattedText(msg.content)
                     ) : (
-                      <div className="flex items-center gap-2 py-1 text-emerald-400 text-xs font-sans">
-                        <span className="animate-pulse">جاري جلب التحليل الفني وروابط الملخصات الاحترافية...</span>
+                      <div className="flex items-center gap-2 py-1 text-emerald-400 text-xs">
+                        <span className="animate-pulse">جاري التحليل واستخراج البيانات والروابط...</span>
                       </div>
                     )}
                   </div>
@@ -1108,7 +1110,7 @@ export default function FootPlayChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="اطلب ملخص مباراة، تحليل تكتيكي، أو إحصائيات..."
+              placeholder="اسأل فوتبلاي عن أي مباراة، تحليل تكتيكي، أو إحصائيات..."
               className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder-gray-400 focus:outline-none"
             />
             <button
