@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
     if (!apiRes.ok || !apiRes.body) {
       const errData = await apiRes.json().catch(() => ({}));
-      const msg = errData.message || 'حدث خطأ من الخادم.';
+      const msg = errData.message || 'حدث خطأ من خادم Dify الرياضي.';
       return new Response(JSON.stringify({ text: msg }) + '\n', { status: 200 });
     }
 
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
                     );
                   }
                 } catch {
-                  // تجاهل الأسطر غير المكتملة
+                  // تجاهل الأجزاء غير المكتملة أثناء الـ stream
                 }
               }
             }
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     });
   } catch (err: any) {
     return new Response(
-      JSON.stringify({ text: `خطأ في الاتصال: ${err.message}` }) + '\n',
+      JSON.stringify({ text: `خطأ في الاتصال بالسيرفر: ${err.message}` }) + '\n',
       { status: 200 }
     );
   }
