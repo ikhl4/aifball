@@ -98,7 +98,6 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
-// استخراج معرفات يوتيوب
 function extractYouTubeIds(text: string): string[] {
   const regex =
     /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
@@ -112,7 +111,6 @@ function extractYouTubeIds(text: string): string[] {
   return ids;
 }
 
-// استخراج روابط تويتر / X
 function extractTwitterLinks(text: string): { url: string; id: string }[] {
   const regex = /https?:\/(?:\/(?:www\.)?(?:twitter|x)\.com\/[a-zA-Z0-9_]+\/status\/([0-9]+))([^\s]*)?/g;
   const links: { url: string; id: string }[] = [];
@@ -128,13 +126,11 @@ function extractTwitterLinks(text: string): { url: string; id: string }[] {
   return links;
 }
 
-// قراءة القيم العددية للمقارنات
 function parseStatNumber(val: string): number | null {
   const cleaned = val.replace(/,/g, '').match(/-?\d+(\.\d+)?/);
   return cleaned ? parseFloat(cleaned[0]) : null;
 }
 
-// معالجة النصوص وتحويل الجداول إلى رسومات DataMB والمقارنات
 function renderFormattedText(text: string, userQuery: string = '', radarData?: Message['radarData']) {
   let processedText = text.replace(/\]\s*\n\s*\(/g, '](');
   const lines = processedText.split('\n');
@@ -175,7 +171,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 my-0.5 px-2.5 py-1 rounded-lg bg-[#006C35]/25 hover:bg-[#006C35]/40 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold transition shadow-sm font-sans"
+            className="inline-flex items-center gap-1.5 my-0.5 px-2.5 py-1 rounded-lg bg-[#006C35]/25 hover:bg-[#006C35]/40 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold transition shadow-sm font-najdi"
           >
             <span>🔗</span>
             <span>{label}</span>
@@ -190,7 +186,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
             href={part}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 my-0.5 px-2.5 py-1 rounded-lg bg-gray-800/80 hover:bg-gray-700 text-emerald-400 text-xs underline break-all font-medium transition font-sans"
+            className="inline-flex items-center gap-1 my-0.5 px-2.5 py-1 rounded-lg bg-gray-800/80 hover:bg-gray-700 text-emerald-400 text-xs underline break-all font-medium transition font-najdi"
           >
             <span>🔗 فتح الرابط المباشر ↗</span>
           </a>
@@ -216,8 +212,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
 
     if (isComparisonTable) {
       elements.push(
-        <div key={`datamb-${keyIndex}`} className="space-y-4 my-4">
-          {/* رادار البيانات الدائري المتقدم */}
+        <div key={`datamb-${keyIndex}`} className="space-y-4 my-4 font-najdi">
           {radarData && radarData.metrics && radarData.metrics.length > 0 && (
             <PlayerRadarChart
               player1Name={radarData.player1Name}
@@ -226,8 +221,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
             />
           )}
 
-          {/* أشرطة المقارنة البصرية */}
-          <div className="p-4 rounded-2xl bg-[#141618] border border-emerald-500/30 shadow-xl font-sans">
+          <div className="p-4 rounded-2xl bg-[#141618] border border-emerald-500/30 shadow-xl">
             <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-800">
               <span className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
                 <span>📊</span>
@@ -315,7 +309,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
       elements.push(
         <div
           key={`table-${keyIndex}`}
-          className="my-3 overflow-x-auto rounded-xl border border-gray-700/80 shadow-md font-sans"
+          className="my-3 overflow-x-auto rounded-xl border border-gray-700/80 shadow-md font-najdi"
         >
           <table className="w-full text-right border-collapse text-xs sm:text-sm">
             <thead>
@@ -417,7 +411,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
 
   if (youtubeIds.length > 0) {
     elements.push(
-      <div key="youtube-embeds" className="mt-4 space-y-3 font-sans">
+      <div key="youtube-embeds" className="mt-4 space-y-3 font-najdi">
         {youtubeIds.map((vid) => (
           <div
             key={vid}
@@ -454,7 +448,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
 
   if (twitterLinks.length > 0) {
     elements.push(
-      <div key="twitter-embeds" className="mt-4 space-y-3 font-sans">
+      <div key="twitter-embeds" className="mt-4 space-y-3 font-najdi">
         {twitterLinks.map((item) => (
           <div
             key={item.id}
@@ -492,7 +486,7 @@ function renderFormattedText(text: string, userQuery: string = '', radarData?: M
     elements.push(
       <div
         key="lineup-card"
-        className="mt-4 p-4 rounded-2xl bg-[#0f2818] border border-emerald-500/40 shadow-xl font-sans"
+        className="mt-4 p-4 rounded-2xl bg-[#0f2818] border border-emerald-500/40 shadow-xl font-najdi"
       >
         <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-emerald-900/60">
           <span className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
@@ -540,6 +534,7 @@ export default function FootPlayChat() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // البطاقات الأربع المطابقة للصورة رقم 3
   const suggestionCards = [
     {
       question: 'اعرض لي تشكيلة ريال مدريد التكتيكية في المباراة الأخيرة مع تقييم اللاعبين',
@@ -739,7 +734,6 @@ export default function FootPlayChat() {
         }
       }
 
-      // توليد بيانات افتراضية للرادار إذا كانت مقارنة لاعبين لتجربة الإبهار البصري الفوري
       let sampleRadar = undefined;
       if (/قارن|مقارنة/i.test(query)) {
         sampleRadar = {
@@ -830,9 +824,20 @@ export default function FootPlayChat() {
   return (
     <div dir="rtl" className="flex flex-col h-[100dvh] bg-[#131314] text-[#E3E3E3] relative overflow-hidden">
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Scheherazade+New:wght@400;700&display=swap');
+        @font-face {
+          font-family: 'SaudiFont';
+          src: url('/Saudi-Regular.otf') format('opentype');
+          font-weight: normal;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'SaudiFont';
+          src: url('/Saudi-Bold.otf') format('opentype');
+          font-weight: bold;
+          font-style: normal;
+        }
         .font-najdi {
-          font-family: 'Amiri', 'Scheherazade New', 'Traditional Arabic', 'Geeza Pro', serif;
+          font-family: 'SaudiFont', 'Amiri', 'Traditional Arabic', serif;
         }
       `}</style>
 
@@ -844,7 +849,7 @@ export default function FootPlayChat() {
       )}
 
       <aside
-        className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-[#18191A] border-l border-gray-800 z-40 transform transition-transform duration-300 ease-in-out flex flex-col ${
+        className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-[#18191A] border-l border-gray-800 z-40 transform transition-transform duration-300 ease-in-out flex flex-col font-najdi ${
           sidebarOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -917,7 +922,7 @@ export default function FootPlayChat() {
         )}
       </aside>
 
-      <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-gray-800/80 bg-[#131314]/95 backdrop-blur sticky top-0 z-20">
+      <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-gray-800/80 bg-[#131314]/95 backdrop-blur sticky top-0 z-20 font-najdi">
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -931,7 +936,7 @@ export default function FootPlayChat() {
 
           <AiFBallLogo size="md" />
           <div>
-            <h1 className="text-base sm:text-lg font-bold text-white leading-tight font-najdi">
+            <h1 className="text-base sm:text-lg font-bold text-white leading-tight">
               فوتبلاي
             </h1>
             <p className="text-[10px] sm:text-[11px] text-emerald-400 font-medium">صديقك الرياضي</p>
@@ -946,18 +951,15 @@ export default function FootPlayChat() {
         </button>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col">
+      <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col font-najdi">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
-            <div className="text-right space-y-2 mb-6 px-1">
-              <h2 className="text-2xl sm:text-4xl font-bold tracking-tight flex flex-wrap items-center justify-start gap-2.5 font-najdi">
-                <span className="text-[#22C55E]">أهلاً بك في فوتبلاي</span>
-                <span dir="ltr" className="text-white font-sans font-extrabold text-xl sm:text-3xl">
-                  AiFBall.com
-                </span>
+            <div className="text-right space-y-3 mb-6 px-1">
+              <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-[#22C55E]">
+                مرحباً بك
               </h2>
-              <p className="text-base sm:text-xl text-gray-200 leading-relaxed font-najdi">
-                تحليل تكتيكي، تشكيلات مباريات، ومقارنات رادار إحصائية متقدمة (StatsBomb & DataMB).. كيف أساعدك اليوم؟
+              <p className="text-sm sm:text-lg text-gray-200 leading-relaxed">
+                تحليل تكتيكي، تشكيلات مباريات، مقارنات إحصائية متقدمة بمعايير (StatsBomb & DataMB)، أسلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
               </p>
             </div>
 
@@ -968,7 +970,7 @@ export default function FootPlayChat() {
                   onClick={() => sendMessage(card.question)}
                   className="group flex flex-col justify-between text-right p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#1E1F20] hover:bg-[#26282A] border border-gray-800/90 hover:border-emerald-500/40 transition-all duration-200 shadow-sm min-h-[92px] sm:min-h-[110px]"
                 >
-                  <p className="text-sm sm:text-base font-bold text-gray-100 group-hover:text-white leading-snug line-clamp-2 font-najdi">
+                  <p className="text-sm sm:text-base font-bold text-gray-100 group-hover:text-white leading-snug line-clamp-2">
                     {card.question}
                   </p>
                   <div className="flex items-center justify-between w-full mt-2.5 pt-1">
@@ -1004,7 +1006,7 @@ export default function FootPlayChat() {
                   }`}
                 >
                   <div
-                    className={`rounded-2xl px-4 py-3 font-najdi ${
+                    className={`rounded-2xl px-4 py-3 ${
                       msg.role === 'user'
                         ? 'bg-[#282A2C] text-white rounded-tr-sm text-base'
                         : 'bg-[#1E1F20] text-gray-100 border border-gray-800/90 w-full overflow-hidden text-base'
@@ -1148,7 +1150,7 @@ export default function FootPlayChat() {
         )}
       </main>
 
-      <footer className="p-3 bg-[#131314] border-t border-gray-800/60">
+      <footer className="p-3 bg-[#131314] border-t border-gray-800/60 font-najdi">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-2 bg-[#1E1F20] border border-gray-700/70 rounded-full px-3 py-1.5">
             <input
@@ -1156,8 +1158,8 @@ export default function FootPlayChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="اطلب تشكيلة فريق، مقارنة رادار DataMB، أو إحصائيات xG..."
-              className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder-gray-400 focus:outline-none font-najdi"
+              placeholder="اطلب تشكيلة فريق، مقارنة DataMB، أو إحصائيات xG..."
+              className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder-gray-400 focus:outline-none"
             />
             <button
               onClick={() => sendMessage()}
