@@ -386,7 +386,7 @@ export default function FootPlayChat() {
   const suggestionCards = [
     {
       question: 'قدم لي تحليلاً تكتيكياً وإحصائياً لأسلوب لعب الاتحاد وفلسفة المدرب الألماني فيسينغ هذا الموسم',
-      tag: 'تحليل تكتيكي (فيسينغ والاتحاد)',
+      tag: 'تحليل تكتيكي',
       icon: '📋',
     },
     {
@@ -546,7 +546,7 @@ export default function FootPlayChat() {
     return 'تحليل تكتيكي للمباريات';
   };
 
-  const sendMessage = async (textToSend?: string) => {
+    const sendMessage = async (textToSend?: string) => {
     const query = (textToSend ?? input).trim();
     if (!query || loading) return;
 
@@ -562,39 +562,15 @@ export default function FootPlayChat() {
         body: JSON.stringify({ query, conversation_id: conversationId }),
       });
 
-      if (!res.ok || !res.body) {
-        throw new Error('فشل الاتصال');
-      }
+      const data = await res.json();
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let accumulatedText = '';
+      setMessages([
+        ...newMessages,
+        { role: 'assistant', content: data.text || 'لم يتم استلام رد.' },
+      ]);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const parsed = JSON.parse(line);
-            if (parsed.text) {
-              accumulatedText += parsed.text;
-              setMessages([
-                ...newMessages,
-                { role: 'assistant', content: accumulatedText },
-              ]);
-            }
-            if (parsed.conversation_id) {
-              setConversationId(parsed.conversation_id);
-            }
-          } catch {
-            // تجاهل
-          }
-        }
+      if (data.conversation_id) {
+        setConversationId(data.conversation_id);
       }
     } catch {
       setMessages([
