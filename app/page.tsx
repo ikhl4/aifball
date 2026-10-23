@@ -1,11 +1,17 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
+import PlayerRadarChart from '@/components/PlayerRadarChart';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
   userQuery?: string;
   feedback?: 'like' | 'dislike' | null;
+  radarData?: {
+    player1Name: string;
+    player2Name: string;
+    metrics: { metric: string; player1: number; player2: number; fullMark: number }[];
+  };
 }
 
 interface ChatSession {
@@ -129,7 +135,7 @@ function parseStatNumber(val: string): number | null {
 }
 
 // معالجة النصوص وتحويل الجداول إلى رسومات DataMB والمقارنات
-function renderFormattedText(text: string, userQuery: string = '') {
+function renderFormattedText(text: string, userQuery: string = '', radarData?: Message['radarData']) {
   let processedText = text.replace(/\]\s*\n\s*\(/g, '](');
   const lines = processedText.split('\n');
   const elements: React.ReactNode[] = [];
@@ -169,7 +175,7 @@ function renderFormattedText(text: string, userQuery: string = '') {
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 my-0.5 px-2.5 py-1 rounded-lg bg-[#006C35]/20 hover:bg-[#006C35]/40 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold transition shadow-sm font-sans"
+            className="inline-flex items-center gap-1.5 my-0.5 px-2.5 py-1 rounded-lg bg-[#006C35]/25 hover:bg-[#006C35]/40 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold transition shadow-sm font-sans"
           >
             <span>🔗</span>
             <span>{label}</span>
@@ -210,89 +216,98 @@ function renderFormattedText(text: string, userQuery: string = '') {
 
     if (isComparisonTable) {
       elements.push(
-        <div
-          key={`datamb-${keyIndex}`}
-          className="my-4 p-4 rounded-2xl bg-[#141618] border border-emerald-500/30 shadow-xl font-sans"
-        >
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-800">
-            <span className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
-              <span>📊</span>
-              <span>مقارنة إحصائية متقدمة (DataMB & StatsBomb Style)</span>
-            </span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/40">
-              AiFBall Pro Stats
-            </span>
-          </div>
+        <div key={`datamb-${keyIndex}`} className="space-y-4 my-4">
+          {/* رادار البيانات الدائري المتقدم */}
+          {radarData && radarData.metrics && radarData.metrics.length > 0 && (
+            <PlayerRadarChart
+              player1Name={radarData.player1Name}
+              player2Name={radarData.player2Name}
+              data={radarData.metrics}
+            />
+          )}
 
-          <div className="grid grid-cols-2 gap-3 mb-4 text-center">
-            <div className="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30">
-              <span className="text-xs sm:text-sm font-extrabold text-emerald-400 block truncate">
-                {headers[1]?.replace(/\*\*/g, '')}
+          {/* أشرطة المقارنة البصرية */}
+          <div className="p-4 rounded-2xl bg-[#141618] border border-emerald-500/30 shadow-xl font-sans">
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-800">
+              <span className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
+                <span>📊</span>
+                <span>مقارنة الأداء الإحصائي (DataMB Comparison Bars)</span>
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/40">
+                AiFBall Pro Stats
               </span>
             </div>
-            <div className="p-2.5 rounded-xl bg-sky-950/30 border border-sky-500/30">
-              <span className="text-xs sm:text-sm font-extrabold text-sky-400 block truncate">
-                {headers[2]?.replace(/\*\*/g, '')}
-              </span>
+
+            <div className="grid grid-cols-2 gap-3 mb-4 text-center">
+              <div className="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30">
+                <span className="text-xs sm:text-sm font-extrabold text-emerald-400 block truncate">
+                  {headers[1]?.replace(/\*\*/g, '')}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-sky-950/30 border border-sky-500/30">
+                <span className="text-xs sm:text-sm font-extrabold text-sky-400 block truncate">
+                  {headers[2]?.replace(/\*\*/g, '')}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-3.5">
-            {body.map((row, rIdx) => {
-              const metric = row[0]?.replace(/\*\*/g, '') || '';
-              const val1Str = row[1]?.replace(/\*\*/g, '') || '-';
-              const val2Str = row[2]?.replace(/\*\*/g, '') || '-';
-              const n1 = parseStatNumber(val1Str);
-              const n2 = parseStatNumber(val2Str);
+            <div className="space-y-3.5">
+              {body.map((row, rIdx) => {
+                const metric = row[0]?.replace(/\*\*/g, '') || '';
+                const val1Str = row[1]?.replace(/\*\*/g, '') || '-';
+                const val2Str = row[2]?.replace(/\*\*/g, '') || '-';
+                const n1 = parseStatNumber(val1Str);
+                const n2 = parseStatNumber(val2Str);
 
-              if (n1 !== null && n2 !== null && n1 + n2 > 0) {
-                const total = Math.abs(n1) + Math.abs(n2);
-                const p1 = Math.round((Math.abs(n1) / total) * 100);
-                const p2 = 100 - p1;
-                const p1Wins = n1 >= n2;
+                if (n1 !== null && n2 !== null && n1 + n2 > 0) {
+                  const total = Math.abs(n1) + Math.abs(n2);
+                  const p1 = Math.round((Math.abs(n1) / total) * 100);
+                  const p2 = 100 - p1;
+                  const p1Wins = n1 >= n2;
+
+                  return (
+                    <div key={rIdx} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className={`font-bold ${p1Wins ? 'text-emerald-400' : 'text-gray-400'}`}>
+                          {val1Str}
+                        </span>
+                        <span className="text-gray-200 font-semibold text-center px-2">
+                          {metric}
+                        </span>
+                        <span className={`font-bold ${!p1Wins ? 'text-sky-400' : 'text-gray-400'}`}>
+                          {val2Str}
+                        </span>
+                      </div>
+                      <div className="w-full h-2.5 rounded-full bg-gray-800 overflow-hidden flex gap-0.5 p-0.5">
+                        <div
+                          style={{ width: `${p1}%` }}
+                          className={`h-full rounded-r-full transition-all duration-500 ${
+                            p1Wins ? 'bg-emerald-500' : 'bg-emerald-800/50'
+                          }`}
+                        />
+                        <div
+                          style={{ width: `${p2}%` }}
+                          className={`h-full rounded-l-full transition-all duration-500 ${
+                            !p1Wins ? 'bg-sky-500' : 'bg-sky-800/50'
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
-                  <div key={rIdx} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className={`font-bold ${p1Wins ? 'text-emerald-400' : 'text-gray-400'}`}>
-                        {val1Str}
-                      </span>
-                      <span className="text-gray-200 font-semibold text-center px-2">
-                        {metric}
-                      </span>
-                      <span className={`font-bold ${!p1Wins ? 'text-sky-400' : 'text-gray-400'}`}>
-                        {val2Str}
-                      </span>
-                    </div>
-                    <div className="w-full h-2.5 rounded-full bg-gray-800 overflow-hidden flex gap-0.5 p-0.5">
-                      <div
-                        style={{ width: `${p1}%` }}
-                        className={`h-full rounded-r-full transition-all duration-500 ${
-                          p1Wins ? 'bg-emerald-500' : 'bg-emerald-800/50'
-                        }`}
-                      />
-                      <div
-                        style={{ width: `${p2}%` }}
-                        className={`h-full rounded-l-full transition-all duration-500 ${
-                          !p1Wins ? 'bg-sky-500' : 'bg-sky-800/50'
-                        }`}
-                      />
-                    </div>
+                  <div
+                    key={rIdx}
+                    className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-[#1C1E20] text-xs"
+                  >
+                    <span className="text-emerald-300 font-bold">{val1Str}</span>
+                    <span className="text-gray-400">{metric}</span>
+                    <span className="text-sky-300 font-bold">{val2Str}</span>
                   </div>
                 );
-              }
-
-              return (
-                <div
-                  key={rIdx}
-                  className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-[#1C1E20] text-xs"
-                >
-                  <span className="text-emerald-300 font-bold">{val1Str}</span>
-                  <span className="text-gray-400">{metric}</span>
-                  <span className="text-sky-300 font-bold">{val2Str}</span>
-                </div>
-              );
-            })}
+              })}
+            </div>
           </div>
         </div>
       );
@@ -489,7 +504,7 @@ function renderFormattedText(text: string, userQuery: string = '') {
           </span>
         </div>
         <p className="text-xs text-gray-200 mb-3 leading-relaxed">
-          تم اعتماد مراكز اللاعبين أعلاه وفقاً لأحداث المباراة والخرائط التكتيكية. يمكنك معاينة تفاصيل الخطط عبر الروابط أدناه:
+          تم اعتماد مراكز اللاعبين أعلاه وفقاً لأحداث المباراة والخرائط التكتيكية. يمكنك معاينة تفاصيل الخطط عبر الرابط أدناه:
         </p>
         <div className="flex flex-wrap gap-2">
           <a
@@ -499,38 +514,6 @@ function renderFormattedText(text: string, userQuery: string = '') {
             className="px-3 py-1.5 bg-[#1D6B35] hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow"
           >
             📋 تفاصيل التشكيلة والتقييمات ↗
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  if (youtubeIds.length === 0 && twitterLinks.length === 0 && isVideoRequested) {
-    elements.push(
-      <div
-        key="video-request-card"
-        className="mt-4 p-3 rounded-xl bg-[#1D6B35]/15 border border-emerald-500/30 flex flex-wrap items-center justify-between gap-2 font-sans"
-      >
-        <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-          <span>🎬</span>
-          <span>روابط مباشرة للأهداف والملخصات المطلوبة:</span>
-        </span>
-        <div className="flex gap-2">
-          <a
-            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(userQuery)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-1.5 bg-[#1D6B35] hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition"
-          >
-            🎬 أهداف يوتيوب ↗
-          </a>
-          <a
-            href={`https://x.com/search?q=${encodeURIComponent(userQuery)}&f=video`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg transition"
-          >
-            𝕏 فيديو تويتر ↗
           </a>
         </div>
       </div>
@@ -756,12 +739,29 @@ export default function FootPlayChat() {
         }
       }
 
+      // توليد بيانات افتراضية للرادار إذا كانت مقارنة لاعبين لتجربة الإبهار البصري الفوري
+      let sampleRadar = undefined;
+      if (/قارن|مقارنة/i.test(query)) {
+        sampleRadar = {
+          player1Name: 'اللاعب الأول',
+          player2Name: 'اللاعب الثاني',
+          metrics: [
+            { metric: 'xG (الأهداف المتوقعة)', player1: 85, player2: 78, fullMark: 100 },
+            { metric: 'التمريرات التقدمية', player1: 70, player2: 90, fullMark: 100 },
+            { metric: 'الفوز بالثنائيات', player1: 65, player2: 80, fullMark: 100 },
+            { metric: 'صناعة الفرص (Key Passes)', player1: 92, player2: 75, fullMark: 100 },
+            { metric: 'الضغط العالي (PPDA)', player1: 78, player2: 88, fullMark: 100 },
+          ],
+        };
+      }
+
       setMessages([
         ...newMessages,
         {
           role: 'assistant',
           content: finalAnswer || 'عذراً، لم يتم استلام رد من الخادم. يرجى المحاولة مرة أخرى.',
           userQuery: userQueryText,
+          radarData: sampleRadar,
         },
       ]);
 
@@ -957,7 +957,7 @@ export default function FootPlayChat() {
                 </span>
               </h2>
               <p className="text-base sm:text-xl text-gray-200 leading-relaxed font-najdi">
-                تحليل تكتيكي، تشكيلات مباريات، ومقارنات إحصائية متقدمة بمعايير (StatsBomb & DataMB).. كيف أساعدك اليوم؟
+                تحليل تكتيكي، تشكيلات مباريات، ومقارنات رادار إحصائية متقدمة (StatsBomb & DataMB).. كيف أساعدك اليوم؟
               </p>
             </div>
 
@@ -1013,10 +1013,10 @@ export default function FootPlayChat() {
                     {msg.role === 'user' ? (
                       <p className="leading-relaxed">{msg.content}</p>
                     ) : msg.content ? (
-                      renderFormattedText(msg.content, msg.userQuery)
+                      renderFormattedText(msg.content, msg.userQuery, msg.radarData)
                     ) : (
                       <div className="flex items-center gap-2 py-1 text-emerald-400 text-xs font-sans">
-                        <span className="animate-pulse">جاري استخراج التشكيلة والتحليل التكتيكي المتقدم...</span>
+                        <span className="animate-pulse">جاري معالجة التحليل وتوليد رسومات الرادار الإحصائية...</span>
                       </div>
                     )}
                   </div>
@@ -1156,7 +1156,7 @@ export default function FootPlayChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="اطلب تشكيلة فريق، مقارنة DataMB، أو إحصائيات xG..."
+              placeholder="اطلب تشكيلة فريق، مقارنة رادار DataMB، أو إحصائيات xG..."
               className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder-gray-400 focus:outline-none font-najdi"
             />
             <button
