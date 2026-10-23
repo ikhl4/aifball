@@ -92,7 +92,6 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
-// استخراج معرفات يوتيوب لعرض مشغل الفيديو مباشرة
 function extractYouTubeIds(text: string): string[] {
   const regex =
     /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
@@ -106,7 +105,6 @@ function extractYouTubeIds(text: string): string[] {
   return ids;
 }
 
-// استخراج روابط تويتر / X
 function extractTwitterLinks(text: string): { url: string; id: string }[] {
   const regex = /https?:\/(?:\/(?:www\.)?(?:twitter|x)\.com\/[a-zA-Z0-9_]+\/status\/([0-9]+))([^\s]*)?/g;
   const links: { url: string; id: string }[] = [];
@@ -482,6 +480,10 @@ export default function FootPlayChat() {
   const [currentSessionId, setCurrentSessionId] = useState<string>('');
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
 
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
@@ -489,7 +491,6 @@ export default function FootPlayChat() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // البطاقات الأربع المطابقة تماماً للواجهة المطلوبة
   const suggestionCards = [
     {
       question: 'قدم لي تحليلاً تكتيكياً وإحصائياً لأسلوب لعب الاتحاد وفلسفة المدربين',
@@ -644,27 +645,72 @@ export default function FootPlayChat() {
     }
   };
 
+  // تفعيل البحث الصوتي (Speech Recognition)
+  const handleVoiceSearch = () => {
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('متصفحك لا يدعم البحث الصوتي المباشر.');
+      return;
+    }
+
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ar-SA';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (event: any) => {
+      const speechText = event.results[0][0].transcript;
+      setInput((prev) => (prev ? `${prev} ${speechText}` : speechText));
+      setIsListening(false);
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+
+    recognition.start();
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArr = Array.from(e.target.files);
+      setAttachedFiles((prev) => [...prev, ...filesArr]);
+    }
+  };
+
   const sendMessage = async (textToSend?: string) => {
     const query = (textToSend ?? input).trim();
-    if (!query || loading) return;
+    if ((!query && attachedFiles.length === 0) || loading) return;
 
-    const userQueryText = query;
+    let fullQuery = query;
+    if (attachedFiles.length > 0) {
+      const fileNames = attachedFiles.map((f) => f.name).join(', ');
+      fullQuery = `${query} [ملفات مرفقة: ${fileNames}]`.trim();
+    }
+
+    const userQueryText = fullQuery;
     const newMessages: Message[] = [
       ...messages,
-      { role: 'user', content: query, userQuery: userQueryText },
+      { role: 'user', content: fullQuery, userQuery: userQueryText },
     ];
     setMessages([
       ...newMessages,
       { role: 'assistant', content: '', userQuery: userQueryText },
     ]);
     setInput('');
+    setAttachedFiles([]);
     setLoading(true);
 
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, conversation_id: conversationId }),
+        body: JSON.stringify({ query: fullQuery, conversation_id: conversationId }),
       });
 
       const rawText = await res.text();
@@ -727,6 +773,7 @@ export default function FootPlayChat() {
     setConversationId('');
     setCurrentSessionId('');
     setInput('');
+    setAttachedFiles([]);
     setSidebarOpen(false);
   };
 
@@ -904,7 +951,6 @@ export default function FootPlayChat() {
       <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
-            {/* العنوان والترحيب المطابق للصورة الثانية */}
             <div className="text-right space-y-3 mb-7 px-1">
               <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-[#22C55E]">
                 أهلاً بك في فوتبلاي
@@ -914,7 +960,6 @@ export default function FootPlayChat() {
               </p>
             </div>
 
-            {/* البطاقات الأربع بنفس ترتيب وأيقونات الواجهة المطلوبة */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
                 <button
@@ -1104,19 +1149,66 @@ export default function FootPlayChat() {
 
       <footer className="p-3 bg-[#131314] border-t border-gray-800/60">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-2 bg-[#1E1F20] border border-gray-700/70 rounded-full px-3 py-1.5">
+          {attachedFiles.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2 px-2">
+              {attachedFiles.map((file, idx) => (
+                <div key={idx} className="flex items-center gap-1 bg-[#1E1F20] border border-emerald-500/40 px-2.5 py-1 rounded-lg text-xs text-emerald-300">
+                  <span>📎 {file.name}</span>
+                  <button
+                    onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))}
+                    className="hover:text-red-400 font-bold ml-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 bg-[#1E1F20] border border-gray-700/70 rounded-full px-3 py-1.5 shadow-md">
+            {/* زر الإضافة (+) لرفع الصور والملفات */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.txt"
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              title="إرفاق صورة أو ملف تكتيكي"
+              className="w-9 h-9 rounded-full bg-[#2A2C2E] hover:bg-gray-700 flex items-center justify-center text-gray-300 hover:text-white transition flex-shrink-0 text-base font-bold shadow"
+            >
+              +
+            </button>
+
+            {/* زر البحث الصوتي (الميكروفون) */}
+            <button
+              onClick={handleVoiceSearch}
+              title={isListening, 'جاري الاستماع... اضغط للإيقاف' : 'بحث صوتي'}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition flex-shrink-0 text-base shadow ${
+                isListening
+                  ? 'bg-red-600 text-white animate-pulse'
+                  : 'bg-[#2A2C2E] hover:bg-gray-700 text-gray-300 hover:text-white'
+              }`}
+            >
+              🎤
+            </button>
+
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="اسأل فوتبلاي عن أي مباراة، تحليل تكتيكي، أو إحصائيات..."
+              placeholder={isListening ? 'جاري الاستماع لصوتك...' : 'اسأل فوتبلاي عن أي مباراة، تحليل تكتيكي، أو إحصائيات...'}
               className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder-gray-400 focus:outline-none"
             />
+
             <button
               onClick={() => sendMessage()}
-              disabled={loading || !input.trim()}
-              className="w-9 h-9 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:opacity-40 flex items-center justify-center text-white transition flex-shrink-0"
+              disabled={loading || (!input.trim() && attachedFiles.length === 0)}
+              className="w-9 h-9 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:opacity-40 flex items-center justify-center text-white transition flex-shrink-0 shadow"
             >
               ➤
             </button>
