@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  userQuery?: string;
   feedback?: 'like' | 'dislike' | null;
 }
 
@@ -122,7 +123,7 @@ function extractTwitterLinks(text: string): { url: string; id: string }[] {
 }
 
 // معالجة النصوص والروابط لجعلها أزرار ضغط مباشر
-function renderFormattedText(text: string) {
+function renderFormattedText(text: string, userQuery: string = '') {
   let processedText = text.replace(/\]\s*\n\s*\(/g, '](');
   const lines = processedText.split('\n');
   const elements: React.ReactNode[] = [];
@@ -285,7 +286,10 @@ function renderFormattedText(text: string) {
     flushTable(lines.length);
   }
 
+  // عرض الفيديوهات فقط إذا وجد رابط يوتيوب فعلي أو طلب المستخدم أهداف/ملخصات
   const youtubeIds = extractYouTubeIds(text);
+  const isVideoRequested = /أهداف|ملخص|فيديو|مقطع|هدف/i.test(userQuery);
+
   if (youtubeIds.length > 0) {
     elements.push(
       <div key="youtube-embeds" className="mt-4 space-y-3">
@@ -321,44 +325,32 @@ function renderFormattedText(text: string) {
         ))}
       </div>
     );
-  }
-
-  const twitterLinks = extractTwitterLinks(text);
-  if (twitterLinks.length > 0) {
+  } else if (isVideoRequested) {
+    // إذا طلب أهداف ولم يرفق البوت رابط، نعرض زر مباشر للبحث عن الأهداف والملخصات
     elements.push(
-      <div key="twitter-embeds" className="mt-4 space-y-3">
-        {twitterLinks.map((item) => (
-          <div
-            key={item.id}
-            className="rounded-2xl overflow-hidden border border-sky-500/30 bg-[#15202B] p-4 shadow-lg text-right"
+      <div key="video-request-card" className="mt-4 p-3 rounded-xl bg-[#1D6B35]/15 border border-emerald-500/30 flex items-center justify-between">
+        <span className="text-xs font-bold text-emerald-300 flex items-center gap-2">
+          <span>🎬</span>
+          <span>شاهد الأهداف والملخصات المباشرة:</span>
+        </span>
+        <div className="flex gap-2">
+          <a
+            href={`https://www.youtube.com/results?search_query=${encodeURIComponent('أهداف وملخص ' + userQuery)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1 bg-[#1D6B35] hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition"
           >
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-800">
-              <span className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
-                <span>𝕏</span>
-                <span>مقاطع وفيديو من منصة X (تويتر)</span>
-              </span>
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] text-gray-300 hover:text-white underline"
-              >
-                عرض التغريدة الأصلية ↗
-              </a>
-            </div>
-            <div className="text-sm text-gray-200 py-2">
-              <p>تم جلب التغريدة المرئية بنجاح عبر المحلل الرياضي.</p>
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-3 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold transition shadow"
-              >
-                شاهد الفيديو على تويتر ↗
-              </a>
-            </div>
-          </div>
-        ))}
+            يوتيوب ↗
+          </a>
+          <a
+            href={`https://x.com/search?q=${encodeURIComponent(userQuery + ' أهداف ملخص')}&f=live`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg transition"
+          >
+            منصة X ↗
+          </a>
+        </div>
       </div>
     );
   }
@@ -543,15 +535,16 @@ export default function FootPlayChat() {
         return messages[i].content;
       }
     }
-    return 'تحليل تكتيكي للمباريات';
+    return 'مباريات اليوم';
   };
 
-    const sendMessage = async (textToSend?: string) => {
+  const sendMessage = async (textToSend?: string) => {
     const query = (textToSend ?? input).trim();
     if (!query || loading) return;
 
-    const newMessages: Message[] = [...messages, { role: 'user', content: query }];
-    setMessages([...newMessages, { role: 'assistant', content: '' }]);
+    const userQueryText = query;
+    const newMessages: Message[] = [...messages, { role: 'user', content: query, userQuery: userQueryText }];
+    setMessages([...newMessages, { role: 'assistant', content: '', userQuery: userQueryText }]);
     setInput('');
     setLoading(true);
 
@@ -562,20 +555,44 @@ export default function FootPlayChat() {
         body: JSON.stringify({ query, conversation_id: conversationId }),
       });
 
-      const data = await res.json();
+      if (!res.ok || !res.body) {
+        throw new Error('فشل الاتصال');
+      }
 
-      setMessages([
-        ...newMessages,
-        { role: 'assistant', content: data.text || 'لم يتم استلام رد.' },
-      ]);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let accumulatedText = '';
 
-      if (data.conversation_id) {
-        setConversationId(data.conversation_id);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const parsed = JSON.parse(line);
+            if (parsed.text) {
+              accumulatedText += parsed.text;
+              setMessages([
+                ...newMessages,
+                { role: 'assistant', content: accumulatedText, userQuery: userQueryText },
+              ]);
+            }
+            if (parsed.conversation_id) {
+              setConversationId(parsed.conversation_id);
+            }
+          } catch {
+            // تجاهل
+          }
+        }
       }
     } catch {
       setMessages([
         ...newMessages,
-        { role: 'assistant', content: 'عذراً، تعذر استلام الرد، يرجى المحاولة مرة أخرى.' },
+        { role: 'assistant', content: 'عذراً، تعذر استلام الرد، يرجى المحاولة مرة أخرى.', userQuery: userQueryText },
       ]);
     } finally {
       setLoading(false);
@@ -710,7 +727,6 @@ export default function FootPlayChat() {
         )}
       </aside>
 
-      {/* الهيدر العلوي بعد إزالة FootBall Ai */}
       <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-gray-800/80 bg-[#131314]/95 backdrop-blur sticky top-0 z-20">
         <div className="flex items-center gap-2.5">
           <button
@@ -804,7 +820,7 @@ export default function FootPlayChat() {
                     {msg.role === 'user' ? (
                       <p className="leading-relaxed">{msg.content}</p>
                     ) : msg.content ? (
-                      renderFormattedText(msg.content)
+                      renderFormattedText(msg.content, msg.userQuery)
                     ) : (
                       <div className="flex items-center gap-2 py-1 text-emerald-400 text-xs">
                         <span className="animate-pulse">جاري جلب التحليل الرياضي من الخادم...</span>
