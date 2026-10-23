@@ -1,11 +1,17 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
+import PlayerRadarChart from '@/components/PlayerRadarChart';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
   userQuery?: string;
   feedback?: 'like' | 'dislike' | null;
+  radarData?: {
+    player1Name: string;
+    player2Name: string;
+    metrics: { metric: string; player1: number; player2: number; fullMark: number }[];
+  };
 }
 
 interface ChatSession {
@@ -70,7 +76,7 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
             d="M-19,-35 L-26,-43 M19,-35 L26,-43 M35,-12 L46,-16 M37,8 L47,15 M22,31 L29,40 M0,38 L0,48 M-22,31 L-29,40 M-37,8 L-47,15 M-35,-12 L-46,-16"
             stroke="#1D6B35"
             strokeWidth="5"
-            strokeLinejoin="round"
+            strokeLinecap="round"
           />
           <circle r="47" fill="none" stroke="#1D6B35" strokeWidth="4" />
         </g>
@@ -105,25 +111,18 @@ function extractYouTubeIds(text: string): string[] {
   return ids;
 }
 
-function extractTwitterLinks(text: string): { url: string; id: string }[] {
-  const regex = /https?:\/(?:\/(?:www\.)?(?:twitter|x)\.com\/[a-zA-Z0-9_]+\/status\/([0-9]+))([^\s]*)?/g;
-  const links: { url: string; id: string }[] = [];
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    if (match[1]) {
-      const fullUrl = match[0].split(/[)\]}>,]/)[0];
-      if (!links.some((l) => l.id === match[1])) {
-        links.push({ url: fullUrl, id: match[1] });
-      }
-    }
-  }
-  return links;
+function parseStatNumber(val: string): number | null {
+  const cleaned = val.replace(/,/g, '').match(/-?\d+(\.\d+)?/);
+  return cleaned ? parseFloat(cleaned[0]) : null;
 }
 
-function renderFormattedText(text: string) {
+// دالة معالجة النصوص وعرض الجداول وبطاقات الأداء الإحصائي (DataMB Style)
+function renderFormattedText(text: string, radarData?: Message['radarData']) {
   let processedText = text.replace(/\]\s*\n\s*\(/g, '](');
   const lines = processedText.split('\n');
   const elements: React.ReactNode[] = [];
+  let tableRows: string[][] = [];
+  let inTable = false;
 
   const formatInline = (str: string) => {
     const regex = /(\*\*.*?\*\*|\[([^\]]+)\]\((https?:\/\/[^\)]+)\)|https?:\/\/[^\s]+)/g;
@@ -186,8 +185,104 @@ function renderFormattedText(text: string) {
     return result;
   };
 
+  const flushTable = (keyIndex: number) => {
+    if (tableRows.length === 0) return;
+    const headers = tableRows[0];
+    const body = tableRows.slice(1);
+
+    const isComparisonTable =
+      headers.length >= 2 &&
+      body.length > 0;
+
+    if (isComparisonTable) {
+      const title1 = headers[0] || 'البطولة / العنصر';
+      const title2 = headers[1] || 'القيمة';
+
+      elements.push(
+        <div key={`datamb-${keyIndex}`} className="my-4 p-4 rounded-2xl bg-[#141618] border border-emerald-500/30 shadow-xl font-saudi">
+          <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-800">
+            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+              <span>📊</span>
+              <span>مقارنة الأداء الإحصائي (DataMB Style)</span>
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/40">
+              AiFBall Pro
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {body.map((row, rIdx) => {
+              const name = row[0]?.replace(/\*\*/g, '') || '';
+              const val1 = row[1]?.replace(/\*\*/g, '') || '';
+              const val2 = row[2]?.replace(/\*\*/g, '') || '';
+              const numVal = parseStatNumber(val1) || 50;
+              const percentage = Math.min(100, Math.max(15, numVal > 20 ? Math.min(100, numVal * 5) : numVal * 10));
+
+              return (
+                <div key={rIdx} className="p-3 rounded-xl bg-[#1C1E20] border border-gray-800/80 space-y-2">
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <span className="font-bold text-white">{name}</span>
+                    <div className="flex items-center gap-3">
+                      {val2 && <span className="text-sky-400 font-bold">{val2}</span>}
+                      <span className="text-emerald-400 font-extrabold px-2 py-0.5 rounded bg-emerald-950/50 border border-emerald-500/30">{val1}</span>
+                    </div>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-gray-800 overflow-hidden">
+                    <div style={{ width: `${percentage}%` }} className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full transition-all duration-500" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    } else {
+      elements.push(
+        <div key={`table-${keyIndex}`} className="my-3 overflow-x-auto rounded-xl border border-gray-700/80 shadow-md">
+          <table className="w-full text-right border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr className="bg-[#006C35]/40 text-emerald-300 border-b border-gray-700">
+                {headers.map((h, idx) => (
+                  <th key={idx} className="py-2.5 px-3 font-bold whitespace-nowrap">{formatInline(h)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800/80 bg-[#161718]">
+              {body.map((row, rIdx) => (
+                <tr key={rIdx} className="hover:bg-gray-800/40 transition-colors">
+                  {row.map((cell, cIdx) => (
+                    <td key={cIdx} className="py-2 px-3 whitespace-nowrap text-gray-200">{formatInline(cell)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    tableRows = [];
+    inTable = false;
+  };
+
   lines.forEach((line, index) => {
     const trimmed = line.trim();
+
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      if (/^\|[\s\-:|]+\|$/.test(trimmed)) {
+        inTable = true;
+        return;
+      }
+      inTable = true;
+      const cells = trimmed.slice(1, -1).split('|').map((c) => c.trim());
+      tableRows.push(cells);
+      return;
+    }
+
+    if (inTable) {
+      flushTable(index);
+    }
+
     if (!trimmed) {
       elements.push(<div key={index} className="h-2" />);
     } else if (trimmed.startsWith('### ')) {
@@ -211,12 +306,16 @@ function renderFormattedText(text: string) {
       );
     } else {
       elements.push(
-        <p key={index} className="leading-relaxed my-1 text-base">
+        <p key={index} className="leading-relaxed my-1.5 text-base">
           {formatInline(trimmed)}
         </p>
       );
     }
   });
+
+  if (inTable) {
+    flushTable(lines.length);
+  }
 
   const youtubeIds = extractYouTubeIds(text);
   if (youtubeIds.length > 0) {
@@ -242,7 +341,7 @@ function renderFormattedText(text: string) {
   return elements;
 }
 
-const STORAGE_KEY = 'aifball_chat_history_v3';
+const STORAGE_KEY = 'aifball_chat_history_v6';
 
 export default function FootPlayChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -258,7 +357,6 @@ export default function FootPlayChat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // البطاقات الأربع الأصلية المطابقة لطلبك تماماً
   const suggestionCards = [
     {
       question: 'قدم لي تحليلاً تكتيكياً وإحصائياً لأسلوب لعب الاتحاد وفلسفة المدربين',
@@ -413,6 +511,13 @@ export default function FootPlayChat() {
           font-family: 'Saudi', sans-serif !important;
           font-feature-settings: "calt" 1, "liga" 1;
         }
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        .animate-pulse-slow {
+          animation: pulse-slow 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
       `}</style>
 
       {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/60 z-30" />}
@@ -487,6 +592,16 @@ export default function FootPlayChat() {
                 </div>
               </div>
             ))}
+            {loading && (
+              <div className="flex items-center gap-2.5 justify-end flex-row-reverse">
+                <AiFBallLogo size="sm" />
+                <div className="bg-[#1E1F20] border border-gray-800 rounded-2xl px-4 py-3">
+                  <span className="text-emerald-400 text-xs font-bold animate-pulse-slow">
+                    جاري البحث في المصادر الرياضيه ..
+                  </span>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -512,9 +627,12 @@ export default function FootPlayChat() {
               +
             </button>
 
-            {/* زر البحث الصوتي (الميكروفون) */}
-            <button onClick={handleVoiceSearch} title="بحث صوتي" className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-base ${isListening ? 'bg-red-600 text-white animate-pulse' : 'bg-[#2A2C2E] hover:bg-gray-700 text-gray-300'}`}>
-              🎤
+            {/* زر البحث الصوتي (الميكروفون) بالأيقونة المطلوبة واللون الأخضر */}
+            <button onClick={handleVoiceSearch} title="بحث صوتي" className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition ${isListening ? 'bg-emerald-600 text-white animate-pulse' : 'bg-[#2A2C2E] hover:bg-gray-700 text-emerald-400'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 01-14 0v-1M12 18.5V22M8 22h8" />
+              </svg>
             </button>
 
             <input
@@ -522,7 +640,7 @@ export default function FootPlayChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder={isListening ? 'جاري الاستماع...' : 'اسأل فوتبلاي عن أي مباراة، تحليل تكتيكي، أو إحصائيات...'}
+              placeholder={isListening ? 'جاري الاستماع لصوتك...' : 'اسأل فوتبلاي عن أي مباراة، تحليل تكتيكي، أو إحصائيات...'}
               className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder-gray-400 focus:outline-none"
             />
 
