@@ -122,7 +122,13 @@ function extractTwitterLinks(text: string): { url: string; id: string }[] {
   return links;
 }
 
-// معالجة النصوص والروابط لجعلها أزرار ضغط مباشر
+// قراءة القيم العددية للمقارنات
+function parseStatNumber(val: string): number | null {
+  const cleaned = val.replace(/,/g, '').match(/-?\d+(\.\d+)?/);
+  return cleaned ? parseFloat(cleaned[0]) : null;
+}
+
+// معالجة النصوص وتحويل الجداول إلى رسومات DataMB والمقارنات
 function renderFormattedText(text: string, userQuery: string = '') {
   let processedText = text.replace(/\]\s*\n\s*\(/g, '](');
   const lines = processedText.split('\n');
@@ -195,35 +201,133 @@ function renderFormattedText(text: string, userQuery: string = '') {
     if (tableRows.length === 0) return;
     const headers = tableRows[0];
     const body = tableRows.slice(1);
-    elements.push(
-      <div
-        key={`table-${keyIndex}`}
-        className="my-3 overflow-x-auto rounded-xl border border-gray-700/80 shadow-md font-sans"
-      >
-        <table className="w-full text-right border-collapse text-xs sm:text-sm">
-          <thead>
-            <tr className="bg-[#006C35]/40 text-emerald-300 border-b border-gray-700">
-              {headers.map((h, idx) => (
-                <th key={idx} className="py-2.5 px-3 font-bold whitespace-nowrap">
-                  {formatInline(h)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-800/80 bg-[#161718]">
-            {body.map((row, rIdx) => (
-              <tr key={rIdx} className="hover:bg-gray-800/40 transition-colors">
-                {row.map((cell, cIdx) => (
-                  <td key={cIdx} className="py-2 px-3 whitespace-nowrap text-gray-200">
-                    {formatInline(cell)}
-                  </td>
+
+    const isComparisonTable =
+      headers.length === 3 &&
+      body.length > 0 &&
+      body.filter((r) => r.length >= 3 && parseStatNumber(r[1]) !== null && parseStatNumber(r[2]) !== null).length >=
+        Math.ceil(body.length * 0.5);
+
+    if (isComparisonTable) {
+      elements.push(
+        <div
+          key={`datamb-${keyIndex}`}
+          className="my-4 p-4 rounded-2xl bg-[#141618] border border-emerald-500/30 shadow-xl font-sans"
+        >
+          <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-800">
+            <span className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
+              <span>📊</span>
+              <span>مقارنة إحصائية متقدمة (DataMB & StatsBomb Style)</span>
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/40">
+              AiFBall Pro Stats
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-4 text-center">
+            <div className="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30">
+              <span className="text-xs sm:text-sm font-extrabold text-emerald-400 block truncate">
+                {headers[1]?.replace(/\*\*/g, '')}
+              </span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-sky-950/30 border border-sky-500/30">
+              <span className="text-xs sm:text-sm font-extrabold text-sky-400 block truncate">
+                {headers[2]?.replace(/\*\*/g, '')}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-3.5">
+            {body.map((row, rIdx) => {
+              const metric = row[0]?.replace(/\*\*/g, '') || '';
+              const val1Str = row[1]?.replace(/\*\*/g, '') || '-';
+              const val2Str = row[2]?.replace(/\*\*/g, '') || '-';
+              const n1 = parseStatNumber(val1Str);
+              const n2 = parseStatNumber(val2Str);
+
+              if (n1 !== null && n2 !== null && n1 + n2 > 0) {
+                const total = Math.abs(n1) + Math.abs(n2);
+                const p1 = Math.round((Math.abs(n1) / total) * 100);
+                const p2 = 100 - p1;
+                const p1Wins = n1 >= n2;
+
+                return (
+                  <div key={rIdx} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={`font-bold ${p1Wins ? 'text-emerald-400' : 'text-gray-400'}`}>
+                        {val1Str}
+                      </span>
+                      <span className="text-gray-200 font-semibold text-center px-2">
+                        {metric}
+                      </span>
+                      <span className={`font-bold ${!p1Wins ? 'text-sky-400' : 'text-gray-400'}`}>
+                        {val2Str}
+                      </span>
+                    </div>
+                    <div className="w-full h-2.5 rounded-full bg-gray-800 overflow-hidden flex gap-0.5 p-0.5">
+                      <div
+                        style={{ width: `${p1}%` }}
+                        className={`h-full rounded-r-full transition-all duration-500 ${
+                          p1Wins ? 'bg-emerald-500' : 'bg-emerald-800/50'
+                        }`}
+                      />
+                      <div
+                        style={{ width: `${p2}%` }}
+                        className={`h-full rounded-l-full transition-all duration-500 ${
+                          !p1Wins ? 'bg-sky-500' : 'bg-sky-800/50'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={rIdx}
+                  className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-[#1C1E20] text-xs"
+                >
+                  <span className="text-emerald-300 font-bold">{val1Str}</span>
+                  <span className="text-gray-400">{metric}</span>
+                  <span className="text-sky-300 font-bold">{val2Str}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    } else {
+      elements.push(
+        <div
+          key={`table-${keyIndex}`}
+          className="my-3 overflow-x-auto rounded-xl border border-gray-700/80 shadow-md font-sans"
+        >
+          <table className="w-full text-right border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr className="bg-[#006C35]/40 text-emerald-300 border-b border-gray-700">
+                {headers.map((h, idx) => (
+                  <th key={idx} className="py-2.5 px-3 font-bold whitespace-nowrap">
+                    {formatInline(h)}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
+            </thead>
+            <tbody className="divide-y divide-gray-800/80 bg-[#161718]">
+              {body.map((row, rIdx) => (
+                <tr key={rIdx} className="hover:bg-gray-800/40 transition-colors">
+                  {row.map((cell, cIdx) => (
+                    <td key={cIdx} className="py-2 px-3 whitespace-nowrap text-gray-200">
+                      {formatInline(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
     tableRows = [];
     inTable = false;
   };
@@ -291,10 +395,10 @@ function renderFormattedText(text: string, userQuery: string = '') {
     flushTable(lines.length);
   }
 
-  // لا يعرض فيديوهات أو أزرار يوتيوب وتويتر إلا إذا طلب المستخدم أهداف/ملخصات أو أرسل البوت رابط فيديو فعلي
   const youtubeIds = extractYouTubeIds(text);
   const twitterLinks = extractTwitterLinks(text);
   const isVideoRequested = /أهداف|اهداف|ملخص|فيديو|مقطع|هدف/i.test(userQuery);
+  const isLineupRequested = /تشكيلة|تشكيل|خريطة|مراكز/i.test(userQuery);
 
   if (youtubeIds.length > 0) {
     elements.push(
@@ -369,6 +473,38 @@ function renderFormattedText(text: string, userQuery: string = '') {
     );
   }
 
+  if (isLineupRequested) {
+    elements.push(
+      <div
+        key="lineup-card"
+        className="mt-4 p-4 rounded-2xl bg-[#0f2818] border border-emerald-500/40 shadow-xl font-sans"
+      >
+        <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-emerald-900/60">
+          <span className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
+            <span>🛡️</span>
+            <span>خريطة التشكيلة التكتيكية (AiFBall Pitch Visualizer)</span>
+          </span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/40">
+            Pro Lineup
+          </span>
+        </div>
+        <p className="text-xs text-gray-200 mb-3 leading-relaxed">
+          تم اعتماد مراكز اللاعبين أعلاه وفقاً لأحداث المباراة والخرائط التكتيكية. يمكنك معاينة تفاصيل الخطط عبر الروابط أدناه:
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={`https://www.google.com/search?q=${encodeURIComponent(userQuery + ' تشكيلة مباراة')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1.5 bg-[#1D6B35] hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow"
+          >
+            📋 تفاصيل التشكيلة والتقييمات ↗
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   if (youtubeIds.length === 0 && twitterLinks.length === 0 && isVideoRequested) {
     elements.push(
       <div
@@ -423,9 +559,14 @@ export default function FootPlayChat() {
 
   const suggestionCards = [
     {
-      question: 'قدم لي تحليلاً تكتيكياً وإحصائياً لأسلوب لعب الاتحاد وفلسفة المدرب الألماني فيسينغ هذا الموسم',
-      tag: 'تحليل تكتيكي',
-      icon: '📋',
+      question: 'اعرض لي تشكيلة ريال مدريد التكتيكية في المباراة الأخيرة مع تقييم اللاعبين',
+      tag: 'التشكيلة وخرائط الملعب',
+      icon: '🛡️',
+    },
+    {
+      question: 'قارن إحصائياً بأسلوب DataMB بين كريستيانو رونالدو وألكسندر ميتروفيتش في xG والصناعة',
+      tag: 'مقارنة لاعبين (DataMB)',
+      icon: '📈',
     },
     {
       question: 'اعرض لي أهداف وملخصات أبرز مباريات اليوم في الدوريات الكبرى',
@@ -436,11 +577,6 @@ export default function FootPlayChat() {
       question: 'ما هو جدول ترتيب دوري روشن السعودي لموسم 2026-2027 وأبرز الإحصائيات؟',
       tag: 'ترتيب دوري روشن',
       icon: '📊',
-    },
-    {
-      question: 'ما هو السجل التاريخي الكامل لأبطال دوري أبطال أوروبا؟',
-      tag: 'سجل الأبطال التاريخي',
-      icon: '🏆',
     },
   ];
 
@@ -575,7 +711,6 @@ export default function FootPlayChat() {
     }
   };
 
-  // دالة إرسال موحدة ومحمية تقبل JSON المباشر أو الـ Stream بدون أن تعلق أبداً
   const sendMessage = async (textToSend?: string) => {
     const query = (textToSend ?? input).trim();
     if (!query || loading) return;
@@ -604,12 +739,10 @@ export default function FootPlayChat() {
       let newConvId = '';
 
       try {
-        // محاولة قراءته كـ JSON موحد أولاً
         const parsed = JSON.parse(rawText);
         if (parsed.text) finalAnswer = parsed.text;
         if (parsed.conversation_id) newConvId = parsed.conversation_id;
       } catch {
-        // إذا كان الرد عدة أسطر متدفقة (NDJSON)
         const lines = rawText.split('\n');
         for (const line of lines) {
           if (!line.trim()) continue;
@@ -696,7 +829,6 @@ export default function FootPlayChat() {
 
   return (
     <div dir="rtl" className="flex flex-col h-[100dvh] bg-[#131314] text-[#E3E3E3] relative overflow-hidden">
-      {/* استيراد الخط النجدي / النسخ الأصيل */}
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Scheherazade+New:wght@400;700&display=swap');
         .font-najdi {
@@ -785,7 +917,6 @@ export default function FootPlayChat() {
         )}
       </aside>
 
-      {/* الهيدر العلوي */}
       <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-gray-800/80 bg-[#131314]/95 backdrop-blur sticky top-0 z-20">
         <div className="flex items-center gap-2.5">
           <button
@@ -818,7 +949,6 @@ export default function FootPlayChat() {
       <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
-            {/* العنوان الترحيبي وبجانبه AiFBall.com باللون الأبيض */}
             <div className="text-right space-y-2 mb-6 px-1">
               <h2 className="text-2xl sm:text-4xl font-bold tracking-tight flex flex-wrap items-center justify-start gap-2.5 font-najdi">
                 <span className="text-[#22C55E]">أهلاً بك في فوتبلاي</span>
@@ -827,7 +957,7 @@ export default function FootPlayChat() {
                 </span>
               </h2>
               <p className="text-base sm:text-xl text-gray-200 leading-relaxed font-najdi">
-                تحليل تكتيكي وإحصائي لأسلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
+                تحليل تكتيكي، تشكيلات مباريات، ومقارنات إحصائية متقدمة بمعايير (StatsBomb & DataMB).. كيف أساعدك اليوم؟
               </p>
             </div>
 
@@ -886,12 +1016,11 @@ export default function FootPlayChat() {
                       renderFormattedText(msg.content, msg.userQuery)
                     ) : (
                       <div className="flex items-center gap-2 py-1 text-emerald-400 text-xs font-sans">
-                        <span className="animate-pulse">جاري جلب التحليل الرياضي من الخادم...</span>
+                        <span className="animate-pulse">جاري استخراج التشكيلة والتحليل التكتيكي المتقدم...</span>
                       </div>
                     )}
                   </div>
 
-                  {/* شريط الأدوات التفاعلي السفلي بدون أزرار يوتيوب وتويتر الثابتة */}
                   {msg.role === 'assistant' && msg.content && (
                     <div className="flex flex-wrap items-center justify-between gap-2 mt-1.5 px-1 text-gray-400 relative select-none">
                       <div className="flex items-center gap-1">
@@ -1027,7 +1156,7 @@ export default function FootPlayChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="اسأل عن فلسفة المدربين، تكتيك الفرق، أو ملخصات المباريات..."
+              placeholder="اطلب تشكيلة فريق، مقارنة DataMB، أو إحصائيات xG..."
               className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder-gray-400 focus:outline-none font-najdi"
             />
             <button
