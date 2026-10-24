@@ -572,8 +572,8 @@ export default function FootPlayChat() {
                   {msg.role === 'assistant' && <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm" /></div>}
                   <div className={`flex flex-col ${msg.role === 'user' ? 'max-w-[85%]' : 'w-full max-w-[90%]'}`}>
                     
-                    {/* تعديل لون خلفية المستخدم لتكون رصاصية داكنة مع خط أبيض */}
-                    <div className={`rounded-2xl px-5 py-4 shadow-xl backdrop-blur-md border border-white/10 text-base ${msg.role === 'user' ? 'bg-[#2A2C2E]/90 text-white font-bold rounded-tr-sm' : 'bg-black/50 text-gray-100'}`}>
+                    {/* تعديل لون خلفية المستخدم لتكون مطابقة لخلفية البوت تماماً، مع نص أبيض */}
+                    <div className={`rounded-2xl px-5 py-4 shadow-xl backdrop-blur-md border border-white/10 text-base bg-black/50 ${msg.role === 'user' ? 'text-white' : 'text-gray-100'}`}>
                       {msg.role === 'user' ? (
                         <div>
                           {msg.imageUrls && msg.imageUrls.length > 0 && (
