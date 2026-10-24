@@ -587,40 +587,41 @@ export default function FootPlayChat() {
 
       <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col">
         {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col justify-center my-auto py-2">
+          <div className="flex-1 flex flex-col justify-center my-auto py-2 relative rounded-3xl overflow-hidden p-6 sm:p-10 shadow-2xl border border-emerald-500/30">
             
-            {/* واجهة الترحيب الفخمة بخلفية الملعب الحقيقية وهوية Home Of FootBall */}
-            <div className="relative w-full rounded-3xl overflow-hidden p-8 sm:p-10 mb-7 shadow-2xl border border-emerald-500/30">
-              <div 
-                className="absolute inset-0 bg-cover bg-center filter brightness-[0.45]"
-                style={{ backgroundImage: `url('/IMG_0091.jpeg')` }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#131314] via-[#131314]/70 to-transparent" />
+            {/* خلفية الملعب الحقيقية تغطي الشاشة بالكامل خلف قسم الترحيب والبطاقات */}
+            <div 
+              className="absolute inset-0 bg-cover bg-center filter brightness-[0.4]"
+              style={{ backgroundImage: `url('/IMG_0091.jpeg')` }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#131314]/95 via-[#131314]/70 to-[#131314]/60" />
 
-              <div className="relative z-10 text-right space-y-3">
-                <span className="inline-block px-3 py-1 rounded-full bg-emerald-600/90 text-white text-xs font-bold tracking-wider uppercase border border-emerald-400/40 shadow-sm">
-                  Home Of FootBall ⚽
-                </span>
-                <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white drop-shadow-md">
-                  أهلاً بك في فوتبلاي
-                </h2>
-                <p className="text-base sm:text-lg text-gray-200 leading-relaxed max-w-2xl font-normal drop-shadow">
-                  تحليل تكتيكي، تشكيلات مباريات، مقارنات إحصائية متقدمة، أسلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
-                </p>
-              </div>
+            {/* محتوى الترحيب */}
+            <div className="relative z-10 text-right space-y-3 mb-7">
+              <span className="inline-block px-3 py-1 rounded-full bg-emerald-600/90 text-white text-xs font-bold tracking-wider uppercase border border-emerald-400/40 shadow-sm">
+                Home Of FootBall ⚽
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white drop-shadow-md">
+                أهلاً بك في فوتبلاي
+              </h2>
+              <p className="text-base sm:text-lg text-gray-200 leading-relaxed max-w-2xl font-normal drop-shadow">
+                تحليل تكتيكي، تشكيلات مباريات، مقارنات إحصائية متقدمة، أسلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
+              </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full">
+            {/* البطاقات الأربع بشكل شفاف (Glassmorphism) */}
+            <div className="relative z-10 grid grid-cols-2 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
-                <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-[#1E1F20] border border-gray-800 shadow-sm min-h-[115px]">
+                <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-[#1E1F20]/75 backdrop-blur-md border border-gray-700/50 shadow-lg min-h-[115px] hover:border-emerald-500/50 transition">
                   <p className="text-sm sm:text-base font-bold text-gray-100 leading-relaxed line-clamp-2">{toArabicNumerals(card.question)}</p>
                   <div className="flex items-center justify-between w-full mt-3 pt-1">
                     <span className="text-xs sm:text-sm font-bold text-[#22C55E] truncate pl-1">{toArabicNumerals(card.tag)}</span>
-                    <span className="w-8 h-8 rounded-full bg-[#131314] flex items-center justify-center text-sm shadow-inner">{card.icon}</span>
+                    <span className="w-8 h-8 rounded-full bg-[#131314]/80 flex items-center justify-center text-sm shadow-inner">{card.icon}</span>
                   </div>
                 </div>
               ))}
             </div>
+
           </div>
         ) : (
           <div className="space-y-6">
