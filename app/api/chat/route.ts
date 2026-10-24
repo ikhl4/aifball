@@ -33,7 +33,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // قراءة الـ Stream من Dify وتجميعه في السيرفر لإرساله جاهزاً للواجهة بدون تعليق
     const reader = apiRes.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
@@ -60,22 +59,23 @@ export async function POST(req: Request) {
           if (parsed.conversation_id) {
             finalConversationId = parsed.conversation_id;
           }
-          if (
-            (parsed.event === 'agent_message' || parsed.event === 'message') &&
-            typeof parsed.answer === 'string'
-          ) {
+          
+          // الحل الجذري: التقاط الحدث النهائي فقط (message) وتجاهل تفكير الوكيل الفارغ والمكرر
+          if (parsed.event === 'message' && typeof parsed.answer === 'string') {
             fullAnswer += parsed.answer;
-          } else if (parsed.event === 'error') {
-            fullAnswer += `\n⚠️ تنبيه من الخادم: ${parsed.message || 'خطأ أثناء المعالجة'}`;
           }
+          
         } catch {
           // تجاهل الأسطر غير المكتملة
         }
       }
     }
 
+    // تنظيف النص النهائي من أي مسافات فارغة قد تسبب فقاعات وهمية
+    const finalText = fullAnswer.trim();
+
     return NextResponse.json({
-      text: fullAnswer.trim() || 'عذراً، لم يتم إرجاع نص من المحلل الذكي. حاول صياغة السؤال بشكل آخر.',
+      text: finalText || 'عذراً، لم يتم إرجاع نص من المحلل الذكي. حاول صياغة السؤال بشكل آخر.',
       conversation_id: finalConversationId,
     });
   } catch (err: any) {
