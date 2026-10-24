@@ -144,7 +144,7 @@ function renderFormattedText(text: string) {
         
         if (!isYoutube) {
           result.push(
-            <a key={`link-${i}`} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/20 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
+            <a key={`link-${i}`} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
               <span>🔗</span><span>{toArabicNumerals(label)}</span><span className="text-[10px] opacity-70">↗</span>
             </a>
           );
@@ -155,7 +155,7 @@ function renderFormattedText(text: string) {
         
         if (!isYoutube) {
           result.push(
-            <a key={`url-${i}`} href={part} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/20 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
+            <a key={`url-${i}`} href={part} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
               <span>🔗</span><span>فتح الرابط المباشر</span><span className="text-[10px] opacity-70">↗</span>
             </a>
           );
@@ -181,9 +181,9 @@ function renderFormattedText(text: string) {
       const p2Title = headers[2]?.replace(/\*\*/g, '').trim() || 'الطرف الثاني';
 
       elements.push(
-        <div key={`datamb-${keyIndex}`} className="my-5 p-4 rounded-3xl bg-[#131415] border border-emerald-900/50 shadow-2xl">
-          <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-800/80">
-            <span className="text-sm font-bold text-emerald-500 flex items-center gap-2">
+        <div key={`datamb-${keyIndex}`} className="my-5 p-4 rounded-3xl bg-black/40 backdrop-blur-md border border-emerald-900/40 shadow-2xl">
+          <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
+            <span className="text-sm font-bold text-emerald-400 flex items-center gap-2">
               <span>📊</span><span>مقارنة الأداء الإحصائي</span>
             </span>
             <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">
@@ -192,10 +192,10 @@ function renderFormattedText(text: string) {
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-5 text-center">
-            <div className="p-3 rounded-2xl bg-[#1A1F1C] border border-emerald-900/40">
+            <div className="p-3 rounded-2xl bg-black/30 border border-emerald-900/30">
               <span className="text-sm font-bold text-emerald-400 block truncate">{toArabicNumerals(p1Title)}</span>
             </div>
-            <div className="p-3 rounded-2xl bg-[#161C24] border border-sky-900/40">
+            <div className="p-3 rounded-2xl bg-black/30 border border-sky-900/30">
               <span className="text-sm font-bold text-sky-400 block truncate">{toArabicNumerals(p2Title)}</span>
             </div>
           </div>
@@ -221,7 +221,7 @@ function renderFormattedText(text: string) {
                       <span className="text-gray-300 font-medium text-center text-xs">{toArabicNumerals(metric)}</span>
                       <span className={`font-bold ${!p1Wins ? 'text-sky-400' : 'text-gray-400'}`}>{toArabicNumerals(val2Str)}</span>
                     </div>
-                    <div className="w-full h-3 rounded-full bg-[#1A1C1E] overflow-hidden flex gap-1 p-0.5">
+                    <div className="w-full h-3 rounded-full bg-black/40 overflow-hidden flex gap-1 p-0.5">
                       <div style={{ width: `${p1}%` }} className={`h-full rounded-full transition-all duration-700 ${p1Wins ? 'bg-gradient-to-l from-emerald-400 to-emerald-600' : 'bg-emerald-900/40'}`} />
                       <div style={{ width: `${p2}%` }} className={`h-full rounded-full transition-all duration-700 ${!p1Wins ? 'bg-gradient-to-r from-sky-400 to-sky-600' : 'bg-sky-900/40'}`} />
                     </div>
@@ -229,7 +229,7 @@ function renderFormattedText(text: string) {
                 );
               }
               return (
-                <div key={rIdx} className="flex items-center justify-between py-2 px-3 rounded-xl bg-[#1A1C1E] text-sm">
+                <div key={rIdx} className="flex items-center justify-between py-2 px-3 rounded-xl bg-black/30 text-sm">
                   <span className="text-emerald-400 font-bold">{toArabicNumerals(val1Str)}</span>
                   <span className="text-gray-400 text-xs">{toArabicNumerals(metric)}</span>
                   <span className="text-sky-400 font-bold">{toArabicNumerals(val2Str)}</span>
@@ -241,18 +241,18 @@ function renderFormattedText(text: string) {
       );
     } else {
       elements.push(
-        <div key={`table-${keyIndex}`} className="my-5 w-full overflow-x-auto custom-scrollbar rounded-2xl border border-gray-700/60 shadow-xl bg-[#131415]">
+        <div key={`table-${keyIndex}`} className="my-5 w-full overflow-x-auto custom-scrollbar rounded-2xl border border-white/10 shadow-xl bg-black/40 backdrop-blur-md">
           <table className="w-full text-right border-collapse text-sm min-w-max">
             <thead>
-              <tr className="bg-[#1D4A2E] text-emerald-300">
+              <tr className="bg-emerald-950/60 text-emerald-300">
                 {headers.map((h, idx) => (
-                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-emerald-900/60 whitespace-nowrap">{formatInline(h)}</th>
+                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{formatInline(h)}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800/80 bg-[#17181A]">
+            <tbody className="divide-y divide-white/5 bg-black/20">
               {body.map((row, rIdx) => (
-                <tr key={rIdx} className="hover:bg-gray-800/50 transition-colors">
+                <tr key={rIdx} className="hover:bg-white/5 transition-colors">
                   {row.map((cell, cIdx) => (
                     <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{formatInline(cell)}</td>
                   ))}
@@ -311,8 +311,8 @@ function renderFormattedText(text: string) {
     elements.push(
       <div key="youtube-embeds" className="mt-5 space-y-4">
         {youtubeIds.map((vid) => (
-          <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-[#131314] shadow-xl">
-            <div className="flex items-center justify-between px-4 py-2.5 bg-[#1D6B35]/20 border-b border-gray-800/80">
+          <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-950/50 border-b border-white/10">
               <span className="text-xs sm:text-sm font-bold text-emerald-400">🎥 مشاهدة الملخص المدمج</span>
               <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
                 فتح في تطبيق يوتيوب ↗
@@ -506,7 +506,14 @@ export default function FootPlayChat() {
   };
 
   return (
-    <div dir="rtl" className="flex flex-col h-[100dvh] bg-[#131314] text-[#E3E3E3] relative overflow-hidden font-saudi">
+    <div dir="rtl" className="flex flex-col h-[100dvh] relative overflow-hidden font-saudi bg-[#131314] text-[#E3E3E3]">
+      {/* خلفية الملعب العامة لتغطي الشاشة بالكامل في جميع الحالات (أثناء الترحيب أو المحادثة) */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center filter brightness-[0.38] pointer-events-none z-0"
+        style={{ backgroundImage: `url('/IMG_0091.jpeg')` }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#131314]/90 via-[#131314]/70 to-[#131314]/60 pointer-events-none z-0" />
+
       <style jsx global>{`
         @font-face {
           font-family: 'Saudi';
@@ -549,13 +556,13 @@ export default function FootPlayChat() {
 
       {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/60 z-30 transition-opacity" />}
 
-      <aside className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-[#18191A] border-l border-gray-800 z-40 transform transition-transform duration-300 flex flex-col ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
+      <aside className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-[#18191A]/95 backdrop-blur-md border-l border-white/10 z-40 transform transition-transform duration-300 flex flex-col ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex items-center justify-between p-4 border-b border-white/10">
           <div className="flex items-center gap-2.5">
             <AiFBallLogo size="sm" />
             <span className="font-bold text-white text-sm">سجل البحوث والمحادثات</span>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="w-8 h-8 rounded-lg bg-[#232527] hover:bg-gray-700 text-gray-300 transition">✕</button>
+          <button onClick={() => setSidebarOpen(false)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 transition">✕</button>
         </div>
         <div className="p-3">
           <button onClick={startNewChat} className="w-full py-2.5 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow">
@@ -564,16 +571,16 @@ export default function FootPlayChat() {
         </div>
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5">
           {sessions.map((s) => (
-            <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setConversationId(s.conversationId); setMessages(s.messages); setSidebarOpen(false); }} className="p-3 rounded-xl bg-[#1E1F20] hover:bg-[#26282A] text-gray-300 cursor-pointer text-xs truncate transition border border-transparent hover:border-gray-700">
+            <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setConversationId(s.conversationId); setMessages(s.messages); setSidebarOpen(false); }} className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 cursor-pointer text-xs truncate transition border border-transparent hover:border-white/10">
               {toArabicNumerals(s.title)}
             </div>
           ))}
         </div>
       </aside>
 
-      <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-gray-800 bg-[#131314]/95 sticky top-0 z-20 backdrop-blur">
+      <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-white/10 bg-[#131314]/80 sticky top-0 z-20 backdrop-blur-md">
         <div className="flex items-center gap-2.5">
-          <button onClick={() => setSidebarOpen(true)} className="w-9 h-9 rounded-xl bg-[#1E1F20] hover:bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-200 transition">
+          <button onClick={() => setSidebarOpen(true)} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-gray-200 transition">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h10" /></svg>
           </button>
           <AiFBallLogo size="md" />
@@ -582,25 +589,19 @@ export default function FootPlayChat() {
             <p className="text-[10px] text-emerald-400 font-medium">صديقك الرياضي</p>
           </div>
         </div>
-        <button onClick={startNewChat} className="px-3 py-1.5 rounded-full text-xs font-medium bg-[#1E1F20] hover:bg-gray-800 border border-gray-700 text-gray-200 transition">+ محادثة جديدة</button>
+        <button onClick={startNewChat} className="px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 transition">+ محادثة جديدة</button>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col">
+      <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col relative z-10">
         {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col justify-center my-auto py-2 relative rounded-3xl overflow-hidden p-6 sm:p-10 shadow-2xl border border-emerald-500/30">
+          <div className="flex-1 flex flex-col justify-center my-auto py-2">
             
-            {/* خلفية الملعب الحقيقية تغطي الشاشة بالكامل خلف قسم الترحيب والبطاقات */}
-            <div 
-              className="absolute inset-0 bg-cover bg-center filter brightness-[0.4]"
-              style={{ backgroundImage: `url('/IMG_0091.jpeg')` }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#131314]/95 via-[#131314]/70 to-[#131314]/60" />
-
-            {/* محتوى الترحيب */}
-            <div className="relative z-10 text-right space-y-3 mb-7">
-              <span className="inline-block px-3 py-1 rounded-full bg-emerald-600/90 text-white text-xs font-bold tracking-wider uppercase border border-emerald-400/40 shadow-sm">
-                Home Of FootBall ⚽
-              </span>
+            {/* الهوية البصرية النصية "HOME OF FOOTBALL" بتصميم نظيف كخط ليشت يزين أعلى الملعب */}
+            <div className="text-right space-y-3 mb-6 px-1">
+              <div className="inline-flex items-center gap-2 text-emerald-400 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 border-emerald-500/40">
+                <span>⚽</span>
+                <span>HOME OF FOOTBALL</span>
+              </div>
               <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white drop-shadow-md">
                 أهلاً بك في فوتبلاي
               </h2>
@@ -609,19 +610,18 @@ export default function FootPlayChat() {
               </p>
             </div>
 
-            {/* البطاقات الأربع بشكل شفاف مع حدود خفيفة لتظهر خلفية الملعب بوضوح */}
-            <div className="relative z-10 grid grid-cols-2 gap-3 sm:gap-4 w-full">
+            {/* البطاقات الأربع شفافة جداً جداً مع حدود خفيفة وأنيقة */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
-                <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-black/20 backdrop-blur-md border border-white/10 shadow-lg min-h-[115px] hover:border-emerald-500/50 transition">
+                <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-black/10 backdrop-blur-sm border border-white/10 shadow-lg min-h-[115px] hover:border-emerald-500/50 hover:bg-black/20 transition">
                   <p className="text-sm sm:text-base font-bold text-gray-100 leading-relaxed line-clamp-2">{toArabicNumerals(card.question)}</p>
                   <div className="flex items-center justify-between w-full mt-3 pt-1">
                     <span className="text-xs sm:text-sm font-bold text-[#22C55E] truncate pl-1">{toArabicNumerals(card.tag)}</span>
-                    <span className="w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-sm shadow-inner">{card.icon}</span>
+                    <span className="w-8 h-8 rounded-full bg-black/30 flex items-center justify-center text-sm shadow-inner">{card.icon}</span>
                   </div>
                 </div>
               ))}
             </div>
-
           </div>
         ) : (
           <div className="space-y-6">
@@ -630,7 +630,7 @@ export default function FootPlayChat() {
                 <div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
                   {msg.role === 'assistant' && <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm" /></div>}
                   <div className={`flex flex-col ${msg.role === 'user' ? 'max-w-[85%]' : 'w-full max-w-[90%]'}`}>
-                    <div className={`rounded-2xl px-5 py-4 shadow-sm ${msg.role === 'user' ? 'bg-[#2A2C2E] text-white text-base rounded-tr-sm' : 'bg-[#1E1F20] text-gray-100 border border-gray-800/80 text-base'}`}>
+                    <div className={`rounded-2xl px-5 py-4 shadow-xl backdrop-blur-md ${msg.role === 'user' ? 'bg-[#2A2C2E]/90 text-white text-base rounded-tr-sm border border-white/10' : 'bg-black/50 text-gray-100 border border-white/10 text-base'}`}>
                       {msg.role === 'user' ? <p>{toArabicNumerals(msg.content)}</p> : renderFormattedText(msg.content)}
                     </div>
                   </div>
@@ -640,7 +640,7 @@ export default function FootPlayChat() {
             {loading && (
               <div className="flex items-center gap-3 justify-end flex-row-reverse mt-4">
                 <AiFBallLogo size="sm" />
-                <div className="bg-[#1E1F20] border border-gray-800 rounded-2xl px-5 py-3 shadow-sm">
+                <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-3 shadow-xl">
                   <span className="text-emerald-400 text-sm font-bold animate-pulse-slow flex items-center gap-2">
                     <span>⏳</span> جاري البحث في المصادر الرياضيه ..
                   </span>
@@ -652,12 +652,12 @@ export default function FootPlayChat() {
         )}
       </main>
 
-      <footer className="p-3 bg-[#131314] border-t border-gray-800/80">
+      <footer className="p-3 bg-[#131314]/80 backdrop-blur-md border-t border-white/10 relative z-20">
         <div className="max-w-4xl mx-auto">
           {attachedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2 px-2">
               {attachedFiles.map((f, idx) => (
-                <div key={idx} className="flex items-center gap-1.5 bg-[#1E1F20] border border-emerald-500/50 px-3 py-1.5 rounded-lg text-xs text-emerald-300 shadow-sm">
+                <div key={idx} className="flex items-center gap-1.5 bg-black/40 border border-emerald-500/50 px-3 py-1.5 rounded-lg text-xs text-emerald-300 shadow-sm backdrop-blur-md">
                   <span>📎 {toArabicNumerals(f.name)}</span>
                   <button onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-300 font-bold ml-1 transition">✕</button>
                 </div>
@@ -665,13 +665,13 @@ export default function FootPlayChat() {
             </div>
           )}
 
-          <div className="flex items-center gap-2 bg-[#1E1F20] border border-gray-700/80 rounded-full px-3 py-2 shadow-lg">
+          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-3 py-2 shadow-xl">
             <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*,.pdf,.doc,.docx" className="hidden" />
-            <button onClick={() => fileInputRef.current?.click()} title="إرفاق ملف" className="w-10 h-10 rounded-full bg-[#2A2C2E] hover:bg-gray-700 text-gray-300 hover:text-white flex items-center justify-center font-bold text-xl flex-shrink-0 transition">
+            <button onClick={() => fileInputRef.current?.click()} title="إرفاق ملف" className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white flex items-center justify-center font-bold text-xl flex-shrink-0 transition">
               +
             </button>
 
-            <button onClick={handleVoiceSearch} title="بحث صوتي" className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition shadow-sm ${isListening ? 'bg-emerald-600 text-white animate-pulse' : 'bg-[#2A2C2E] hover:bg-gray-700 text-emerald-400 hover:text-emerald-300'}`}>
+            <button onClick={handleVoiceSearch} title="بحث صوتي" className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition shadow-sm ${isListening ? 'bg-emerald-600 text-white animate-pulse' : 'bg-white/10 hover:bg-white/20 text-emerald-400 hover:text-emerald-300'}`}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 01-14 0v-1M12 18.5V22M8 22h8" />
