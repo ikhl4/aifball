@@ -5,7 +5,6 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   userQuery?: string;
-  imageUrls?: string[]; // لإظهار الصور في واجهة المحادثة
   feedback?: 'like' | 'dislike' | null;
 }
 
@@ -47,29 +46,68 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   }
 
   return (
-    <div className={`${dimensions} bg-[#1D6B35] flex items-center justify-center shadow-md flex-shrink-0 select-none overflow-hidden`}>
+    <div
+      className={`${dimensions} bg-[#1D6B35] flex items-center justify-center shadow-md flex-shrink-0 select-none overflow-hidden`}
+    >
       <svg viewBox="0 0 200 200" className="w-full h-full">
         <rect width="200" height="200" rx="42" fill="#1D6B35" />
         <g transform="translate(100, 74)">
           <circle r="48" fill="#FFFFFF" />
-          <polygon points="0,-19 18,-6 11,15 -11,15 -18,-6" fill="#FFFFFF" stroke="#1D6B35" strokeWidth="5.5" strokeLinejoin="round" />
-          <path d="M0,-19 L0,-37 M18,-6 L35,-12 M11,15 L22,31 M-11,15 L-22,31 M-18,-6 L-35,-12" stroke="#1D6B35" strokeWidth="5.5" strokeLinecap="round" />
-          <path d="M-19,-35 L0,-37 L19,-35 M19,-35 L35,-12 L37,8 M37,8 L22,31 L0,38 M0,38 L-22,31 L-37,8 M-37,8 L-35,-12 L-19,-35" fill="none" stroke="#1D6B35" strokeWidth="5" strokeLinejoin="round" />
-          <path d="M-19,-35 L-26,-43 M19,-35 L26,-43 M35,-12 L46,-16 M37,8 L47,15 M22,31 L29,40 M0,38 L0,48 M-22,31 L-29,40 M-37,8 L-47,15 M-35,-12 L-46,-16" stroke="#1D6B35" strokeWidth="5" strokeLinecap="round" />
+          <polygon
+            points="0,-19 18,-6 11,15 -11,15 -18,-6"
+            fill="#FFFFFF"
+            stroke="#1D6B35"
+            strokeWidth="5.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M0,-19 L0,-37 M18,-6 L35,-12 M11,15 L22,31 M-11,15 L-22,31 M-18,-6 L-35,-12"
+            stroke="#1D6B35"
+            strokeWidth="5.5"
+            strokeLinecap="round"
+          />
+          <path
+            d="M-19,-35 L0,-37 L19,-35 M19,-35 L35,-12 L37,8 M37,8 L22,31 L0,38 M0,38 L-22,31 L-37,8 M-37,8 L-35,-12 L-19,-35"
+            fill="none"
+            stroke="#1D6B35"
+            strokeWidth="5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M-19,-35 L-26,-43 M19,-35 L26,-43 M35,-12 L46,-16 M37,8 L47,15 M22,31 L29,40 M0,38 L0,48 M-22,31 L-29,40 M-37,8 L-47,15 M-35,-12 L-46,-16"
+            stroke="#1D6B35"
+            strokeWidth="5"
+            strokeLinecap="round"
+          />
           <circle r="47" fill="none" stroke="#1D6B35" strokeWidth="4" />
         </g>
-        <text x="100" y="168" textAnchor="middle" fill="#FFFFFF" fontSize="43" fontWeight="900" fontStyle="italic" fontFamily="system-ui, -apple-system, sans-serif" letterSpacing="-1">AiFBall</text>
+        <text
+          x="100"
+          y="168"
+          textAnchor="middle"
+          fill="#FFFFFF"
+          fontSize="43"
+          fontWeight="900"
+          fontStyle="italic"
+          fontFamily="system-ui, -apple-system, sans-serif"
+          letterSpacing="-1"
+        >
+          AiFBall
+        </text>
       </svg>
     </div>
   );
 }
 
 function extractYouTubeIds(text: string): string[] {
-  const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+  const regex =
+    /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
   const ids: string[] = [];
   let match;
   while ((match = regex.exec(text)) !== null) {
-    if (match[1] && !ids.includes(match[1])) ids.push(match[1]);
+    if (match[1] && !ids.includes(match[1])) {
+      ids.push(match[1]);
+    }
   }
   return ids;
 }
@@ -79,7 +117,7 @@ function parseStatNumber(val: string): number | null {
   return cleaned ? parseFloat(cleaned[0]) : null;
 }
 
-// معالجة النصوص والروابط والجداول
+// معالجة النصوص والروابط
 function renderFormattedText(text: string) {
   let processedText = text.replace(/\]\s*\n\s*\(/g, '](');
   const lines = processedText.split('\n');
@@ -106,7 +144,7 @@ function renderFormattedText(text: string) {
         
         if (!isYoutube) {
           result.push(
-            <a key={`link-${i}`} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
+            <a key={`link-${i}`} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/20 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
               <span>🔗</span><span>{toArabicNumerals(label)}</span><span className="text-[10px] opacity-70">↗</span>
             </a>
           );
@@ -114,9 +152,10 @@ function renderFormattedText(text: string) {
         i += 2;
       } else if (/^https?:\/\//.test(part)) {
         const isYoutube = part.includes('youtu');
+        
         if (!isYoutube) {
           result.push(
-            <a key={`url-${i}`} href={part} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
+            <a key={`url-${i}`} href={part} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/20 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
               <span>🔗</span><span>فتح الرابط المباشر</span><span className="text-[10px] opacity-70">↗</span>
             </a>
           );
@@ -142,9 +181,9 @@ function renderFormattedText(text: string) {
       const p2Title = headers[2]?.replace(/\*\*/g, '').trim() || 'الطرف الثاني';
 
       elements.push(
-        <div key={`datamb-${keyIndex}`} className="my-5 p-4 rounded-3xl bg-black/40 backdrop-blur-md border border-emerald-900/40 shadow-2xl">
-          <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
-            <span className="text-sm font-bold text-emerald-400 flex items-center gap-2">
+        <div key={`datamb-${keyIndex}`} className="my-5 p-4 rounded-3xl bg-[#131415] border border-emerald-900/50 shadow-2xl">
+          <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-800/80">
+            <span className="text-sm font-bold text-emerald-500 flex items-center gap-2">
               <span>📊</span><span>مقارنة الأداء الإحصائي</span>
             </span>
             <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">
@@ -153,10 +192,10 @@ function renderFormattedText(text: string) {
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-5 text-center">
-            <div className="p-3 rounded-2xl bg-black/30 border border-emerald-900/30">
+            <div className="p-3 rounded-2xl bg-[#1A1F1C] border border-emerald-900/40">
               <span className="text-sm font-bold text-emerald-400 block truncate">{toArabicNumerals(p1Title)}</span>
             </div>
-            <div className="p-3 rounded-2xl bg-black/30 border border-sky-900/30">
+            <div className="p-3 rounded-2xl bg-[#161C24] border border-sky-900/40">
               <span className="text-sm font-bold text-sky-400 block truncate">{toArabicNumerals(p2Title)}</span>
             </div>
           </div>
@@ -182,7 +221,7 @@ function renderFormattedText(text: string) {
                       <span className="text-gray-300 font-medium text-center text-xs">{toArabicNumerals(metric)}</span>
                       <span className={`font-bold ${!p1Wins ? 'text-sky-400' : 'text-gray-400'}`}>{toArabicNumerals(val2Str)}</span>
                     </div>
-                    <div className="w-full h-3 rounded-full bg-black/40 overflow-hidden flex gap-1 p-0.5">
+                    <div className="w-full h-3 rounded-full bg-[#1A1C1E] overflow-hidden flex gap-1 p-0.5">
                       <div style={{ width: `${p1}%` }} className={`h-full rounded-full transition-all duration-700 ${p1Wins ? 'bg-gradient-to-l from-emerald-400 to-emerald-600' : 'bg-emerald-900/40'}`} />
                       <div style={{ width: `${p2}%` }} className={`h-full rounded-full transition-all duration-700 ${!p1Wins ? 'bg-gradient-to-r from-sky-400 to-sky-600' : 'bg-sky-900/40'}`} />
                     </div>
@@ -190,7 +229,7 @@ function renderFormattedText(text: string) {
                 );
               }
               return (
-                <div key={rIdx} className="flex items-center justify-between py-2 px-3 rounded-xl bg-black/30 text-sm">
+                <div key={rIdx} className="flex items-center justify-between py-2 px-3 rounded-xl bg-[#1A1C1E] text-sm">
                   <span className="text-emerald-400 font-bold">{toArabicNumerals(val1Str)}</span>
                   <span className="text-gray-400 text-xs">{toArabicNumerals(metric)}</span>
                   <span className="text-sky-400 font-bold">{toArabicNumerals(val2Str)}</span>
@@ -202,18 +241,18 @@ function renderFormattedText(text: string) {
       );
     } else {
       elements.push(
-        <div key={`table-${keyIndex}`} className="my-5 w-full overflow-x-auto custom-scrollbar rounded-2xl border border-white/10 shadow-xl bg-black/40 backdrop-blur-md">
+        <div key={`table-${keyIndex}`} className="my-5 w-full overflow-x-auto custom-scrollbar rounded-2xl border border-gray-700/60 shadow-xl bg-[#131415]">
           <table className="w-full text-right border-collapse text-sm min-w-max">
             <thead>
-              <tr className="bg-emerald-950/60 text-emerald-300">
+              <tr className="bg-[#1D4A2E] text-emerald-300">
                 {headers.map((h, idx) => (
-                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{formatInline(h)}</th>
+                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-emerald-900/60 whitespace-nowrap">{formatInline(h)}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 bg-black/20">
+            <tbody className="divide-y divide-gray-800/80 bg-[#17181A]">
               {body.map((row, rIdx) => (
-                <tr key={rIdx} className="hover:bg-white/5 transition-colors">
+                <tr key={rIdx} className="hover:bg-gray-800/50 transition-colors">
                   {row.map((cell, cIdx) => (
                     <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{formatInline(cell)}</td>
                   ))}
@@ -272,8 +311,8 @@ function renderFormattedText(text: string) {
     elements.push(
       <div key="youtube-embeds" className="mt-5 space-y-4">
         {youtubeIds.map((vid) => (
-          <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl">
-            <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-950/50 border-b border-white/10">
+          <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-[#131314] shadow-xl">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-[#1D6B35]/20 border-b border-gray-800/80">
               <span className="text-xs sm:text-sm font-bold text-emerald-400">🎥 مشاهدة الملخص المدمج</span>
               <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
                 فتح في تطبيق يوتيوب ↗
@@ -302,16 +341,32 @@ export default function FootPlayChat() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [attachedFiles, setAttachedFiles] = useState<{file: File, url: string}[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const suggestionCards = [
-    { question: 'اسلوب لعب الاتحاد مع الالماني فيسينغ', tag: 'تحليل تكتيكي', icon: '📋' },
-    { question: 'أهداف وملخصات أبرز المباريات في الدوريات الكبرى', tag: 'أهداف وملخصات المباريات', icon: '🎬' },
-    { question: 'ما هو جدول ترتيب دوري روشن السعودي حتى اليوم لموسم 2026-2027 وأبرز الإحصائيات؟', tag: 'ترتيب دوري روشن', icon: '📊' },
-    { question: 'ما هو السجل التاريخي الكامل لأبطال دوري أبطال أوروبا؟', tag: 'التاريخ والبطولات', icon: '🏆' },
+    {
+      question: 'اسلوب لعب الاتحاد مع الالماني فيسينغ',
+      tag: 'تحليل تكتيكي',
+      icon: '📋',
+    },
+    {
+      question: 'أهداف وملخصات أبرز المباريات في الدوريات الكبرى',
+      tag: 'أهداف وملخصات المباريات',
+      icon: '🎬',
+    },
+    {
+      question: 'ما هو جدول ترتيب دوري روشن السعودي حتى اليوم لموسم 2026-2027 وأبرز الإحصائيات؟',
+      tag: 'ترتيب دوري روشن',
+      icon: '📊',
+    },
+    {
+      question: 'ما هو السجل التاريخي الكامل لأبطال دوري أبطال أوروبا؟',
+      tag: 'التاريخ والبطولات',
+      icon: '🏆',
+    },
   ];
 
   useEffect(() => {
@@ -350,11 +405,7 @@ export default function FootPlayChat() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files).map(file => ({
-        file,
-        url: URL.createObjectURL(file) // تحويل الصورة لرابط محلي لعرضها في الشات
-      }));
-      setAttachedFiles((prev) => [...prev, ...newFiles]);
+      setAttachedFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
     }
   };
 
@@ -362,61 +413,22 @@ export default function FootPlayChat() {
     const query = (textToSend ?? input).trim();
     if ((!query && attachedFiles.length === 0) || loading) return;
 
-    // تجهيز الصور للعرض المحلي داخل المحادثة
-    const imageUrls = attachedFiles.map(f => f.url);
-    const newMessages: Message[] = [...messages, { role: 'user', content: query, userQuery: query, imageUrls }];
-    setMessages([...newMessages, { role: 'assistant', content: '', userQuery: query }]);
+    let fullQuery = query;
+    if (attachedFiles.length > 0) {
+      fullQuery = `${query} [مرفقات: ${attachedFiles.map(f => f.name).join(', ')}]`.trim();
+    }
+
+    const newMessages: Message[] = [...messages, { role: 'user', content: fullQuery, userQuery: fullQuery }];
+    setMessages([...newMessages, { role: 'assistant', content: '', userQuery: fullQuery }]);
     setInput('');
-    
-    // الاحتفاظ بالملفات قبل تصفيرها للتمكن من رفعها
-    const filesToUpload = [...attachedFiles];
     setAttachedFiles([]);
     setLoading(true);
 
-    let activeSessionId = currentSessionId;
-    if (!activeSessionId) {
-      activeSessionId = Date.now().toString();
-      setCurrentSessionId(activeSessionId);
-    }
-    
-    let finalConvId = conversationId;
-
     try {
-      // 1. رفع الصور بشكل حقيقي إلى خوادم Dify لكي يتمكن من تحليلها (Vision)
-      const uploadedDifyFiles = [];
-      for (const item of filesToUpload) {
-        const formData = new FormData();
-        formData.append('file', item.file);
-        try {
-          const uploadRes = await fetch('/api/files/upload', { // الرابط الافتراضي في Dify لرفع الملفات
-            method: 'POST',
-            body: formData
-          });
-          if(uploadRes.ok) {
-            const uploadData = await uploadRes.json();
-            if (uploadData && uploadData.id) {
-              uploadedDifyFiles.push({
-                type: 'image',
-                transfer_method: 'local_file',
-                upload_file_id: uploadData.id
-              });
-            }
-          }
-        } catch (e) {
-          console.error("خطأ أثناء رفع الصورة:", e);
-        }
-      }
-
-      // 2. إرسال الطلب (النص + معرفات الصور المرفوعة)
-      const requestBody: any = { query: query, conversation_id: conversationId };
-      if (uploadedDifyFiles.length > 0) {
-        requestBody.files = uploadedDifyFiles;
-      }
-
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({ query: fullQuery, conversation_id: conversationId }),
       });
 
       if (!res.ok) throw new Error('Network response was not ok');
@@ -424,6 +436,7 @@ export default function FootPlayChat() {
       const reader = res.body?.getReader();
       const decoder = new TextDecoder('utf-8');
       let finalAnswer = '';
+      let newConvId = conversationId;
       let buffer = '';
 
       if (reader) {
@@ -459,14 +472,15 @@ export default function FootPlayChat() {
                 }
 
                 if (parsed.conversation_id) {
-                  finalConvId = parsed.conversation_id;
-                  setConversationId(finalConvId);
+                  newConvId = parsed.conversation_id;
                 }
               } catch (e) {}
             }
           }
         }
       }
+
+      if (newConvId) setConversationId(newConvId);
 
     } catch (error) {
       setMessages(prev => {
@@ -479,30 +493,6 @@ export default function FootPlayChat() {
       });
     } finally {
       setLoading(false);
-      
-      // 3. الخطوة الأهم: حفظ المحادثة الحالية في الذاكرة المحلية لتظهر في السجل
-      setMessages(currentMessages => {
-        const title = currentMessages.find(m => m.role === 'user')?.content.slice(0, 30) || 'محادثة جديدة';
-        setSessions(prevSessions => {
-          const idx = prevSessions.findIndex(s => s.id === activeSessionId);
-          const updatedSession = {
-            id: activeSessionId,
-            title: title + (title.length >= 30 ? '...' : ''),
-            conversationId: finalConvId,
-            messages: currentMessages,
-            updatedAt: new Date().toISOString()
-          };
-          
-          const newSessions = [...prevSessions];
-          if (idx >= 0) newSessions[idx] = updatedSession;
-          else newSessions.unshift(updatedSession); // إضافة المحادثة الجديدة في أعلى السجل
-          
-          // تحديث السجل في المتصفح
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(newSessions));
-          return newSessions;
-        });
-        return currentMessages;
-      });
     }
   };
 
@@ -516,31 +506,56 @@ export default function FootPlayChat() {
   };
 
   return (
-    <div dir="rtl" className="flex flex-col h-[100dvh] relative overflow-hidden font-saudi bg-[#131314] text-[#E3E3E3]">
-      <div className="absolute inset-0 bg-cover bg-center filter brightness-[0.38] pointer-events-none z-0" style={{ backgroundImage: `url('/IMG_0091.jpeg')` }} />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#131314]/90 via-[#131314]/70 to-[#131314]/60 pointer-events-none z-0" />
-
+    <div dir="rtl" className="flex flex-col h-[100dvh] bg-[#131314] text-[#E3E3E3] relative overflow-hidden font-saudi">
       <style jsx global>{`
-        @font-face { font-family: 'Saudi'; src: url('/SaudiWeb-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
-        @font-face { font-family: 'Saudi'; src: url('/SaudiWeb-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
-        .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Saudi', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
-        @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        .custom-scrollbar::-webkit-scrollbar { height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #1A1C1E; border-radius: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1D6B35; border-radius: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #22C55E; }
+        @font-face {
+          font-family: 'Saudi';
+          src: url('/SaudiWeb-Regular.woff2') format('woff2');
+          font-weight: 400;
+          font-display: swap;
+        }
+        @font-face {
+          font-family: 'Saudi';
+          src: url('/SaudiWeb-Bold.woff2') format('woff2');
+          font-weight: 700;
+          font-display: swap;
+        }
+        .font-saudi, body, input, button, textarea, h1, h2, h3, p, span {
+          font-family: 'Saudi', sans-serif !important;
+          font-feature-settings: "calt" 1, "liga" 1;
+        }
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        .animate-pulse-slow {
+          animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #1A1C1E; 
+          border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #1D6B35; 
+          border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #22C55E; 
+        }
       `}</style>
 
       {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/60 z-30 transition-opacity" />}
 
-      <aside className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-[#18191A]/95 backdrop-blur-md border-l border-white/10 z-40 transform transition-transform duration-300 flex flex-col ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
+      <aside className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-[#18191A] border-l border-gray-800 z-40 transform transition-transform duration-300 flex flex-col ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex items-center justify-between p-4 border-b border-gray-800">
           <div className="flex items-center gap-2.5">
             <AiFBallLogo size="sm" />
             <span className="font-bold text-white text-sm">سجل البحوث والمحادثات</span>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 transition">✕</button>
+          <button onClick={() => setSidebarOpen(false)} className="w-8 h-8 rounded-lg bg-[#232527] hover:bg-gray-700 text-gray-300 transition">✕</button>
         </div>
         <div className="p-3">
           <button onClick={startNewChat} className="w-full py-2.5 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow">
@@ -549,16 +564,16 @@ export default function FootPlayChat() {
         </div>
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5">
           {sessions.map((s) => (
-            <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setConversationId(s.conversationId); setMessages(s.messages); setSidebarOpen(false); }} className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 cursor-pointer text-xs truncate transition border border-transparent hover:border-white/10">
+            <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setConversationId(s.conversationId); setMessages(s.messages); setSidebarOpen(false); }} className="p-3 rounded-xl bg-[#1E1F20] hover:bg-[#26282A] text-gray-300 cursor-pointer text-xs truncate transition border border-transparent hover:border-gray-700">
               {toArabicNumerals(s.title)}
             </div>
           ))}
         </div>
       </aside>
 
-      <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-white/10 bg-[#131314]/80 sticky top-0 z-20 backdrop-blur-md">
+      <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-gray-800 bg-[#131314]/95 sticky top-0 z-20 backdrop-blur">
         <div className="flex items-center gap-2.5">
-          <button onClick={() => setSidebarOpen(true)} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-gray-200 transition">
+          <button onClick={() => setSidebarOpen(true)} className="w-9 h-9 rounded-xl bg-[#1E1F20] hover:bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-200 transition">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h10" /></svg>
           </button>
           <AiFBallLogo size="md" />
@@ -567,55 +582,56 @@ export default function FootPlayChat() {
             <p className="text-[10px] text-emerald-400 font-medium">صديقك الرياضي</p>
           </div>
         </div>
-        <button onClick={startNewChat} className="px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 transition">+ محادثة جديدة</button>
+        <button onClick={startNewChat} className="px-3 py-1.5 rounded-full text-xs font-medium bg-[#1E1F20] hover:bg-gray-800 border border-gray-700 text-gray-200 transition">+ محادثة جديدة</button>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col relative z-10">
+      <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col">
         {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col justify-center my-auto py-2">
-            <div className="text-right space-y-3 mb-6 px-1">
-              <div className="inline-flex items-center gap-2 text-emerald-400 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 border-emerald-500/40">
-                <span>⚽</span>
-                <span>HOME OF FOOTBALL</span>
-              </div>
-              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white drop-shadow-md">أهلاً بك في فوتبلاي</h2>
+          <div className="flex-1 flex flex-col justify-center my-auto py-2 relative rounded-3xl overflow-hidden p-6 sm:p-10 shadow-2xl border border-emerald-500/30">
+            
+            {/* خلفية الملعب الحقيقية تغطي الشاشة بالكامل خلف قسم الترحيب والبطاقات */}
+            <div 
+              className="absolute inset-0 bg-cover bg-center filter brightness-[0.4]"
+              style={{ backgroundImage: `url('/IMG_0091.jpeg')` }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#131314]/95 via-[#131314]/70 to-[#131314]/60" />
+
+            {/* محتوى الترحيب */}
+            <div className="relative z-10 text-right space-y-3 mb-7">
+              <span className="inline-block px-3 py-1 rounded-full bg-emerald-600/90 text-white text-xs font-bold tracking-wider uppercase border border-emerald-400/40 shadow-sm">
+                Home Of FootBall ⚽
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white drop-shadow-md">
+                أهلاً بك في فوتبلاي
+              </h2>
               <p className="text-base sm:text-lg text-gray-200 leading-relaxed max-w-2xl font-normal drop-shadow">
                 تحليل تكتيكي، تشكيلات مباريات، مقارنات إحصائية متقدمة، أسلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full">
+
+            {/* البطاقات الأربع بشكل شفاف (Glassmorphism) */}
+            <div className="relative z-10 grid grid-cols-2 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
-                <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-black/10 backdrop-blur-sm border border-white/10 shadow-lg min-h-[115px] hover:border-emerald-500/50 hover:bg-black/20 transition cursor-pointer" onClick={() => { setInput(card.question); sendMessage(card.question); }}>
+                <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-[#1E1F20]/75 backdrop-blur-md border border-gray-700/50 shadow-lg min-h-[115px] hover:border-emerald-500/50 transition">
                   <p className="text-sm sm:text-base font-bold text-gray-100 leading-relaxed line-clamp-2">{toArabicNumerals(card.question)}</p>
                   <div className="flex items-center justify-between w-full mt-3 pt-1">
                     <span className="text-xs sm:text-sm font-bold text-[#22C55E] truncate pl-1">{toArabicNumerals(card.tag)}</span>
-                    <span className="w-8 h-8 rounded-full bg-black/30 flex items-center justify-center text-sm shadow-inner">{card.icon}</span>
+                    <span className="w-8 h-8 rounded-full bg-[#131314]/80 flex items-center justify-center text-sm shadow-inner">{card.icon}</span>
                   </div>
                 </div>
               ))}
             </div>
+
           </div>
         ) : (
           <div className="space-y-6">
             {messages.map((msg, i) => (
-              msg.content && msg.content.trim() !== '' || (msg.imageUrls && msg.imageUrls.length > 0) ? (
+              msg.content && msg.content.trim() !== '' ? (
                 <div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
                   {msg.role === 'assistant' && <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm" /></div>}
                   <div className={`flex flex-col ${msg.role === 'user' ? 'max-w-[85%]' : 'w-full max-w-[90%]'}`}>
-                    <div className={`rounded-2xl px-5 py-4 shadow-xl backdrop-blur-md ${msg.role === 'user' ? 'bg-[#2A2C2E]/90 text-white text-base rounded-tr-sm border border-white/10' : 'bg-black/50 text-gray-100 border border-white/10 text-base'}`}>
-                      {msg.role === 'user' ? (
-                        <div>
-                          {/* عرض الصور المرفقة داخل المحادثة بشكل مصغر */}
-                          {msg.imageUrls && msg.imageUrls.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mb-3">
-                              {msg.imageUrls.map((url, idx) => (
-                                <img key={idx} src={url} alt="مرفق" className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border border-white/20 shadow-sm" />
-                              ))}
-                            </div>
-                          )}
-                          <p>{toArabicNumerals(msg.content)}</p>
-                        </div>
-                      ) : renderFormattedText(msg.content)}
+                    <div className={`rounded-2xl px-5 py-4 shadow-sm ${msg.role === 'user' ? 'bg-[#2A2C2E] text-white text-base rounded-tr-sm' : 'bg-[#1E1F20] text-gray-100 border border-gray-800/80 text-base'}`}>
+                      {msg.role === 'user' ? <p>{toArabicNumerals(msg.content)}</p> : renderFormattedText(msg.content)}
                     </div>
                   </div>
                 </div>
@@ -624,7 +640,7 @@ export default function FootPlayChat() {
             {loading && (
               <div className="flex items-center gap-3 justify-end flex-row-reverse mt-4">
                 <AiFBallLogo size="sm" />
-                <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-3 shadow-xl">
+                <div className="bg-[#1E1F20] border border-gray-800 rounded-2xl px-5 py-3 shadow-sm">
                   <span className="text-emerald-400 text-sm font-bold animate-pulse-slow flex items-center gap-2">
                     <span>⏳</span> جاري البحث في المصادر الرياضيه ..
                   </span>
@@ -636,28 +652,26 @@ export default function FootPlayChat() {
         )}
       </main>
 
-      <footer className="p-3 bg-[#131314]/80 backdrop-blur-md border-t border-white/10 relative z-20">
+      <footer className="p-3 bg-[#131314] border-t border-gray-800/80">
         <div className="max-w-4xl mx-auto">
-          {/* عرض الملفات الجاهزة للإرسال في منطقة الكتابة */}
           {attachedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2 px-2">
               {attachedFiles.map((f, idx) => (
-                <div key={idx} className="flex items-center gap-2 bg-black/40 border border-emerald-500/50 p-1.5 pr-3 rounded-lg shadow-sm backdrop-blur-md">
-                  <img src={f.url} alt="مرفق" className="w-8 h-8 object-cover rounded-md border border-white/10" />
-                  <span className="text-xs text-emerald-300 max-w-[120px] truncate" dir="ltr">{toArabicNumerals(f.file.name)}</span>
-                  <button onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-300 font-bold ml-1 mr-1 transition">✕</button>
+                <div key={idx} className="flex items-center gap-1.5 bg-[#1E1F20] border border-emerald-500/50 px-3 py-1.5 rounded-lg text-xs text-emerald-300 shadow-sm">
+                  <span>📎 {toArabicNumerals(f.name)}</span>
+                  <button onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-300 font-bold ml-1 transition">✕</button>
                 </div>
               ))}
             </div>
           )}
 
-          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-3 py-2 shadow-xl">
-            <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*" className="hidden" />
-            <button onClick={() => fileInputRef.current?.click()} title="إرفاق ملف" className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white flex items-center justify-center font-bold text-xl flex-shrink-0 transition">
+          <div className="flex items-center gap-2 bg-[#1E1F20] border border-gray-700/80 rounded-full px-3 py-2 shadow-lg">
+            <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*,.pdf,.doc,.docx" className="hidden" />
+            <button onClick={() => fileInputRef.current?.click()} title="إرفاق ملف" className="w-10 h-10 rounded-full bg-[#2A2C2E] hover:bg-gray-700 text-gray-300 hover:text-white flex items-center justify-center font-bold text-xl flex-shrink-0 transition">
               +
             </button>
 
-            <button onClick={handleVoiceSearch} title="بحث صوتي" className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition shadow-sm ${isListening ? 'bg-emerald-600 text-white animate-pulse' : 'bg-white/10 hover:bg-white/20 text-emerald-400 hover:text-emerald-300'}`}>
+            <button onClick={handleVoiceSearch} title="بحث صوتي" className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition shadow-sm ${isListening ? 'bg-emerald-600 text-white animate-pulse' : 'bg-[#2A2C2E] hover:bg-gray-700 text-emerald-400 hover:text-emerald-300'}`}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 01-14 0v-1M12 18.5V22M8 22h8" />
