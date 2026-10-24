@@ -155,7 +155,6 @@ function renderFormattedText(text: string) {
           </a>
         );
       } else {
-        // تطبيق الأرقام العربية فقط على النصوص العادية
         result.push(toArabicNumerals(part));
       }
       i++;
@@ -341,7 +340,6 @@ export default function FootPlayChat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // تم تحديث النصوص والعناوين الفرعية هنا مع الحفاظ على الأيقونات
   const suggestionCards = [
     {
       question: 'اسلوب لعب الاتحاد مع الالماني فيسينغ',
@@ -405,6 +403,9 @@ export default function FootPlayChat() {
     }
   };
 
+  // -----------------------------------------------------
+  // تحديث جذري لدالة sendMessage لدعم البث المباشر (Streaming)
+  // -----------------------------------------------------
   const sendMessage = async (textToSend?: string) => {
     const query = (textToSend ?? input).trim();
     if ((!query && attachedFiles.length === 0) || loading) return;
@@ -415,6 +416,7 @@ export default function FootPlayChat() {
     }
 
     const newMessages: Message[] = [...messages, { role: 'user', content: fullQuery, userQuery: fullQuery }];
+    // إضافة رسالة البوت فارغة استعداداً للبث
     setMessages([...newMessages, { role: 'assistant', content: '', userQuery: fullQuery }]);
     setInput('');
     setAttachedFiles([]);
@@ -427,50 +429,73 @@ export default function FootPlayChat() {
         body: JSON.stringify({ query: fullQuery, conversation_id: conversationId }),
       });
 
-      const rawText = await res.text();
-      let finalAnswer = '';
-      let newConvId = '';
+      if (!res.ok) throw new Error('Network response was not ok');
 
-      try {
-        const parsed = JSON.parse(rawText);
-        finalAnswer = parsed.text || parsed.answer || '';
-        newConvId = parsed.conversation_id || '';
-      } catch {
-        const lines = rawText.split('\n');
-        for (const line of lines) {
-          const t = line.replace(/^data:\s*/, '').trim();
-          if (!t || t === '[DONE]') continue;
-          try {
-            const p = JSON.parse(t);
-            if (p.event === 'message' || p.event === 'agent_message' || p.event === 'text_chunk') {
-              finalAnswer += (p.answer || p.text || '');
-            } else if (p.event === 'message_replace') {
-              finalAnswer = (p.answer || p.text || '');
-            } else if (!p.event && (p.answer || p.text)) {
-              finalAnswer += (p.answer || p.text || '');
+      // بمجرد وصول أول استجابة من السيرفر، يتم إخفاء "جاري البحث..."
+      setLoading(false);
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let finalAnswer = '';
+      let newConvId = conversationId;
+      let buffer = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (trimmedLine.startsWith('data:')) {
+              const dataStr = trimmedLine.replace(/^data:\s*/, '');
+              if (!dataStr || dataStr === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(dataStr);
+                
+                // تحديث الواجهة حرفاً بحرف (Streaming) مع إهمال أفكار الوكيل لتجنب التكرار
+                if (parsed.event === 'message' && typeof parsed.answer === 'string') {
+                  finalAnswer += parsed.answer;
+                  
+                  // تحديث رسالة البوت الأخيرة فوراً في الواجهة
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    const lastIndex = updated.length - 1;
+                    if (updated[lastIndex].role === 'assistant') {
+                      updated[lastIndex].content = finalAnswer;
+                    }
+                    return updated;
+                  });
+                }
+
+                if (parsed.conversation_id) {
+                  newConvId = parsed.conversation_id;
+                }
+              } catch (e) {
+                // تجاهل أجزاء JSON غير المكتملة
+              }
             }
-            if (p.conversation_id) newConvId = p.conversation_id;
-          } catch {}
+          }
         }
       }
 
-      setMessages([
-        ...newMessages,
-        {
-          role: 'assistant',
-          content: finalAnswer || 'عذراً، لم يتم استلام رد صحيح من الخادم.',
-          userQuery: fullQuery,
-        },
-      ]);
-
       if (newConvId) setConversationId(newConvId);
-    } catch {
-      setMessages([
-        ...newMessages,
-        { role: 'assistant', content: 'عذراً، تعذر الاتصال بالخادم.', userQuery: fullQuery },
-      ]);
-    } finally {
+
+    } catch (error) {
       setLoading(false);
+      setMessages(prev => {
+        const updated = [...prev];
+        const lastIndex = updated.length - 1;
+        if (updated[lastIndex].role === 'assistant') {
+          updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم.';
+        }
+        return updated;
+      });
     }
   };
 
@@ -588,7 +613,6 @@ export default function FootPlayChat() {
         ) : (
           <div className="space-y-6">
             {messages.map((msg, i) => (
-              /* إخفاء الخانة الفارغة تماماً عبر هذا الشرط */
               msg.content && msg.content.trim() !== '' ? (
                 <div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
                   {msg.role === 'assistant' && <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm" /></div>}
