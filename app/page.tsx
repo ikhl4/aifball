@@ -117,7 +117,7 @@ function parseStatNumber(val: string): number | null {
   return cleaned ? parseFloat(cleaned[0]) : null;
 }
 
-// معالجة النصوص والروابط باللون الأزرق الاحترافي
+// معالجة النصوص والروابط
 function renderFormattedText(text: string) {
   let processedText = text.replace(/\]\s*\n\s*\(/g, '](');
   const lines = processedText.split('\n');
@@ -141,19 +141,27 @@ function renderFormattedText(text: string) {
         const label = parts[i + 1];
         const url = parts[i + 2];
         const isYoutube = url.includes('youtu');
-        result.push(
-          <a key={`link-${i}`} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/20 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
-            <span>{isYoutube ? '▶️' : '🔗'}</span><span>{toArabicNumerals(label)}</span><span className="text-[10px] opacity-70">↗</span>
-          </a>
-        );
+        
+        // إخفاء الزر الأزرق تماماً إذا كان الرابط يوتيوب
+        if (!isYoutube) {
+          result.push(
+            <a key={`link-${i}`} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/20 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
+              <span>🔗</span><span>{toArabicNumerals(label)}</span><span className="text-[10px] opacity-70">↗</span>
+            </a>
+          );
+        }
         i += 2;
       } else if (/^https?:\/\//.test(part)) {
         const isYoutube = part.includes('youtu');
-        result.push(
-          <a key={`url-${i}`} href={part} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/20 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
-            <span>{isYoutube ? '▶️' : '🔗'}</span><span>{isYoutube ? 'مشاهدة ملخص المباراة على يوتيوب' : 'فتح الرابط المباشر'}</span><span className="text-[10px] opacity-70">↗</span>
-          </a>
-        );
+        
+        // إخفاء الزر الأزرق تماماً إذا كان الرابط يوتيوب
+        if (!isYoutube) {
+          result.push(
+            <a key={`url-${i}`} href={part} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/20 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
+              <span>🔗</span><span>فتح الرابط المباشر</span><span className="text-[10px] opacity-70">↗</span>
+            </a>
+          );
+        }
       } else {
         result.push(toArabicNumerals(part));
       }
@@ -403,9 +411,6 @@ export default function FootPlayChat() {
     }
   };
 
-  // -----------------------------------------------------
-  // تحديث جذري لدالة sendMessage لدعم البث المباشر (Streaming)
-  // -----------------------------------------------------
   const sendMessage = async (textToSend?: string) => {
     const query = (textToSend ?? input).trim();
     if ((!query && attachedFiles.length === 0) || loading) return;
@@ -416,7 +421,6 @@ export default function FootPlayChat() {
     }
 
     const newMessages: Message[] = [...messages, { role: 'user', content: fullQuery, userQuery: fullQuery }];
-    // إضافة رسالة البوت فارغة استعداداً للبث
     setMessages([...newMessages, { role: 'assistant', content: '', userQuery: fullQuery }]);
     setInput('');
     setAttachedFiles([]);
@@ -430,9 +434,6 @@ export default function FootPlayChat() {
       });
 
       if (!res.ok) throw new Error('Network response was not ok');
-
-      // بمجرد وصول أول استجابة من السيرفر، يتم إخفاء "جاري البحث..."
-      setLoading(false);
 
       const reader = res.body?.getReader();
       const decoder = new TextDecoder('utf-8');
@@ -458,11 +459,13 @@ export default function FootPlayChat() {
               try {
                 const parsed = JSON.parse(dataStr);
                 
-                // تحديث الواجهة حرفاً بحرف (Streaming) مع إهمال أفكار الوكيل لتجنب التكرار
                 if (parsed.event === 'message' && typeof parsed.answer === 'string') {
+                  
+                  // إخفاء رسالة "جاري البحث" فقط عندما يبدأ الوكيل بكتابة الإجابة النهائية
+                  setLoading(false);
+
                   finalAnswer += parsed.answer;
                   
-                  // تحديث رسالة البوت الأخيرة فوراً في الواجهة
                   setMessages(prev => {
                     const updated = [...prev];
                     const lastIndex = updated.length - 1;
@@ -487,7 +490,6 @@ export default function FootPlayChat() {
       if (newConvId) setConversationId(newConvId);
 
     } catch (error) {
-      setLoading(false);
       setMessages(prev => {
         const updated = [...prev];
         const lastIndex = updated.length - 1;
@@ -496,6 +498,9 @@ export default function FootPlayChat() {
         }
         return updated;
       });
+    } finally {
+      // لضمان إخفاء رسالة التحميل في حال حدوث أي خطأ أو انتهاء البث
+      setLoading(false);
     }
   };
 
@@ -600,13 +605,14 @@ export default function FootPlayChat() {
 
             <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
-                <button key={i} onClick={() => sendMessage(card.question)} className="group flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-[#1E1F20] hover:bg-[#26282A] border border-gray-800 transition shadow-sm min-h-[115px]">
-                  <p className="text-sm sm:text-base font-bold text-gray-100 group-hover:text-white leading-relaxed line-clamp-2">{toArabicNumerals(card.question)}</p>
+                // تم تحويل البطاقات إلى عناصر للعرض فقط (إزالة التفاعل والنقر)
+                <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-[#1E1F20] border border-gray-800 shadow-sm min-h-[115px]">
+                  <p className="text-sm sm:text-base font-bold text-gray-100 leading-relaxed line-clamp-2">{toArabicNumerals(card.question)}</p>
                   <div className="flex items-center justify-between w-full mt-3 pt-1">
                     <span className="text-xs sm:text-sm font-bold text-[#22C55E] truncate pl-1">{toArabicNumerals(card.tag)}</span>
                     <span className="w-8 h-8 rounded-full bg-[#131314] flex items-center justify-center text-sm shadow-inner">{card.icon}</span>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </div>
