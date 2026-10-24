@@ -142,7 +142,6 @@ function renderFormattedText(text: string) {
         const url = parts[i + 2];
         const isYoutube = url.includes('youtu');
         
-        // إخفاء الزر الأزرق تماماً إذا كان الرابط يوتيوب
         if (!isYoutube) {
           result.push(
             <a key={`link-${i}`} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/20 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
@@ -154,7 +153,6 @@ function renderFormattedText(text: string) {
       } else if (/^https?:\/\//.test(part)) {
         const isYoutube = part.includes('youtu');
         
-        // إخفاء الزر الأزرق تماماً إذا كان الرابط يوتيوب
         if (!isYoutube) {
           result.push(
             <a key={`url-${i}`} href={part} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/20 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
@@ -460,10 +458,7 @@ export default function FootPlayChat() {
                 const parsed = JSON.parse(dataStr);
                 
                 if (parsed.event === 'message' && typeof parsed.answer === 'string') {
-                  
-                  // إخفاء رسالة "جاري البحث" فقط عندما يبدأ الوكيل بكتابة الإجابة النهائية
                   setLoading(false);
-
                   finalAnswer += parsed.answer;
                   
                   setMessages(prev => {
@@ -479,9 +474,7 @@ export default function FootPlayChat() {
                 if (parsed.conversation_id) {
                   newConvId = parsed.conversation_id;
                 }
-              } catch (e) {
-                // تجاهل أجزاء JSON غير المكتملة
-              }
+              } catch (e) {}
             }
           }
         }
@@ -499,7 +492,6 @@ export default function FootPlayChat() {
         return updated;
       });
     } finally {
-      // لضمان إخفاء رسالة التحميل في حال حدوث أي خطأ أو انتهاء البث
       setLoading(false);
     }
   };
@@ -596,16 +588,30 @@ export default function FootPlayChat() {
       <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
-            <div className="text-right space-y-3 mb-7 px-1">
-              <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-[#22C55E]">أهلاً بك في فوتبلاي</h2>
-              <p className="text-base sm:text-xl text-gray-200 leading-relaxed font-normal">
-                تحليل تكتيكي، تشكيلات مباريات، مقارنات إحصائية متقدمة، أسلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
-              </p>
+            
+            {/* واجهة الترحيب الفخمة بخلفية الملعب الحقيقية وهوية Home Of FootBall */}
+            <div className="relative w-full rounded-3xl overflow-hidden p-8 sm:p-10 mb-7 shadow-2xl border border-emerald-500/30">
+              <div 
+                className="absolute inset-0 bg-cover bg-center filter brightness-[0.45]"
+                style={{ backgroundImage: `url('/IMG_0091.jpeg')` }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#131314] via-[#131314]/70 to-transparent" />
+
+              <div className="relative z-10 text-right space-y-3">
+                <span className="inline-block px-3 py-1 rounded-full bg-emerald-600/90 text-white text-xs font-bold tracking-wider uppercase border border-emerald-400/40 shadow-sm">
+                  Home Of FootBall ⚽
+                </span>
+                <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white drop-shadow-md">
+                  أهلاً بك في فوتبلاي
+                </h2>
+                <p className="text-base sm:text-lg text-gray-200 leading-relaxed max-w-2xl font-normal drop-shadow">
+                  تحليل تكتيكي، تشكيلات مباريات، مقارنات إحصائية متقدمة، أسلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
-                // تم تحويل البطاقات إلى عناصر للعرض فقط (إزالة التفاعل والنقر)
                 <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-[#1E1F20] border border-gray-800 shadow-sm min-h-[115px]">
                   <p className="text-sm sm:text-base font-bold text-gray-100 leading-relaxed line-clamp-2">{toArabicNumerals(card.question)}</p>
                   <div className="flex items-center justify-between w-full mt-3 pt-1">
