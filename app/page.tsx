@@ -16,6 +16,13 @@ interface ChatSession {
   updatedAt: string;
 }
 
+// دالة تحويل الأرقام الإنجليزية إلى عربية في واجهة المستخدم
+function toArabicNumerals(text: string): string {
+  if (!text) return '';
+  const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  return text.replace(/[0-9]/g, (w) => arabicNumbers[parseInt(w, 10)]);
+}
+
 // شعار AiFBall الرسمي
 function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const [imgError, setImgError] = useState(false);
@@ -129,14 +136,14 @@ function renderFormattedText(text: string) {
       if (!part) { i++; continue; }
 
       if (part.startsWith('**') && part.endsWith('**')) {
-        result.push(<strong key={`strong-${i}`} className="font-bold text-white">{part.slice(2, -2)}</strong>);
+        result.push(<strong key={`strong-${i}`} className="font-bold text-white">{toArabicNumerals(part.slice(2, -2))}</strong>);
       } else if (parts[i + 1] !== undefined && parts[i + 2] !== undefined && parts[i + 1].length > 0 && parts[i + 2].startsWith('http')) {
         const label = parts[i + 1];
         const url = parts[i + 2];
         const isYoutube = url.includes('youtu');
         result.push(
           <a key={`link-${i}`} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/20 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
-            <span>{isYoutube ? '▶️' : '🔗'}</span><span>{label}</span><span className="text-[10px] opacity-70">↗</span>
+            <span>{isYoutube ? '▶️' : '🔗'}</span><span>{toArabicNumerals(label)}</span><span className="text-[10px] opacity-70">↗</span>
           </a>
         );
         i += 2;
@@ -148,7 +155,8 @@ function renderFormattedText(text: string) {
           </a>
         );
       } else {
-        result.push(part);
+        // تطبيق الأرقام العربية فقط على النصوص العادية
+        result.push(toArabicNumerals(part));
       }
       i++;
     }
@@ -180,10 +188,10 @@ function renderFormattedText(text: string) {
 
           <div className="grid grid-cols-2 gap-3 mb-5 text-center">
             <div className="p-3 rounded-2xl bg-[#1A1F1C] border border-emerald-900/40">
-              <span className="text-sm font-bold text-emerald-400 block truncate">{p1Title}</span>
+              <span className="text-sm font-bold text-emerald-400 block truncate">{toArabicNumerals(p1Title)}</span>
             </div>
             <div className="p-3 rounded-2xl bg-[#161C24] border border-sky-900/40">
-              <span className="text-sm font-bold text-sky-400 block truncate">{p2Title}</span>
+              <span className="text-sm font-bold text-sky-400 block truncate">{toArabicNumerals(p2Title)}</span>
             </div>
           </div>
 
@@ -204,9 +212,9 @@ function renderFormattedText(text: string) {
                 return (
                   <div key={rIdx} className="space-y-2">
                     <div className="flex items-center justify-between text-sm px-1">
-                      <span className={`font-bold ${p1Wins ? 'text-emerald-400' : 'text-gray-400'}`}>{val1Str}</span>
-                      <span className="text-gray-300 font-medium text-center text-xs">{metric}</span>
-                      <span className={`font-bold ${!p1Wins ? 'text-sky-400' : 'text-gray-400'}`}>{val2Str}</span>
+                      <span className={`font-bold ${p1Wins ? 'text-emerald-400' : 'text-gray-400'}`}>{toArabicNumerals(val1Str)}</span>
+                      <span className="text-gray-300 font-medium text-center text-xs">{toArabicNumerals(metric)}</span>
+                      <span className={`font-bold ${!p1Wins ? 'text-sky-400' : 'text-gray-400'}`}>{toArabicNumerals(val2Str)}</span>
                     </div>
                     <div className="w-full h-3 rounded-full bg-[#1A1C1E] overflow-hidden flex gap-1 p-0.5">
                       <div style={{ width: `${p1}%` }} className={`h-full rounded-full transition-all duration-700 ${p1Wins ? 'bg-gradient-to-l from-emerald-400 to-emerald-600' : 'bg-emerald-900/40'}`} />
@@ -217,9 +225,9 @@ function renderFormattedText(text: string) {
               }
               return (
                 <div key={rIdx} className="flex items-center justify-between py-2 px-3 rounded-xl bg-[#1A1C1E] text-sm">
-                  <span className="text-emerald-400 font-bold">{val1Str}</span>
-                  <span className="text-gray-400 text-xs">{metric}</span>
-                  <span className="text-sky-400 font-bold">{val2Str}</span>
+                  <span className="text-emerald-400 font-bold">{toArabicNumerals(val1Str)}</span>
+                  <span className="text-gray-400 text-xs">{toArabicNumerals(metric)}</span>
+                  <span className="text-sky-400 font-bold">{toArabicNumerals(val2Str)}</span>
                 </div>
               );
             })}
@@ -279,7 +287,7 @@ function renderFormattedText(text: string) {
     else if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
       const isNumbered = /^\d+\.\s+/.test(trimmed);
       const textPart = trimmed.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '');
-      const bullet = isNumbered ? trimmed.match(/^\d+\./)![0] : '•';
+      const bullet = isNumbered ? toArabicNumerals(trimmed.match(/^\d+\./)![0]) : '•';
       elements.push(
         <div key={index} className="flex items-start gap-2.5 my-2 pr-1.5">
           <span className="text-emerald-500 mt-0.5 font-bold whitespace-nowrap">{bullet}</span>
@@ -293,7 +301,6 @@ function renderFormattedText(text: string) {
 
   if (inTable) flushTable(lines.length);
 
-  // نُبقي المشغل المرئي المدمج لليوتيوب في النهاية لجمال الواجهة (إلى جانب الرابط الأزرق فوق)
   const youtubeIds = extractYouTubeIds(text);
   if (youtubeIds.length > 0) {
     elements.push(
@@ -334,25 +341,26 @@ export default function FootPlayChat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // تم تحديث النصوص والعناوين الفرعية هنا مع الحفاظ على الأيقونات
   const suggestionCards = [
     {
-      question: 'قدم لي تحليلاً تكتيكياً وإحصائياً لأسلوب لعب الاتحاد مع الالماني فيسينغ',
+      question: 'اسلوب لعب الاتحاد مع الالماني فيسينغ',
       tag: 'تحليل تكتيكي',
       icon: '📋',
     },
     {
-      question: ' أهداف وملخصات أبرز مباريات اليوم   
+      question: 'أهداف وملخصات أبرز المباريات في الدوريات الكبرى',
       tag: 'أهداف وملخصات المباريات',
       icon: '🎬',
     },
     {
-      question: 'ما هو جدول ترتيب دوري روشن السعودي حتى هذا اليوم لموسم 2026-2027 وأبرز الإحصائيات؟',
+      question: 'ما هو جدول ترتيب دوري روشن السعودي حتى اليوم لموسم 2026-2027 وأبرز الإحصائيات؟',
       tag: 'ترتيب دوري روشن',
       icon: '📊',
     },
     {
       question: 'ما هو السجل التاريخي الكامل لأبطال دوري أبطال أوروبا؟',
-      tag: 'سجل الأبطال التاريخي',
+      tag: 'التاريخ والبطولات',
       icon: '🏆',
     },
   ];
@@ -535,7 +543,7 @@ export default function FootPlayChat() {
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5">
           {sessions.map((s) => (
             <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setConversationId(s.conversationId); setMessages(s.messages); setSidebarOpen(false); }} className="p-3 rounded-xl bg-[#1E1F20] hover:bg-[#26282A] text-gray-300 cursor-pointer text-xs truncate transition border border-transparent hover:border-gray-700">
-              {s.title}
+              {toArabicNumerals(s.title)}
             </div>
           ))}
         </div>
@@ -568,9 +576,9 @@ export default function FootPlayChat() {
             <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
                 <button key={i} onClick={() => sendMessage(card.question)} className="group flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-[#1E1F20] hover:bg-[#26282A] border border-gray-800 transition shadow-sm min-h-[115px]">
-                  <p className="text-sm sm:text-base font-bold text-gray-100 group-hover:text-white leading-relaxed line-clamp-2">{card.question}</p>
+                  <p className="text-sm sm:text-base font-bold text-gray-100 group-hover:text-white leading-relaxed line-clamp-2">{toArabicNumerals(card.question)}</p>
                   <div className="flex items-center justify-between w-full mt-3 pt-1">
-                    <span className="text-xs sm:text-sm font-bold text-[#22C55E] truncate pl-1">{card.tag}</span>
+                    <span className="text-xs sm:text-sm font-bold text-[#22C55E] truncate pl-1">{toArabicNumerals(card.tag)}</span>
                     <span className="w-8 h-8 rounded-full bg-[#131314] flex items-center justify-center text-sm shadow-inner">{card.icon}</span>
                   </div>
                 </button>
@@ -580,14 +588,17 @@ export default function FootPlayChat() {
         ) : (
           <div className="space-y-6">
             {messages.map((msg, i) => (
-              <div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
-                {msg.role === 'assistant' && <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm" /></div>}
-                <div className={`flex flex-col ${msg.role === 'user' ? 'max-w-[85%]' : 'w-full max-w-[90%]'}`}>
-                  <div className={`rounded-2xl px-5 py-4 shadow-sm ${msg.role === 'user' ? 'bg-[#2A2C2E] text-white text-base rounded-tr-sm' : 'bg-[#1E1F20] text-gray-100 border border-gray-800/80 text-base'}`}>
-                    {msg.role === 'user' ? <p>{msg.content}</p> : renderFormattedText(msg.content)}
+              /* إخفاء الخانة الفارغة تماماً عبر هذا الشرط */
+              msg.content && msg.content.trim() !== '' ? (
+                <div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
+                  {msg.role === 'assistant' && <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm" /></div>}
+                  <div className={`flex flex-col ${msg.role === 'user' ? 'max-w-[85%]' : 'w-full max-w-[90%]'}`}>
+                    <div className={`rounded-2xl px-5 py-4 shadow-sm ${msg.role === 'user' ? 'bg-[#2A2C2E] text-white text-base rounded-tr-sm' : 'bg-[#1E1F20] text-gray-100 border border-gray-800/80 text-base'}`}>
+                      {msg.role === 'user' ? <p>{toArabicNumerals(msg.content)}</p> : renderFormattedText(msg.content)}
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : null
             ))}
             {loading && (
               <div className="flex items-center gap-3 justify-end flex-row-reverse mt-4">
@@ -610,7 +621,7 @@ export default function FootPlayChat() {
             <div className="flex flex-wrap gap-2 mb-2 px-2">
               {attachedFiles.map((f, idx) => (
                 <div key={idx} className="flex items-center gap-1.5 bg-[#1E1F20] border border-emerald-500/50 px-3 py-1.5 rounded-lg text-xs text-emerald-300 shadow-sm">
-                  <span>📎 {f.name}</span>
+                  <span>📎 {toArabicNumerals(f.name)}</span>
                   <button onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-300 font-bold ml-1 transition">✕</button>
                 </div>
               ))}
