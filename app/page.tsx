@@ -609,14 +609,14 @@ export default function FootPlayChat() {
               </p>
             </div>
 
-            {/* البطاقات الأربع بشكل شفاف (Glassmorphism) */}
+            {/* البطاقات الأربع بشكل شفاف مع حدود خفيفة لتظهر خلفية الملعب بوضوح */}
             <div className="relative z-10 grid grid-cols-2 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
-                <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-[#1E1F20]/75 backdrop-blur-md border border-gray-700/50 shadow-lg min-h-[115px] hover:border-emerald-500/50 transition">
+                <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-black/20 backdrop-blur-md border border-white/10 shadow-lg min-h-[115px] hover:border-emerald-500/50 transition">
                   <p className="text-sm sm:text-base font-bold text-gray-100 leading-relaxed line-clamp-2">{toArabicNumerals(card.question)}</p>
                   <div className="flex items-center justify-between w-full mt-3 pt-1">
                     <span className="text-xs sm:text-sm font-bold text-[#22C55E] truncate pl-1">{toArabicNumerals(card.tag)}</span>
-                    <span className="w-8 h-8 rounded-full bg-[#131314]/80 flex items-center justify-center text-sm shadow-inner">{card.icon}</span>
+                    <span className="w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-sm shadow-inner">{card.icon}</span>
                   </div>
                 </div>
               ))}
