@@ -278,7 +278,11 @@ function renderFormattedText(text: string) {
       const teamMatch = trimmed.match(/team="([^"]+)"/);
       const formMatch = trimmed.match(/formation="([^"]+)"/);
       elements.push(
-        <TacticalPitch : ? formMatch[1] formation="{formMatch" key="{`pitch-${index}`}" teamMatch[1] teamName="{teamMatch" undefined}/>
+        <TacticalPitch 
+          key={`pitch-${index}`}
+          teamName={teamMatch ? teamMatch[1] : undefined}
+          formation={formMatch ? formMatch[1] : undefined}
+        />
       );
       return;
     }
@@ -334,12 +338,12 @@ function renderFormattedText(text: string) {
           <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl">
             <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-950/50 border-b border-white/10">
               <span className="text-xs sm:text-sm font-bold text-emerald-400">🎥 مشاهدة الملخص المدمج</span>
-              <a href={`[https://www.youtube.com/watch?v=$](https://www.youtube.com/watch?v=$){vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
+              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
                 فتح في تطبيق يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video">
-              <iframe src={`[https://www.youtube.com/embed/$](https://www.youtube.com/embed/$){vid}`} title="YouTube video player" className="w-full h-full border-0" allowFullScreen />
+              <iframe src={`https://www.youtube.com/embed/${vid}`} title="YouTube video player" className="w-full h-full border-0" allowFullScreen />
             </div>
           </div>
         ))}
@@ -379,10 +383,10 @@ export default function FootPlayChat() {
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
 
-    if (!document.querySelector('script[src="[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)"]')) {
+    if (!document.querySelector('script[src="https://widgets.api-sports.io/2.0.0/widgets.js"]')) {
       const script = document.createElement('script');
       script.type = 'module';
-      script.src = '[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)';
+      script.src = 'https://widgets.api-sports.io/2.0.0/widgets.js';
       document.body.appendChild(script);
     }
   }, []);
@@ -584,7 +588,7 @@ export default function FootPlayChat() {
       </div>
 
       <style jsx global>{`
-        @import url('[https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap)');
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
@@ -743,4 +747,3 @@ export default function FootPlayChat() {
     </div>
   );
 }
-
