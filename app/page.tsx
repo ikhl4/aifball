@@ -71,45 +71,6 @@ function renderFormattedText(text: string) {
   let tableRows: string[][] = [];
   let inTable = false;
 
-  const formatInline = (str: string) => {
-    const regex = /(\*\*.*?\*\*|\[([^\]]+)\]\((https?:\/\/[^\)]+)\)|https?:\/\/[^\s]+)/g;
-    const parts = str.split(regex);
-    const result: React.ReactNode[] = [];
-    let i = 0;
-    while (i < parts.length) {
-      const part = parts[i];
-      if (!part) { i++; continue; }
-      if (part.startsWith('**') && part.endsWith('**')) {
-        result.push(<strong key={`strong-${i}`} className="font-bold text-white">{toArabicNumerals(part.slice(2, -2))}</strong>);
-      } else if (parts[i + 1] !== undefined && parts[i + 2] !== undefined && parts[i + 1].length > 0 && parts[i + 2].startsWith('http')) {
-        const label = parts[i + 1];
-        const url = parts[i + 2];
-        const isYoutube = url.includes('youtu');
-        if (!isYoutube) {
-          result.push(
-            <a key={`link-${i}`} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
-              <span>🔗</span><span>{toArabicNumerals(label)}</span><span className="text-[10px] opacity-70">↗</span>
-            </a>
-          );
-        }
-        i += 2;
-      } else if (/^https?:\/\//.test(part)) {
-        const isYoutube = part.includes('youtu');
-        if (!isYoutube) {
-          result.push(
-            <a key={`url-${i}`} href={part} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
-              <span>🔗</span><span>فتح الرابط المباشر</span><span className="text-[10px] opacity-70">↗</span>
-            </a>
-          );
-        }
-      } else {
-        result.push(toArabicNumerals(part));
-      }
-      i++;
-    }
-    return result;
-  };
-
   const flushTable = (keyIndex: number) => {
     if (tableRows.length === 0) return;
     const headers = tableRows[0];
@@ -174,7 +135,7 @@ function renderFormattedText(text: string) {
             <thead>
               <tr className="bg-emerald-950/60 text-emerald-300">
                 {headers.map((h, idx) => (
-                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{formatInline(h)}</th>
+                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -182,7 +143,7 @@ function renderFormattedText(text: string) {
               {body.map((row, rIdx) => (
                 <tr key={rIdx} className="hover:bg-white/5 transition-colors">
                   {row.map((cell, cIdx) => (
-                    <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{formatInline(cell)}</td>
+                    <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{cell}</td>
                   ))}
                 </tr>
               ))}
@@ -197,6 +158,12 @@ function renderFormattedText(text: string) {
 
   lines.forEach((line, index) => {
     const trimmed = line.trim();
+
+    // تجاهل وحذف أي سطر يبدأ بعلامات الماركداون البرمجية (مثل ```text) لتنظيف الواجهة
+    if (trimmed.startsWith('```')) {
+      return; 
+    }
+
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
       if (/^\|[\s\-:|]+\|$/.test(trimmed)) { inTable = true; return; }
       inTable = true;
@@ -209,11 +176,11 @@ function renderFormattedText(text: string) {
     if (!trimmed) {
       elements.push(<div key={index} className="h-1.5" />);
     } else if (trimmed.startsWith('### ')) {
-      elements.push(<h3 key={index} className="text-lg font-bold text-emerald-400 mt-5 mb-2">{formatInline(trimmed.replace(/^###\s+/, ''))}</h3>);
+      elements.push(<h3 key={index} className="text-lg font-bold text-emerald-400 mt-5 mb-2">{trimmed.replace(/^###\s+/, '')}</h3>);
     } else if (trimmed.startsWith('## ')) {
-      elements.push(<h2 key={index} className="text-xl font-bold text-emerald-400 mt-5 mb-2">{formatInline(trimmed.replace(/^##\s+/, ''))}</h2>);
+      elements.push(<h2 key={index} className="text-xl font-bold text-emerald-400 mt-5 mb-2">{trimmed.replace(/^##\s+/, '')}</h2>);
     } else if (trimmed.startsWith('# ')) {
-      elements.push(<h1 key={index} className="text-2xl font-bold text-emerald-400 mt-5 mb-3">{formatInline(trimmed.replace(/^#\s+/, ''))}</h1>);
+      elements.push(<h1 key={index} className="text-2xl font-bold text-emerald-400 mt-5 mb-3">{trimmed.replace(/^#\s+/, '')}</h1>);
     } else if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
       const isNumbered = /^\d+\.\s+/.test(trimmed);
       const textPart = trimmed.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '');
@@ -221,7 +188,7 @@ function renderFormattedText(text: string) {
       elements.push(
         <div key={index} className="flex items-start gap-2.5 my-2 pr-1.5">
           <span className="text-emerald-500 mt-0.5 font-bold whitespace-nowrap">{bullet}</span>
-          <span className="flex-1 leading-relaxed text-base text-gray-200">{formatInline(textPart)}</span>
+          <span className="flex-1 leading-relaxed text-base text-gray-200">{textPart}</span>
         </div>
       );
     } else if (trimmed.startsWith('![') && trimmed.includes('](') && trimmed.endsWith(')')) {
@@ -240,7 +207,23 @@ function renderFormattedText(text: string) {
         );
       }
     } else {
-      elements.push(<p key={index} className="leading-relaxed my-2 text-base text-gray-100">{formatInline(trimmed)}</p>);
+      const parts = trimmed.split(/(\[.*?\]\(.*?\))/g);
+      const renderedParts = parts.map((part, pIdx) => {
+        if (part.startsWith('[') && part.endsWith(')')) {
+          const match = part.match(/\[(.*?)\]\((.*?)\)/);
+          if (match) {
+             const label = match[1];
+             const url = match[2];
+             return (
+              <a key={pIdx} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 mx-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
+                <span>🔗</span><span>{toArabicNumerals(label)}</span><span className="text-[10px] opacity-70">↗</span>
+              </a>
+             );
+          }
+        }
+        return <span key={pIdx}>{toArabicNumerals(part)}</span>;
+      });
+      elements.push(<p key={index} className="leading-relaxed my-2 text-base text-gray-100">{renderedParts}</p>);
     }
   });
 
@@ -484,13 +467,9 @@ export default function FootPlayChat() {
       <div className="absolute inset-0 bg-cover bg-center filter brightness-[0.55] pointer-events-none z-0" style={{ backgroundImage: `url('/IMG_0091.jpeg')` }} />
       <div className="absolute inset-0 bg-[#131314]/75 pointer-events-none z-0" />
 
-      {/* 
-        تم استبدال الخط بـ Cairo من Google Fonts 
-        ويعمل الآن بشكل تلقائي دون الحاجة لرفع أي ملفات.
-      */}
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
-        .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
+        .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Tajawal', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         .custom-scrollbar::-webkit-scrollbar { height: 6px; }
@@ -504,7 +483,7 @@ export default function FootPlayChat() {
       <aside className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-[#18191A]/95 backdrop-blur-md border-l border-white/10 z-40 transform transition-transform duration-300 flex flex-col ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <div className="flex items-center gap-2.5">
-            <AiFBallLogo size="sm" />
+            <AiFBallLogo size="sm"/>
             <span className="font-bold text-white text-sm">سجل البحوث والمحادثات</span>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 transition">✕</button>
@@ -528,7 +507,7 @@ export default function FootPlayChat() {
           <button onClick={() => setSidebarOpen(true)} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-gray-200 transition">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h10" /></svg>
           </button>
-          <AiFBallLogo size="md" />
+          <AiFBallLogo size="md"/>
           <div>
             <h1 className="text-base font-bold text-white leading-tight">فوتبلاي</h1>
             <p className="text-[10px] text-emerald-400 font-medium">صديقك الرياضي</p>
@@ -567,7 +546,7 @@ export default function FootPlayChat() {
             {messages.map((msg, i) => (
               msg.content && msg.content.trim() !== '' || (msg.imageUrls && msg.imageUrls.length > 0) ? (
                 <div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
-                  {msg.role === 'assistant' && <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm" /></div>}
+                  {msg.role === 'assistant' && <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm"/></div>}
                   <div className={`flex flex-col ${msg.role === 'user' ? 'max-w-[85%]' : 'w-full max-w-[90%]'}`}>
                     <div className={`rounded-2xl px-5 py-4 shadow-xl backdrop-blur-md border border-white/10 text-base bg-black/50 ${msg.role === 'user' ? 'text-white rounded-tr-sm' : 'text-gray-100'}`}>
                       {msg.role === 'user' ? (
@@ -589,7 +568,7 @@ export default function FootPlayChat() {
             ))}
             {loading && (
               <div className="flex items-center gap-3 justify-end flex-row-reverse mt-4">
-                <AiFBallLogo size="sm" />
+                <AiFBallLogo size="sm"/>
                 <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-3 shadow-xl">
                   <span className="text-emerald-400 text-sm font-bold animate-pulse-slow flex items-center gap-2">
                     <span>⏳</span> جاري البحث في المصادر الرياضيه ..
