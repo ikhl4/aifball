@@ -124,7 +124,9 @@ function parseStatNumber(val: string): number | null {
 }
 
 function renderInlineText(text: string) {
+  // 1. فحص الروابط بصيغة الماركداون
   const linkParts = text.split(/(\[.*?\]\(.*?\))/g);
+  
   return linkParts.map((part, pIdx) => {
     if (part.startsWith('[') && part.endsWith(')')) {
       const match = part.match(/\[(.*?)\]\((.*?)\)/);
@@ -138,13 +140,26 @@ function renderInlineText(text: string) {
         );
       }
     }
-    
-    const boldParts = part.split(/(\*\*.*?\*\*)/g);
-    return boldParts.map((bPart, bIdx) => {
-      if (bPart.startsWith('**') && bPart.endsWith('**')) {
-         return <strong key={`${pIdx}-${bIdx}`} className="font-extrabold text-emerald-400">{bPart.slice(2, -2)}</strong>;
+
+    // 2. فحص الروابط النصية العادية (لتحويلها لروابط زرقاء قابلة للضغط)
+    const urlParts = part.split(/(https?:\/\/[^\s]+)/g);
+    return urlParts.map((urlPart, uIdx) => {
+      if (urlPart.match(/^https?:\/\//)) {
+        return (
+          <a key={`${pIdx}-${uIdx}`} href={urlPart} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-medium break-all transition">
+            {urlPart}
+          </a>
+        );
       }
-      return <span key={`${pIdx}-${bIdx}`}>{bPart}</span>;
+
+      // 3. فحص النص العريض
+      const boldParts = urlPart.split(/(\*\*.*?\*\*)/g);
+      return boldParts.map((bPart, bIdx) => {
+        if (bPart.startsWith('**') && bPart.endsWith('**')) {
+           return <strong key={`${pIdx}-${uIdx}-${bIdx}`} className="font-extrabold text-emerald-400">{bPart.slice(2, -2)}</strong>;
+        }
+        return <span key={`${pIdx}-${uIdx}-${bIdx}`}>{bPart}</span>;
+      });
     });
   });
 }
