@@ -248,7 +248,7 @@ function renderFormattedText(text: string) {
       return;
     }
 
-    // 🌟 قارئ الملعب التكتيكي المخصص (TheStatsAPI) - تم تصحيح الخطأ الإملائي هنا
+    // 🌟 قارئ الملعب التكتيكي المخصص (TheStatsAPI)
     if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
       if (inTable) flushTable(index);
       const teamMatch = trimmed.match(/team="([^"]+)"/);
@@ -366,8 +366,8 @@ export default function FootPlayChat() {
 
   const suggestionCards = [
     { question: 'اسلوب لعب الاتحاد مع الالماني فيسينغ', tag: 'تحليل تكتيكي', icon: '📋' },
-    { question: 'أهداف وملخصات مباريات اليوم في الدوريات الكبرى', tag: 'أهداف وملخصات المباريات', icon: '🎬' },
-    { question: 'ما هو جدول ترتيب دوري روشن السعودي حتى اليوم لموسم 2026-2027 وأبرز الإحصائيات؟', tag: 'ترتيب الدوريات', icon: '📊' },
+    { question: 'أهداف وملخصات أبرز مباريات اليوم في الدوريات الكبرى', tag: 'أهداف وملخصات المباريات', icon: '🎬' },
+    { question: 'ما هو جدول ترتيب دوري روشن السعودي حتى اليوم لموسم 2026-2027 وأبرز الإحصائيات؟', tag: 'ترتيب دوري روشن', icon: '📊' },
     { question: 'ما هو السجل التاريخي الكامل لأبطال دوري أبطال أوروبا؟', tag: 'التاريخ والبطولات', icon: '🏆' },
   ];
 
@@ -584,8 +584,8 @@ export default function FootPlayChat() {
       </div>
 
       <style jsx global>{`
-        @import url('[https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap](https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap)');
-        .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Tajawal', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
+        @import url('[https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap)');
+        .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         .custom-scrollbar::-webkit-scrollbar { height: 6px; }
