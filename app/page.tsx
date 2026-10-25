@@ -71,6 +71,45 @@ function renderFormattedText(text: string) {
   let tableRows: string[][] = [];
   let inTable = false;
 
+  const formatInline = (str: string) => {
+    const regex = /(\*\*.*?\*\*|\[([^\]]+)\]\((https?:\/\/[^\)]+)\)|https?:\/\/[^\s]+)/g;
+    const parts = str.split(regex);
+    const result: React.ReactNode[] = [];
+    let i = 0;
+    while (i < parts.length) {
+      const part = parts[i];
+      if (!part) { i++; continue; }
+      if (part.startsWith('**') && part.endsWith('**')) {
+        result.push(<strong key={`strong-${i}`} className="font-bold text-white">{toArabicNumerals(part.slice(2, -2))}</strong>);
+      } else if (parts[i + 1] !== undefined && parts[i + 2] !== undefined && parts[i + 1].length > 0 && parts[i + 2].startsWith('http')) {
+        const label = parts[i + 1];
+        const url = parts[i + 2];
+        const isYoutube = url.includes('youtu');
+        if (!isYoutube) {
+          result.push(
+            <a key={`link-${i}`} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
+              <span>🔗</span><span>{toArabicNumerals(label)}</span><span className="text-[10px] opacity-70">↗</span>
+            </a>
+          );
+        }
+        i += 2;
+      } else if (/^https?:\/\//.test(part)) {
+        const isYoutube = part.includes('youtu');
+        if (!isYoutube) {
+          result.push(
+            <a key={`url-${i}`} href={part} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
+              <span>🔗</span><span>فتح الرابط المباشر</span><span className="text-[10px] opacity-70">↗</span>
+            </a>
+          );
+        }
+      } else {
+        result.push(toArabicNumerals(part));
+      }
+      i++;
+    }
+    return result;
+  };
+
   const flushTable = (keyIndex: number) => {
     if (tableRows.length === 0) return;
     const headers = tableRows[0];
@@ -135,7 +174,7 @@ function renderFormattedText(text: string) {
             <thead>
               <tr className="bg-emerald-950/60 text-emerald-300">
                 {headers.map((h, idx) => (
-                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{h}</th>
+                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{formatInline(h)}</th>
                 ))}
               </tr>
             </thead>
@@ -143,7 +182,7 @@ function renderFormattedText(text: string) {
               {body.map((row, rIdx) => (
                 <tr key={rIdx} className="hover:bg-white/5 transition-colors">
                   {row.map((cell, cIdx) => (
-                    <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{cell}</td>
+                    <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{formatInline(cell)}</td>
                   ))}
                 </tr>
               ))}
@@ -170,11 +209,11 @@ function renderFormattedText(text: string) {
     if (!trimmed) {
       elements.push(<div key={index} className="h-1.5" />);
     } else if (trimmed.startsWith('### ')) {
-      elements.push(<h3 key={index} className="text-lg font-bold text-emerald-400 mt-5 mb-2">{trimmed.replace(/^###\s+/, '')}</h3>);
+      elements.push(<h3 key={index} className="text-lg font-bold text-emerald-400 mt-5 mb-2">{formatInline(trimmed.replace(/^###\s+/, ''))}</h3>);
     } else if (trimmed.startsWith('## ')) {
-      elements.push(<h2 key={index} className="text-xl font-bold text-emerald-400 mt-5 mb-2">{trimmed.replace(/^##\s+/, '')}</h2>);
+      elements.push(<h2 key={index} className="text-xl font-bold text-emerald-400 mt-5 mb-2">{formatInline(trimmed.replace(/^##\s+/, ''))}</h2>);
     } else if (trimmed.startsWith('# ')) {
-      elements.push(<h1 key={index} className="text-2xl font-bold text-emerald-400 mt-5 mb-3">{trimmed.replace(/^#\s+/, '')}</h1>);
+      elements.push(<h1 key={index} className="text-2xl font-bold text-emerald-400 mt-5 mb-3">{formatInline(trimmed.replace(/^#\s+/, ''))}</h1>);
     } else if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
       const isNumbered = /^\d+\.\s+/.test(trimmed);
       const textPart = trimmed.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '');
@@ -182,11 +221,10 @@ function renderFormattedText(text: string) {
       elements.push(
         <div key={index} className="flex items-start gap-2.5 my-2 pr-1.5">
           <span className="text-emerald-500 mt-0.5 font-bold whitespace-nowrap">{bullet}</span>
-          <span className="flex-1 leading-relaxed text-base text-gray-200">{textPart}</span>
+          <span className="flex-1 leading-relaxed text-base text-gray-200">{formatInline(textPart)}</span>
         </div>
       );
     } else if (trimmed.startsWith('![') && trimmed.includes('](') && trimmed.endsWith(')')) {
-      // نظام معالجة الصور المحسن
       const altMatch = trimmed.match(/!\[(.*?)\]/);
       const urlMatch = trimmed.match(/\((.*?)\)/);
       if (urlMatch && urlMatch[1]) {
@@ -202,24 +240,7 @@ function renderFormattedText(text: string) {
         );
       }
     } else {
-      // معالجة النصوص العادية مع الروابط المضمنة
-      const parts = trimmed.split(/(\[.*?\]\(.*?\))/g);
-      const renderedParts = parts.map((part, pIdx) => {
-        if (part.startsWith('[') && part.endsWith(')')) {
-          const match = part.match(/\[(.*?)\]\((.*?)\)/);
-          if (match) {
-             const label = match[1];
-             const url = match[2];
-             return (
-              <a key={pIdx} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 mx-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
-                <span>🔗</span><span>{toArabicNumerals(label)}</span><span className="text-[10px] opacity-70">↗</span>
-              </a>
-             );
-          }
-        }
-        return <span key={pIdx}>{toArabicNumerals(part)}</span>;
-      });
-      elements.push(<p key={index} className="leading-relaxed my-2 text-base text-gray-100">{renderedParts}</p>);
+      elements.push(<p key={index} className="leading-relaxed my-2 text-base text-gray-100">{formatInline(trimmed)}</p>);
     }
   });
 
@@ -545,8 +566,6 @@ export default function FootPlayChat() {
                 <div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
                   {msg.role === 'assistant' && <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm" /></div>}
                   <div className={`flex flex-col ${msg.role === 'user' ? 'max-w-[85%]' : 'w-full max-w-[90%]'}`}>
-                    
-                    {/* التعديل الجذري: تطابق كامل بين رسالة المستخدم ورد البوت في التصميم مع نص أبيض */}
                     <div className={`rounded-2xl px-5 py-4 shadow-xl backdrop-blur-md border border-white/10 text-base bg-black/50 ${msg.role === 'user' ? 'text-white rounded-tr-sm' : 'text-gray-100'}`}>
                       {msg.role === 'user' ? (
                         <div>
@@ -561,7 +580,6 @@ export default function FootPlayChat() {
                         </div>
                       ) : renderFormattedText(msg.content)}
                     </div>
-                    
                   </div>
                 </div>
               ) : null
