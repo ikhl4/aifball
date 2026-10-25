@@ -49,7 +49,7 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
-// 🌟 المكون الجديد: الملعب التكتيكي (Tactical Pitch)
+// 🌟 المكون: الملعب التكتيكي (Tactical Pitch)
 function TacticalPitch({ teamName, formation }: { teamName?: string, formation?: string }) {
   const [loading, setLoading] = useState(true);
   
@@ -248,7 +248,7 @@ function renderFormattedText(text: string) {
       return;
     }
 
-    // 🌟 قارئ الملعب التكتيكي المخصص (TheStatsAPI)
+    // 🌟 قارئ الملعب التكتيكي المخصص
     if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
       if (inTable) flushTable(index);
       const teamMatch = trimmed.match(/team="([^"]+)"/);
