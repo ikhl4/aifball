@@ -71,45 +71,6 @@ function renderFormattedText(text: string) {
   let tableRows: string[][] = [];
   let inTable = false;
 
-  const formatInline = (str: string) => {
-    const regex = /(\*\*.*?\*\*|\[([^\]]+)\]\((https?:\/\/[^\)]+)\)|https?:\/\/[^\s]+)/g;
-    const parts = str.split(regex);
-    const result: React.ReactNode[] = [];
-    let i = 0;
-    while (i < parts.length) {
-      const part = parts[i];
-      if (!part) { i++; continue; }
-      if (part.startsWith('**') && part.endsWith('**')) {
-        result.push(<strong key={`strong-${i}`} className="font-bold text-white">{toArabicNumerals(part.slice(2, -2))}</strong>);
-      } else if (parts[i + 1] !== undefined && parts[i + 2] !== undefined && parts[i + 1].length > 0 && parts[i + 2].startsWith('http')) {
-        const label = parts[i + 1];
-        const url = parts[i + 2];
-        const isYoutube = url.includes('youtu');
-        if (!isYoutube) {
-          result.push(
-            <a key={`link-${i}`} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
-              <span>🔗</span><span>{toArabicNumerals(label)}</span><span className="text-[10px] opacity-70">↗</span>
-            </a>
-          );
-        }
-        i += 2;
-      } else if (/^https?:\/\//.test(part)) {
-        const isYoutube = part.includes('youtu');
-        if (!isYoutube) {
-          result.push(
-            <a key={`url-${i}`} href={part} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
-              <span>🔗</span><span>فتح الرابط المباشر</span><span className="text-[10px] opacity-70">↗</span>
-            </a>
-          );
-        }
-      } else {
-        result.push(toArabicNumerals(part));
-      }
-      i++;
-    }
-    return result;
-  };
-
   const flushTable = (keyIndex: number) => {
     if (tableRows.length === 0) return;
     const headers = tableRows[0];
@@ -174,7 +135,7 @@ function renderFormattedText(text: string) {
             <thead>
               <tr className="bg-emerald-950/60 text-emerald-300">
                 {headers.map((h, idx) => (
-                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{formatInline(h)}</th>
+                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -182,7 +143,7 @@ function renderFormattedText(text: string) {
               {body.map((row, rIdx) => (
                 <tr key={rIdx} className="hover:bg-white/5 transition-colors">
                   {row.map((cell, cIdx) => (
-                    <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{formatInline(cell)}</td>
+                    <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{cell}</td>
                   ))}
                 </tr>
               ))}
@@ -209,11 +170,11 @@ function renderFormattedText(text: string) {
     if (!trimmed) {
       elements.push(<div key={index} className="h-1.5" />);
     } else if (trimmed.startsWith('### ')) {
-      elements.push(<h3 key={index} className="text-lg font-bold text-emerald-400 mt-5 mb-2">{formatInline(trimmed.replace(/^###\s+/, ''))}</h3>);
+      elements.push(<h3 key={index} className="text-lg font-bold text-emerald-400 mt-5 mb-2">{trimmed.replace(/^###\s+/, '')}</h3>);
     } else if (trimmed.startsWith('## ')) {
-      elements.push(<h2 key={index} className="text-xl font-bold text-emerald-400 mt-5 mb-2">{formatInline(trimmed.replace(/^##\s+/, ''))}</h2>);
+      elements.push(<h2 key={index} className="text-xl font-bold text-emerald-400 mt-5 mb-2">{trimmed.replace(/^##\s+/, '')}</h2>);
     } else if (trimmed.startsWith('# ')) {
-      elements.push(<h1 key={index} className="text-2xl font-bold text-emerald-400 mt-5 mb-3">{formatInline(trimmed.replace(/^#\s+/, ''))}</h1>);
+      elements.push(<h1 key={index} className="text-2xl font-bold text-emerald-400 mt-5 mb-3">{trimmed.replace(/^#\s+/, '')}</h1>);
     } else if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
       const isNumbered = /^\d+\.\s+/.test(trimmed);
       const textPart = trimmed.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '');
@@ -221,21 +182,44 @@ function renderFormattedText(text: string) {
       elements.push(
         <div key={index} className="flex items-start gap-2.5 my-2 pr-1.5">
           <span className="text-emerald-500 mt-0.5 font-bold whitespace-nowrap">{bullet}</span>
-          <span className="flex-1 leading-relaxed text-base text-gray-200">{formatInline(textPart)}</span>
+          <span className="flex-1 leading-relaxed text-base text-gray-200">{textPart}</span>
         </div>
       );
     } else if (trimmed.startsWith('![') && trimmed.includes('](') && trimmed.endsWith(')')) {
+      // نظام معالجة الصور المحسن
       const altMatch = trimmed.match(/!\[(.*?)\]/);
       const urlMatch = trimmed.match(/\((.*?)\)/);
       if (urlMatch && urlMatch[1]) {
         elements.push(
-          <div key={index} className="my-4 rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-black/40 p-2">
-            <img src={urlMatch[1]} alt={altMatch ? altMatch[1] : 'صورة رياضية'} className="w-full h-auto rounded-xl object-contain max-h-96" />
+          <div key={index} className="my-4 rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-black/40 p-2 relative group">
+            <img src={urlMatch[1]} alt={altMatch ? altMatch[1] : 'صورة رياضية'} onError={(e) => { e.currentTarget.src = '/logo.png'; e.currentTarget.alt = 'تعذر تحميل الصورة من المصدر'; }} className="w-full h-auto rounded-xl object-contain max-h-[28rem] bg-black/30" />
+            {altMatch && altMatch[1] && (
+              <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs text-white opacity-0 group-hover:opacity-100 transition duration-300 pointer-events-none">
+                {altMatch[1]}
+              </div>
+            )}
           </div>
         );
       }
     } else {
-      elements.push(<p key={index} className="leading-relaxed my-2 text-base text-gray-100">{formatInline(trimmed)}</p>);
+      // معالجة النصوص العادية مع الروابط المضمنة
+      const parts = trimmed.split(/(\[.*?\]\(.*?\))/g);
+      const renderedParts = parts.map((part, pIdx) => {
+        if (part.startsWith('[') && part.endsWith(')')) {
+          const match = part.match(/\[(.*?)\]\((.*?)\)/);
+          if (match) {
+             const label = match[1];
+             const url = match[2];
+             return (
+              <a key={pIdx} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 mx-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
+                <span>🔗</span><span>{toArabicNumerals(label)}</span><span className="text-[10px] opacity-70">↗</span>
+              </a>
+             );
+          }
+        }
+        return <span key={pIdx}>{toArabicNumerals(part)}</span>;
+      });
+      elements.push(<p key={index} className="leading-relaxed my-2 text-base text-gray-100">{renderedParts}</p>);
     }
   });
 
@@ -366,11 +350,7 @@ export default function FootPlayChat() {
           if(uploadRes.ok) {
             const uploadData = await uploadRes.json();
             if (uploadData && uploadData.id) {
-              uploadedDifyFiles.push({
-                type: 'image',
-                transfer_method: 'local_file',
-                upload_file_id: uploadData.id
-              });
+              uploadedDifyFiles.push({ type: 'image', transfer_method: 'local_file', upload_file_id: uploadData.id });
             }
           }
         } catch (e) {
@@ -413,11 +393,9 @@ export default function FootPlayChat() {
 
               try {
                 const parsed = JSON.parse(dataStr);
-                
                 if (parsed.event === 'message' && typeof parsed.answer === 'string') {
                   setLoading(false);
                   finalAnswer += parsed.answer;
-                  
                   setMessages(prev => {
                     const updated = [...prev];
                     const lastIndex = updated.length - 1;
@@ -427,7 +405,6 @@ export default function FootPlayChat() {
                     return updated;
                   });
                 }
-
                 if (parsed.conversation_id) {
                   finalConvId = parsed.conversation_id;
                   setConversationId(finalConvId);
@@ -443,7 +420,7 @@ export default function FootPlayChat() {
         const updated = [...prev];
         const lastIndex = updated.length - 1;
         if (updated[lastIndex].role === 'assistant') {
-          updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم.';
+          updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم. يرجى التأكد من المصادر.';
         }
         return updated;
       });
@@ -461,11 +438,9 @@ export default function FootPlayChat() {
             messages: currentMessages,
             updatedAt: new Date().toISOString()
           };
-          
           const newSessions = [...prevSessions];
           if (idx >= 0) newSessions[idx] = updatedSession;
           else newSessions.unshift(updatedSession);
-          
           localStorage.setItem(STORAGE_KEY, JSON.stringify(newSessions));
           return newSessions;
         });
@@ -485,7 +460,6 @@ export default function FootPlayChat() {
 
   return (
     <div dir="rtl" className="flex flex-col h-[100dvh] relative overflow-hidden font-saudi bg-[#131314] text-[#E3E3E3]">
-      
       <div className="absolute inset-0 bg-cover bg-center filter brightness-[0.55] pointer-events-none z-0" style={{ backgroundImage: `url('/IMG_0091.jpeg')` }} />
       <div className="absolute inset-0 bg-[#131314]/75 pointer-events-none z-0" />
 
@@ -572,8 +546,8 @@ export default function FootPlayChat() {
                   {msg.role === 'assistant' && <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm" /></div>}
                   <div className={`flex flex-col ${msg.role === 'user' ? 'max-w-[85%]' : 'w-full max-w-[90%]'}`}>
                     
-                    {/* تعديل لون خلفية المستخدم لتكون مطابقة لخلفية البوت تماماً، مع نص أبيض */}
-                    <div className={`rounded-2xl px-5 py-4 shadow-xl backdrop-blur-md border border-white/10 text-base bg-black/50 ${msg.role === 'user' ? 'text-white' : 'text-gray-100'}`}>
+                    {/* التعديل الجذري: تطابق كامل بين رسالة المستخدم ورد البوت في التصميم مع نص أبيض */}
+                    <div className={`rounded-2xl px-5 py-4 shadow-xl backdrop-blur-md border border-white/10 text-base bg-black/50 ${msg.role === 'user' ? 'text-white rounded-tr-sm' : 'text-gray-100'}`}>
                       {msg.role === 'user' ? (
                         <div>
                           {msg.imageUrls && msg.imageUrls.length > 0 && (
