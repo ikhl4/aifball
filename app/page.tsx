@@ -17,12 +17,6 @@ interface ChatSession {
   updatedAt: string;
 }
 
-function toArabicNumerals(text: string): string {
-  if (!text) return '';
-  const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-  return text.replace(/[0-9]/g, (w) => arabicNumbers[parseInt(w, 10)]);
-}
-
 function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const [imgError, setImgError] = useState(false);
   const dimensions = size === 'sm' ? 'w-8 h-8 rounded-[9px]' : size === 'lg' ? 'w-14 h-14 rounded-[16px]' : 'w-10 h-10 rounded-[11px]';
@@ -49,7 +43,6 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
-// 🌟 المكون: الملعب التكتيكي
 function TacticalPitch({ teamName, formation }: { teamName?: string, formation?: string }) {
   const [loading, setLoading] = useState(true);
   const mockPlayers = [
@@ -102,7 +95,7 @@ function TacticalPitch({ teamName, formation }: { teamName?: string, formation?:
               style={{ left: `${player.x}%`, bottom: `${player.y}%` }}
             >
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black border-2 border-emerald-400 flex items-center justify-center shadow-lg mb-1 relative group cursor-pointer">
-                <span className="text-white text-[10px] sm:text-xs font-bold">{toArabicNumerals(player.num)}</span>
+                <span className="text-white text-[10px] sm:text-xs font-bold">{player.num}</span>
                 <div className="absolute bottom-full mb-1 bg-black/80 text-emerald-300 text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
                   {player.name}
                 </div>
@@ -139,7 +132,6 @@ function renderInlineText(text: string) {
         return (
           <a key={pIdx} href={match[2]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 mx-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
             <span>🔗</span>
-            {/* إزالة الأرقام العربية من نص الرابط لتظهر إنجليزية */}
             <span>{match[1]}</span>
             <span className="text-[10px] opacity-70">↗</span>
           </a>
@@ -150,9 +142,9 @@ function renderInlineText(text: string) {
     const boldParts = part.split(/(\*\*.*?\*\*)/g);
     return boldParts.map((bPart, bIdx) => {
       if (bPart.startsWith('**') && bPart.endsWith('**')) {
-         return <strong key={`${pIdx}-${bIdx}`} className="font-extrabold text-emerald-400">{toArabicNumerals(bPart.slice(2, -2))}</strong>;
+         return <strong key={`${pIdx}-${bIdx}`} className="font-extrabold text-emerald-400">{bPart.slice(2, -2)}</strong>;
       }
-      return <span key={`${pIdx}-${bIdx}`}>{toArabicNumerals(bPart)}</span>;
+      return <span key={`${pIdx}-${bIdx}`}>{bPart}</span>;
     });
   });
 }
@@ -160,7 +152,6 @@ function renderInlineText(text: string) {
 function renderFormattedText(text: string) {
   const youtubeIds = extractYouTubeIds(text);
   
-  // لا نقوم بمسح روابط يوتيوب من النص الأساسي هنا
   let processedText = text;
   processedText = processedText.replace(/\]\s*\n\s*\(/g, '](');
   
@@ -188,8 +179,8 @@ function renderFormattedText(text: string) {
             <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">AiFBall Pro</span>
           </div>
           <div className="grid grid-cols-2 gap-3 mb-5 text-center">
-            <div className="p-3 rounded-2xl bg-black/30 border border-emerald-900/30"><span className="text-sm font-bold text-emerald-400 block truncate">{toArabicNumerals(p1Title)}</span></div>
-            <div className="p-3 rounded-2xl bg-black/30 border border-sky-900/30"><span className="text-sm font-bold text-sky-400 block truncate">{toArabicNumerals(p2Title)}</span></div>
+            <div className="p-3 rounded-2xl bg-black/30 border border-emerald-900/30"><span className="text-sm font-bold text-emerald-400 block truncate">{p1Title}</span></div>
+            <div className="p-3 rounded-2xl bg-black/30 border border-sky-900/30"><span className="text-sm font-bold text-sky-400 block truncate">{p2Title}</span></div>
           </div>
           <div className="space-y-4">
             {body.map((row, rIdx) => {
@@ -206,9 +197,9 @@ function renderFormattedText(text: string) {
                 return (
                   <div key={rIdx} className="space-y-2">
                     <div className="flex items-center justify-between text-sm px-1">
-                      <span className={`font-bold ${p1Wins ? 'text-emerald-400' : 'text-gray-400'}`}>{toArabicNumerals(val1Str)}</span>
-                      <span className="text-gray-300 font-medium text-center text-xs">{toArabicNumerals(metric)}</span>
-                      <span className={`font-bold ${!p1Wins ? 'text-sky-400' : 'text-gray-400'}`}>{toArabicNumerals(val2Str)}</span>
+                      <span className={`font-bold ${p1Wins ? 'text-emerald-400' : 'text-gray-400'}`}>{val1Str}</span>
+                      <span className="text-gray-300 font-medium text-center text-xs">{metric}</span>
+                      <span className={`font-bold ${!p1Wins ? 'text-sky-400' : 'text-gray-400'}`}>{val2Str}</span>
                     </div>
                     <div className="w-full h-3 rounded-full bg-black/40 overflow-hidden flex gap-1 p-0.5">
                       <div style={{ width: `${p1}%` }} className={`h-full rounded-full transition-all duration-700 ${p1Wins ? 'bg-gradient-to-l from-emerald-400 to-emerald-600' : 'bg-emerald-900/40'}`} />
@@ -219,9 +210,9 @@ function renderFormattedText(text: string) {
               }
               return (
                 <div key={rIdx} className="flex items-center justify-between py-2 px-3 rounded-xl bg-black/30 text-sm">
-                  <span className="text-emerald-400 font-bold">{toArabicNumerals(val1Str)}</span>
-                  <span className="text-gray-400 text-xs">{toArabicNumerals(metric)}</span>
-                  <span className="text-sky-400 font-bold">{toArabicNumerals(val2Str)}</span>
+                  <span className="text-emerald-400 font-bold">{val1Str}</span>
+                  <span className="text-gray-400 text-xs">{metric}</span>
+                  <span className="text-sky-400 font-bold">{val2Str}</span>
                 </div>
               );
             })}
@@ -235,7 +226,7 @@ function renderFormattedText(text: string) {
             <thead>
               <tr className="bg-emerald-950/60 text-emerald-300">
                 {headers.map((h, idx) => (
-                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{toArabicNumerals(cleanCell(h))}</th>
+                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{cleanCell(h)}</th>
                 ))}
               </tr>
             </thead>
@@ -243,7 +234,7 @@ function renderFormattedText(text: string) {
               {body.map((row, rIdx) => (
                 <tr key={rIdx} className="hover:bg-white/5 transition-colors">
                   {row.map((cell, cIdx) => (
-                    <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{toArabicNumerals(cleanCell(cell))}</td>
+                    <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{cleanCell(cell)}</td>
                   ))}
                 </tr>
               ))}
@@ -311,7 +302,7 @@ function renderFormattedText(text: string) {
     } else if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
       const isNumbered = /^\d+\.\s+/.test(trimmed);
       const textPart = trimmed.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '');
-      const bullet = isNumbered ? toArabicNumerals(trimmed.match(/^\d+\./)![0]) : '•';
+      const bullet = isNumbered ? trimmed.match(/^\d+\./)![0] : '•';
       elements.push(
         <div key={index} className="flex items-start gap-2.5 my-2 pr-1.5">
           <span className="text-emerald-500 mt-0.5 font-bold whitespace-nowrap">{bullet}</span>
@@ -342,13 +333,11 @@ function renderFormattedText(text: string) {
           <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl">
             <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-950/50 border-b border-white/10">
               <span className="text-xs sm:text-sm font-bold text-emerald-400">🎥 مشاهدة الملخص المدمج</span>
-              {/* الرابط الصحيح لفتح الفيديو في يوتيوب */}
               <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
                 فتح في تطبيق يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video">
-              {/* استخدام youtube-nocookie لمنع بعض الحظر وإضافة referrerPolicy */}
               <iframe 
                 src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0`} 
                 title="YouTube video player" 
@@ -396,7 +385,6 @@ export default function FootPlayChat() {
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
 
-    // رابط السكربت الصحيح
     if (!document.querySelector('script[src="https://widgets.api-sports.io/2.0.0/widgets.js"]')) {
       const script = document.createElement('script');
       script.type = 'module';
@@ -602,7 +590,6 @@ export default function FootPlayChat() {
       </div>
 
       <style jsx global>{`
-        /* رابط الخط الصحيح */
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
@@ -631,7 +618,7 @@ export default function FootPlayChat() {
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5">
           {sessions.map((s) => (
             <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setConversationId(s.conversationId); setMessages(s.messages); setSidebarOpen(false); }} className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 cursor-pointer text-xs truncate transition border border-transparent hover:border-white/10">
-              {toArabicNumerals(s.title)}
+              {s.title}
             </div>
           ))}
         </div>
@@ -667,9 +654,9 @@ export default function FootPlayChat() {
             <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
                 <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-black/10 backdrop-blur-sm border border-white/10 shadow-lg min-h-[115px] hover:border-emerald-500/50 hover:bg-black/20 transition cursor-pointer" onClick={() => { setInput(card.question); sendMessage(card.question); }}>
-                  <p className="text-sm sm:text-base font-bold text-gray-100 leading-relaxed line-clamp-2">{toArabicNumerals(card.question)}</p>
+                  <p className="text-sm sm:text-base font-bold text-gray-100 leading-relaxed line-clamp-2">{card.question}</p>
                   <div className="flex items-center justify-between w-full mt-3 pt-1">
-                    <span className="text-xs sm:text-sm font-bold text-[#22C55E] truncate pl-1">{toArabicNumerals(card.tag)}</span>
+                    <span className="text-xs sm:text-sm font-bold text-[#22C55E] truncate pl-1">{card.tag}</span>
                     <span className="w-8 h-8 rounded-full bg-black/30 flex items-center justify-center text-sm shadow-inner">{card.icon}</span>
                   </div>
                 </div>
@@ -693,7 +680,7 @@ export default function FootPlayChat() {
                               ))}
                             </div>
                           )}
-                          <p>{toArabicNumerals(msg.content)}</p>
+                          <p>{msg.content}</p>
                         </div>
                       ) : renderFormattedText(msg.content)}
                     </div>
@@ -723,7 +710,7 @@ export default function FootPlayChat() {
               {attachedFiles.map((f, idx) => (
                 <div key={idx} className="flex items-center gap-2 bg-black/40 border border-emerald-500/50 p-1.5 pr-3 rounded-lg shadow-sm backdrop-blur-md">
                   <img src={f.url} alt="مرفق" className="w-8 h-8 object-cover rounded-md border border-white/10" />
-                  <span className="text-xs text-emerald-300 max-w-[120px] truncate" dir="ltr">{toArabicNumerals(f.file.name)}</span>
+                  <span className="text-xs text-emerald-300 max-w-[120px] truncate" dir="ltr">{f.file.name}</span>
                   <button onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-300 font-bold ml-1 mr-1 transition">✕</button>
                 </div>
               ))}
