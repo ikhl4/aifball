@@ -159,9 +159,26 @@ function renderFormattedText(text: string) {
   lines.forEach((line, index) => {
     const trimmed = line.trim();
 
-    // تجاهل وحذف أي سطر يبدأ بعلامات الماركداون البرمجية (مثل ```text) لتنظيف الواجهة
-    if (trimmed.startsWith('```')) {
-      return; 
+    // إخفاء الأكواد البرمجية العشوائية لتنظيف الواجهة
+    if (trimmed.startsWith('```')) return;
+
+    // 🌟 ميزة تحليل كود Widgets التفاعلي من API-Football
+    if (trimmed.startsWith('<api-sports-widget') && trimmed.includes('</api-sports-widget>')) {
+      if (inTable) flushTable(index);
+      
+      const attrRegex = /data-([a-zA-Z0-9-]+)="([^"]+)"/g;
+      let match;
+      const props: any = {};
+      while ((match = attrRegex.exec(trimmed)) !== null) {
+        props[`data-${match[1]}`] = match[2];
+      }
+      
+      elements.push(
+        <div key={`widget-${index}`} className="my-5 w-full rounded-2xl overflow-hidden border border-emerald-900/40 shadow-xl bg-transparent relative z-10 min-h-[100px]">
+          {React.createElement('api-sports-widget', props)}
+        </div>
+      );
+      return;
     }
 
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
@@ -237,12 +254,12 @@ function renderFormattedText(text: string) {
           <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl">
             <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-950/50 border-b border-white/10">
               <span className="text-xs sm:text-sm font-bold text-emerald-400">🎥 مشاهدة الملخص المدمج</span>
-              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
+              <a href={`[https://www.youtube.com/watch?v=$](https://www.youtube.com/watch?v=$){vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
                 فتح في تطبيق يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video">
-              <iframe src={`https://www.youtube.com/embed/${vid}`} title="YouTube video player" className="w-full h-full border-0" allowFullScreen />
+              <iframe src={`[https://www.youtube.com/embed/$](https://www.youtube.com/embed/$){vid}`} title="YouTube video player" className="w-full h-full border-0" allowFullScreen />
             </div>
           </div>
         ))}
@@ -281,6 +298,14 @@ export default function FootPlayChat() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
+
+    // 🌟 تشغيل سكربت واجهات API-Football في الخلفية
+    if (!document.querySelector('script[src="[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)"]')) {
+      const script = document.createElement('script');
+      script.type = 'module';
+      script.src = '[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)';
+      document.body.appendChild(script);
+    }
   }, []);
 
   useEffect(() => {
@@ -467,8 +492,21 @@ export default function FootPlayChat() {
       <div className="absolute inset-0 bg-cover bg-center filter brightness-[0.55] pointer-events-none z-0" style={{ backgroundImage: `url('/IMG_0091.jpeg')` }} />
       <div className="absolute inset-0 bg-[#131314]/75 pointer-events-none z-0" />
 
+      {/* 🌟 إعدادات API-Football المخفية (Config) */}
+      <div style={{ display: 'none' }}>
+        {React.createElement('api-sports-widget', {
+          'data-type': 'config',
+          'data-key': 'c1940d93074f34c797f1321047e21e12',
+          'data-sport': 'football',
+          'data-lang': 'en',
+          'data-theme': 'dark',
+          'data-timezone': 'Asia/Riyadh',
+          'data-show-errors': 'true'
+        })}
+      </div>
+
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
+        @import url('[https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap](https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap)');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Tajawal', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
