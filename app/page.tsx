@@ -484,10 +484,13 @@ export default function FootPlayChat() {
       <div className="absolute inset-0 bg-cover bg-center filter brightness-[0.55] pointer-events-none z-0" style={{ backgroundImage: `url('/IMG_0091.jpeg')` }} />
       <div className="absolute inset-0 bg-[#131314]/75 pointer-events-none z-0" />
 
+      {/* 
+        تم استبدال الخط بـ Cairo من Google Fonts 
+        ويعمل الآن بشكل تلقائي دون الحاجة لرفع أي ملفات.
+      */}
       <style jsx global>{`
-        @font-face { font-family: 'Saudi'; src: url('/SaudiWeb-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
-        @font-face { font-family: 'Saudi'; src: url('/SaudiWeb-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
-        .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Saudi', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+        .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         .custom-scrollbar::-webkit-scrollbar { height: 6px; }
