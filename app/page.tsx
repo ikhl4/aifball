@@ -138,7 +138,10 @@ function renderInlineText(text: string) {
       if (match) {
         return (
           <a key={pIdx} href={match[2]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 mx-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
-            <span>🔗</span><span>{toArabicNumerals(match[1])}</span><span className="text-[10px] opacity-70">↗</span>
+            <span>🔗</span>
+            {/* إزالة الأرقام العربية من نص الرابط لتظهر إنجليزية */}
+            <span>{match[1]}</span>
+            <span className="text-[10px] opacity-70">↗</span>
           </a>
         );
       }
@@ -157,7 +160,8 @@ function renderInlineText(text: string) {
 function renderFormattedText(text: string) {
   const youtubeIds = extractYouTubeIds(text);
   
-  let processedText = text.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g, '');
+  // لا نقوم بمسح روابط يوتيوب من النص الأساسي هنا
+  let processedText = text;
   processedText = processedText.replace(/\]\s*\n\s*\(/g, '](');
   
   const lines = processedText.split('\n');
@@ -338,12 +342,21 @@ function renderFormattedText(text: string) {
           <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl">
             <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-950/50 border-b border-white/10">
               <span className="text-xs sm:text-sm font-bold text-emerald-400">🎥 مشاهدة الملخص المدمج</span>
+              {/* الرابط الصحيح لفتح الفيديو في يوتيوب */}
               <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
                 فتح في تطبيق يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video">
-              <iframe src={`https://www.youtube.com/embed/${vid}`} title="YouTube video player" className="w-full h-full border-0" allowFullScreen />
+              {/* استخدام youtube-nocookie لمنع بعض الحظر وإضافة referrerPolicy */}
+              <iframe 
+                src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0`} 
+                title="YouTube video player" 
+                className="w-full h-full border-0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen 
+              />
             </div>
           </div>
         ))}
@@ -383,6 +396,7 @@ export default function FootPlayChat() {
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
 
+    // رابط السكربت الصحيح
     if (!document.querySelector('script[src="https://widgets.api-sports.io/2.0.0/widgets.js"]')) {
       const script = document.createElement('script');
       script.type = 'module';
@@ -588,6 +602,7 @@ export default function FootPlayChat() {
       </div>
 
       <style jsx global>{`
+        /* رابط الخط الصحيح */
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
