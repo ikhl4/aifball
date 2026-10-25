@@ -49,6 +49,74 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
+// 🌟 المكون الجديد: الملعب التكتيكي (Tactical Pitch)
+function TacticalPitch({ teamName, formation }: { teamName?: string, formation?: string }) {
+  const [loading, setLoading] = useState(true);
+  
+  // بيانات افتراضية مؤقتة (تتشكل على طريقة 4-2-3-1)
+  const mockPlayers = [
+    { num: '1', name: 'الحارس', x: 50, y: 8 },
+    { num: '2', name: 'ظهير أيمن', x: 85, y: 25 },
+    { num: '3', name: 'قلب دفاع', x: 65, y: 20 },
+    { num: '4', name: 'قلب دفاع', x: 35, y: 20 },
+    { num: '5', name: 'ظهير أيسر', x: 15, y: 25 },
+    { num: '6', name: 'محور', x: 60, y: 45 },
+    { num: '8', name: 'محور', x: 40, y: 45 },
+    { num: '7', name: 'جناح أيمن', x: 85, y: 70 },
+    { num: '10', name: 'صانع لعب', x: 50, y: 65 },
+    { num: '11', name: 'جناح أيسر', x: 15, y: 70 },
+    { num: '9', name: 'مهاجم', x: 50, y: 88 },
+  ];
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div className="my-5 p-4 rounded-3xl bg-black/40 backdrop-blur-md border border-emerald-900/40 shadow-2xl max-w-md mx-auto">
+      <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
+        <span className="text-sm font-bold text-emerald-400 flex items-center gap-2">
+          <span>📋</span><span>التشكيل التكتيكي {teamName ? `- ${teamName}` : ''}</span>
+        </span>
+        <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">
+          {formation || '4-2-3-1'}
+        </span>
+      </div>
+      
+      {loading ? (
+        <div className="w-full aspect-[2/3] flex items-center justify-center bg-emerald-900/20 rounded-xl border border-white/5">
+          <span className="text-emerald-500 font-bold text-sm animate-pulse">جاري سحب التمركزات...</span>
+        </div>
+      ) : (
+        <div className="relative w-full aspect-[2/3] bg-[#2E7D32] rounded-xl overflow-hidden shadow-inner border-2 border-white/20 select-none">
+          <div className="absolute inset-2 border-2 border-white/40"></div>
+          <div className="absolute top-1/2 left-2 right-2 border-t-2 border-white/40 -translate-y-1/2"></div>
+          <div className="absolute top-1/2 left-1/2 w-24 h-24 border-2 border-white/40 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+          <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-white/60 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+          <div className="absolute bottom-2 left-1/2 w-1/2 h-1/6 border-2 border-white/40 border-b-0 -translate-x-1/2"></div>
+          <div className="absolute top-2 left-1/2 w-1/2 h-1/6 border-2 border-white/40 border-t-0 -translate-x-1/2"></div>
+
+          {mockPlayers.map((player, idx) => (
+            <div 
+              key={idx} 
+              className="absolute flex flex-col items-center justify-center transform -translate-x-1/2 -translate-y-1/2 transition-all duration-700"
+              style={{ left: `${player.x}%`, bottom: `${player.y}%` }}
+            >
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black border-2 border-emerald-400 flex items-center justify-center shadow-lg mb-1 relative group cursor-pointer">
+                <span className="text-white text-[10px] sm:text-xs font-bold">{toArabicNumerals(player.num)}</span>
+                <div className="absolute bottom-full mb-1 bg-black/80 text-emerald-300 text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                  {player.name}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function extractYouTubeIds(text: string): string[] {
   const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
   const ids: string[] = [];
@@ -159,24 +227,34 @@ function renderFormattedText(text: string) {
   lines.forEach((line, index) => {
     const trimmed = line.trim();
 
-    // إخفاء الأكواد البرمجية العشوائية لتنظيف الواجهة
-    if (trimmed.startsWith('```')) return;
+    if (trimmed.startsWith('```')) {
+      return; 
+    }
 
-    // 🌟 ميزة تحليل كود Widgets التفاعلي من API-Football
+    // 🌟 قارئ الواجهات المخصصة (API-Football)
     if (trimmed.startsWith('<api-sports-widget') && trimmed.includes('</api-sports-widget>')) {
       if (inTable) flushTable(index);
-      
       const attrRegex = /data-([a-zA-Z0-9-]+)="([^"]+)"/g;
       let match;
       const props: any = {};
       while ((match = attrRegex.exec(trimmed)) !== null) {
         props[`data-${match[1]}`] = match[2];
       }
-      
       elements.push(
         <div key={`widget-${index}`} className="my-5 w-full rounded-2xl overflow-hidden border border-emerald-900/40 shadow-xl bg-transparent relative z-10 min-h-[100px]">
           {React.createElement('api-sports-widget', props)}
         </div>
+      );
+      return;
+    }
+
+    // 🌟 قارئ الملعب التكتيكي المخصص (TheStatsAPI) - تم تصحيح الخطأ الإملائي هنا
+    if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
+      if (inTable) flushTable(index);
+      const teamMatch = trimmed.match(/team="([^"]+)"/);
+      const formMatch = trimmed.match(/formation="([^"]+)"/);
+      elements.push(
+        <TacticalPitch : ? formMatch[1] formation="{formMatch" key="{`pitch-${index}`}" teamMatch[1] teamName="{teamMatch" undefined}/>
       );
       return;
     }
