@@ -49,11 +49,9 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
-// 🌟 المكون: الملعب التكتيكي (Tactical Pitch)
+// 🌟 المكون: الملعب التكتيكي
 function TacticalPitch({ teamName, formation }: { teamName?: string, formation?: string }) {
   const [loading, setLoading] = useState(true);
-  
-  // بيانات افتراضية مؤقتة (تتشكل على طريقة 4-2-3-1)
   const mockPlayers = [
     { num: '1', name: 'الحارس', x: 50, y: 8 },
     { num: '2', name: 'ظهير أيمن', x: 85, y: 25 },
@@ -77,10 +75,10 @@ function TacticalPitch({ teamName, formation }: { teamName?: string, formation?:
     <div className="my-5 p-4 rounded-3xl bg-black/40 backdrop-blur-md border border-emerald-900/40 shadow-2xl max-w-md mx-auto">
       <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
         <span className="text-sm font-bold text-emerald-400 flex items-center gap-2">
-          <span>📋</span><span>التشكيل التكتيكي {teamName ? `- ${teamName}` : ''}</span>
+          <span>📋</span><span>التشكيل التكتيكي {teamName ? `- ${teamName.replace(/\*\*/g, '')}` : ''}</span>
         </span>
         <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">
-          {formation || '4-2-3-1'}
+          {formation ? formation.replace(/\*\*/g, '') : '4-2-3-1'}
         </span>
       </div>
       
@@ -132,12 +130,44 @@ function parseStatNumber(val: string): number | null {
   return cleaned ? parseFloat(cleaned[0]) : null;
 }
 
+// 🌟 دالة معالجة النصوص وإخفاء النجوم ** وتحويلها لخط عريض
+function renderInlineText(text: string) {
+  const linkParts = text.split(/(\[.*?\]\(.*?\))/g);
+  return linkParts.map((part, pIdx) => {
+    if (part.startsWith('[') && part.endsWith(')')) {
+      const match = part.match(/\[(.*?)\]\((.*?)\)/);
+      if (match) {
+        return (
+          <a key={pIdx} href={match[2]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 mx-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
+            <span>🔗</span><span>{toArabicNumerals(match[1])}</span><span className="text-[10px] opacity-70">↗</span>
+          </a>
+        );
+      }
+    }
+    
+    const boldParts = part.split(/(\*\*.*?\*\*)/g);
+    return boldParts.map((bPart, bIdx) => {
+      if (bPart.startsWith('**') && bPart.endsWith('**')) {
+         return <strong key={`${pIdx}-${bIdx}`} className="font-extrabold text-emerald-400">{toArabicNumerals(bPart.slice(2, -2))}</strong>;
+      }
+      return <span key={`${pIdx}-${bIdx}`}>{toArabicNumerals(bPart)}</span>;
+    });
+  });
+}
+
 function renderFormattedText(text: string) {
-  let processedText = text.replace(/\]\s*\n\s*\(/g, '](');
+  const youtubeIds = extractYouTubeIds(text);
+  
+  // إخفاء الروابط الخام لليوتيوب من النص حتى لا تظهر بشكل مشوه
+  let processedText = text.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g, '');
+  processedText = processedText.replace(/\]\s*\n\s*\(/g, '](');
+  
   const lines = processedText.split('\n');
   const elements: React.ReactNode[] = [];
   let tableRows: string[][] = [];
   let inTable = false;
+
+  const cleanCell = (str: string) => str.replace(/\*\*/g, '').trim();
 
   const flushTable = (keyIndex: number) => {
     if (tableRows.length === 0) return;
@@ -147,8 +177,8 @@ function renderFormattedText(text: string) {
                               body.filter(r => r.length >= 3 && parseStatNumber(r[1]) !== null && parseStatNumber(r[2]) !== null).length >= Math.ceil(body.length * 0.5);
 
     if (isComparisonTable) {
-      const p1Title = headers[1]?.replace(/\*\*/g, '').trim() || 'الطرف الأول';
-      const p2Title = headers[2]?.replace(/\*\*/g, '').trim() || 'الطرف الثاني';
+      const p1Title = cleanCell(headers[1]) || 'الطرف الأول';
+      const p2Title = cleanCell(headers[2]) || 'الطرف الثاني';
       elements.push(
         <div key={`datamb-${keyIndex}`} className="my-5 p-4 rounded-3xl bg-black/40 backdrop-blur-md border border-emerald-900/40 shadow-2xl">
           <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
@@ -161,9 +191,9 @@ function renderFormattedText(text: string) {
           </div>
           <div className="space-y-4">
             {body.map((row, rIdx) => {
-              const metric = row[0]?.replace(/\*\*/g, '') || '';
-              const val1Str = row[1]?.replace(/\*\*/g, '') || '-';
-              const val2Str = row[2]?.replace(/\*\*/g, '') || '-';
+              const metric = cleanCell(row[0]);
+              const val1Str = cleanCell(row[1]) || '-';
+              const val2Str = cleanCell(row[2]) || '-';
               const n1 = parseStatNumber(val1Str);
               const n2 = parseStatNumber(val2Str);
               if (n1 !== null && n2 !== null && n1 + n2 > 0) {
@@ -203,7 +233,7 @@ function renderFormattedText(text: string) {
             <thead>
               <tr className="bg-emerald-950/60 text-emerald-300">
                 {headers.map((h, idx) => (
-                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{h}</th>
+                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{toArabicNumerals(cleanCell(h))}</th>
                 ))}
               </tr>
             </thead>
@@ -211,7 +241,7 @@ function renderFormattedText(text: string) {
               {body.map((row, rIdx) => (
                 <tr key={rIdx} className="hover:bg-white/5 transition-colors">
                   {row.map((cell, cIdx) => (
-                    <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{cell}</td>
+                    <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{toArabicNumerals(cleanCell(cell))}</td>
                   ))}
                 </tr>
               ))}
@@ -231,7 +261,6 @@ function renderFormattedText(text: string) {
       return; 
     }
 
-    // 🌟 قارئ الواجهات المخصصة (API-Football)
     if (trimmed.startsWith('<api-sports-widget') && trimmed.includes('</api-sports-widget>')) {
       if (inTable) flushTable(index);
       const attrRegex = /data-([a-zA-Z0-9-]+)="([^"]+)"/g;
@@ -248,7 +277,6 @@ function renderFormattedText(text: string) {
       return;
     }
 
-    // 🌟 قارئ الملعب التكتيكي المخصص
     if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
       if (inTable) flushTable(index);
       const teamMatch = trimmed.match(/team="([^"]+)"/);
@@ -271,11 +299,11 @@ function renderFormattedText(text: string) {
     if (!trimmed) {
       elements.push(<div key={index} className="h-1.5" />);
     } else if (trimmed.startsWith('### ')) {
-      elements.push(<h3 key={index} className="text-lg font-bold text-emerald-400 mt-5 mb-2">{trimmed.replace(/^###\s+/, '')}</h3>);
+      elements.push(<h3 key={index} className="text-lg font-bold text-emerald-400 mt-5 mb-2">{renderInlineText(trimmed.replace(/^###\s+/, ''))}</h3>);
     } else if (trimmed.startsWith('## ')) {
-      elements.push(<h2 key={index} className="text-xl font-bold text-emerald-400 mt-5 mb-2">{trimmed.replace(/^##\s+/, '')}</h2>);
+      elements.push(<h2 key={index} className="text-xl font-bold text-emerald-400 mt-5 mb-2">{renderInlineText(trimmed.replace(/^##\s+/, ''))}</h2>);
     } else if (trimmed.startsWith('# ')) {
-      elements.push(<h1 key={index} className="text-2xl font-bold text-emerald-400 mt-5 mb-3">{trimmed.replace(/^#\s+/, '')}</h1>);
+      elements.push(<h1 key={index} className="text-2xl font-bold text-emerald-400 mt-5 mb-3">{renderInlineText(trimmed.replace(/^#\s+/, ''))}</h1>);
     } else if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
       const isNumbered = /^\d+\.\s+/.test(trimmed);
       const textPart = trimmed.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '');
@@ -283,7 +311,7 @@ function renderFormattedText(text: string) {
       elements.push(
         <div key={index} className="flex items-start gap-2.5 my-2 pr-1.5">
           <span className="text-emerald-500 mt-0.5 font-bold whitespace-nowrap">{bullet}</span>
-          <span className="flex-1 leading-relaxed text-base text-gray-200">{textPart}</span>
+          <span className="flex-1 leading-relaxed text-base text-gray-200">{renderInlineText(textPart)}</span>
         </div>
       );
     } else if (trimmed.startsWith('![') && trimmed.includes('](') && trimmed.endsWith(')')) {
@@ -293,38 +321,16 @@ function renderFormattedText(text: string) {
         elements.push(
           <div key={index} className="my-4 rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-black/40 p-2 relative group">
             <img src={urlMatch[1]} alt={altMatch ? altMatch[1] : 'صورة رياضية'} onError={(e) => { e.currentTarget.src = '/logo.png'; e.currentTarget.alt = 'تعذر تحميل الصورة من المصدر'; }} className="w-full h-auto rounded-xl object-contain max-h-[28rem] bg-black/30" />
-            {altMatch && altMatch[1] && (
-              <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs text-white opacity-0 group-hover:opacity-100 transition duration-300 pointer-events-none">
-                {altMatch[1]}
-              </div>
-            )}
           </div>
         );
       }
     } else {
-      const parts = trimmed.split(/(\[.*?\]\(.*?\))/g);
-      const renderedParts = parts.map((part, pIdx) => {
-        if (part.startsWith('[') && part.endsWith(')')) {
-          const match = part.match(/\[(.*?)\]\((.*?)\)/);
-          if (match) {
-             const label = match[1];
-             const url = match[2];
-             return (
-              <a key={pIdx} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 mx-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
-                <span>🔗</span><span>{toArabicNumerals(label)}</span><span className="text-[10px] opacity-70">↗</span>
-              </a>
-             );
-          }
-        }
-        return <span key={pIdx}>{toArabicNumerals(part)}</span>;
-      });
-      elements.push(<p key={index} className="leading-relaxed my-2 text-base text-gray-100">{renderedParts}</p>);
+      elements.push(<p key={index} className="leading-relaxed my-2 text-base text-gray-100">{renderInlineText(trimmed)}</p>);
     }
   });
 
   if (inTable) flushTable(lines.length);
 
-  const youtubeIds = extractYouTubeIds(text);
   if (youtubeIds.length > 0) {
     elements.push(
       <div key="youtube-embeds" className="mt-5 space-y-4">
@@ -583,6 +589,7 @@ export default function FootPlayChat() {
         })}
       </div>
 
+      {/* 🌟 خط كايرو هنا بكامل أناقته */}
       <style jsx global>{`
         @import url('[https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap)');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
