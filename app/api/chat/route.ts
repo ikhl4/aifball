@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   try {
     const { query, conversation_id } = await req.json();
 
-    const apiKey = 'App-zkNGXfedLH1xJm11kJezunZC';
+    const apiKey = 'App-3NlvwtpsjeTUXKG9wurQFF8E';
     const apiUrl = 'https://api.dify.ai/v1';
 
     const apiRes = await fetch(`${apiUrl}/chat-messages`, {
