@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import React from "react";
-import "./globals.css"; 
+import "./globals.css";
 
-// 1. إعدادات الميتاداتا (بدون viewport)
 export const metadata: Metadata = {
   title: "فوتبلاي | مساعدك الرياضي",
   description: "منصة فوتبلاي للذكاء الاصطناعي الرياضي",
@@ -20,7 +19,6 @@ export const metadata: Metadata = {
   },
 };
 
-// 2. إعدادات الـ Viewport منفصلة
 export const viewport: Viewport = {
   themeColor: "#1D6B35",
   width: "device-width",
