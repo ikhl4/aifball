@@ -1,22 +1,7 @@
-import type { Metadata } from "next";
-import "./globals.css";
-
-export const metadata: Metadata = {
-  title: "AiFBall | فوتبلاي",
-  description: "منصة فوتبلاي للذكاء الاصطناعي والتحليل الرياضي التكتيكي",
-  manifest: "/manifest.json",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="ar" dir="rtl">
-      <body className="bg-[#131314] text-[#E3E3E3] font-['Cairo',sans-serif]">
-        {children}
-      </body>
-    </html>
-  );
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body {
+background-color: #131314;
+color: #E3Е3Е3;
 }
