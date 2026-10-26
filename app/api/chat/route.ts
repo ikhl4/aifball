@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -33,65 +34,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: errorText }, { status: 500 });
     }
 
-    const reader = apiRes.body?.getReader();
-    const decoder = new TextDecoder('utf-8');
-    let finalAnswer = '';
-    let finalConvId = conversation_id;
-    let buffer = '';
-
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmedLine = line.trim();
-          if (trimmedLine.startsWith('data:')) {
-            const dataStr = trimmedLine.replace(/^data:\s*/, '');
-            if (!dataStr || dataStr === '[DONE]') continue;
-
-            try {
-              const parsed = JSON.parse(dataStr);
-              
-              // طباعة كل حدث يصل من Dify في سجلات Vercel لنعرف ماذا يحدث
-              console.log('DIFY_EVENT:', parsed.event);
-
-              // قراءة الرسالة سواء كانت message أو agent_message
-              if ((parsed.event === 'message' || parsed.event === 'agent_message') && typeof parsed.answer === 'string') {
-                finalAnswer += parsed.answer;
-              }
-              
-              if (parsed.conversation_id) {
-                finalConvId = parsed.conversation_id;
-              }
-
-              if (parsed.event === 'error') {
-                console.error('DIFY_STREAM_ERROR:', parsed);
-                finalAnswer = `خطأ من Dify: ${parsed.message || parsed.code || 'غير معروف'}`;
-              }
-            } catch (e) {
-              console.error('PARSE_ERROR:', e);
-            }
-          }
-        }
-      }
-    }
-
-    // إذا لم يتم استلام أي نص، نرسل رسالة الخطأ
-    if (!finalAnswer) {
-      return NextResponse.json({
-        answer: 'لم يتم استلام رد نصي من Dify. (اذهب إلى Vercel Logs وابحث عن DIFY_EVENT لمعرفة السبب)',
-        conversation_id: finalConvId
-      });
-    }
-
-    return NextResponse.json({
-      answer: finalAnswer,
-      conversation_id: finalConvId
+    return new Response(apiRes.body, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
     });
 
   } catch (err: any) {
