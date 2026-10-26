@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 
 export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
     const { query, conversation_id, files } = await req.json();
 
-    const apiKey = 'App-zkNGXfedLH1xJm11kJezunZC';
+    const apiKey = 'app-zkNGXfedLH1xJm11kJezunZC';
     const apiUrl = 'https://api.dify.ai/v1';
 
     const apiRes = await fetch(`${apiUrl}/chat-messages`, {
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         inputs: {},
         query: query || 'مرحبا',
-        response_mode: 'blocking',
+        response_mode: 'streaming',
         conversation_id: conversation_id || '',
         user: 'aifball-user',
         files: files || [],
@@ -26,16 +27,20 @@ export async function POST(req: Request) {
     });
 
     if (!apiRes.ok) {
+      // 🔴 هذا السطر سيجلب رسالة الخطأ الحقيقية من Dify
       const errorText = await apiRes.text();
-      console.error('DIFY_ERROR:', errorText);
-      return NextResponse.json({ error: errorText }, { status: 500 });
+      console.error('DIFY_EXACT_ERROR:', errorText);
+      // إرجاع الخطأ للواجهة الأمامية
+      return NextResponse.json({ error: 'Dify Error', details: errorText }, { status: 500 });
     }
 
-    const data = await apiRes.json();
-
-    return NextResponse.json({
-      answer: data.answer,
-      conversation_id: data.conversation_id
+    return new Response(apiRes.body, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
     });
 
   } catch (err: any) {
