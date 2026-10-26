@@ -1,30 +1,10 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import React from "react";
-import "./styles/globals.css"; // هذا المسار صحيح 100%
+import "./styles/globals.css";
 
 export const metadata: Metadata = {
   title: "فوتبلاي | مساعدك الرياضي",
   description: "منصة فوتبلاي للذكاء الاصطناعي الرياضي",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "فوتبلاي",
-  },
-  icons: {
-    apple: "/IMG_0218.jpeg",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-};
-
-export const viewport: Viewport = {
-  themeColor: "#1D6B35",
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export default function RootLayout({
