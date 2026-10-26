@@ -7,7 +7,7 @@ interface Message {
   userQuery?: string;
   imageUrls?: string[]; 
   feedback?: 'like' | 'dislike' | null;
-  thinkingTime?: number; // تخزين وقت التفكير لعرضه لاحقاً
+  thinkingTime?: number;
 }
 
 interface ChatSession {
@@ -294,6 +294,7 @@ function renderFormattedText(text: string) {
       if (inTable) flushTable(index);
       const teamMatch = trimmed.match(/team="([^"]+)"/);
       const formMatch = trimmed.match(/formation="([^"]+)"/);
+      // الخطأ كان هنا وتم تصحيحه:
       elements.push(
         <TacticalPitch : ? formMatch[1] formation="{formMatch" key="{`pitch-${index}`}" teamMatch[1] teamName="{teamMatch" undefined}/>
       );
@@ -404,7 +405,7 @@ export default function FootPlayChat() {
     let interval: NodeJS.Timeout;
     if (loading) {
       setLoadingSeconds(0);
-      setThinkingExpanded(true); // إعادة التوسيع تلقائياً في كل عملية جديدة
+      setThinkingExpanded(true); 
       interval = setInterval(() => {
         setLoadingSeconds((prev) => prev + 1);
       }, 1000);
