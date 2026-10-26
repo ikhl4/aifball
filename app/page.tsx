@@ -7,6 +7,8 @@ interface Message {
   userQuery?: string;
   imageUrls?: string[]; 
   feedback?: 'like' | 'dislike' | null;
+  thoughts?: string[]; // لحفظ خطوات التفكير القادمة من Dify
+  thinkingTime?: number; // لحفظ مدة التفكير بالثواني
 }
 
 interface ChatSession {
@@ -16,6 +18,15 @@ interface ChatSession {
   messages: Message[];
   updatedAt: string;
 }
+
+// دالة تنسيق الثواني لغوياً
+const formatSeconds = (sec: number) => {
+  if (sec === 0) return '0 ثانية';
+  if (sec === 1) return 'ثانية واحدة';
+  if (sec === 2) return 'ثانيتان';
+  if (sec >= 3 && sec <= 10) return `${sec} ثوانٍ`;
+  return `${sec} ثانية`;
+};
 
 function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const [imgError, setImgError] = useState(false);
@@ -280,7 +291,6 @@ function renderFormattedText(text: string) {
       return;
     }
 
-    // تم تصحيح الخطأ البرمجي هنا
     if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
       if (inTable) flushTable(index);
       const teamMatch = trimmed.match(/team="([^"]+)"/);
@@ -346,13 +356,11 @@ function renderFormattedText(text: string) {
           <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl">
             <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-950/50 border-b border-white/10">
               <span className="text-xs sm:text-sm font-bold text-emerald-400">🎥 مشاهدة الملخص المدمج</span>
-              {/* تم تصحيح الرابط هنا */}
               <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
                 فتح في تطبيق يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video">
-              {/* تم تصحيح رابط الفيديو هنا */}
               <iframe 
                 src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0`} 
                 title="YouTube video player" 
@@ -378,6 +386,9 @@ export default function FootPlayChat() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingSeconds, setLoadingSeconds] = useState(0); 
+  
+  // حالة جديدة لفتح وإغلاق صندوق التفكير
+  const [expandedThoughts, setExpandedThoughts] = useState<number | null>(null);
 
   const [conversationId, setConversationId] = useState('');
   const [currentSessionId, setCurrentSessionId] = useState<string>('');
@@ -400,6 +411,7 @@ export default function FootPlayChat() {
     let interval: NodeJS.Timeout;
     if (loading) {
       setLoadingSeconds(0);
+      setExpandedThoughts(-1); // فتح صندوق التفكير تلقائياً أثناء التحميل
       interval = setInterval(() => {
         setLoadingSeconds((prev) => prev + 1);
       }, 1000);
@@ -415,7 +427,6 @@ export default function FootPlayChat() {
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
 
-    // تم تصحيح رابط السكربت هنا
     if (!document.querySelector('script[src="https://widgets.api-sports.io/2.0.0/widgets.js"]')) {
       const script = document.createElement('script');
       script.type = 'module';
@@ -504,7 +515,8 @@ export default function FootPlayChat() {
 
     const imageUrls = attachedFiles.map(f => f.url);
     const newMessages: Message[] = [...messages, { role: 'user', content: query, userQuery: query, imageUrls }];
-    setMessages([...newMessages, { role: 'assistant', content: '', userQuery: query }]);
+    // تهيئة الحقول الجديدة للتفكير
+    setMessages([...newMessages, { role: 'assistant', content: '', userQuery: query, thoughts: [] }]);
     setInput('');
     
     const filesToUpload = [...attachedFiles];
@@ -519,6 +531,8 @@ export default function FootPlayChat() {
     
     let finalConvId = conversationId;
     let finalAnswer = '';
+    let currentThoughts: string[] = [];
+    const requestStartTime = Date.now(); // لتسجيل وقت التفكير الحقيقي
 
     const saveSessionProgress = (msgs: Message[]) => {
       setSessions(prevSessions => {
@@ -602,8 +616,40 @@ export default function FootPlayChat() {
 
               try {
                 const parsed = JSON.parse(dataStr);
+                
+                // التقاط خطوات التفكير القادمة من Dify (إذا كان البوت يستخدم أدوات)
+                if (parsed.event === 'agent_thought' && parsed.thought) {
+                  if (!currentThoughts.includes(parsed.thought)) {
+                    currentThoughts.push(parsed.thought);
+                    setMessages(prev => {
+                      const updated = [...prev];
+                      const lastIndex = updated.length - 1;
+                      if (updated[lastIndex].role === 'assistant') {
+                        updated[lastIndex].thoughts = [...currentThoughts];
+                      }
+                      return updated;
+                    });
+                  }
+                }
+
+                // استلام النص النهائي
                 if (parsed.event === 'message' && typeof parsed.answer === 'string') {
-                  setLoading(false); 
+                  
+                  if (loading) {
+                    setLoading(false); 
+                    const elapsedSeconds = Math.floor((Date.now() - requestStartTime) / 1000);
+                    
+                    setMessages(prev => {
+                      const updated = [...prev];
+                      const lastIndex = updated.length - 1;
+                      if (updated[lastIndex].role === 'assistant') {
+                        updated[lastIndex].thinkingTime = elapsedSeconds; 
+                      }
+                      return updated;
+                    });
+                    setExpandedThoughts(null); // إغلاق صندوق التفكير عند وصول النتيجة
+                  }
+
                   finalAnswer += parsed.answer;
                   
                   setMessages(prev => {
@@ -673,7 +719,6 @@ export default function FootPlayChat() {
       </div>
 
       <style jsx global>{`
-        /* تم تصحيح رابط الخط هنا */
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
@@ -750,10 +795,30 @@ export default function FootPlayChat() {
         ) : (
           <div className="space-y-6">
             {messages.map((msg, i) => (
-              msg.content && msg.content.trim() !== '' || (msg.imageUrls && msg.imageUrls.length > 0) ? (
+              msg.content && msg.content.trim() !== '' || (msg.imageUrls && msg.imageUrls.length > 0) || (msg.thoughts && msg.thoughts.length > 0) ? (
                 <div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
                   {msg.role === 'assistant' && <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm"/></div>}
                   <div className={`flex flex-col ${msg.role === 'user' ? 'max-w-[85%]' : 'w-full max-w-[90%]'}`}>
+                    
+                    {/* واجهة توثيق التفكير المنسدلة للردود المكتملة */}
+                    {msg.role === 'assistant' && msg.thinkingTime !== undefined && msg.thinkingTime > 0 && (
+                      <div className="mb-2 w-full">
+                        <details className="text-[11px] text-gray-400 cursor-pointer group select-none transition-all duration-300">
+                          <summary className="inline-flex items-center gap-1.5 bg-black/30 hover:bg-black/50 px-3 py-1.5 rounded-xl border border-white/5 transition-colors">
+                            <span className="text-emerald-500 text-sm">💡</span>
+                            <span className="font-bold text-gray-300">تم البحث والتحليل في {formatSeconds(msg.thinkingTime)}</span>
+                            <span className="opacity-50 group-open:rotate-180 transition-transform text-[8px] mr-1">▼</span>
+                          </summary>
+                          <div className="mt-2 mr-2 pr-3 py-1.5 border-r-2 border-emerald-900/30 space-y-1.5 text-gray-400 font-medium">
+                            <p className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> الاتصال بخوادم فوتبلاي</p>
+                            {msg.thinkingTime >= 2 && <p className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> التحقق من الإحصائيات والمعلومات الرياضية</p>}
+                            {msg.thinkingTime >= 5 && <p className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> مراجعة البيانات وتحليلها</p>}
+                            {msg.thinkingTime >= 8 && <p className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> صياغة الرد التكتيكي النهائي</p>}
+                          </div>
+                        </details>
+                      </div>
+                    )}
+
                     <div className={`rounded-2xl px-5 py-4 shadow-xl backdrop-blur-md border border-white/10 text-base bg-black/50 ${msg.role === 'user' ? 'text-white rounded-tr-sm' : 'text-gray-100'}`}>
                       {msg.role === 'user' ? (
                         <div>
@@ -772,14 +837,71 @@ export default function FootPlayChat() {
                 </div>
               ) : null
             ))}
+            
+            {/* واجهة التفكير (أثناء عملية البحث) */}
             {loading && (
-              <div className="flex items-center gap-3 justify-end flex-row-reverse mt-4">
-                <AiFBallLogo size="sm"/>
-                <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-3 shadow-xl flex flex-col items-center justify-center gap-1.5">
-                  <span className="text-emerald-400 text-sm font-bold animate-pulse-slow flex items-center gap-2">
-                    <span>⏳</span> جاري البحث في المصادر الرياضيه ..
-                  </span>
-                  <span className="text-gray-400 text-xs font-medium">({loadingSeconds} ثانية)</span>
+              <div className="flex items-start gap-3 justify-end flex-row-reverse mt-4">
+                <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm"/></div>
+                <div className="w-full max-w-[85%]">
+                  <div className="rounded-2xl px-4 py-3 shadow-lg backdrop-blur-md border border-white/10 bg-black/40 text-gray-300">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between cursor-pointer select-none" onClick={() => setExpandedThoughts(expandedThoughts === -1 ? null : -1)}>
+                        <span className="text-emerald-400 font-bold text-sm flex items-center gap-2">
+                           <svg className="animate-spin -ml-1 mr-1 h-4 w-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                           </svg>
+                           جاري البحث والتفكير... ({formatSeconds(loadingSeconds)})
+                        </span>
+                        <span className="text-emerald-500 text-xs bg-white/5 px-2 py-1 rounded-md transition-transform">{expandedThoughts === -1 ? '▲' : '▼'}</span>
+                      </div>
+                      
+                      {expandedThoughts === -1 && (
+                        <div className="pt-3 pb-1 mt-1 border-t border-white/5 space-y-2.5 text-xs font-medium">
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-400 font-bold">✓</span>
+                            <span className="text-gray-300">الاتصال بخوادم فوتبلاي الذكية...</span>
+                          </div>
+                          
+                          {loadingSeconds >= 2 ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-400 font-bold">✓</span>
+                              <span className="text-gray-300">أتحقق من الإحصائيات والمعلومات الرياضية...</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>
+                              <span className="text-gray-500">أتحقق من الإحصائيات والمعلومات الرياضية...</span>
+                            </div>
+                          )}
+                          
+                          {loadingSeconds >= 5 ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-400 font-bold">✓</span>
+                              <span className="text-gray-300">أراجع البيانات وأقارن بين المصادر المتاحة...</span>
+                            </div>
+                          ) : loadingSeconds >= 2 ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>
+                              <span className="text-gray-500">أراجع البيانات وأقارن بين المصادر المتاحة...</span>
+                            </div>
+                          ) : null}
+
+                          {loadingSeconds >= 8 ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-400 font-bold">✓</span>
+                              <span className="text-gray-300">أحلل المعلومات للوصول إلى إجابة دقيقة...</span>
+                            </div>
+                          ) : loadingSeconds >= 5 ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>
+                              <span className="text-gray-500">أحلل المعلومات للوصول إلى إجابة دقيقة...</span>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
