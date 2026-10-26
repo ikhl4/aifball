@@ -469,7 +469,6 @@ export default function FootPlayChat() {
     const query = (textToSend ?? input).trim();
     if ((!query && attachedFiles.length === 0) || loading) return;
 
-    // 🟢 [الحل الجذري للتحية]
     const cleanQuery = query.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?؟]/g, "").trim();
     const greetings = ['مرحبا', 'هلا', 'السلام عليكم', 'هاي', 'hi', 'hello', 'صباح الخير', 'مساء الخير'];
     
@@ -506,7 +505,6 @@ export default function FootPlayChat() {
       });
       return; 
     }
-    // 🔴 [نهاية الحل]
 
     const imageUrls = attachedFiles.map(f => f.url);
     const newMessages: Message[] = [...messages, { role: 'user', content: query, userQuery: query, imageUrls }];
@@ -525,7 +523,7 @@ export default function FootPlayChat() {
     
     let finalConvId = conversationId;
     let finalAnswer = '';
-    const requestStartTime = Date.now(); // حساب الوقت الدقيق للتفكير
+    const requestStartTime = Date.now(); 
 
     const saveSessionProgress = (msgs: Message[]) => {
       setSessions(prevSessions => {
@@ -612,14 +610,14 @@ export default function FootPlayChat() {
                 if (parsed.event === 'message' && typeof parsed.answer === 'string') {
                   
                   if (loading) {
-                    setLoading(false); // إيقاف حالة التحميل
+                    setLoading(false); 
                     const elapsedSeconds = Math.floor((Date.now() - requestStartTime) / 1000);
                     
                     setMessages(prev => {
                       const updated = [...prev];
                       const lastIndex = updated.length - 1;
                       if (updated[lastIndex].role === 'assistant') {
-                        updated[lastIndex].thinkingTime = elapsedSeconds; // تخزين وقت التفكير الفعلي
+                        updated[lastIndex].thinkingTime = elapsedSeconds; 
                       }
                       return updated;
                     });
