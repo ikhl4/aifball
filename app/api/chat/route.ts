@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
 
 export const maxDuration = 60;
-export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    const { query, conversation_id, files } = await req.json();
+    const body = await req.json();
+    const query = body?.query;
+    const conversation_id = body?.conversation_id;
 
-    const apiKey = 'app-zkNGXfedLH1xJm11kJezunZC';
+    if (!query) {
+      return NextResponse.json({ error: 'الاستعلام فارغ' }, { status: 400 });
+    }
+
+    const apiKey = 'App-zkNGXfedLH1xJm11kJezunZC';
     const apiUrl = 'https://api.dify.ai/v1';
 
     const apiRes = await fetch(`${apiUrl}/chat-messages`, {
@@ -18,33 +23,28 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         inputs: {},
-        query: query || 'مرحبا',
-        response_mode: 'streaming',
+        query: query,
+        response_mode: 'blocking', // استخدام الاستجابة المباشرة لضمان وصول الرد كاملاً وسلساً
         conversation_id: conversation_id || '',
         user: 'aifball-user',
-        files: files || [],
       }),
     });
 
     if (!apiRes.ok) {
-      // 🔴 هذا السطر سيجلب رسالة الخطأ الحقيقية من Dify
       const errorText = await apiRes.text();
-      console.error('DIFY_EXACT_ERROR:', errorText);
-      // إرجاع الخطأ للواجهة الأمامية
-      return NextResponse.json({ error: 'Dify Error', details: errorText }, { status: 500 });
+      console.error('DIFY_API_FAIL:', errorText);
+      return NextResponse.json({ error: `Dify Error: ${errorText}` }, { status: 500 });
     }
 
-    return new Response(apiRes.body, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      },
+    const data = await apiRes.json();
+
+    return NextResponse.json({
+      answer: data.answer || 'لم يتم استلام رد من الوكيل.',
+      conversation_id: data.conversation_id || ''
     });
 
   } catch (err: any) {
-    console.error('SERVER_ERROR:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('CRITICAL_SERVER_ERROR:', err?.message || err);
+    return NextResponse.json({ error: err?.message || 'Unknown server error' }, { status: 500 });
   }
 }
