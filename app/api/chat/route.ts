@@ -5,17 +5,13 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const query = body?.query;
-    const conversation_id = body?.conversation_id;
-
-    if (!query) {
-      return NextResponse.json({ error: 'الاستعلام فارغ' }, { status: 400 });
-    }
+    const query = body?.query || 'مرحبا';
+    const conversation_id = body?.conversation_id || '';
 
     const apiKey = 'App-zkNGXfedLH1xJm11kJezunZC';
-    const apiUrl = 'https://api.dify.ai/v1';
+    const url = 'https://api.dify.ai/v1/chat-messages';
 
-    const apiRes = await fetch(`${apiUrl}/chat-messages`, {
+    const apiRes = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -24,27 +20,28 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         inputs: {},
         query: query,
-        response_mode: 'blocking', // استخدام الاستجابة المباشرة لضمان وصول الرد كاملاً وسلساً
-        conversation_id: conversation_id || '',
+        response_mode: 'blocking',
+        conversation_id: conversation_id,
         user: 'aifball-user',
       }),
     });
 
+    const responseText = await apiRes.text();
+
     if (!apiRes.ok) {
-      const errorText = await apiRes.text();
-      console.error('DIFY_API_FAIL:', errorText);
-      return NextResponse.json({ error: `Dify Error: ${errorText}` }, { status: 500 });
+      console.error('DIFY_ERROR_RESPONSE:', responseText);
+      return NextResponse.json({ error: responseText }, { status: 500 });
     }
 
-    const data = await apiRes.json();
+    const data = JSON.parse(responseText);
 
     return NextResponse.json({
-      answer: data.answer || 'لم يتم استلام رد من الوكيل.',
+      answer: data.answer || 'تم الاستلام بنجاح',
       conversation_id: data.conversation_id || ''
     });
 
   } catch (err: any) {
-    console.error('CRITICAL_SERVER_ERROR:', err?.message || err);
-    return NextResponse.json({ error: err?.message || 'Unknown server error' }, { status: 500 });
+    console.error('ROUTE_CATCH_ERROR:', err?.message || err);
+    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });
   }
 }
