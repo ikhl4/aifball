@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* استدعاء خط كايرو من جوجل */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+
+@layer base {
+  /* تطبيق الخط على جميع العناصر */
+  body, input, button, textarea, h1, h2, h3, p, span {
+    font-family: 'Cairo', sans-serif !important;
+    font-feature-settings: "calt" 1, "liga" 1;
+  }
+
+  /* تنسيق شريط التمرير الافتراضي للمنصة (Scrollbar) */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #1A1C1E;
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1D6B35;
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #22C55E;
+  }
+}
+
+@layer utilities {
+  /* شريط التمرير المخصص للجداول العرضية */
+  .custom-scrollbar::-webkit-scrollbar {
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #1A1C1E;
+    border-radius: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #1D6B35;
+    border-radius: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #22C55E;
+  }
+
+  /* حركة النبض البطيئة للذكاء الاصطناعي */
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .animate-pulse-slow {
+    animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
