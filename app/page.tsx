@@ -44,7 +44,7 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
           <polygon points="0,-19 18,-6 11,15 -11,15 -18,-6" fill="#FFFFFF" stroke="#1D6B35" strokeWidth="5.5" strokeLinejoin="round" />
           <path d="M0,-19 L0,-37 M18,-6 L35,-12 M11,15 L22,31 M-11,15 L-22,31 M-18,-6 L-35,-12" stroke="#1D6B35" strokeWidth="5.5" strokeLinecap="round" />
           <path d="M-19,-35 L0,-37 L19,-35 M19,-35 L35,-12 L37,8 M37,8 L22,31 L0,38 M0,38 L-22,31 L-37,8 M-37,8 L-35,-12 L-19,-35" fill="none" stroke="#1D6B35" strokeWidth="5" strokeLinejoin="round" />
-          <path d="M-19,-35 L-26,-43 M19,-35 L26,-43 M35,-12 L46,-16 M37,8 L47,15 M22,31 L29,40 M0,38 L0,48 M-22,31 L-29,40 M-37,8 L-47,15 M-35,-12 L-46,-16" stroke="#1D6B35" strokeWidth="5" strokeLinecap="round" />
+          <path d="M-19,-35 L-26,-43 M19,-35 L26,-43 M35,-12 L46,-16 M37,8 L47,15 M22,31 L29,40 M0,38 L0,48 M-22,31 L-29,40 M-37,8 L-47,15 M-35,-12 L-46,-16" stroke="#1D6B35" strokeWidth="5" strokeLinejoin="round" />
           <circle r="47" fill="none" stroke="#1D6B35" strokeWidth="4" />
         </g>
         <text x="100" y="168" textAnchor="middle" fill="#FFFFFF" fontSize="43" fontWeight="900" fontStyle="italic" fontFamily="system-ui, -apple-system, sans-serif" letterSpacing="-1">AiFBall</text>
@@ -529,9 +529,7 @@ export default function FootPlayChat() {
     
     let finalConvId = conversationId;
     let finalAnswer = '';
-    let currentThoughts: string[] = [];
     const requestStartTime = Date.now();
-    let isFirstMessageChunk = true;
 
     const saveSessionProgress = (msgs: Message[]) => {
       setSessions(prevSessions => {
@@ -586,110 +584,37 @@ export default function FootPlayChat() {
 
       if (!res.ok) throw new Error('Network response was not ok');
 
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let buffer = '';
-
-      if (reader) {
-        while (true) {
-          let readResult;
-          try {
-             readResult = await reader.read();
-          } catch (streamError) {
-             console.log("Stream interrupted.");
-             break; 
-          }
-          
-          const { done, value } = readResult;
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            const trimmedLine = line.trim();
-            if (trimmedLine.startsWith('data:')) {
-              const dataStr = trimmedLine.replace(/^data:\s*/, '');
-              if (!dataStr || dataStr === '[DONE]') continue;
-
-              try {
-                const parsed = JSON.parse(dataStr);
-                
-                // التقاط خطوات التفكير واستدعاء الأدوات في Dify Agent
-                if (parsed.event === 'agent_thought') {
-                  const thoughtText = parsed.thought || (parsed.tool ? `استخدام أداة: ${parsed.tool}` : '');
-                  if (thoughtText && !currentThoughts.includes(thoughtText)) {
-                    currentThoughts.push(thoughtText);
-                    setMessages(prev => {
-                      const updated = [...prev];
-                      const lastIndex = updated.length - 1;
-                      if (updated[lastIndex].role === 'assistant') {
-                        updated[lastIndex].thoughts = [...currentThoughts];
-                      }
-                      return updated;
-                    });
-                  }
-                }
-
-                // التقاط الرسالة سواء كانت من Chat العادي أو من Agent
-                if ((parsed.event === 'message' || parsed.event === 'agent_message') && typeof parsed.answer === 'string') {
-                  if (isFirstMessageChunk && parsed.answer.trim() !== '') {
-                    isFirstMessageChunk = false;
-                    setLoading(false); 
-                    const elapsedSeconds = Math.max(1, Math.floor((Date.now() - requestStartTime) / 1000));
-                    
-                    setMessages(prev => {
-                      const updated = [...prev];
-                      const lastIndex = updated.length - 1;
-                      if (updated[lastIndex].role === 'assistant') {
-                        updated[lastIndex].thinkingTime = elapsedSeconds; 
-                      }
-                      return updated;
-                    });
-                    setExpandedThoughts(null);
-                  }
-
-                  finalAnswer += parsed.answer;
-                  
-                  setMessages(prev => {
-                    const updated = [...prev];
-                    const lastIndex = updated.length - 1;
-                    if (updated[lastIndex].role === 'assistant') {
-                      updated[lastIndex].content = finalAnswer;
-                    }
-                    saveSessionProgress(updated);
-                    return updated;
-                  });
-                }
-
-                if (parsed.conversation_id) {
-                  finalConvId = parsed.conversation_id;
-                  setConversationId(finalConvId);
-                }
-              } catch (e) {}
-            }
-          }
-        }
+      const data = await res.json();
+      finalAnswer = data.answer || 'لم يتم استلام رد من الخادم.';
+      if (data.conversation_id) {
+        finalConvId = data.conversation_id;
+        setConversationId(finalConvId);
       }
+
+      const elapsedSeconds = Math.max(1, Math.floor((Date.now() - requestStartTime) / 1000));
+
+      setMessages(prev => {
+        const updated = [...prev];
+        const lastIndex = updated.length - 1;
+        if (updated[lastIndex].role === 'assistant') {
+          updated[lastIndex].content = finalAnswer;
+          updated[lastIndex].thinkingTime = elapsedSeconds;
+        }
+        saveSessionProgress(updated);
+        return updated;
+      });
 
     } catch (error) {
       setMessages(prev => {
         const updated = [...prev];
         const lastIndex = updated.length - 1;
         if (updated[lastIndex].role === 'assistant') {
-          if (!finalAnswer) {
-            updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت والمحاولة مجدداً.';
-          }
+          updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت والمحاولة مجدداً.';
         }
         return updated;
       });
     } finally {
       setLoading(false);
-      setMessages(currentMessages => {
-        saveSessionProgress(currentMessages);
-        return currentMessages;
-      });
     }
   };
 
@@ -812,9 +737,6 @@ export default function FootPlayChat() {
                           <div className="mt-2 mr-2 pr-3 py-1.5 border-r-2 border-emerald-900/30 space-y-1.5 text-gray-400 font-medium">
                             <p className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> الاتصال بخوادم فوتبلاي الذكية</p>
                             <p className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> التحقق من الإحصائيات والمعلومات الرياضية</p>
-                            {msg.thoughts && msg.thoughts.map((t, idx) => (
-                              <p key={idx} className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> {t}</p>
-                            ))}
                             <p className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> صياغة الرد النهائي</p>
                           </div>
                         </details>
@@ -846,7 +768,7 @@ export default function FootPlayChat() {
                 <div className="w-full max-w-[85%]">
                   <div className="rounded-2xl px-4 py-3 shadow-lg backdrop-blur-md border border-white/10 bg-black/40 text-gray-300">
                     <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between cursor-pointer select-none" onClick={() => setExpandedThoughts(expandedThoughts === -1 ? null : -1)}>
+                      <div className="flex items-center justify-between cursor-pointer select-none">
                         <span className="text-emerald-400 font-bold text-sm flex items-center gap-2">
                            <svg className="animate-spin -ml-1 mr-1 h-4 w-4 text-emerald-500" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -854,29 +776,7 @@ export default function FootPlayChat() {
                            </svg>
                            ⏳ جاري البحث في المصادر الرياضية… ({formatSeconds(loadingSeconds)})
                         </span>
-                        <span className="text-emerald-500 text-xs bg-white/5 px-2 py-1 rounded-md transition-transform">{expandedThoughts === -1 ? '▲' : '▼'}</span>
                       </div>
-                      
-                      {expandedThoughts === -1 && (
-                        <div className="pt-3 pb-1 mt-1 border-t border-white/5 space-y-2.5 text-xs font-medium">
-                          <div className="flex items-center gap-2">
-                            <span className="text-emerald-400 font-bold">✓</span>
-                            <span className="text-gray-300">أتحقق من الإحصائيات والمعلومات الرياضية ذات الصلة…</span>
-                          </div>
-                          {loadingSeconds >= 3 && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-emerald-400 font-bold">✓</span>
-                              <span className="text-gray-300">أراجع البيانات وأقارن بين المصادر المتاحة…</span>
-                            </div>
-                          )}
-                          {loadingSeconds >= 6 && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>
-                              <span className="text-gray-300">أحلل المعلومات للوصول إلى إجابة دقيقة…</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
