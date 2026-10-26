@@ -4,7 +4,13 @@ export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
-    const { query, conversation_id } = await req.json();
+    const body = await req.json();
+    const query = body?.query;
+    const conversation_id = body?.conversation_id;
+
+    if (!query) {
+      return NextResponse.json({ error: 'الاستعلام فارغ' }, { status: 400 });
+    }
 
     const apiKey = 'App-3NlvwtpsjeTUXKG9wurQFF8E';
     const apiUrl = 'https://api.dify.ai/v1';
@@ -26,8 +32,8 @@ export async function POST(req: Request) {
 
     if (!apiRes.ok) {
       const errorText = await apiRes.text();
-      console.error('Dify API Error Details:', errorText);
-      return NextResponse.json({ error: `خطأ من خادم Dify: ${errorText}` }, { status: 500 });
+      console.error('DIFY_API_FAIL:', errorText);
+      return NextResponse.json({ error: `Dify Error: ${errorText}` }, { status: 500 });
     }
 
     return new Response(apiRes.body, {
@@ -39,7 +45,7 @@ export async function POST(req: Request) {
     });
 
   } catch (err: any) {
-    console.error('Server Catch Error:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('CRITICAL_SERVER_ERROR:', err?.message || err);
+    return NextResponse.json({ error: err?.message || 'Unknown server error' }, { status: 500 });
   }
 }
