@@ -124,7 +124,6 @@ function parseStatNumber(val: string): number | null {
 }
 
 function renderInlineText(text: string) {
-  // 1. فحص الروابط بصيغة الماركداون
   const linkParts = text.split(/(\[.*?\]\(.*?\))/g);
   
   return linkParts.map((part, pIdx) => {
@@ -141,7 +140,6 @@ function renderInlineText(text: string) {
       }
     }
 
-    // 2. فحص الروابط النصية العادية (لتحويلها لروابط زرقاء قابلة للضغط)
     const urlParts = part.split(/(https?:\/\/[^\s]+)/g);
     return urlParts.map((urlPart, uIdx) => {
       if (urlPart.match(/^https?:\/\//)) {
@@ -152,7 +150,6 @@ function renderInlineText(text: string) {
         );
       }
 
-      // 3. فحص النص العريض
       const boldParts = urlPart.split(/(\*\*.*?\*\*)/g);
       return boldParts.map((bPart, bIdx) => {
         if (bPart.startsWith('**') && bPart.endsWith('**')) {
@@ -377,6 +374,8 @@ export default function FootPlayChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingSeconds, setLoadingSeconds] = useState(0); 
+
   const [conversationId, setConversationId] = useState('');
   const [currentSessionId, setCurrentSessionId] = useState<string>('');
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -393,6 +392,19 @@ export default function FootPlayChat() {
     { question: 'ما هو جدول ترتيب دوري روشن السعودي حتى اليوم لموسم 2026-2027 وأبرز الإحصائيات؟', tag: 'ترتيب دوري روشن', icon: '📊' },
     { question: 'ما هو السجل التاريخي الكامل لأبطال دوري أبطال أوروبا؟', tag: 'التاريخ والبطولات', icon: '🏆' },
   ];
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (loading) {
+      setLoadingSeconds(0);
+      interval = setInterval(() => {
+        setLoadingSeconds((prev) => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [loading]);
 
   useEffect(() => {
     try {
@@ -449,6 +461,45 @@ export default function FootPlayChat() {
     const query = (textToSend ?? input).trim();
     if ((!query && attachedFiles.length === 0) || loading) return;
 
+    // 🟢 [الحل الجذري للتحية]: التقاط التحية والرد عليها فوراً من الكود بدون Dify
+    const cleanQuery = query.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?؟]/g, "").trim();
+    const greetings = ['مرحبا', 'هلا', 'السلام عليكم', 'هاي', 'hi', 'hello', 'صباح الخير', 'مساء الخير'];
+    
+    if (greetings.includes(cleanQuery) && attachedFiles.length === 0) {
+      const assistantReply = 'مرحبا، الله حيه، أنا فوتبلاي مساعدك الرياضي. ماذا تريد أن تعرف؟';
+      const newMsgs: Message[] = [
+        ...messages, 
+        { role: 'user', content: query, userQuery: query },
+        { role: 'assistant', content: assistantReply }
+      ];
+      setMessages(newMsgs);
+      setInput('');
+      
+      let activeSessionId = currentSessionId;
+      if (!activeSessionId) {
+        activeSessionId = Date.now().toString();
+        setCurrentSessionId(activeSessionId);
+      }
+
+      setSessions(prevSessions => {
+        const idx = prevSessions.findIndex(s => s.id === activeSessionId);
+        const updatedSession = {
+          id: activeSessionId,
+          title: 'محادثة جديدة',
+          conversationId: conversationId,
+          messages: newMsgs,
+          updatedAt: new Date().toISOString()
+        };
+        const newSessions = [...prevSessions];
+        if (idx >= 0) newSessions[idx] = updatedSession;
+        else newSessions.unshift(updatedSession);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newSessions));
+        return newSessions;
+      });
+      return; // نوقف التنفيذ هنا، لا نرسل طلب إلى Dify
+    }
+    // 🔴 [نهاية الحل]
+
     const imageUrls = attachedFiles.map(f => f.url);
     const newMessages: Message[] = [...messages, { role: 'user', content: query, userQuery: query, imageUrls }];
     setMessages([...newMessages, { role: 'assistant', content: '', userQuery: query }]);
@@ -465,6 +516,27 @@ export default function FootPlayChat() {
     }
     
     let finalConvId = conversationId;
+    let finalAnswer = '';
+
+    // دالة مساعدة لحفظ المحادثة بشكل مستمر أثناء البث
+    const saveSessionProgress = (msgs: Message[]) => {
+      setSessions(prevSessions => {
+        const idx = prevSessions.findIndex(s => s.id === activeSessionId);
+        const title = msgs.find(m => m.role === 'user')?.content.slice(0, 30) || 'محادثة جديدة';
+        const updatedSession = {
+          id: activeSessionId!,
+          title: title + (title.length >= 30 ? '...' : ''),
+          conversationId: finalConvId,
+          messages: msgs,
+          updatedAt: new Date().toISOString()
+        };
+        const newSessions = [...prevSessions];
+        if (idx >= 0) newSessions[idx] = updatedSession;
+        else newSessions.unshift(updatedSession);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newSessions));
+        return newSessions;
+      });
+    };
 
     try {
       const uploadedDifyFiles = [];
@@ -502,12 +574,20 @@ export default function FootPlayChat() {
 
       const reader = res.body?.getReader();
       const decoder = new TextDecoder('utf-8');
-      let finalAnswer = '';
       let buffer = '';
 
       if (reader) {
         while (true) {
-          const { done, value } = await reader.read();
+          let readResult;
+          try {
+             readResult = await reader.read();
+          } catch (streamError) {
+             // إذا خرج المستخدم من التطبيق وانقطع الاتصال، نكتفي بما تم جلبه
+             console.log("Stream interrupted (user backgrounded app).");
+             break; 
+          }
+          
+          const { done, value } = readResult;
           if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
@@ -523,14 +603,17 @@ export default function FootPlayChat() {
               try {
                 const parsed = JSON.parse(dataStr);
                 if (parsed.event === 'message' && typeof parsed.answer === 'string') {
-                  setLoading(false);
+                  setLoading(false); // إخفاء التحميل بمجرد وصول أول جزء من الإجابة
                   finalAnswer += parsed.answer;
+                  
                   setMessages(prev => {
                     const updated = [...prev];
                     const lastIndex = updated.length - 1;
                     if (updated[lastIndex].role === 'assistant') {
                       updated[lastIndex].content = finalAnswer;
                     }
+                    // حفظ التقدم في الـ LocalStorage لضمان بقاء الإجابة عند العودة
+                    saveSessionProgress(updated);
                     return updated;
                   });
                 }
@@ -549,30 +632,17 @@ export default function FootPlayChat() {
         const updated = [...prev];
         const lastIndex = updated.length - 1;
         if (updated[lastIndex].role === 'assistant') {
-          updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم. يرجى التأكد من المصادر.';
+          // إذا انقطع الاتصال بالكامل ولم يتم جلب أي نص، نعرض رسالة لطيفة
+          if (!finalAnswer) {
+            updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت.';
+          }
         }
         return updated;
       });
     } finally {
       setLoading(false);
-      
       setMessages(currentMessages => {
-        const title = currentMessages.find(m => m.role === 'user')?.content.slice(0, 30) || 'محادثة جديدة';
-        setSessions(prevSessions => {
-          const idx = prevSessions.findIndex(s => s.id === activeSessionId);
-          const updatedSession = {
-            id: activeSessionId,
-            title: title + (title.length >= 30 ? '...' : ''),
-            conversationId: finalConvId,
-            messages: currentMessages,
-            updatedAt: new Date().toISOString()
-          };
-          const newSessions = [...prevSessions];
-          if (idx >= 0) newSessions[idx] = updatedSession;
-          else newSessions.unshift(updatedSession);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(newSessions));
-          return newSessions;
-        });
+        saveSessionProgress(currentMessages);
         return currentMessages;
       });
     }
@@ -706,10 +776,12 @@ export default function FootPlayChat() {
             {loading && (
               <div className="flex items-center gap-3 justify-end flex-row-reverse mt-4">
                 <AiFBallLogo size="sm"/>
-                <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-3 shadow-xl">
+                <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-3 shadow-xl flex flex-col items-center justify-center gap-1.5">
                   <span className="text-emerald-400 text-sm font-bold animate-pulse-slow flex items-center gap-2">
                     <span>⏳</span> جاري البحث في المصادر الرياضيه ..
                   </span>
+                  {/* عرض عداد الثواني تحت النص */}
+                  <span className="text-gray-400 text-xs font-medium">({loadingSeconds} ثانية)</span>
                 </div>
               </div>
             )}
