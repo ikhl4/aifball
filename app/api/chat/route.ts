@@ -8,8 +8,7 @@ export async function POST(req: Request) {
     const query = body?.query || 'مرحبا';
     const conversation_id = body?.conversation_id || '';
 
-    // مفتاح الـ API الجديد والصحيح
-    const apiKey = 'App-gESKVtGkqZWKydZ2fQz86bgx';
+    const apiKey = 'app-3NlvwtpsjeTUXKG9wurQFF8E';
     const url = 'https://api.dify.ai/v1/chat-messages';
 
     const apiRes = await fetch(url, {
