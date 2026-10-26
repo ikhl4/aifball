@@ -6,9 +6,8 @@ export async function POST(req: Request) {
   try {
     const { query, conversation_id } = await req.json();
 
-    const rawKey = process.env.NEXT_PUBLIC_APP_KEY || 'app-mVkeSPmFP8yJRvzW70QLWeTc';
-    const apiKey = rawKey.replace(/['"\s]/g, '').replace(/^App-/, 'app-');
-    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://api.dify.ai/v1').replace(/['"\s]/g, '');
+    const apiKey = 'app-mVkeSPmFP8yJRvzW70QLWeTc';
+    const apiUrl = 'https://api.dify.ai/v1';
 
     const apiRes = await fetch(`${apiUrl}/chat-messages`, {
       method: 'POST',
@@ -27,8 +26,8 @@ export async function POST(req: Request) {
 
     if (!apiRes.ok) {
       const errorText = await apiRes.text();
-      console.error('Dify API Error:', errorText);
-      return NextResponse.json({ error: 'خطأ في الاتصال بخوادم Dify الذكية' }, { status: 500 });
+      console.error('Dify API Error Details:', errorText);
+      return NextResponse.json({ error: `خطأ من خادم Dify: ${errorText}` }, { status: 500 });
     }
 
     return new Response(apiRes.body, {
@@ -40,6 +39,7 @@ export async function POST(req: Request) {
     });
 
   } catch (err: any) {
+    console.error('Server Catch Error:', err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
