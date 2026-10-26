@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     const query = body?.query || 'مرحبا';
     const conversation_id = body?.conversation_id || '';
 
-    const apiKey = 'app-3NlvwtpsjeTUXKG9wurQFF8E';
+    const apiKey = 'app-3NlvwtpsjeTUXKG9wurQFF8E'; 
     const url = 'https://api.dify.ai/v1/chat-messages';
 
     const apiRes = await fetch(url, {
@@ -16,28 +16,63 @@ export async function POST(req: Request) {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
       },
       body: JSON.stringify({
         inputs: {},
         query: query,
-        response_mode: 'blocking',
+        response_mode: 'streaming', // 🔴 يجب أن تكون streaming
         conversation_id: conversation_id ? conversation_id : undefined,
         user: 'aifball-user',
       }),
     });
 
-    const responseText = await apiRes.text();
-
     if (!apiRes.ok) {
-      console.error('DIFY_BAD_REQUEST_ERROR:', responseText);
-      return NextResponse.json({ error: responseText }, { status: 500 });
+      const errorText = await apiRes.text();
+      console.error('DIFY_BAD_REQUEST_ERROR:', errorText);
+      return NextResponse.json({ error: errorText }, { status: 500 });
     }
 
-    const data = JSON.parse(responseText);
+    // 🔴 قراءة البث وجمع النص (لأن الـ Agent لا يدعم blocking)
+    const reader = apiRes.body?.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let finalAnswer = '';
+    let finalConvId = conversation_id;
+    let buffer = '';
 
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (trimmedLine.startsWith('data:')) {
+            const dataStr = trimmedLine.replace(/^data:\s*/, '');
+            if (!dataStr || dataStr === '[DONE]') continue;
+
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.event === 'message' && typeof parsed.answer === 'string') {
+                finalAnswer += parsed.answer;
+              }
+              if (parsed.conversation_id) {
+                finalConvId = parsed.conversation_id;
+              }
+            } catch (e) {}
+          }
+        }
+      }
+    }
+
+    // إرسال الرد النهائي للواجهة كـ JSON عادي
     return NextResponse.json({
-      answer: data.answer || data.message || 'تم الاستلام بنجاح',
-      conversation_id: data.conversation_id || ''
+      answer: finalAnswer || 'تم الاستلام بنجاح',
+      conversation_id: finalConvId
     });
 
   } catch (err: any) {
