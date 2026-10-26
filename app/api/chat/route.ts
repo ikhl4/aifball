@@ -21,7 +21,7 @@ export async function POST(req: Request) {
         inputs: {},
         query: query,
         response_mode: 'blocking',
-        conversation_id: conversation_id,
+        conversation_id: conversation_id ? conversation_id : undefined,
         user: 'aifball-user',
       }),
     });
@@ -29,14 +29,14 @@ export async function POST(req: Request) {
     const responseText = await apiRes.text();
 
     if (!apiRes.ok) {
-      console.error('DIFY_ERROR_RESPONSE:', responseText);
+      console.error('DIFY_BAD_REQUEST_ERROR:', responseText);
       return NextResponse.json({ error: responseText }, { status: 500 });
     }
 
     const data = JSON.parse(responseText);
 
     return NextResponse.json({
-      answer: data.answer || 'تم الاستلام بنجاح',
+      answer: data.answer || data.message || 'تم الاستلام بنجاح',
       conversation_id: data.conversation_id || ''
     });
 
