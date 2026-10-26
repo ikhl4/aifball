@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 60;
+// هذه المهلة ضرورية للخطة المجانية في Vercel
+export const maxDuration = 60; 
+// لمنع Next.js من محاولة تخزين الاستجابة مؤقتاً
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -26,15 +29,19 @@ export async function POST(req: Request) {
     });
 
     if (!apiRes.ok) {
+      // طباعة الخطأ الحقيقي في سجلات Vercel لمعرفة السبب
+      const errorText = await apiRes.text();
+      console.error("Dify API Error:", errorText);
       return NextResponse.json({ error: 'خطأ في الاتصال بالخادم' }, { status: 500 });
     }
 
-    // تمرير البث المباشر (Stream) إلى الواجهة مباشرة لتقليل وقت الانتظار
+    // تمرير البث المباشر مع الهيدرات الصحيحة لمنع التقطيع
     return new Response(apiRes.body, {
       headers: {
         'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-cache, no-transform', // أضفنا no-transform
         'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no', // 🔴 هذا هو السطر السحري لمنع Vercel من تقطيع البث
       },
     });
 
