@@ -4,17 +4,12 @@ export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const query = body?.query;
-    const conversation_id = body?.conversation_id;
-
-    if (!query) {
-      return NextResponse.json({ error: 'الاستعلام فارغ' }, { status: 400 });
-    }
+    const { query, conversation_id, files } = await req.json();
 
     const apiKey = 'App-3NlvwtpsjeTUXKG9wurQFF8E';
     const apiUrl = 'https://api.dify.ai/v1';
 
+    // إرسال الطلب بالهيكل المتوافق تماماً مع Agents في Dify
     const apiRes = await fetch(`${apiUrl}/chat-messages`, {
       method: 'POST',
       headers: {
@@ -23,17 +18,18 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         inputs: {},
-        query: query,
+        query: query || 'مرحبا',
         response_mode: 'streaming',
         conversation_id: conversation_id || '',
         user: 'aifball-user',
+        files: files || [],
       }),
     });
 
     if (!apiRes.ok) {
       const errorText = await apiRes.text();
-      console.error('DIFY_API_FAIL:', errorText);
-      return NextResponse.json({ error: `Dify Error: ${errorText}` }, { status: 500 });
+      console.error('DIFY_AGENT_ERROR:', errorText);
+      return NextResponse.json({ error: errorText }, { status: 500 });
     }
 
     return new Response(apiRes.body, {
@@ -45,7 +41,7 @@ export async function POST(req: Request) {
     });
 
   } catch (err: any) {
-    console.error('CRITICAL_SERVER_ERROR:', err?.message || err);
-    return NextResponse.json({ error: err?.message || 'Unknown server error' }, { status: 500 });
+    console.error('SERVER_ERROR:', err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
