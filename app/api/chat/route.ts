@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     const query = body?.query || 'مرحبا';
     const conversation_id = body?.conversation_id || '';
 
-    const apiKey = 'app-3NlvwtpsjeTUXKG9wurQFF8E'; // تأكد أنه مفتاح الـ Agent
+    const apiKey = 'app-3NlvwtpsjeTUXKG9wurQFF8E'; 
     const url = 'https://api.dify.ai/v1/chat-messages';
 
     const apiRes = await fetch(url, {
@@ -57,31 +57,34 @@ export async function POST(req: Request) {
             try {
               const parsed = JSON.parse(dataStr);
               
-              // قراءة النص من الوكيل
-              if ((parsed.event === 'agent_message' || parsed.event === 'message') && typeof parsed.answer === 'string') {
+              // طباعة كل حدث يصل من Dify في سجلات Vercel لنعرف ماذا يحدث
+              console.log('DIFY_EVENT:', parsed.event);
+
+              // قراءة الرسالة سواء كانت message أو agent_message
+              if ((parsed.event === 'message' || parsed.event === 'agent_message') && typeof parsed.answer === 'string') {
                 finalAnswer += parsed.answer;
               }
               
-              // حفظ معرف المحادثة
               if (parsed.conversation_id) {
                 finalConvId = parsed.conversation_id;
               }
 
-              // طباعة أي خطأ يحدث في الخلفية لكي يظهر في Vercel Logs
               if (parsed.event === 'error') {
                 console.error('DIFY_STREAM_ERROR:', parsed);
-                finalAnswer = `خطأ من الخادم: ${parsed.message || 'يرجى المحاولة لاحقاً'}`;
+                finalAnswer = `خطأ من Dify: ${parsed.message || parsed.code || 'غير معروف'}`;
               }
-            } catch (e) {}
+            } catch (e) {
+              console.error('PARSE_ERROR:', e);
+            }
           }
         }
       }
     }
 
-    // إذا لم يصل أي نص، نرسل رسالة توضح للمستخدم أن Dify لم يرد
+    // إذا لم يتم استلام أي نص، نرسل رسالة الخطأ
     if (!finalAnswer) {
       return NextResponse.json({
-        answer: 'لم يتم استلام رد من الوكيل. يرجى التحقق من سجلات Dify أو التأكد من رصيد الحساب.',
+        answer: 'لم يتم استلام رد نصي من Dify. (اذهب إلى Vercel Logs وابحث عن DIFY_EVENT لمعرفة السبب)',
         conversation_id: finalConvId
       });
     }
