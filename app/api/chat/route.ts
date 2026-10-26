@@ -8,6 +8,7 @@ export async function POST(req: Request) {
     const query = body?.query || 'مرحبا';
     const conversation_id = body?.conversation_id || '';
 
+    // المفتاح الخاص بالـ Agent (تأكد من أنه المفتاح الصحيح)
     const apiKey = 'app-3NlvwtpsjeTUXKG9wurQFF8E'; 
     const url = 'https://api.dify.ai/v1/chat-messages';
 
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         inputs: {},
         query: query,
-        response_mode: 'streaming', // 🔴 يجب أن تكون streaming
+        response_mode: 'streaming',
         conversation_id: conversation_id ? conversation_id : undefined,
         user: 'aifball-user',
       }),
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: errorText }, { status: 500 });
     }
 
-    // 🔴 قراءة البث وجمع النص (لأن الـ Agent لا يدعم blocking)
+    // قراءة البث وجمع النص (يدعم message و agent_message)
     const reader = apiRes.body?.getReader();
     const decoder = new TextDecoder('utf-8');
     let finalAnswer = '';
@@ -57,9 +58,12 @@ export async function POST(req: Request) {
 
             try {
               const parsed = JSON.parse(dataStr);
-              if (parsed.event === 'message' && typeof parsed.answer === 'string') {
+              
+              // 🔴 التعديل الأهم هنا: استقبال agent_message الخاص بالوكيل
+              if ((parsed.event === 'message' || parsed.event === 'agent_message') && typeof parsed.answer === 'string') {
                 finalAnswer += parsed.answer;
               }
+              
               if (parsed.conversation_id) {
                 finalConvId = parsed.conversation_id;
               }
@@ -69,7 +73,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // إرسال الرد النهائي للواجهة كـ JSON عادي
     return NextResponse.json({
       answer: finalAnswer || 'تم الاستلام بنجاح',
       conversation_id: finalConvId
