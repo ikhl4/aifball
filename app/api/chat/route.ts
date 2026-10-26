@@ -26,10 +26,11 @@ export async function POST(req: Request) {
     });
 
     if (!apiRes.ok) {
-      return NextResponse.json({ error: 'خطأ في الاتصال بالخادم' }, { status: 500 });
+      const errorText = await apiRes.text();
+      console.error('Dify API Error:', errorText);
+      return NextResponse.json({ error: 'خطأ في الاتصال بخوادم Dify الذكية' }, { status: 500 });
     }
 
-    // تمرير البث المباشر (Stream) إلى الواجهة مباشرة لتقليل وقت الانتظار
     return new Response(apiRes.body, {
       headers: {
         'Content-Type': 'text/event-stream',
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
       },
     });
 
-  } catch (err: any) {
+  } create (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
