@@ -44,7 +44,7 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
           <polygon points="0,-19 18,-6 11,15 -11,15 -18,-6" fill="#FFFFFF" stroke="#1D6B35" strokeWidth="5.5" strokeLinejoin="round" />
           <path d="M0,-19 L0,-37 M18,-6 L35,-12 M11,15 L22,31 M-11,15 L-22,31 M-18,-6 L-35,-12" stroke="#1D6B35" strokeWidth="5.5" strokeLinecap="round" />
           <path d="M-19,-35 L0,-37 L19,-35 M19,-35 L35,-12 L37,8 M37,8 L22,31 L0,38 M0,38 L-22,31 L-37,8 M-37,8 L-35,-12 L-19,-35" fill="none" stroke="#1D6B35" strokeWidth="5" strokeLinejoin="round" />
-          <path d="M-19,-35 L-26,-43 M19,-35 L26,-43 M35,-12 L46,-16 M37,8 L47,15 M22,31 L29,40 M0,38 L0,48 M-22,31 L-29,40 M-37,8 L-47,15 M-35,-12 L-46,-16" stroke="#1D6B35" strokeWidth="5" strokeLinejoin="round" />
+          <path d="M-19,-35 L-26,-43 M19,-35 L26,-43 M35,-12 L46,-16 M37,8 L47,15 M22,31 L29,40 M0,38 L0,48 M-22,31 L-29,40 M-37,8 L-47,15 M-35,-12 L-46,-16" stroke="#1D6B35" strokeWidth="5" strokeLinecap="round" />
           <circle r="47" fill="none" stroke="#1D6B35" strokeWidth="4" />
         </g>
         <text x="100" y="168" textAnchor="middle" fill="#FFFFFF" fontSize="43" fontWeight="900" fontStyle="italic" fontFamily="system-ui, -apple-system, sans-serif" letterSpacing="-1">AiFBall</text>
@@ -357,13 +357,13 @@ function renderFormattedText(text: string) {
           <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl">
             <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-950/50 border-b border-white/10">
               <span className="text-xs sm:text-sm font-bold text-emerald-400">🎥 مشاهدة الملخص المدمج</span>
-              <a href={`[https://www.youtube.com/watch?v=$](https://www.youtube.com/watch?v=$){vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
+              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
                 فتح في تطبيق يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video">
               <iframe 
-                src={`[https://www.youtube-nocookie.com/embed/$](https://www.youtube-nocookie.com/embed/$){vid}?rel=0`} 
+                src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0`} 
                 title="YouTube video player" 
                 className="w-full h-full border-0" 
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
@@ -426,10 +426,10 @@ export default function FootPlayChat() {
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
 
-    if (!document.querySelector('script[src="[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)"]')) {
+    if (!document.querySelector('script[src="https://widgets.api-sports.io/2.0.0/widgets.js"]')) {
       const script = document.createElement('script');
       script.type = 'module';
-      script.src = '[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)';
+      script.src = 'https://widgets.api-sports.io/2.0.0/widgets.js';
       document.body.appendChild(script);
     }
   }, []);
@@ -584,32 +584,71 @@ export default function FootPlayChat() {
 
       if (!res.ok) throw new Error('Network response was not ok');
 
-      const data = await res.json();
-      finalAnswer = data.answer || 'لم يتم استلام رد من الخادم.';
-      if (data.conversation_id) {
-        finalConvId = data.conversation_id;
-        setConversationId(finalConvId);
+      // 🔴 قراءة البث المباشر (Streaming) بدلاً من res.json()
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (trimmedLine.startsWith('data:')) {
+              const dataStr = trimmedLine.replace(/^data:\s*/, '');
+              if (!dataStr || dataStr === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(dataStr);
+                
+                if ((parsed.event === 'message' || parsed.event === 'agent_message') && typeof parsed.answer === 'string') {
+                  finalAnswer += parsed.answer;
+                }
+                
+                if (parsed.conversation_id) {
+                  finalConvId = parsed.conversation_id;
+                  setConversationId(finalConvId);
+                }
+
+                if (parsed.event === 'error') {
+                  console.error('DIFY_STREAM_ERROR:', parsed);
+                  finalAnswer = `خطأ من Dify: ${parsed.message || parsed.code || 'غير معروف'}`;
+                  setLoading(false);
+                  break;
+                }
+              } catch (e) {}
+            }
+          }
+          
+          const elapsedSeconds = Math.max(1, Math.floor((Date.now() - requestStartTime) / 1000));
+          setMessages(prev => {
+            const updated = [...prev];
+            const lastIndex = updated.length - 1;
+            if (updated[lastIndex].role === 'assistant') {
+              updated[lastIndex].content = finalAnswer;
+              updated[lastIndex].thinkingTime = elapsedSeconds;
+            }
+            return updated;
+          });
+        }
       }
 
-      const elapsedSeconds = Math.max(1, Math.floor((Date.now() - requestStartTime) / 1000));
-
-      setMessages(prev => {
-        const updated = [...prev];
-        const lastIndex = updated.length - 1;
-        if (updated[lastIndex].role === 'assistant') {
-          updated[lastIndex].content = finalAnswer;
-          updated[lastIndex].thinkingTime = elapsedSeconds;
-        }
-        saveSessionProgress(updated);
-        return updated;
-      });
+      saveSessionProgress(messages);
 
     } catch (error) {
       setMessages(prev => {
         const updated = [...prev];
         const lastIndex = updated.length - 1;
         if (updated[lastIndex].role === 'assistant') {
-          updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت والمحاولة مجدداً.';
+          if (!finalAnswer) {
+            updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت.';
+          }
         }
         return updated;
       });
@@ -645,7 +684,7 @@ export default function FootPlayChat() {
       </div>
 
       <style jsx global>{`
-        @import url('[https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap)');
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
@@ -770,7 +809,7 @@ export default function FootPlayChat() {
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center justify-between cursor-pointer select-none">
                         <span className="text-emerald-400 font-bold text-sm flex items-center gap-2">
-                           <svg className="animate-spin -ml-1 mr-1 h-4 w-4 text-emerald-500" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24">
+                           <svg className="animate-spin -ml-1 mr-1 h-4 w-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                            </svg>
