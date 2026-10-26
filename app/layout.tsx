@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import React from "react";
-import "./styles/globals.css";
+import "./styles/globals.css"; // هذا المسار صحيح 100%
 
 export const metadata: Metadata = {
   title: "فوتبلاي | مساعدك الرياضي",
