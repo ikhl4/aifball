@@ -6,10 +6,10 @@ export async function POST(req: Request) {
   try {
     const { query, conversation_id, files } = await req.json();
 
-    const apiKey = 'App-3NlvwtpsjeTUXKG9wurQFF8E';
+    // مفتاح الـ Agent الصحيح والنشط في Dify
+    const apiKey = 'App-zkNGXfedLH1xJm11kJezunZC';
     const apiUrl = 'https://api.dify.ai/v1';
 
-    // إرسال الطلب بالهيكل المتوافق تماماً مع Agents في Dify
     const apiRes = await fetch(`${apiUrl}/chat-messages`, {
       method: 'POST',
       headers: {
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         inputs: {},
-        query: query || 'مرحبا',
+        query: query,
         response_mode: 'streaming',
         conversation_id: conversation_id || '',
         user: 'aifball-user',
@@ -28,8 +28,8 @@ export async function POST(req: Request) {
 
     if (!apiRes.ok) {
       const errorText = await apiRes.text();
-      console.error('DIFY_AGENT_ERROR:', errorText);
-      return NextResponse.json({ error: errorText }, { status: 500 });
+      console.error('Dify Agent Error Details:', errorText);
+      return NextResponse.json({ error: `خطأ من خادم Dify: ${errorText}` }, { status: 500 });
     }
 
     return new Response(apiRes.body, {
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     });
 
   } catch (err: any) {
-    console.error('SERVER_ERROR:', err.message);
+    console.error('Server Catch Error:', err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
