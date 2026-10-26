@@ -280,12 +280,17 @@ function renderFormattedText(text: string) {
       return;
     }
 
+    // تم تصحيح الخطأ البرمجي هنا
     if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
       if (inTable) flushTable(index);
       const teamMatch = trimmed.match(/team="([^"]+)"/);
       const formMatch = trimmed.match(/formation="([^"]+)"/);
       elements.push(
-        <TacticalPitch : ? formMatch[1] formation="{formMatch" key="{`pitch-${index}`}" teamMatch[1] teamName="{teamMatch" undefined}/>
+        <TacticalPitch 
+          key={`pitch-${index}`}
+          teamName={teamMatch ? teamMatch[1] : undefined}
+          formation={formMatch ? formMatch[1] : undefined}
+        />
       );
       return;
     }
@@ -341,13 +346,15 @@ function renderFormattedText(text: string) {
           <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl">
             <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-950/50 border-b border-white/10">
               <span className="text-xs sm:text-sm font-bold text-emerald-400">🎥 مشاهدة الملخص المدمج</span>
-              <a href={`[https://www.youtube.com/watch?v=$](https://www.youtube.com/watch?v=$){vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
+              {/* تم تصحيح الرابط هنا */}
+              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
                 فتح في تطبيق يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video">
+              {/* تم تصحيح رابط الفيديو هنا */}
               <iframe 
-                src={`[https://www.youtube-nocookie.com/embed/$](https://www.youtube-nocookie.com/embed/$){vid}?rel=0`} 
+                src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0`} 
                 title="YouTube video player" 
                 className="w-full h-full border-0" 
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
@@ -408,10 +415,11 @@ export default function FootPlayChat() {
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
 
-    if (!document.querySelector('script[src="[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)"]')) {
+    // تم تصحيح رابط السكربت هنا
+    if (!document.querySelector('script[src="https://widgets.api-sports.io/2.0.0/widgets.js"]')) {
       const script = document.createElement('script');
       script.type = 'module';
-      script.src = '[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)';
+      script.src = 'https://widgets.api-sports.io/2.0.0/widgets.js';
       document.body.appendChild(script);
     }
   }, []);
@@ -665,7 +673,8 @@ export default function FootPlayChat() {
       </div>
 
       <style jsx global>{`
-        @import url('[https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap)');
+        /* تم تصحيح رابط الخط هنا */
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
@@ -768,7 +777,7 @@ export default function FootPlayChat() {
                 <AiFBallLogo size="sm"/>
                 <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-3 shadow-xl flex flex-col items-center justify-center gap-1.5">
                   <span className="text-emerald-400 text-sm font-bold animate-pulse-slow flex items-center gap-2">
-                    <span>⏳</span> جاري البحث في المصادر الرياضية..
+                    <span>⏳</span> جاري البحث في المصادر الرياضيه ..
                   </span>
                   <span className="text-gray-400 text-xs font-medium">({loadingSeconds} ثانية)</span>
                 </div>
