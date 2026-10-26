@@ -166,7 +166,6 @@ function renderFormattedText(text: string) {
         </div>
       );
     } else {
-      // 🔴 تحسين عرض الجداول للآيفون (تصميم متجاوب وسلس)
       elements.push(
         <div key={`table-${keyIndex}`} className="my-6 w-full max-w-full overflow-x-auto custom-scrollbar rounded-2xl border border-white/5 shadow-md bg-[#181A1C]">
           <table className="w-full text-right border-collapse text-sm min-w-max">
@@ -440,7 +439,6 @@ export default function FootPlayChat() {
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #1D6B35; }
       `}</style>
 
-      {/* القائمة الجانبية (Sidebar) + أزرار Clerk */}
       {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/60 z-30 transition-opacity backdrop-blur-sm" />}
       <aside className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-[#181A1C]/95 backdrop-blur-2xl border-l border-white/5 z-40 transform transition-transform duration-300 flex flex-col shadow-2xl ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex items-center justify-between p-5 border-b border-white/5">
@@ -463,7 +461,6 @@ export default function FootPlayChat() {
             </div>
           ))}
         </div>
-        {/* 🔴 زر تسجيل الدخول (Clerk) في القائمة الجانبية */}
         <div className="p-4 border-t border-white/5 bg-[#131517] mt-auto">
           <SignedOut>
             <SignInButton mode="modal">
@@ -503,7 +500,6 @@ export default function FootPlayChat() {
         </button>
       </header>
 
-      {/* 🔴 واجهة المحادثة (تصميم ChatGPT الاحترافي) */}
       <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto flex flex-col relative z-10 custom-scrollbar">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
@@ -529,7 +525,6 @@ export default function FootPlayChat() {
             {messages.map((msg, i) => (
               (msg.content && msg.content.trim() !== '') || (msg.imageUrls && msg.imageUrls.length > 0) ? (
                 <div key={i} className="flex items-start gap-4 w-full">
-                  {/* الأفاتار */}
                   <div className="flex-shrink-0 mt-1 hidden sm:block">
                      {msg.role === 'assistant' ? (
                         <AiFBallLogo size="sm"/>
@@ -537,7 +532,6 @@ export default function FootPlayChat() {
                         <div className="w-8 h-8 rounded-lg bg-emerald-700 flex items-center justify-center text-white text-[10px] font-bold shadow-sm">أنت</div>
                      )}
                   </div>
-                  {/* المحتوى النصي */}
                   <div className="flex flex-col w-full min-w-0">
                      {msg.role === 'user' ? (
                         <div className="text-gray-100 text-lg sm:text-xl font-bold leading-relaxed break-words">
@@ -552,7 +546,6 @@ export default function FootPlayChat() {
                         </div>
                      ) : (
                         <div className="w-full text-gray-300 text-base leading-relaxed break-words">
-                           {/* 🔴 مرحلة التفكير (Thinking Phase) */}
                            {msg.thinkingTime !== undefined && msg.thinkingTime > 0 && (
                              <div className="mb-5 w-full">
                                <details className="text-xs text-gray-400 cursor-pointer group select-none transition-all duration-300">
@@ -569,7 +562,6 @@ export default function FootPlayChat() {
                                </details>
                              </div>
                            )}
-                           {/* النص المنسق */}
                            {renderFormattedText(msg.content)}
                         </div>
                      )}
@@ -582,7 +574,6 @@ export default function FootPlayChat() {
               <div className="flex items-start gap-4 w-full mt-4">
                 <div className="flex-shrink-0 mt-1 hidden sm:block"><AiFBallLogo size="sm"/></div>
                 <div className="w-full min-w-0 flex items-center">
-                   {/* 🔴 مؤقت البحث الحقيقي */}
                    <span className="text-emerald-400 font-bold text-sm flex items-center gap-2 bg-[#1A1C1E] px-4 py-2.5 rounded-2xl border border-white/5 shadow-sm">
                      <svg className="animate-spin -ml-1 mr-1 h-4 w-4 text-emerald-500" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
@@ -598,7 +589,6 @@ export default function FootPlayChat() {
         )}
       </main>
 
-      {/* 🔴 شريط الكتابة الذكي والمتوافق مع الجوال */}
       <footer className="px-3 sm:px-6 pt-2 bg-[#131314]/95 backdrop-blur-xl border-t border-white/5 sticky bottom-0 z-20" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}>
         <div className="max-w-3xl mx-auto relative">
           {attachedFiles.length > 0 && (
