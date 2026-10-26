@@ -294,8 +294,14 @@ function renderFormattedText(text: string) {
       if (inTable) flushTable(index);
       const teamMatch = trimmed.match(/team="([^"]+)"/);
       const formMatch = trimmed.match(/formation="([^"]+)"/);
+      const parsedTeam = teamMatch ? teamMatch[1] : undefined;
+      const parsedFormation = formMatch ? formMatch[1] : undefined;
       elements.push(
-        <TacticalPitch : ? formMatch[1] formation="{formMatch" key="{`pitch-${index}`}" teamMatch[1] teamName="{teamMatch" undefined}/>
+        React.createElement(TacticalPitch, {
+          key: `pitch-${index}`,
+          teamName: parsedTeam,
+          formation: parsedFormation,
+        })
       );
       return;
     }
@@ -525,6 +531,7 @@ export default function FootPlayChat() {
     let finalAnswer = '';
     let currentThoughts: string[] = [];
     const requestStartTime = Date.now();
+    let isFirstMessageChunk = true;
 
     const saveSessionProgress = (msgs: Message[]) => {
       setSessions(prevSessions => {
@@ -609,9 +616,11 @@ export default function FootPlayChat() {
               try {
                 const parsed = JSON.parse(dataStr);
                 
-                if (parsed.event === 'agent_thought' && parsed.thought) {
-                  if (!currentThoughts.includes(parsed.thought)) {
-                    currentThoughts.push(parsed.thought);
+                // التقاط خطوات التفكير واستدعاء الأدوات في Dify Agent
+                if (parsed.event === 'agent_thought') {
+                  const thoughtText = parsed.thought || (parsed.tool ? `استخدام أداة: ${parsed.tool}` : '');
+                  if (thoughtText && !currentThoughts.includes(thoughtText)) {
+                    currentThoughts.push(thoughtText);
                     setMessages(prev => {
                       const updated = [...prev];
                       const lastIndex = updated.length - 1;
@@ -623,10 +632,12 @@ export default function FootPlayChat() {
                   }
                 }
 
-                if (parsed.event === 'message' && typeof parsed.answer === 'string') {
-                  if (loading) {
+                // التقاط الرسالة سواء كانت من Chat العادي أو من Agent
+                if ((parsed.event === 'message' || parsed.event === 'agent_message') && typeof parsed.answer === 'string') {
+                  if (isFirstMessageChunk && parsed.answer.trim() !== '') {
+                    isFirstMessageChunk = false;
                     setLoading(false); 
-                    const elapsedSeconds = Math.floor((Date.now() - requestStartTime) / 1000);
+                    const elapsedSeconds = Math.max(1, Math.floor((Date.now() - requestStartTime) / 1000));
                     
                     setMessages(prev => {
                       const updated = [...prev];
@@ -651,6 +662,7 @@ export default function FootPlayChat() {
                     return updated;
                   });
                 }
+
                 if (parsed.conversation_id) {
                   finalConvId = parsed.conversation_id;
                   setConversationId(finalConvId);
@@ -667,7 +679,7 @@ export default function FootPlayChat() {
         const lastIndex = updated.length - 1;
         if (updated[lastIndex].role === 'assistant') {
           if (!finalAnswer) {
-            updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت.';
+            updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت والمحاولة مجدداً.';
           }
         }
         return updated;
@@ -784,7 +796,7 @@ export default function FootPlayChat() {
         ) : (
           <div className="space-y-6">
             {messages.map((msg, i) => (
-              msg.content && msg.content.trim() !== '' || (msg.imageUrls && msg.imageUrls.length > 0) || (msg.thoughts && msg.thoughts.length > 0) ? (
+              msg.content && msg.content.trim() !== '' || (msg.imageUrls && msg.imageUrls.length > 0) ? (
                 <div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
                   {msg.role === 'assistant' && <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm"/></div>}
                   <div className={`flex flex-col ${msg.role === 'user' ? 'max-w-[85%]' : 'w-full max-w-[90%]'}`}>
@@ -799,9 +811,11 @@ export default function FootPlayChat() {
                           </summary>
                           <div className="mt-2 mr-2 pr-3 py-1.5 border-r-2 border-emerald-900/30 space-y-1.5 text-gray-400 font-medium">
                             <p className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> الاتصال بخوادم فوتبلاي الذكية</p>
+                            <p className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> التحقق من الإحصائيات والمعلومات الرياضية</p>
                             {msg.thoughts && msg.thoughts.map((t, idx) => (
                               <p key={idx} className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> {t}</p>
                             ))}
+                            <p className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> صياغة الرد النهائي</p>
                           </div>
                         </details>
                       </div>
@@ -838,7 +852,7 @@ export default function FootPlayChat() {
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                            </svg>
-                           جاري البحث والتفكير... ({formatSeconds(loadingSeconds)})
+                           ⏳ جاري البحث في المصادر الرياضية… ({formatSeconds(loadingSeconds)})
                         </span>
                         <span className="text-emerald-500 text-xs bg-white/5 px-2 py-1 rounded-md transition-transform">{expandedThoughts === -1 ? '▲' : '▼'}</span>
                       </div>
@@ -847,12 +861,20 @@ export default function FootPlayChat() {
                         <div className="pt-3 pb-1 mt-1 border-t border-white/5 space-y-2.5 text-xs font-medium">
                           <div className="flex items-center gap-2">
                             <span className="text-emerald-400 font-bold">✓</span>
-                            <span className="text-gray-300">الاتصال بخوادم فوتبلاي الذكية...</span>
+                            <span className="text-gray-300">أتحقق من الإحصائيات والمعلومات الرياضية ذات الصلة…</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>
-                            <span className="text-gray-400">جاري تفعيل أدوات البحث والتحليل الرياضي...</span>
-                          </div>
+                          {loadingSeconds >= 3 && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-400 font-bold">✓</span>
+                              <span className="text-gray-300">أراجع البيانات وأقارن بين المصادر المتاحة…</span>
+                            </div>
+                          )}
+                          {loadingSeconds >= 6 && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>
+                              <span className="text-gray-300">أحلل المعلومات للوصول إلى إجابة دقيقة…</span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
