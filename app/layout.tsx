@@ -1,10 +1,9 @@
-import type { Metadata } from "next";
-import React from "react";
-import "./globals.css";
+import { ClerkProvider } from '@clerk/nextjs';
+import './globals.css';
 
-export const metadata: Metadata = {
-  title: "فوتبلاي | مساعدك الرياضي",
-  description: "منصة فوتبلاي للذكاء الاصطناعي الرياضي",
+export const metadata = {
+  title: 'AiFBall - فوتبلاي',
+  description: 'منصة فوتبلاي للذكاء الاصطناعي الرياضي',
 };
 
 export default function RootLayout({
@@ -13,10 +12,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ar" dir="rtl" className="h-full">
-      <body className="h-full bg-[#131314] text-[#E3E3E3] antialiased selection:bg-[#006C35] selection:text-white">
-        {children}
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="ar" dir="rtl">
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
   );
 }
