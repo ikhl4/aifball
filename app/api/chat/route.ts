@@ -8,8 +8,7 @@ export async function POST(req: Request) {
     const query = body?.query || 'مرحبا';
     const conversation_id = body?.conversation_id || '';
 
-    // المفتاح الخاص بالـ Agent (تأكد من أنه المفتاح الصحيح)
-    const apiKey = 'app-3NlvwtpsjeTUXKG9wurQFF8E'; 
+    const apiKey = 'app-3NlvwtpsjeTUXKG9wurQFF8E'; // تأكد أنه مفتاح الـ Agent
     const url = 'https://api.dify.ai/v1/chat-messages';
 
     const apiRes = await fetch(url, {
@@ -34,7 +33,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: errorText }, { status: 500 });
     }
 
-    // قراءة البث وجمع النص (يدعم message و agent_message)
     const reader = apiRes.body?.getReader();
     const decoder = new TextDecoder('utf-8');
     let finalAnswer = '';
@@ -59,13 +57,20 @@ export async function POST(req: Request) {
             try {
               const parsed = JSON.parse(dataStr);
               
-              // 🔴 التعديل الأهم هنا: استقبال agent_message الخاص بالوكيل
-              if ((parsed.event === 'message' || parsed.event === 'agent_message') && typeof parsed.answer === 'string') {
+              // قراءة النص من الوكيل
+              if ((parsed.event === 'agent_message' || parsed.event === 'message') && typeof parsed.answer === 'string') {
                 finalAnswer += parsed.answer;
               }
               
+              // حفظ معرف المحادثة
               if (parsed.conversation_id) {
                 finalConvId = parsed.conversation_id;
+              }
+
+              // طباعة أي خطأ يحدث في الخلفية لكي يظهر في Vercel Logs
+              if (parsed.event === 'error') {
+                console.error('DIFY_STREAM_ERROR:', parsed);
+                finalAnswer = `خطأ من الخادم: ${parsed.message || 'يرجى المحاولة لاحقاً'}`;
               }
             } catch (e) {}
           }
@@ -73,8 +78,16 @@ export async function POST(req: Request) {
       }
     }
 
+    // إذا لم يصل أي نص، نرسل رسالة توضح للمستخدم أن Dify لم يرد
+    if (!finalAnswer) {
+      return NextResponse.json({
+        answer: 'لم يتم استلام رد من الوكيل. يرجى التحقق من سجلات Dify أو التأكد من رصيد الحساب.',
+        conversation_id: finalConvId
+      });
+    }
+
     return NextResponse.json({
-      answer: finalAnswer || 'تم الاستلام بنجاح',
+      answer: finalAnswer,
       conversation_id: finalConvId
     });
 
