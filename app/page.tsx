@@ -8,8 +8,6 @@ interface Message {
   userQuery?: string;
   imageUrls?: string[]; 
   feedback?: 'like' | 'dislike' | null;
-  thoughts?: string[];
-  thinkingTime?: number;
 }
 
 interface ChatSession {
@@ -54,16 +52,6 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
-function extractYouTubeIds(text: string): string[] {
-  const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
-  const ids: string[] = [];
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    if (match[1] && !ids.includes(match[1])) ids.push(match[1]);
-  }
-  return ids;
-}
-
 function parseStatNumber(val: string): number | null {
   const cleaned = val.replace(/,/g, '').match(/-?\d+(\.\d+)?/);
   return cleaned ? parseFloat(cleaned[0]) : null;
@@ -78,7 +66,9 @@ function renderInlineText(text: string) {
       if (match) {
         return (
           <a key={pIdx} href={match[2]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 mx-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
-            <span>🔗</span><span>{match[1]}</span><span className="text-[10px] opacity-70">↗</span>
+            <span>🔗</span>
+            <span>{match[1]}</span>
+            <span className="text-[10px] opacity-70">↗</span>
           </a>
         );
       }
@@ -106,10 +96,18 @@ function renderInlineText(text: string) {
 }
 
 function renderFormattedText(text: string) {
-  const youtubeIds = extractYouTubeIds(text);
+  // 1. استخراج روابط اليوتيوب وإزالتها من النص الأساسي
+  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+  const youtubeIds: string[] = [];
   
-  let processedText = text;
-  processedText = processedText.replace(/\]\s*\n\s*\(/g, '](');
+  // دالة المسح: تستخرج الـ ID وتترك مكان الرابط فراغاً
+  let processedText = text.replace(youtubeRegex, (url, id) => {
+    if (!youtubeIds.includes(id)) youtubeIds.push(id);
+    return ''; 
+  });
+
+  // تنظيف الفراغات الزائدة
+  processedText = processedText.replace(/\]\s*\n\s*\(/g, '](').replace(/\n\s*\n/g, '\n\n');
   
   const lines = processedText.split('\n');
   const elements: React.ReactNode[] = [];
@@ -268,15 +266,20 @@ function renderFormattedText(text: string) {
 
   if (inTable) flushTable(lines.length);
 
+  // 3. إضافة الروابط المستخرجة في نهاية الإجابة
   if (youtubeIds.length > 0) {
     elements.push(
-      <div key="youtube-embeds" className="mt-5 space-y-4">
+      <div key="youtube-embeds" className="mt-8 pt-4 border-t border-white/10">
+        <h4 className="text-emerald-400 font-bold mb-3 flex items-center gap-2 text-sm">
+          <span>🎥</span> رابط ملخص المباراة على يوتيوب
+        </h4>
+        
         {youtubeIds.map((vid) => (
-          <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl">
-            <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-950/50 border-b border-white/10">
-              <span className="text-xs sm:text-sm font-bold text-emerald-400">🎥 مشاهدة الملخص المدمج</span>
-              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
-                فتح في تطبيق يوتيوب ↗
+          <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl mb-4">
+            <div className="flex items-center justify-between px-4 py-3 bg-emerald-950/50 border-b border-white/10">
+              <span className="text-xs sm:text-sm font-bold text-emerald-400">مشاهدة الملخص المدمج</span>
+              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-400 hover:text-blue-300 underline transition break-all">
+                فتح في يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video">
@@ -305,7 +308,6 @@ export default function FootPlayChat() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingSeconds, setLoadingSeconds] = useState(0); 
-  const [expandedThoughts, setExpandedThoughts] = useState<number | null>(null);
 
   const [conversationId, setConversationId] = useState('');
   const [currentSessionId, setCurrentSessionId] = useState<string>('');
@@ -328,7 +330,6 @@ export default function FootPlayChat() {
     let interval: NodeJS.Timeout;
     if (loading) {
       setLoadingSeconds(0);
-      setExpandedThoughts(-1);
       interval = setInterval(() => {
         setLoadingSeconds((prev) => prev + 1);
       }, 1000);
@@ -432,7 +433,7 @@ export default function FootPlayChat() {
 
     const imageUrls = attachedFiles.map(f => f.url);
     const newMessages: Message[] = [...messages, { role: 'user', content: query, userQuery: query, imageUrls }];
-    setMessages([...newMessages, { role: 'assistant', content: '', userQuery: query, thoughts: [] }]);
+    setMessages([...newMessages, { role: 'assistant', content: '', userQuery: query }]);
     setInput('');
     
     const filesToUpload = [...attachedFiles];
@@ -447,7 +448,6 @@ export default function FootPlayChat() {
     
     let finalConvId = conversationId;
     let finalAnswer = '';
-    const requestStartTime = Date.now();
 
     const saveSessionProgress = (msgs: Message[]) => {
       setSessions(prevSessions => {
@@ -508,7 +508,14 @@ export default function FootPlayChat() {
 
       if (reader) {
         while (true) {
-          const { done, value } = await reader.read();
+          let readResult;
+          try {
+             readResult = await reader.read();
+          } catch (streamError) {
+             break; 
+          }
+          
+          const { done, value } = readResult;
           if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
@@ -523,40 +530,29 @@ export default function FootPlayChat() {
 
               try {
                 const parsed = JSON.parse(dataStr);
-                
                 if ((parsed.event === 'message' || parsed.event === 'agent_message') && typeof parsed.answer === 'string') {
+                  setLoading(false); 
                   finalAnswer += parsed.answer;
+                  
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    const lastIndex = updated.length - 1;
+                    if (updated[lastIndex].role === 'assistant') {
+                      updated[lastIndex].content = finalAnswer;
+                    }
+                    saveSessionProgress(updated);
+                    return updated;
+                  });
                 }
-                
                 if (parsed.conversation_id) {
                   finalConvId = parsed.conversation_id;
                   setConversationId(finalConvId);
                 }
-
-                if (parsed.event === 'error') {
-                  console.error('DIFY_STREAM_ERROR:', parsed);
-                  finalAnswer = `خطأ من Dify: ${parsed.message || parsed.code || 'غير معروف'}`;
-                  setLoading(false);
-                  break;
-                }
               } catch (e) {}
             }
           }
-          
-          const elapsedSeconds = Math.max(1, Math.floor((Date.now() - requestStartTime) / 1000));
-          setMessages(prev => {
-            const updated = [...prev];
-            const lastIndex = updated.length - 1;
-            if (updated[lastIndex].role === 'assistant') {
-              updated[lastIndex].content = finalAnswer;
-              updated[lastIndex].thinkingTime = elapsedSeconds;
-            }
-            return updated;
-          });
         }
       }
-
-      saveSessionProgress(messages);
 
     } catch (error) {
       setMessages(prev => {
@@ -571,6 +567,10 @@ export default function FootPlayChat() {
       });
     } finally {
       setLoading(false);
+      setMessages(currentMessages => {
+        saveSessionProgress(currentMessages);
+        return currentMessages;
+      });
     }
   };
 
@@ -702,24 +702,6 @@ export default function FootPlayChat() {
                 <div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
                   {msg.role === 'assistant' && <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm"/></div>}
                   <div className={`flex flex-col ${msg.role === 'user' ? 'max-w-[85%]' : 'w-full max-w-[90%]'}`}>
-                    
-                    {msg.role === 'assistant' && msg.thinkingTime !== undefined && msg.thinkingTime > 0 && (
-                      <div className="mb-2 w-full">
-                        <details className="text-[11px] text-gray-400 cursor-pointer group select-none transition-all duration-300">
-                          <summary className="inline-flex items-center gap-1.5 bg-black/30 hover:bg-black/50 px-3 py-1.5 rounded-xl border border-white/5 transition-colors">
-                            <span className="text-emerald-500 text-sm">💡</span>
-                            <span className="font-bold text-gray-300">تم البحث والتحليل في {formatSeconds(msg.thinkingTime)}</span>
-                            <span className="opacity-50 group-open:rotate-180 transition-transform text-[8px] mr-1">▼</span>
-                          </summary>
-                          <div className="mt-2 mr-2 pr-3 py-1.5 border-r-2 border-emerald-900/30 space-y-1.5 text-gray-400 font-medium">
-                            <p className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> الاتصال بخوادم فوتبلاي الذكية</p>
-                            <p className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> التحقق من الإحصائيات والمعلومات الرياضية</p>
-                            <p className="flex items-center gap-1.5"><span className="text-emerald-500">✓</span> صياغة الرد النهائي</p>
-                          </div>
-                        </details>
-                      </div>
-                    )}
-
                     <div className={`rounded-2xl px-5 py-4 shadow-xl backdrop-blur-md border border-white/10 text-base bg-black/50 ${msg.role === 'user' ? 'text-white rounded-tr-sm' : 'text-gray-100'}`}>
                       {msg.role === 'user' ? (
                         <div>
@@ -738,21 +720,64 @@ export default function FootPlayChat() {
                 </div>
               ) : null
             ))}
-            
             {loading && (
               <div className="flex items-start gap-3 justify-end flex-row-reverse mt-4">
                 <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm"/></div>
                 <div className="w-full max-w-[85%]">
                   <div className="rounded-2xl px-4 py-3 shadow-lg backdrop-blur-md border border-white/10 bg-black/40 text-gray-300">
                     <div className="flex flex-col gap-2">
+                      {/* إزالة اللمبة والإبقاء على العداد */}
                       <div className="flex items-center justify-between cursor-pointer select-none">
                         <span className="text-emerald-400 font-bold text-sm flex items-center gap-2">
                            <svg className="animate-spin -ml-1 mr-1 h-4 w-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                            </svg>
-                           ⏳ جاري البحث في المصادر الرياضية… ({formatSeconds(loadingSeconds)})
+                           جاري البحث والتحليل... ({formatSeconds(loadingSeconds)})
                         </span>
+                      </div>
+                      
+                      <div className="pt-3 pb-1 mt-1 border-t border-white/5 space-y-2.5 text-xs font-medium">
+                        <div className="flex items-center gap-2">
+                          <span className="text-emerald-400 font-bold">✓</span>
+                          <span className="text-gray-300">الاتصال بخوادم فوتبلاي الذكية...</span>
+                        </div>
+                        
+                        {loadingSeconds >= 2 ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-400 font-bold">✓</span>
+                            <span className="text-gray-300">أتحقق من الإحصائيات والمعلومات الرياضية...</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>
+                            <span className="text-gray-500">أتحقق من الإحصائيات والمعلومات الرياضية...</span>
+                          </div>
+                        )}
+                        
+                        {loadingSeconds >= 5 ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-400 font-bold">✓</span>
+                            <span className="text-gray-300">أراجع البيانات وأقارن بين المصادر المتاحة...</span>
+                          </div>
+                        ) : loadingSeconds >= 2 ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>
+                            <span className="text-gray-500">أراجع البيانات وأقارن بين المصادر المتاحة...</span>
+                          </div>
+                        ) : null}
+
+                        {loadingSeconds >= 8 ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-400 font-bold">✓</span>
+                            <span className="text-gray-300">أحلل المعلومات للوصول إلى إجابة دقيقة...</span>
+                          </div>
+                        ) : loadingSeconds >= 5 ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>
+                            <span className="text-gray-500">أحلل المعلومات للوصول إلى إجابة دقيقة...</span>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </div>
