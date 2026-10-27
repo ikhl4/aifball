@@ -473,7 +473,7 @@ export default function FootPlayChat() {
           <SignedIn>
             <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
               <div className="flex items-center gap-3">
-                <UserButton "w-9 afterSignOutUrl="/" appearance="{{" avatarBox: border-2 border-emerald-500/30 elements: h-9 rounded-full" { } }}/>
+                <UserButton "w-9 afterSignOutUrl="/" appearance="{{" avatarBox: border-2 border-emerald-500/30" elements: h-9 rounded-full { } }}/>
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-gray-200">حسابي</span>
                   <span className="text-[10px] text-emerald-400">متصل الآن</span>
