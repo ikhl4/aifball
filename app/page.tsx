@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
-import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -96,17 +96,15 @@ function renderInlineText(text: string) {
 }
 
 function renderFormattedText(text: string) {
-  // 1. استخراج روابط اليوتيوب وإزالتها من النص الأساسي
+  // 1. استخراج روابط يوتيوب
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
   const youtubeIds: string[] = [];
   
-  // دالة المسح: تستخرج الـ ID وتترك مكان الرابط فراغاً
   let processedText = text.replace(youtubeRegex, (url, id) => {
     if (!youtubeIds.includes(id)) youtubeIds.push(id);
     return ''; 
   });
 
-  // تنظيف الفراغات الزائدة
   processedText = processedText.replace(/\]\s*\n\s*\(/g, '](').replace(/\n\s*\n/g, '\n\n');
   
   const lines = processedText.split('\n');
@@ -266,7 +264,7 @@ function renderFormattedText(text: string) {
 
   if (inTable) flushTable(lines.length);
 
-  // 3. إضافة الروابط المستخرجة في نهاية الإجابة
+  // إضافة قسم الفيديو في نهاية الرد
   if (youtubeIds.length > 0) {
     elements.push(
       <div key="youtube-embeds" className="mt-8 pt-4 border-t border-white/10">
@@ -304,6 +302,8 @@ function renderFormattedText(text: string) {
 const STORAGE_KEY = 'aifball_chat_history_v8';
 
 export default function FootPlayChat() {
+  const { user } = useUser(); // جلب بيانات المستخدم من Clerk
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -644,11 +644,25 @@ export default function FootPlayChat() {
           </SignedOut>
           <SignedIn>
             <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-              <div className="flex items-center gap-3">
-                <UserButton afterSignOutUrl="/" appearance={{ elements: { userButtonAvatarBox: "w-9 h-9 border-2 border-emerald-500/30 rounded-full" } }} />
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-gray-200">حسابي</span>
-                  <span className="text-[10px] text-emerald-400">متصل الآن</span>
+              <div className="flex items-center gap-3 w-full">
+                <UserButton afterSignOutUrl="/" appearance={{ elements: { userButtonAvatarBox: "w-9 h-9 border-2 border-emerald-500/30 rounded-full flex-shrink-0" } }} />
+                <div className="flex flex-col flex-1 min-w-0">
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-xs font-bold text-gray-200 truncate pr-2">
+                      {user?.fullName || user?.firstName || 'حسابي'}
+                    </span>
+                    {/* شرط عرض لقب المالك */}
+                    {user?.primaryEmailAddress?.emailAddress === 'khalidassaf44@gmail.com' ? (
+                      <span className="text-[9px] font-bold bg-emerald-900/60 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 whitespace-nowrap shadow-sm">
+                        المالك
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-bold bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full border border-gray-700 whitespace-nowrap shadow-sm">
+                        عضو
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-emerald-400 text-right mt-0.5">متصل الآن</span>
                 </div>
               </div>
             </div>
@@ -726,7 +740,6 @@ export default function FootPlayChat() {
                 <div className="w-full max-w-[85%]">
                   <div className="rounded-2xl px-4 py-3 shadow-lg backdrop-blur-md border border-white/10 bg-black/40 text-gray-300">
                     <div className="flex flex-col gap-2">
-                      {/* إزالة اللمبة والإبقاء على العداد */}
                       <div className="flex items-center justify-between cursor-pointer select-none">
                         <span className="text-emerald-400 font-bold text-sm flex items-center gap-2">
                            <svg className="animate-spin -ml-1 mr-1 h-4 w-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
