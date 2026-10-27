@@ -289,10 +289,10 @@ export default function FootPlayChat() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
-    if (!document.querySelector('script[src="[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)"]')) {
+    if (!document.querySelector('script[src="https://widgets.api-sports.io/2.0.0/widgets.js"]')) {
       const script = document.createElement('script');
       script.type = 'module';
-      script.src = '[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)';
+      script.src = 'https://widgets.api-sports.io/2.0.0/widgets.js';
       document.body.appendChild(script);
     }
   }, []);
@@ -429,7 +429,7 @@ export default function FootPlayChat() {
   return (
     <div dir="rtl" className="flex flex-col h-[100dvh] relative overflow-hidden font-saudi bg-[#131314] text-[#E3E3E3]">
       <style jsx global>{`
-        @import url('[https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap)');
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
@@ -473,7 +473,7 @@ export default function FootPlayChat() {
           <SignedIn>
             <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
               <div className="flex items-center gap-3">
-                <UserButton "w-9 afterSignOutUrl="/" appearance="{{" avatarBox: border-2 border-emerald-500/30" elements: h-9 rounded-full { } }}/>
+                <UserButton afterSignOutUrl="/" appearance={{ elements: { userButtonAvatarBox: "w-9 h-9 border-2 border-emerald-500/30 rounded-full" } }} />
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-gray-200">حسابي</span>
                   <span className="text-[10px] text-emerald-400">متصل الآن</span>
@@ -575,7 +575,7 @@ export default function FootPlayChat() {
                 <div className="flex-shrink-0 mt-1 hidden sm:block"><AiFBallLogo size="sm"/></div>
                 <div className="w-full min-w-0 flex items-center">
                    <span className="text-emerald-400 font-bold text-sm flex items-center gap-2 bg-[#1A1C1E] px-4 py-2.5 rounded-2xl border border-white/5 shadow-sm">
-                     <svg className="animate-spin -ml-1 mr-1 h-4 w-4 text-emerald-500" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24">
+                     <svg className="animate-spin -ml-1 mr-1 h-4 w-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                      </svg>
