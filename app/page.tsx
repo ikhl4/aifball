@@ -78,7 +78,7 @@ function renderInlineText(text: string) {
     return urlParts.map((urlPart, uIdx) => {
       if (urlPart.match(/^https?:\/\//)) {
         return (
-          <a key={`${pIdx}-${uIdx}`} href={urlPart} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-medium break-all transition">
+          <a key={`${pIdx}-${uIdx}`} href={urlPart} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 underline font-medium break-all transition">
             {urlPart}
           </a>
         );
@@ -87,7 +87,7 @@ function renderInlineText(text: string) {
       const boldParts = urlPart.split(/(\*\*.*?\*\*)/g);
       return boldParts.map((bPart, bIdx) => {
         if (bPart.startsWith('**') && bPart.endsWith('**')) {
-           return <strong key={`${pIdx}-${uIdx}-${bIdx}`} className="font-extrabold text-emerald-400">{bPart.slice(2, -2)}</strong>;
+           return <strong key={`${pIdx}-${uIdx}-${bIdx}`} className="font-extrabold text-emerald-400 mx-0.5">{bPart.slice(2, -2)}</strong>;
         }
         return <span key={`${pIdx}-${uIdx}-${bIdx}`}>{bPart}</span>;
       });
@@ -96,7 +96,6 @@ function renderInlineText(text: string) {
 }
 
 function renderFormattedText(text: string) {
-  // 1. استخراج روابط يوتيوب
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
   const youtubeIds: string[] = [];
   
@@ -125,14 +124,14 @@ function renderFormattedText(text: string) {
       const p1Title = cleanCell(headers[1]) || 'الطرف الأول';
       const p2Title = cleanCell(headers[2]) || 'الطرف الثاني';
       elements.push(
-        <div key={`datamb-${keyIndex}`} className="my-5 p-4 rounded-3xl bg-black/40 backdrop-blur-md border border-emerald-900/40 shadow-2xl">
-          <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
+        <div key={`datamb-${keyIndex}`} className="my-6 p-4 md:p-5 rounded-2xl bg-black/30 border border-white/5 shadow-md w-full">
+          <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/5">
             <span className="text-sm font-bold text-emerald-400 flex items-center gap-2"><span>📊</span><span>مقارنة الأداء الإحصائي</span></span>
             <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">AiFBall Pro</span>
           </div>
           <div className="grid grid-cols-2 gap-3 mb-5 text-center">
-            <div className="p-3 rounded-2xl bg-black/30 border border-emerald-900/30"><span className="text-sm font-bold text-emerald-400 block truncate">{p1Title}</span></div>
-            <div className="p-3 rounded-2xl bg-black/30 border border-sky-900/30"><span className="text-sm font-bold text-sky-400 block truncate">{p2Title}</span></div>
+            <div className="p-2.5 rounded-xl bg-black/40 border border-emerald-900/30"><span className="text-sm font-bold text-emerald-400 block truncate">{p1Title}</span></div>
+            <div className="p-2.5 rounded-xl bg-black/40 border border-sky-900/30"><span className="text-sm font-bold text-sky-400 block truncate">{p2Title}</span></div>
           </div>
           <div className="space-y-4">
             {body.map((row, rIdx) => {
@@ -147,13 +146,13 @@ function renderFormattedText(text: string) {
                 const p2 = 100 - p1;
                 const p1Wins = n1 >= n2;
                 return (
-                  <div key={rIdx} className="space-y-2">
+                  <div key={rIdx} className="space-y-1.5">
                     <div className="flex items-center justify-between text-sm px-1">
                       <span className={`font-bold ${p1Wins ? 'text-emerald-400' : 'text-gray-400'}`}>{val1Str}</span>
                       <span className="text-gray-300 font-medium text-center text-xs">{metric}</span>
                       <span className={`font-bold ${!p1Wins ? 'text-sky-400' : 'text-gray-400'}`}>{val2Str}</span>
                     </div>
-                    <div className="w-full h-3 rounded-full bg-black/40 overflow-hidden flex gap-1 p-0.5">
+                    <div className="w-full h-2.5 rounded-full bg-black/50 overflow-hidden flex gap-1 p-0.5">
                       <div style={{ width: `${p1}%` }} className={`h-full rounded-full transition-all duration-700 ${p1Wins ? 'bg-gradient-to-l from-emerald-400 to-emerald-600' : 'bg-emerald-900/40'}`} />
                       <div style={{ width: `${p2}%` }} className={`h-full rounded-full transition-all duration-700 ${!p1Wins ? 'bg-gradient-to-r from-sky-400 to-sky-600' : 'bg-sky-900/40'}`} />
                     </div>
@@ -172,21 +171,22 @@ function renderFormattedText(text: string) {
         </div>
       );
     } else {
+      // تعديل الجداول لتكون متجاوبة (Responsive) للآيفون ولا تخرب الشاشة
       elements.push(
-        <div key={`table-${keyIndex}`} className="my-5 w-full overflow-x-auto custom-scrollbar rounded-2xl border border-white/10 shadow-xl bg-black/40 backdrop-blur-md">
+        <div key={`table-${keyIndex}`} className="my-6 w-full max-w-full overflow-x-auto custom-scrollbar rounded-2xl border border-white/5 shadow-md bg-black/30">
           <table className="w-full text-right border-collapse text-sm min-w-max">
-            <thead>
-              <tr className="bg-emerald-950/60 text-emerald-300">
+            <thead className="bg-[#181A1C]">
+              <tr>
                 {headers.map((h, idx) => (
-                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{cleanCell(h)}</th>
+                  <th key={idx} className="py-4 px-5 font-bold text-gray-300 border-b border-white/5 whitespace-nowrap">{cleanCell(h)}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 bg-black/20">
+            <tbody className="divide-y divide-white/5">
               {body.map((row, rIdx) => (
-                <tr key={rIdx} className="hover:bg-white/5 transition-colors">
+                <tr key={rIdx} className="hover:bg-white/5 transition-colors even:bg-[#1A1C1E]">
                   {row.map((cell, cIdx) => (
-                    <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{cleanCell(cell)}</td>
+                    <td key={cIdx} className="py-3.5 px-5 whitespace-nowrap text-gray-300 font-medium">{cleanCell(cell)}</td>
                   ))}
                 </tr>
               ))}
@@ -213,7 +213,7 @@ function renderFormattedText(text: string) {
         props[`data-${match[1]}`] = match[2];
       }
       elements.push(
-        <div key={`widget-${index}`} className="my-5 w-full rounded-2xl overflow-hidden border border-emerald-900/40 shadow-xl bg-transparent relative z-10 min-h-[100px]">
+        <div key={`widget-${index}`} className="my-6 w-full max-w-full rounded-2xl overflow-hidden border border-emerald-900/40 shadow-xl bg-transparent relative z-10 min-h-[100px]">
           {React.createElement('api-sports-widget', props)}
         </div>
       );
@@ -232,19 +232,19 @@ function renderFormattedText(text: string) {
     if (!trimmed) {
       elements.push(<div key={index} className="h-1.5" />);
     } else if (trimmed.startsWith('### ')) {
-      elements.push(<h3 key={index} className="text-lg font-bold text-emerald-400 mt-5 mb-2">{renderInlineText(trimmed.replace(/^###\s+/, ''))}</h3>);
+      elements.push(<h3 key={index} className="text-lg font-bold text-gray-100 mt-6 mb-3">{renderInlineText(trimmed.replace(/^###\s+/, ''))}</h3>);
     } else if (trimmed.startsWith('## ')) {
-      elements.push(<h2 key={index} className="text-xl font-bold text-emerald-400 mt-5 mb-2">{renderInlineText(trimmed.replace(/^##\s+/, ''))}</h2>);
+      elements.push(<h2 key={index} className="text-xl font-bold text-gray-100 mt-7 mb-4 pb-2 border-b border-white/5">{renderInlineText(trimmed.replace(/^##\s+/, ''))}</h2>);
     } else if (trimmed.startsWith('# ')) {
-      elements.push(<h1 key={index} className="text-2xl font-bold text-emerald-400 mt-5 mb-3">{renderInlineText(trimmed.replace(/^#\s+/, ''))}</h1>);
+      elements.push(<h1 key={index} className="text-2xl font-black text-gray-100 mt-8 mb-4">{renderInlineText(trimmed.replace(/^#\s+/, ''))}</h1>);
     } else if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
       const isNumbered = /^\d+\.\s+/.test(trimmed);
       const textPart = trimmed.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '');
       const bullet = isNumbered ? trimmed.match(/^\d+\./)![0] : '•';
       elements.push(
-        <div key={index} className="flex items-start gap-2.5 my-2 pr-1.5">
-          <span className="text-emerald-500 mt-0.5 font-bold whitespace-nowrap">{bullet}</span>
-          <span className="flex-1 leading-relaxed text-base text-gray-200">{renderInlineText(textPart)}</span>
+        <div key={index} className="flex items-start gap-3 my-2.5 pr-2">
+          <span className="text-emerald-500 font-bold whitespace-nowrap mt-0.5">{bullet}</span>
+          <span className="flex-1 leading-relaxed text-base text-gray-300">{renderInlineText(textPart)}</span>
         </div>
       );
     } else if (trimmed.startsWith('![') && trimmed.includes('](') && trimmed.endsWith(')')) {
@@ -252,37 +252,36 @@ function renderFormattedText(text: string) {
       const urlMatch = trimmed.match(/\((.*?)\)/);
       if (urlMatch && urlMatch[1]) {
         elements.push(
-          <div key={index} className="my-4 rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-black/40 p-2 relative group">
+          <div key={index} className="my-5 rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-black/40 p-2 relative group w-full">
             <img src={urlMatch[1]} alt={altMatch ? altMatch[1] : 'صورة رياضية'} onError={(e) => { e.currentTarget.src = '/logo.png'; e.currentTarget.alt = 'تعذر تحميل الصورة من المصدر'; }} className="w-full h-auto rounded-xl object-contain max-h-[28rem] bg-black/30" />
           </div>
         );
       }
     } else {
-      elements.push(<p key={index} className="leading-relaxed my-2 text-base text-gray-100">{renderInlineText(trimmed)}</p>);
+      elements.push(<p key={index} className="leading-relaxed my-3 text-base text-gray-300">{renderInlineText(trimmed)}</p>);
     }
   });
 
   if (inTable) flushTable(lines.length);
 
-  // إضافة قسم الفيديو في نهاية الرد
   if (youtubeIds.length > 0) {
     elements.push(
       <div key="youtube-embeds" className="mt-8 pt-4 border-t border-white/10">
-        <h4 className="text-emerald-400 font-bold mb-3 flex items-center gap-2 text-sm">
-          <span>🎥</span> رابط ملخص المباراة على يوتيوب
+        <h4 className="text-emerald-400 font-bold mb-4 flex items-center gap-2 text-sm">
+          <span>🎥</span> مقاطع يوتيوب المتعلقة
         </h4>
         
         {youtubeIds.map((vid) => (
           <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl mb-4">
             <div className="flex items-center justify-between px-4 py-3 bg-emerald-950/50 border-b border-white/10">
               <span className="text-xs sm:text-sm font-bold text-emerald-400">مشاهدة الملخص المدمج</span>
-              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-400 hover:text-blue-300 underline transition break-all">
+              <a href={`[https://www.youtube.com/watch?v=$](https://www.youtube.com/watch?v=$){vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-400 hover:text-blue-300 underline transition break-all">
                 فتح في يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video">
               <iframe 
-                src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0`} 
+                src={`[https://www.youtube-nocookie.com/embed/$](https://www.youtube-nocookie.com/embed/$){vid}?rel=0`} 
                 title="YouTube video player" 
                 className="w-full h-full border-0" 
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
@@ -299,10 +298,10 @@ function renderFormattedText(text: string) {
   return elements;
 }
 
-const STORAGE_KEY = 'aifball_chat_history_v8';
+const STORAGE_KEY = 'aifball_chat_history_v11';
 
 export default function FootPlayChat() {
-  const { user } = useUser(); // جلب بيانات المستخدم من Clerk
+  const { user } = useUser(); 
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -320,9 +319,9 @@ export default function FootPlayChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const suggestionCards = [
-    { question: 'اسلوب لعب الاتحاد مع الالماني فيسينغ', tag: 'تحليل تكتيكي', icon: '📋' },
-    { question: 'أهداف وملخصات أبرز مباريات اليوم في الدوريات الكبرى', tag: 'أهداف وملخصات المباريات', icon: '🎬' },
-    { question: 'ما هو جدول ترتيب دوري روشن السعودي حتى اليوم لموسم 2026-2027 وأبرز الإحصائيات؟', tag: 'ترتيب دوري روشن', icon: '📊' },
+    { question: 'تحليل تكتيكي لأداء لوران بلان مع الاتحاد', tag: 'تحليل تكتيكي', icon: '📋' },
+    { question: 'ما هو جدول ترتيب دوري روشن السعودي؟', tag: 'ترتيب وإحصائيات', icon: '📊' },
+    { question: 'أهداف وملخصات أبرز مباريات اليوم', tag: 'أهداف وملخصات', icon: '🎬' },
     { question: 'ما هو السجل التاريخي الكامل لأبطال دوري أبطال أوروبا؟', tag: 'التاريخ والبطولات', icon: '🏆' },
   ];
 
@@ -345,10 +344,10 @@ export default function FootPlayChat() {
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
 
-    if (!document.querySelector('script[src="https://widgets.api-sports.io/2.0.0/widgets.js"]')) {
+    if (!document.querySelector('script[src="[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)"]')) {
       const script = document.createElement('script');
       script.type = 'module';
-      script.src = 'https://widgets.api-sports.io/2.0.0/widgets.js';
+      script.src = '[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)';
       document.body.appendChild(script);
     }
   }, []);
@@ -601,39 +600,40 @@ export default function FootPlayChat() {
       </div>
 
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+        @import url('[https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap)');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         .custom-scrollbar::-webkit-scrollbar { height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #1A1C1E; border-radius: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1D6B35; border-radius: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #22C55E; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #2E3338; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #1D6B35; }
       `}</style>
 
       {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/60 z-30 transition-opacity" />}
 
-      <aside className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-[#18191A]/95 backdrop-blur-md border-l border-white/10 z-40 transform transition-transform duration-300 flex flex-col ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <div className="flex items-center gap-2.5">
+      <aside className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-[#181A1C]/95 backdrop-blur-2xl border-l border-white/5 z-40 transform transition-transform duration-300 flex flex-col shadow-2xl ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex items-center justify-between p-5 border-b border-white/5">
+          <div className="flex items-center gap-3">
             <AiFBallLogo size="sm"/>
-            <span className="font-bold text-white text-sm">سجل البحوث والمحادثات</span>
+            <span className="font-bold text-gray-200 text-sm">سجل المحادثات</span>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 transition">✕</button>
+          <button onClick={() => setSidebarOpen(false)} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 transition flex items-center justify-center">✕</button>
         </div>
-        <div className="p-3">
-          <button onClick={startNewChat} className="w-full py-2.5 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow">
-            <span>+</span><span>بدء محادثة جديدة</span>
+        <div className="p-4">
+          <button onClick={startNewChat} className="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 font-bold text-xs flex items-center justify-center gap-2 transition border border-white/5">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+            <span>محادثة جديدة</span>
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5">
+        <div className="flex-1 overflow-y-auto px-4 py-1 space-y-2 custom-scrollbar">
           {sessions.map((s) => (
-            <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setConversationId(s.conversationId); setMessages(s.messages); setSidebarOpen(false); }} className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 cursor-pointer text-xs truncate transition border border-transparent hover:border-white/10">
+            <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setConversationId(s.conversationId); setMessages(s.messages); setSidebarOpen(false); }} className="p-3 rounded-xl bg-transparent hover:bg-white/5 text-gray-400 hover:text-gray-200 cursor-pointer text-xs truncate transition border border-transparent">
               {s.title}
             </div>
           ))}
         </div>
-        <div className="p-4 border-t border-white/10 bg-[#131517] mt-auto">
+        <div className="p-4 border-t border-white/5 bg-[#131517] mt-auto">
           <SignedOut>
             <SignInButton mode="modal">
               <button className="w-full py-3 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-600 text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg">
@@ -645,21 +645,16 @@ export default function FootPlayChat() {
           <SignedIn>
             <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
               <div className="flex items-center gap-3 w-full">
-                <UserButton afterSignOutUrl="/" appearance={{ elements: { userButtonAvatarBox: "w-9 h-9 border-2 border-emerald-500/30 rounded-full flex-shrink-0" } }} />
+                <UserButton "w-9 afterSignOutUrl="/" appearance="{{" border-2 border-emerald-500/30 elements: flex-shrink-0" h-9 rounded-full userButtonAvatarBox: { } }}/>
                 <div className="flex flex-col flex-1 min-w-0">
                   <div className="flex items-center justify-between w-full">
                     <span className="text-xs font-bold text-gray-200 truncate pr-2">
                       {user?.fullName || user?.firstName || 'حسابي'}
                     </span>
-                    {/* شرط عرض لقب المالك */}
                     {user?.primaryEmailAddress?.emailAddress === 'khalidassaf44@gmail.com' ? (
-                      <span className="text-[9px] font-bold bg-emerald-900/60 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 whitespace-nowrap shadow-sm">
-                        المالك
-                      </span>
+                      <span className="text-[9px] font-bold bg-emerald-900/60 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 whitespace-nowrap shadow-sm">المالك</span>
                     ) : (
-                      <span className="text-[9px] font-bold bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full border border-gray-700 whitespace-nowrap shadow-sm">
-                        عضو
-                      </span>
+                      <span className="text-[9px] font-bold bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full border border-gray-700 whitespace-nowrap shadow-sm">عضو</span>
                     )}
                   </div>
                   <span className="text-[10px] text-emerald-400 text-right mt-0.5">متصل الآن</span>
@@ -670,130 +665,122 @@ export default function FootPlayChat() {
         </div>
       </aside>
 
-      <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-white/10 bg-[#131314]/80 sticky top-0 z-20 backdrop-blur-md">
-        <div className="flex items-center gap-2.5">
-          <button onClick={() => setSidebarOpen(true)} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-gray-200 transition">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h10" /></svg>
+      <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/5 bg-[#131314]/90 sticky top-0 z-20 backdrop-blur-xl">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setSidebarOpen(true)} className="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-gray-300 transition">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
           </button>
           <AiFBallLogo size="md"/>
           <div>
-            <h1 className="text-base font-bold text-white leading-tight">فوتبلاي</h1>
-            <p className="text-[10px] text-emerald-400 font-medium">صديقك الرياضي</p>
+            <h1 className="text-lg font-black text-white leading-none tracking-tight">فوتبلاي</h1>
           </div>
         </div>
-        <button onClick={startNewChat} className="px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 transition">+ محادثة جديدة</button>
+        <button onClick={startNewChat} className="p-2 sm:px-4 sm:py-2 rounded-full text-xs font-bold bg-white/5 hover:bg-white/10 text-gray-300 transition hidden sm:flex items-center gap-2">
+           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+           محادثة جديدة
+        </button>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col relative z-10">
+      {/* تصميم المحادثة المنظّم الخالي من الصناديق على نمط ChatGPT */}
+      <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto flex flex-col relative z-10 custom-scrollbar">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
-            <div className="text-right space-y-3 mb-6 px-1">
-              <div className="inline-flex items-center gap-2 text-emerald-400 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 border-emerald-500/40">
-                <span>⚽</span>
-                <span>HOME OF FOOTBALL</span>
-              </div>
-              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white drop-shadow-md">أهلاً بك في فوتبلاي</h2>
-              <p className="text-base sm:text-lg text-gray-200 leading-relaxed max-w-2xl font-normal drop-shadow">
-                تحليل تكتيكي، تشكيلات مباريات، مقارنات إحصائية متقدمة، أسلوب لعب الفرق وفلسفة المدربين ومتابعة أهداف وملخصات المباريات.. كيف أساعدك اليوم؟
+            <div className="text-right space-y-4 mb-8">
+              <AiFBallLogo size="lg"/>
+              <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white mt-4">كيف أساعدك اليوم؟</h2>
+              <p className="text-base sm:text-lg text-gray-400 font-medium max-w-2xl">
+                اطرح أي سؤال رياضي، ابحث عن إحصائيات، قارن بين اللاعبين، أو اطلب تحليلاً تكتيكياً مفصلاً لمباراة.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
               {suggestionCards.map((card, i) => (
-                <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-black/10 backdrop-blur-sm border border-white/10 shadow-lg min-h-[115px] hover:border-emerald-500/50 hover:bg-black/20 transition cursor-pointer" onClick={() => { setInput(card.question); sendMessage(card.question); }}>
-                  <p className="text-sm sm:text-base font-bold text-gray-100 leading-relaxed line-clamp-2">{card.question}</p>
-                  <div className="flex items-center justify-between w-full mt-3 pt-1">
-                    <span className="text-xs sm:text-sm font-bold text-[#22C55E] truncate pl-1">{card.tag}</span>
-                    <span className="w-8 h-8 rounded-full bg-black/30 flex items-center justify-center text-sm shadow-inner">{card.icon}</span>
-                  </div>
+                <div key={i} className="flex flex-col text-right p-5 rounded-2xl bg-[#1A1C1E] border border-white/5 hover:bg-[#222528] transition cursor-pointer shadow-sm group" onClick={() => { setInput(card.question); sendMessage(card.question); }}>
+                  <span className="text-2xl mb-3 opacity-80 group-hover:opacity-100 transition">{card.icon}</span>
+                  <span className="text-[11px] font-bold text-emerald-500 mb-1">{card.tag}</span>
+                  <p className="text-sm font-bold text-gray-200 leading-relaxed">{card.question}</p>
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-8 pb-4">
             {messages.map((msg, i) => (
-              msg.content && msg.content.trim() !== '' || (msg.imageUrls && msg.imageUrls.length > 0) ? (
-                <div key={i} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
-                  {msg.role === 'assistant' && <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm"/></div>}
-                  <div className={`flex flex-col ${msg.role === 'user' ? 'max-w-[85%]' : 'w-full max-w-[90%]'}`}>
-                    <div className={`rounded-2xl px-5 py-4 shadow-xl backdrop-blur-md border border-white/10 text-base bg-black/50 ${msg.role === 'user' ? 'text-white rounded-tr-sm' : 'text-gray-100'}`}>
-                      {msg.role === 'user' ? (
-                        <div>
-                          {msg.imageUrls && msg.imageUrls.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mb-3">
+              (msg.content && msg.content.trim() !== '') || (msg.imageUrls && msg.imageUrls.length > 0) ? (
+                <div key={i} className="flex items-start gap-4 w-full">
+                  <div className="flex-shrink-0 mt-1 hidden sm:block">
+                     {msg.role === 'assistant' ? (
+                        <AiFBallLogo size="sm"/>
+                     ) : (
+                        <div className="w-8 h-8 rounded-lg bg-emerald-700 flex items-center justify-center text-white text-[10px] font-bold shadow-sm">أنت</div>
+                     )}
+                  </div>
+                  <div className="flex flex-col w-full min-w-0">
+                     {msg.role === 'user' ? (
+                        <div className="text-gray-100 text-lg sm:text-xl font-bold leading-relaxed break-words">
+                           {msg.content}
+                           {msg.imageUrls && msg.imageUrls.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-3">
                               {msg.imageUrls.map((url, idx) => (
-                                <img key={idx} src={url} alt="مرفق" className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border border-white/20 shadow-sm" />
+                                <img key={idx} src={url} alt="مرفق" className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border border-white/10 shadow-sm" />
                               ))}
                             </div>
-                          )}
-                          <p>{msg.content}</p>
+                           )}
                         </div>
-                      ) : renderFormattedText(msg.content)}
-                    </div>
+                     ) : (
+                        <div className="w-full text-gray-300 text-base leading-relaxed break-words">
+                           {renderFormattedText(msg.content)}
+                        </div>
+                     )}
                   </div>
                 </div>
               ) : null
             ))}
             {loading && (
-              <div className="flex items-start gap-3 justify-end flex-row-reverse mt-4">
-                <div className="mt-1 flex-shrink-0"><AiFBallLogo size="sm"/></div>
-                <div className="w-full max-w-[85%]">
-                  <div className="rounded-2xl px-4 py-3 shadow-lg backdrop-blur-md border border-white/10 bg-black/40 text-gray-300">
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between cursor-pointer select-none">
-                        <span className="text-emerald-400 font-bold text-sm flex items-center gap-2">
-                           <svg className="animate-spin -ml-1 mr-1 h-4 w-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <div className="flex items-start gap-4 w-full mt-4">
+                <div className="flex-shrink-0 mt-1 hidden sm:block"><AiFBallLogo size="sm"/></div>
+                <div className="w-full min-w-0 flex items-center">
+                   <div className="rounded-2xl px-5 py-4 bg-[#1A1C1E] border border-white/5 shadow-sm text-gray-300 max-w-sm">
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-3">
+                           <svg className="animate-spin text-emerald-500 w-5 h-5" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                            </svg>
-                           جاري البحث والتحليل... ({formatSeconds(loadingSeconds)})
-                        </span>
-                      </div>
-                      
-                      <div className="pt-3 pb-1 mt-1 border-t border-white/5 space-y-2.5 text-xs font-medium">
-                        <div className="flex items-center gap-2">
-                          <span className="text-emerald-400 font-bold">✓</span>
-                          <span className="text-gray-300">الاتصال بخوادم فوتبلاي الذكية...</span>
+                           <span className="text-emerald-400 font-bold text-sm">جاري البحث والتحليل... ({formatSeconds(loadingSeconds)})</span>
                         </div>
                         
-                        {loadingSeconds >= 2 ? (
+                        <div className="pt-3 border-t border-white/5 space-y-2.5 text-xs font-medium">
                           <div className="flex items-center gap-2">
                             <span className="text-emerald-400 font-bold">✓</span>
-                            <span className="text-gray-300">أتحقق من الإحصائيات والمعلومات الرياضية...</span>
+                            <span className="text-gray-300">الاتصال بخوادم فوتبلاي الذكية...</span>
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>
-                            <span className="text-gray-500">أتحقق من الإحصائيات والمعلومات الرياضية...</span>
-                          </div>
-                        )}
-                        
-                        {loadingSeconds >= 5 ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-emerald-400 font-bold">✓</span>
-                            <span className="text-gray-300">أراجع البيانات وأقارن بين المصادر المتاحة...</span>
-                          </div>
-                        ) : loadingSeconds >= 2 ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>
-                            <span className="text-gray-500">أراجع البيانات وأقارن بين المصادر المتاحة...</span>
-                          </div>
-                        ) : null}
-
-                        {loadingSeconds >= 8 ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-emerald-400 font-bold">✓</span>
-                            <span className="text-gray-300">أحلل المعلومات للوصول إلى إجابة دقيقة...</span>
-                          </div>
-                        ) : loadingSeconds >= 5 ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>
-                            <span className="text-gray-500">أحلل المعلومات للوصول إلى إجابة دقيقة...</span>
-                          </div>
-                        ) : null}
+                          
+                          {loadingSeconds >= 2 ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-400 font-bold">✓</span>
+                              <span className="text-gray-300">أتحقق من الإحصائيات والمعلومات الرياضية...</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>
+                              <span className="text-gray-500">أتحقق من الإحصائيات والمعلومات الرياضية...</span>
+                            </div>
+                          )}
+                          
+                          {loadingSeconds >= 5 ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-400 font-bold">✓</span>
+                              <span className="text-gray-300">أراجع البيانات وأقارن بين المصادر المتاحة...</span>
+                            </div>
+                          ) : loadingSeconds >= 2 ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>
+                              <span className="text-gray-500">أراجع البيانات وأقارن بين المصادر المتاحة...</span>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                   </div>
                 </div>
               </div>
             )}
@@ -802,31 +789,29 @@ export default function FootPlayChat() {
         )}
       </main>
 
-      <footer className="p-3 bg-[#131314]/80 backdrop-blur-md border-t border-white/10 relative z-20">
-        <div className="max-w-4xl mx-auto">
+      <footer className="px-3 sm:px-6 pt-2 bg-[#131314]/95 backdrop-blur-xl border-t border-white/5 sticky bottom-0 z-20" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}>
+        <div className="max-w-3xl mx-auto relative">
           {attachedFiles.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-2 px-2">
+            <div className="flex flex-wrap gap-2 mb-3 px-2">
               {attachedFiles.map((f, idx) => (
-                <div key={idx} className="flex items-center gap-2 bg-black/40 border border-emerald-500/50 p-1.5 pr-3 rounded-lg shadow-sm backdrop-blur-md">
-                  <img src={f.url} alt="مرفق" className="w-8 h-8 object-cover rounded-md border border-white/10" />
-                  <span className="text-xs text-emerald-300 max-w-[120px] truncate" dir="ltr">{f.file.name}</span>
-                  <button onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-300 font-bold ml-1 mr-1 transition">✕</button>
+                <div key={idx} className="flex items-center gap-2 bg-[#1A1C1E] border border-white/10 p-1.5 pr-3 rounded-xl shadow-sm">
+                  <img src={f.url} alt="مرفق" className="w-8 h-8 object-cover rounded-lg border border-white/5" />
+                  <span className="text-xs text-gray-300 max-w-[120px] truncate" dir="ltr">{f.file.name}</span>
+                  <button onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))} className="text-gray-500 hover:text-red-400 font-bold ml-1 mr-1 transition">✕</button>
                 </div>
               ))}
             </div>
           )}
 
-          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-3 py-2 shadow-xl">
+          <div className="flex items-end gap-2 bg-[#1A1C1E] border border-white/10 rounded-[24px] px-2 py-2 shadow-lg focus-within:border-emerald-500/40 focus-within:bg-[#1E2124] transition-colors duration-300 min-h-[56px]">
             <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*" className="hidden" />
-            <button onClick={() => fileInputRef.current?.click()} title="إرفاق ملف" className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white flex items-center justify-center font-bold text-xl flex-shrink-0 transition">
-              +
+            
+            <button onClick={() => fileInputRef.current?.click()} title="إرفاق ملف" className="w-10 h-10 rounded-full hover:bg-white/5 text-gray-400 hover:text-white flex items-center justify-center transition flex-shrink-0 mb-0.5">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
             </button>
 
-            <button onClick={handleVoiceSearch} title="بحث صوتي" className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition shadow-sm ${isListening ? 'bg-emerald-600 text-white animate-pulse' : 'bg-white/10 hover:bg-white/20 text-emerald-400 hover:text-emerald-300'}`}>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 01-14 0v-1M12 18.5V22M8 22h8" />
-              </svg>
+            <button onClick={handleVoiceSearch} title="بحث صوتي" className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mb-0.5 transition ${isListening ? 'bg-emerald-600 text-white animate-pulse' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 01-14 0v-1M12 18.5V22M8 22h8" /></svg>
             </button>
 
             <input
@@ -834,15 +819,17 @@ export default function FootPlayChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder={isListening ? 'جاري الاستماع لصوتك...' : 'اسأل فوتبلاي عن أي مباراة، تحليل تكتيكي، أو إحصائيات...'}
-              className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none"
+              placeholder={isListening ? 'جاري الاستماع لصوتك...' : 'اسأل عن أي تحليل أو إحصائية رياضية...'}
+              className="flex-1 bg-transparent px-2 py-3 text-base text-white placeholder-gray-500 focus:outline-none min-w-0"
             />
 
-            <button onClick={() => sendMessage()} disabled={loading || (!input.trim() && attachedFiles.length === 0)} className="w-10 h-10 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:opacity-40 flex items-center justify-center text-white flex-shrink-0 transition shadow-md">
-              ➤
+            <button onClick={() => sendMessage()} disabled={loading || (!input.trim() && attachedFiles.length === 0)} className="w-10 h-10 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:bg-white/10 disabled:text-gray-500 flex items-center justify-center text-white flex-shrink-0 transition shadow-sm mb-0.5">
+               <svg className="w-5 h-5 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
             </button>
           </div>
-          <p className="text-[11px] text-center text-gray-500 mt-2.5">منصة فوتبلاي للذكاء الاصطناعي الرياضي • by خالد العايش</p>
+          <div className="text-center mt-3">
+             <p className="text-[10px] text-gray-500 font-medium">يمكن لـ فوتبلاي ارتكاب بعض الأخطاء. يُرجى التحقق من المعلومات المهمة.</p>
+          </div>
         </div>
       </footer>
     </div>
