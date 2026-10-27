@@ -96,7 +96,7 @@ function renderInlineText(text: string) {
 }
 
 function renderFormattedText(text: string) {
-  // 1. استخراج روابط يوتيوب
+  // 1. استخراج روابط يوتيوب وإزالتها من منتصف النص
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
   const youtubeIds: string[] = [];
   
@@ -105,7 +105,7 @@ function renderFormattedText(text: string) {
     return ''; 
   });
 
-  processedText = processedText.replace(/\]\s*\n\s*\(/g, '](').replace(/\n\s*\n/g, '\n\n');
+  processedText = processedText.replace(/\]\s*\n\s*\(/g, '](');
   
   const lines = processedText.split('\n');
   const elements: React.ReactNode[] = [];
@@ -204,22 +204,6 @@ function renderFormattedText(text: string) {
 
     if (trimmed.startsWith('```')) return;
 
-    if (trimmed.startsWith('<api-sports-widget') && trimmed.includes('</api-sports-widget>')) {
-      if (inTable) flushTable(index);
-      const attrRegex = /data-([a-zA-Z0-9-]+)="([^"]+)"/g;
-      let match;
-      const props: any = {};
-      while ((match = attrRegex.exec(trimmed)) !== null) {
-        props[`data-${match[1]}`] = match[2];
-      }
-      elements.push(
-        <div key={`widget-${index}`} className="my-5 w-full rounded-2xl overflow-hidden border border-emerald-900/40 shadow-xl bg-transparent relative z-10 min-h-[100px]">
-          {React.createElement('api-sports-widget', props)}
-        </div>
-      );
-      return;
-    }
-
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
       if (/^\|[\s\-:|]+\|$/.test(trimmed)) { inTable = true; return; }
       inTable = true;
@@ -302,7 +286,7 @@ function renderFormattedText(text: string) {
 const STORAGE_KEY = 'aifball_chat_history_v8';
 
 export default function FootPlayChat() {
-  const { user } = useUser(); // جلب بيانات المستخدم من Clerk
+  const { user } = useUser(); 
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -494,11 +478,17 @@ export default function FootPlayChat() {
         requestBody.files = uploadedDifyFiles;
       }
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 55000); // 55 ثانية كحد أقصى
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId); // إلغاء المؤقت إذا وصل الرد
 
       if (!res.ok) throw new Error('Network response was not ok');
 
@@ -554,13 +544,17 @@ export default function FootPlayChat() {
         }
       }
 
-    } catch (error) {
+    } catch (error: any) {
       setMessages(prev => {
         const updated = [...prev];
         const lastIndex = updated.length - 1;
         if (updated[lastIndex].role === 'assistant') {
           if (!finalAnswer) {
-            updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت.';
+            if (error.name === 'AbortError') {
+              updated[lastIndex].content = 'عذراً، استغرق البحث وقتاً طويلاً جداً. يرجى طرح سؤال أقصر أو أكثر تحديداً.';
+            } else {
+              updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت.';
+            }
           }
         }
         return updated;
@@ -651,7 +645,6 @@ export default function FootPlayChat() {
                     <span className="text-xs font-bold text-gray-200 truncate pr-2">
                       {user?.fullName || user?.firstName || 'حسابي'}
                     </span>
-                    {/* شرط عرض لقب المالك */}
                     {user?.primaryEmailAddress?.emailAddress === 'khalidassaf44@gmail.com' ? (
                       <span className="text-[9px] font-bold bg-emerald-900/60 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 whitespace-nowrap shadow-sm">
                         المالك
