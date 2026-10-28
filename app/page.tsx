@@ -104,7 +104,7 @@ function renderFormattedText(text: string) {
     return ''; 
   });
 
-  // 1. حذف أكواد HTML الخرب التي ينتجها الذكاء الاصطناعي
+  // 1. حذف أكواد HTML الخرب
   processedText = processedText.replace(/a\s*href=.*?target=['"]_blank['"]/gi, '');
   processedText = processedText.replace(/a\s*href=[^\s>]+/gi, '');
 
@@ -333,7 +333,7 @@ export default function FootPlayChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const suggestionCards = [
-    { question: 'تحليل تكتيكي لأداء لوران بلان مع الاتحاد', tag: 'تحليل تكتيكي', icon: '📋' },
+    { question: 'تحليل تكتيكي لأداء الالماني فيسينغ مع الاتحاد', tag: 'تحليل تكتيكي', icon: '📋' },
     { question: 'ما هو جدول ترتيب دوري روشن السعودي؟', tag: 'ترتيب وإحصائيات', icon: '📊' },
     { question: 'أهداف وملخصات أبرز مباريات اليوم', tag: 'أهداف وملخصات', icon: '🎬' },
     { question: 'ما هو السجل التاريخي لأبطال دوري أبطال أوروبا؟', tag: 'التاريخ والبطولات', icon: '🏆' },
@@ -708,7 +708,7 @@ export default function FootPlayChat() {
                   </div>
                   <div className="flex flex-col w-full min-w-0">
                      {msg.role === 'user' ? (
-                        <div className="text-[#22C55E] text-lg sm:text-xl font-bold leading-relaxed break-words">
+                        <div className="text-white text-lg sm:text-xl font-bold leading-relaxed break-words">
                            {msg.content}
                            {msg.imageUrls && msg.imageUrls.length > 0 && (
                             <div className="flex flex-wrap gap-2 mt-3">
@@ -736,7 +736,6 @@ export default function FootPlayChat() {
                                </details>
                              </div>
                            )}
-                           {/* صندوق الرد الأسود الشفاف */}
                            <div className="bg-[#131814]/85 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl text-gray-200 text-base leading-relaxed break-words">
                              {renderFormattedText(msg.content)}
                            </div>
