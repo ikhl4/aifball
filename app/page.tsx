@@ -233,7 +233,7 @@ function renderFormattedText(text: string) {
     } else if (trimmed.startsWith('### ')) {
       elements.push(<h3 key={index} className="text-lg font-bold text-emerald-400 mt-5 mb-2">{renderInlineText(trimmed.replace(/^###\s+/, ''))}</h3>);
     } else if (trimmed.startsWith('## ')) {
-      elements.push(<h2 key={index} className="text-xl font-bold text-emerald-400 mt-5 mb-2 pb-2 border-b border-white/5">{renderInlineText(trimmed.replace(/^##\s+/, ''))}</h2>);
+      elements.push(<h2 key={index} className="text-xl font-bold text-emerald-400 mt-5 mb-2 pb-2 border-b border-emerald-500/20">{renderInlineText(trimmed.replace(/^##\s+/, ''))}</h2>);
     } else if (trimmed.startsWith('# ')) {
       elements.push(<h1 key={index} className="text-2xl font-bold text-emerald-400 mt-5 mb-3">{renderInlineText(trimmed.replace(/^#\s+/, ''))}</h1>);
     } else if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
@@ -692,7 +692,7 @@ export default function FootPlayChat() {
                   </div>
                   <div className="flex flex-col w-full min-w-0">
                      {msg.role === 'user' ? (
-                        <div className="text-gray-100 text-lg sm:text-xl font-bold leading-relaxed break-words">
+                        <div className="text-[#22C55E] text-lg sm:text-xl font-bold leading-relaxed break-words">
                            {msg.content}
                            {msg.imageUrls && msg.imageUrls.length > 0 && (
                             <div className="flex flex-wrap gap-2 mt-3">
@@ -703,7 +703,7 @@ export default function FootPlayChat() {
                            )}
                         </div>
                      ) : (
-                        <div className="w-full text-gray-300 text-base leading-relaxed break-words">
+                        <div className="w-full">
                            {msg.thinkingTime !== undefined && msg.thinkingTime > 0 && (
                              <div className="mb-4 w-full">
                                <details className="text-xs text-gray-400 cursor-pointer group select-none transition-all duration-300">
@@ -720,7 +720,10 @@ export default function FootPlayChat() {
                                </details>
                              </div>
                            )}
-                           {renderFormattedText(msg.content)}
+                           {/* هنا تم إضافة الصندوق الأسود الشفاف */}
+                           <div className="bg-[#131814]/85 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl text-gray-200 text-base leading-relaxed break-words">
+                             {renderFormattedText(msg.content)}
+                           </div>
                         </div>
                      )}
                   </div>
