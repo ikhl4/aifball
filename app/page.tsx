@@ -104,18 +104,21 @@ function renderFormattedText(text: string) {
     return ''; 
   });
 
-  // 🔴 الحماية من التكرار: حذف الأسطر المكررة المتتالية تلقائياً
+  // 1. حذف أكواد HTML الخرب التي ينتجها الذكاء الاصطناعي
+  processedText = processedText.replace(/a\s*href=.*?target=['"]_blank['"]/gi, '');
+  processedText = processedText.replace(/a\s*href=[^\s>]+/gi, '');
+
+  // 2. حذف الأسطر المكررة المتتالية
   let linesArray = processedText.split('\n');
   let deduplicatedLines = [];
   for (let i = 0; i < linesArray.length; i++) {
     const currentLine = linesArray[i].trim();
     if (i > 0 && currentLine === linesArray[i-1].trim() && currentLine !== '') {
-      continue; // تخطي السطر إذا كان مطابقاً للسطر الذي قبله
+      continue; 
     }
     deduplicatedLines.push(linesArray[i]);
   }
   processedText = deduplicatedLines.join('\n');
-  // 🔴 نهاية الحماية
 
   processedText = processedText.replace(/\]\s*\n\s*\(/g, '](').replace(/\n\s*\n/g, '\n\n');
   
