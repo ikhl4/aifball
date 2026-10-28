@@ -32,11 +32,11 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const dimensions = size === 'sm' ? 'w-8 h-8 rounded-[9px]' : size === 'lg' ? 'w-14 h-14 rounded-[16px]' : 'w-10 h-10 rounded-[11px]';
 
   if (!imgError) {
-    return <img src="/logo.png" alt="AiFBall" onError={() => setImgError(true)} className={`${dimensions} object-cover shadow-sm flex-shrink-0 select-none`} />;
+    return <img src="/logo.png" alt="AiFBall" onError={() => setImgError(true)} className={`${dimensions} object-cover shadow-md flex-shrink-0 select-none`} />;
   }
 
   return (
-    <div className={`${dimensions} bg-[#1D6B35] flex items-center justify-center shadow-sm flex-shrink-0 select-none overflow-hidden`}>
+    <div className={`${dimensions} bg-[#1D6B35] flex items-center justify-center shadow-md flex-shrink-0 select-none overflow-hidden`}>
       <svg viewBox="0 0 200 200" className="w-full h-full">
         <rect width="200" height="200" rx="42" fill="#1D6B35" />
         <g transform="translate(100, 74)">
@@ -67,7 +67,9 @@ function renderInlineText(text: string) {
       if (match) {
         return (
           <a key={pIdx} href={match[2]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 mx-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
-            <span>🔗</span><span>{match[1]}</span>
+            <span>🔗</span>
+            <span>{match[1]}</span>
+            <span className="text-[10px] opacity-70">↗</span>
           </a>
         );
       }
@@ -85,7 +87,7 @@ function renderInlineText(text: string) {
       const boldParts = urlPart.split(/(\*\*.*?\*\*)/g);
       return boldParts.map((bPart, bIdx) => {
         if (bPart.startsWith('**') && bPart.endsWith('**')) {
-           return <strong key={`${pIdx}-${uIdx}-${bIdx}`} className="font-extrabold text-emerald-400">{bPart.slice(2, -2)}</strong>;
+           return <strong key={`${pIdx}-${uIdx}-${bIdx}`} className="font-extrabold text-emerald-400 mx-0.5">{bPart.slice(2, -2)}</strong>;
         }
         return <span key={`${pIdx}-${uIdx}-${bIdx}`}>{bPart}</span>;
       });
@@ -122,14 +124,14 @@ function renderFormattedText(text: string) {
       const p1Title = cleanCell(headers[1]) || 'الطرف الأول';
       const p2Title = cleanCell(headers[2]) || 'الطرف الثاني';
       elements.push(
-        <div key={`datamb-${keyIndex}`} className="my-5 p-4 md:p-5 rounded-2xl bg-[#1A1C1E] border border-white/5 shadow-md w-full">
-          <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/5">
+        <div key={`datamb-${keyIndex}`} className="my-5 p-4 md:p-5 rounded-3xl bg-black/40 backdrop-blur-md border border-emerald-900/40 shadow-2xl w-full">
+          <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
             <span className="text-sm font-bold text-emerald-400 flex items-center gap-2"><span>📊</span><span>مقارنة الأداء الإحصائي</span></span>
             <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">AiFBall Pro</span>
           </div>
           <div className="grid grid-cols-2 gap-3 mb-5 text-center">
-            <div className="p-2.5 rounded-xl bg-black/20 border border-emerald-900/30"><span className="text-sm font-bold text-emerald-400 block truncate">{p1Title}</span></div>
-            <div className="p-2.5 rounded-xl bg-black/20 border border-sky-900/30"><span className="text-sm font-bold text-sky-400 block truncate">{p2Title}</span></div>
+            <div className="p-2.5 rounded-xl bg-black/30 border border-emerald-900/30"><span className="text-sm font-bold text-emerald-400 block truncate">{p1Title}</span></div>
+            <div className="p-2.5 rounded-xl bg-black/30 border border-sky-900/30"><span className="text-sm font-bold text-sky-400 block truncate">{p2Title}</span></div>
           </div>
           <div className="space-y-4">
             {body.map((row, rIdx) => {
@@ -144,21 +146,21 @@ function renderFormattedText(text: string) {
                 const p2 = 100 - p1;
                 const p1Wins = n1 >= n2;
                 return (
-                  <div key={rIdx} className="space-y-1.5">
+                  <div key={rIdx} className="space-y-2">
                     <div className="flex items-center justify-between text-sm px-1">
                       <span className={`font-bold ${p1Wins ? 'text-emerald-400' : 'text-gray-400'}`}>{val1Str}</span>
                       <span className="text-gray-300 font-medium text-center text-xs">{metric}</span>
                       <span className={`font-bold ${!p1Wins ? 'text-sky-400' : 'text-gray-400'}`}>{val2Str}</span>
                     </div>
-                    <div className="w-full h-2.5 rounded-full bg-black/30 overflow-hidden flex gap-1 p-0.5">
-                      <div style={{ width: `${p1}%` }} className={`h-full rounded-full transition-all duration-700 ${p1Wins ? 'bg-emerald-500' : 'bg-emerald-900/40'}`} />
-                      <div style={{ width: `${p2}%` }} className={`h-full rounded-full transition-all duration-700 ${!p1Wins ? 'bg-sky-500' : 'bg-sky-900/40'}`} />
+                    <div className="w-full h-3 rounded-full bg-black/40 overflow-hidden flex gap-1 p-0.5">
+                      <div style={{ width: `${p1}%` }} className={`h-full rounded-full transition-all duration-700 ${p1Wins ? 'bg-gradient-to-l from-emerald-400 to-emerald-600' : 'bg-emerald-900/40'}`} />
+                      <div style={{ width: `${p2}%` }} className={`h-full rounded-full transition-all duration-700 ${!p1Wins ? 'bg-gradient-to-r from-sky-400 to-sky-600' : 'bg-sky-900/40'}`} />
                     </div>
                   </div>
                 );
               }
               return (
-                <div key={rIdx} className="flex items-center justify-between py-2 px-3 rounded-xl bg-black/20 text-sm">
+                <div key={rIdx} className="flex items-center justify-between py-2 px-3 rounded-xl bg-black/30 text-sm">
                   <span className="text-emerald-400 font-bold">{val1Str}</span>
                   <span className="text-gray-400 text-xs">{metric}</span>
                   <span className="text-sky-400 font-bold">{val2Str}</span>
@@ -170,20 +172,20 @@ function renderFormattedText(text: string) {
       );
     } else {
       elements.push(
-        <div key={`table-${keyIndex}`} className="my-5 w-full overflow-x-auto custom-scrollbar rounded-2xl border border-white/5 shadow-md bg-black/20">
+        <div key={`table-${keyIndex}`} className="my-5 w-full overflow-x-auto custom-scrollbar rounded-2xl border border-white/10 shadow-xl bg-black/40 backdrop-blur-md">
           <table className="w-full text-right border-collapse text-sm min-w-max">
-            <thead className="bg-[#181A1C]">
+            <thead className="bg-emerald-950/60 text-emerald-300">
               <tr>
                 {headers.map((h, idx) => (
-                  <th key={idx} className="py-4 px-5 font-bold text-gray-300 border-b border-white/5 whitespace-nowrap">{cleanCell(h)}</th>
+                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{cleanCell(h)}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-white/5 bg-black/20">
               {body.map((row, rIdx) => (
-                <tr key={rIdx} className="hover:bg-white/5 transition-colors even:bg-[#1A1C1E]">
+                <tr key={rIdx} className="hover:bg-white/5 transition-colors">
                   {row.map((cell, cIdx) => (
-                    <td key={cIdx} className="py-3.5 px-5 whitespace-nowrap text-gray-300">{cleanCell(cell)}</td>
+                    <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{cleanCell(cell)}</td>
                   ))}
                 </tr>
               ))}
@@ -210,7 +212,7 @@ function renderFormattedText(text: string) {
         props[`data-${match[1]}`] = match[2];
       }
       elements.push(
-        <div key={`widget-${index}`} className="my-5 w-full rounded-2xl overflow-hidden border border-white/5 shadow-md bg-transparent relative z-10 min-h-[100px]">
+        <div key={`widget-${index}`} className="my-5 w-full rounded-2xl overflow-hidden border border-emerald-900/40 shadow-xl bg-transparent relative z-10 min-h-[100px]">
           {React.createElement('api-sports-widget', props)}
         </div>
       );
@@ -231,7 +233,7 @@ function renderFormattedText(text: string) {
     } else if (trimmed.startsWith('### ')) {
       elements.push(<h3 key={index} className="text-lg font-bold text-emerald-400 mt-5 mb-2">{renderInlineText(trimmed.replace(/^###\s+/, ''))}</h3>);
     } else if (trimmed.startsWith('## ')) {
-      elements.push(<h2 key={index} className="text-xl font-bold text-emerald-400 mt-5 mb-2">{renderInlineText(trimmed.replace(/^##\s+/, ''))}</h2>);
+      elements.push(<h2 key={index} className="text-xl font-bold text-emerald-400 mt-5 mb-2 pb-2 border-b border-white/5">{renderInlineText(trimmed.replace(/^##\s+/, ''))}</h2>);
     } else if (trimmed.startsWith('# ')) {
       elements.push(<h1 key={index} className="text-2xl font-bold text-emerald-400 mt-5 mb-3">{renderInlineText(trimmed.replace(/^#\s+/, ''))}</h1>);
     } else if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
@@ -241,7 +243,7 @@ function renderFormattedText(text: string) {
       elements.push(
         <div key={index} className="flex items-start gap-2.5 my-2 pr-1.5">
           <span className="text-emerald-500 mt-0.5 font-bold whitespace-nowrap">{bullet}</span>
-          <span className="flex-1 leading-relaxed text-base text-gray-300">{renderInlineText(textPart)}</span>
+          <span className="flex-1 leading-relaxed text-base text-gray-200">{renderInlineText(textPart)}</span>
         </div>
       );
     } else if (trimmed.startsWith('![') && trimmed.includes('](') && trimmed.endsWith(')')) {
@@ -470,7 +472,6 @@ export default function FootPlayChat() {
       if (uploadedDifyFiles.length > 0) requestBody.files = uploadedDifyFiles;
 
       const controller = new AbortController();
-      // تم رفع الحد الأقصى للانتظار إلى 90 ثانية لمنع انقطاع Vercel قبل وصول الرد
       const timeoutId = setTimeout(() => controller.abort(), 90000); 
 
       const res = await fetch('/api/chat', {
@@ -572,11 +573,11 @@ export default function FootPlayChat() {
 
   return (
     <div dir="rtl" className="flex flex-col h-[100dvh] relative overflow-hidden font-saudi bg-[#131314] text-[#E3E3E3]">
-      <div className="absolute inset-0 bg-cover bg-center filter brightness-[0.55] pointer-events-none z-0" style={{ backgroundImage: `url('/IMG_0091.jpeg')` }} />
+      <div className="absolute inset-0 bg-cover bg-center filter brightness-[0.55] pointer-events-none z-0" style={{ backgroundImage: "url('/IMG_0091.jpeg')" }} />
       <div className="absolute inset-0 bg-[#131314]/75 pointer-events-none z-0" />
 
       <style jsx global>{`
-        @import url('[https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap)');
+        @import url("[https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap)");
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
@@ -654,8 +655,7 @@ export default function FootPlayChat() {
         <button onClick={startNewChat} className="px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 transition hidden sm:block">+ محادثة جديدة</button>
       </header>
 
-      {/* تصميم المحادثة المنظّم الخالي من الصناديق الكبيرة */}
-      <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto flex flex-col relative z-10 custom-scrollbar">
+      <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col relative z-10 custom-scrollbar">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
             <div className="text-right space-y-3 mb-6 px-1">
@@ -701,7 +701,6 @@ export default function FootPlayChat() {
                         </div>
                      ) : (
                         <div className="w-full text-gray-300 text-base leading-relaxed break-words">
-                           {/* قسم التفكير الذكي */}
                            {msg.thinkingTime !== undefined && msg.thinkingTime > 0 && (
                              <div className="mb-4 w-full">
                                <details className="text-xs text-gray-400 cursor-pointer group select-none transition-all duration-300">
