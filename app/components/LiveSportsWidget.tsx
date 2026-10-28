@@ -10,32 +10,29 @@ interface LiveSportsWidgetProps {
 export default function LiveSportsWidget({ type, league = '39', season = '2026' }: LiveSportsWidgetProps) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    // محاكاة جلب البيانات الحية من الـ API الرياضي الخاص بك لضمان استقرار العرض
     const fetchSportsData = async () => {
       setLoading(true);
+      setError(false);
       try {
-        // هنا يمكنك لاحقاً تبديل الرابط بالـ API الفعلي الخاص بك
-        // const res = await fetch(`/api/football?type=${type}&league=${league}`);
-        // const result = await res.json();
+        // الاتصال المباشر بالسيرفر الخلفي المطور الخاص بك على المنفذ 5000
+        const endpoint = type === 'standings' 
+          ? `http://localhost:5000/api/standings?league=${league}&season=${season}`
+          : `http://localhost:5000/api/livescores`;
+          
+        const res = await fetch(endpoint);
+        const result = await res.json();
         
-        // بيانات تجريبية هيكلية مطابقة لموسم 2026-2027 الحركي لضمان جودة التصميم
         if (type === 'standings') {
-          setData([
-            { rank: 1, team: 'الهلال', played: 10, win: 9, draw: 0, lose: 1, points: 27, goals: '+21' },
-            { rank: 2, team: 'النصر', played: 10, win: 8, draw: 1, lose: 1, points: 25, goals: '+15' },
-            { rank: 3, team: 'القادسية', played: 11, win: 8, draw: 1, lose: 2, points: 25, goals: '+14' },
-            { rank: 4, team: 'الاتحاد', played: 10, win: 7, draw: 2, lose: 1, points: 23, goals: '+10' },
-          ]);
+          setData(result.standings[0] || []); // استقبال الترتيب الحقيقي
         } else {
-          setData([
-            { home: 'الهلال', away: 'النصر', homeScore: 2, awayScore: 1, status: '90\' Live', league: 'دوري روشن' },
-            { home: 'الأهلي', away: 'الاتحاد', homeScore: 0, awayScore: 0, status: '45\' HT', league: 'دوري روشن' },
-          ]);
+          setData(result.matches || []); // استقبال المباريات الحية الحقيقية
         }
       } catch (err) {
-        console.error(err);
+        console.error('فشل الاتصال بسيرفر البيانات:', err);
+        setError(true);
       } finally {
         setLoading(false);
       }
@@ -48,7 +45,15 @@ export default function LiveSportsWidget({ type, league = '39', season = '2026' 
     return (
       <div className="w-full my-4 p-4 bg-[#131a2a] border border-gray-800 rounded-2xl flex items-center justify-center gap-3 animate-pulse text-sm text-gray-400">
         <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-        <span>جاري تحديث البيانات الرياضية الحية...</span>
+        <span>جاري جلب أحدث البيانات الحية من الملاعب...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full my-4 p-4 bg-red-950/25 border border-red-900/40 rounded-2xl text-center text-xs text-red-400">
+        عذراً، فشل تحديث البيانات الحية. تأكد من تشغيل خادمك الخلفي.
       </div>
     );
   }
@@ -74,9 +79,12 @@ export default function LiveSportsWidget({ type, league = '39', season = '2026' 
             {data?.map((item: any, idx: number) => (
               <tr key={idx} className="hover:bg-white/5 transition-colors">
                 <td className="p-2.5 text-center font-mono font-bold text-gray-400">{item.rank}</td>
-                <td className="p-2.5 text-right font-bold text-emerald-400">{item.team}</td>
-                <td className="p-2.5 text-center font-mono">{item.played}</td>
-                <td className="p-2.5 text-center font-mono text-gray-400 hidden sm:table-cell">{item.goals}</td>
+                <td className="p-2.5 text-right font-bold text-emerald-400 flex items-center gap-2">
+                  {item.team?.logo && <img src={item.team.logo} className="w-4 h-4 object-contain" alt="" />}
+                  <span>{item.team?.name}</span>
+                </td>
+                <td className="p-2.5 text-center font-mono">{item.all?.played}</td>
+                <td className="p-2.5 text-center font-mono text-gray-400 hidden sm:table-cell">{item.goalsDiff}</td>
                 <td className="p-2.5 text-center font-mono font-black text-white bg-emerald-500/5">{item.points}</td>
               </tr>
             ))}
@@ -88,23 +96,29 @@ export default function LiveSportsWidget({ type, league = '39', season = '2026' 
 
   return (
     <div className="w-full my-4 space-y-2">
-      {data?.map((match: any, idx: number) => (
-        <div key={idx} className="p-4 rounded-2xl border border-gray-800 bg-[#131a2a] flex items-center justify-between shadow-lg hover:border-emerald-500/40 transition">
-          <div className="flex flex-col text-right">
-            <span className="text-[10px] text-gray-400 font-medium">{match.league}</span>
-            <span className="text-xs text-gray-500 mt-1 font-mono">{match.status}</span>
-          </div>
-          <div className="flex items-center gap-4 flex-1 justify-center px-4">
-            <span className="text-sm font-bold text-white text-left flex-1 truncate">{match.home}</span>
-            <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-xl font-mono text-sm font-black border border-gray-800">
-              <span className="text-emerald-400">{match.homeScore}</span>
-              <span className="text-gray-600">:</span>
-              <span className="text-emerald-400">{match.awayScore}</span>
-            </div>
-            <span className="text-sm font-bold text-white text-right flex-1 truncate">{match.away}</span>
-          </div>
+      {data?.length === 0 ? (
+        <div className="p-4 text-center text-xs text-gray-500 bg-[#131a2a] rounded-2xl border border-gray-800">
+          لا توجد مباريات مباشرة جارية حالياً في هذه اللحظة.
         </div>
-      ))}
+      ) : (
+        data?.map((match: any, idx: number) => (
+          <div key={idx} className="p-4 rounded-2xl border border-gray-800 bg-[#131a2a] flex items-center justify-between shadow-lg hover:border-emerald-500/40 transition">
+            <div className="flex flex-col text-right">
+              <span className="text-[10px] text-gray-400 font-medium">{match.league?.name}</span>
+              <span className="text-xs text-emerald-400 mt-1 font-mono animate-pulse">{match.fixture?.status?.short} '{match.fixture?.status?.elapsed}</span>
+            </div>
+            <div className="flex items-center gap-4 flex-1 justify-center px-4">
+              <span className="text-sm font-bold text-white text-left flex-1 truncate">{match.teams?.home?.name}</span>
+              <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-xl font-mono text-sm font-black border border-gray-800">
+                <span className="text-emerald-400">{match.goals?.home}</span>
+                <span className="text-gray-600">:</span>
+                <span className="text-emerald-400">{match.goals?.away}</span>
+              </div>
+              <span className="text-sm font-bold text-white text-right flex-1 truncate">{match.teams?.away?.name}</span>
+            </div>
+          </div>
+        ))
+      )}
     </div>
   );
 }
