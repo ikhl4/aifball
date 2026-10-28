@@ -125,6 +125,7 @@ function renderInlineText(text: string, isDark: boolean) {
 function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: (q: string) => void) {
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
   const youtubeIds: string[] = [];
+  const suggestedQuestions: string[] = []; // مصفوفة لجمع الأسئلة وتأجيل عرضها
   
   let processedText = text.replace(youtubeRegex, (url, id) => {
     if (id && id.length === 11 && !youtubeIds.includes(id)) {
@@ -293,20 +294,12 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // التعرف على أسئلة المتابعة (❓)
+    // تجميع أسئلة المتابعة (❓) في مصفوفة بدلاً من طباعتها فوراً
     if (trimmed.startsWith('❓')) {
       if (inTable) flushTable(index);
       const questionText = trimmed.replace('❓', '').trim();
       if (questionText) {
-        elements.push(
-          <button 
-            key={`suggestion-${index}`} 
-            onClick={() => onSuggestionClick && onSuggestionClick(questionText)}
-            className={`block w-full text-right my-2 p-3 rounded-xl border transition-all duration-200 shadow-sm font-bold text-sm ${isDark ? 'bg-emerald-900/20 hover:bg-emerald-900/40 border-emerald-700/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'}`}
-          >
-            {questionText}
-          </button>
-        );
+        suggestedQuestions.push(questionText);
       }
       return;
     }
@@ -355,6 +348,7 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
   if (inTable) flushTable(lines.length);
 
+  // عرض الفيديوهات أولاً
   if (youtubeIds.length > 0) {
     elements.push(
       <div key="youtube-embeds" className={`mt-8 pt-4 border-t ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
@@ -380,6 +374,23 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
               />
             </div>
           </div>
+        ))}
+      </div>
+    );
+  }
+
+  // عرض الأسئلة المقترحة ثانياً (تحت الفيديو) وبحجم أصغر
+  if (suggestedQuestions.length > 0) {
+    elements.push(
+      <div key="suggested-questions" className="mt-6 flex flex-col gap-2 w-full">
+        {suggestedQuestions.map((q, idx) => (
+          <button
+            key={`sq-${idx}`}
+            onClick={() => onSuggestionClick && onSuggestionClick(q)}
+            className={`block w-full text-right p-2.5 px-4 rounded-xl border transition-all duration-200 shadow-sm font-bold text-xs sm:text-sm ${isDark ? 'bg-emerald-900/20 hover:bg-emerald-900/40 border-emerald-700/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'}`}
+          >
+            <span className="opacity-70 ml-1 text-[10px]">❓</span> {q}
+          </button>
         ))}
       </div>
     );
