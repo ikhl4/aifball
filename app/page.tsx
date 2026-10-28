@@ -89,7 +89,7 @@ function deduplicateText(rawText: string): string {
   return text;
 }
 
-function renderInlineText(text: string) {
+function renderInlineText(text: string, isDark: boolean) {
   const linkParts = text.split(/(\[.*?\]\(.*?\))/g);
   
   return linkParts.map((part, pIdx) => {
@@ -97,7 +97,7 @@ function renderInlineText(text: string) {
       const match = part.match(/\[(.*?)\]\((.*?)\)/);
       if (match) {
         return (
-          <a key={pIdx} href={match[2]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 my-1 mx-1 px-3 py-1.5 rounded-xl bg-blue-900/25 hover:bg-blue-900/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-sm font-bold transition shadow-sm">
+          <a key={pIdx} href={match[2]} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-1.5 my-1 mx-1 px-3 py-1.5 rounded-xl border text-sm font-bold transition shadow-sm ${isDark ? 'bg-blue-900/25 hover:bg-blue-900/40 border-blue-500/30 text-blue-400 hover:text-blue-300' : 'bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-600'}`}>
             <span>🔗</span>
             <span>{match[1]}</span>
             <span className="text-[10px] opacity-70">↗</span>
@@ -110,7 +110,7 @@ function renderInlineText(text: string) {
     return urlParts.map((urlPart, uIdx) => {
       if (urlPart.match(/^https?:\/\//)) {
         return (
-          <a key={`${pIdx}-${uIdx}`} href={urlPart} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 underline font-medium break-all transition">
+          <a key={`${pIdx}-${uIdx}`} href={urlPart} target="_blank" rel="noopener noreferrer" className={`underline font-medium break-all transition ${isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'}`}>
             {urlPart}
           </a>
         );
@@ -118,7 +118,7 @@ function renderInlineText(text: string) {
       const boldParts = urlPart.split(/(\*\*.*?\*\*)/g);
       return boldParts.map((bPart, bIdx) => {
         if (bPart.startsWith('**') && bPart.endsWith('**')) {
-           return <strong key={`${pIdx}-${uIdx}-${bIdx}`} className="font-extrabold text-emerald-400 mx-0.5">{bPart.slice(2, -2)}</strong>;
+           return <strong key={`${pIdx}-${uIdx}-${bIdx}`} className={`font-extrabold mx-0.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{bPart.slice(2, -2)}</strong>;
         }
         return <span key={`${pIdx}-${uIdx}-${bIdx}`}>{bPart}</span>;
       });
@@ -126,8 +126,7 @@ function renderInlineText(text: string) {
   });
 }
 
-function renderFormattedText(text: string) {
-  // 1. ميزة الفيديوهات: عزل الـ 11 حرفاً لتجنب وميض الـ Streaming
+function renderFormattedText(text: string, isDark: boolean) {
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
   const youtubeIds: string[] = [];
   
@@ -184,14 +183,14 @@ function renderFormattedText(text: string) {
       const p1Title = cleanCell(headers[1]) || 'الطرف الأول';
       const p2Title = cleanCell(headers[2]) || 'الطرف الثاني';
       elements.push(
-        <div key={`datamb-${keyIndex}`} className="my-5 p-4 md:p-5 rounded-3xl bg-black/40 backdrop-blur-md border border-emerald-900/40 shadow-2xl w-full">
-          <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
-            <span className="text-sm font-bold text-emerald-400 flex items-center gap-2"><span>📊</span><span>مقارنة الأداء الإحصائي</span></span>
-            <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">AiFBall Pro</span>
+        <div key={`datamb-${keyIndex}`} className={`my-5 p-4 md:p-5 rounded-3xl backdrop-blur-md border shadow-2xl w-full ${isDark ? 'bg-black/40 border-emerald-900/40' : 'bg-white border-gray-200'}`}>
+          <div className={`flex items-center justify-between pb-3 mb-4 border-b ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
+            <span className={`text-sm font-bold flex items-center gap-2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}><span>📊</span><span>مقارنة الأداء الإحصائي</span></span>
+            <span className={`text-[10px] px-2.5 py-1 rounded-full border ${isDark ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>AiFBall Pro</span>
           </div>
           <div className="grid grid-cols-2 gap-3 mb-5 text-center">
-            <div className="p-2.5 rounded-xl bg-black/30 border border-emerald-900/30"><span className="text-sm font-bold text-emerald-400 block truncate">{p1Title}</span></div>
-            <div className="p-2.5 rounded-xl bg-black/30 border border-sky-900/30"><span className="text-sm font-bold text-sky-400 block truncate">{p2Title}</span></div>
+            <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-black/30 border-emerald-900/30' : 'bg-gray-50 border-gray-200'}`}><span className={`text-sm font-bold block truncate ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{p1Title}</span></div>
+            <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-black/30 border-sky-900/30' : 'bg-gray-50 border-gray-200'}`}><span className={`text-sm font-bold block truncate ${isDark ? 'text-sky-400' : 'text-sky-600'}`}>{p2Title}</span></div>
           </div>
           <div className="space-y-4">
             {body.map((row, rIdx) => {
@@ -208,22 +207,22 @@ function renderFormattedText(text: string) {
                 return (
                   <div key={rIdx} className="space-y-2">
                     <div className="flex items-center justify-between text-sm px-1">
-                      <span className={`font-bold ${p1Wins ? 'text-emerald-400' : 'text-gray-400'}`}>{val1Str}</span>
-                      <span className="text-gray-300 font-medium text-center text-xs">{metric}</span>
-                      <span className={`font-bold ${!p1Wins ? 'text-sky-400' : 'text-gray-400'}`}>{val2Str}</span>
+                      <span className={`font-bold ${p1Wins ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-gray-400' : 'text-gray-500')}`}>{val1Str}</span>
+                      <span className={`font-medium text-center text-xs ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{metric}</span>
+                      <span className={`font-bold ${!p1Wins ? (isDark ? 'text-sky-400' : 'text-sky-600') : (isDark ? 'text-gray-400' : 'text-gray-500')}`}>{val2Str}</span>
                     </div>
-                    <div className="w-full h-3 rounded-full bg-black/40 overflow-hidden flex gap-1 p-0.5">
-                      <div style={{ width: `${p1}%` }} className={`h-full rounded-full transition-all duration-700 ${p1Wins ? 'bg-gradient-to-l from-emerald-400 to-emerald-600' : 'bg-emerald-900/40'}`} />
-                      <div style={{ width: `${p2}%` }} className={`h-full rounded-full transition-all duration-700 ${!p1Wins ? 'bg-gradient-to-r from-sky-400 to-sky-600' : 'bg-sky-900/40'}`} />
+                    <div className={`w-full h-3 rounded-full overflow-hidden flex gap-1 p-0.5 ${isDark ? 'bg-black/40' : 'bg-gray-200'}`}>
+                      <div style={{ width: `${p1}%` }} className={`h-full rounded-full transition-all duration-700 ${p1Wins ? 'bg-gradient-to-l from-emerald-400 to-emerald-600' : (isDark ? 'bg-emerald-900/40' : 'bg-emerald-200')}`} />
+                      <div style={{ width: `${p2}%` }} className={`h-full rounded-full transition-all duration-700 ${!p1Wins ? 'bg-gradient-to-r from-sky-400 to-sky-600' : (isDark ? 'bg-sky-900/40' : 'bg-sky-200')}`} />
                     </div>
                   </div>
                 );
               }
               return (
-                <div key={rIdx} className="flex items-center justify-between py-2 px-3 rounded-xl bg-black/30 text-sm">
-                  <span className="text-emerald-400 font-bold">{val1Str}</span>
-                  <span className="text-gray-400 text-xs">{metric}</span>
-                  <span className="text-sky-400 font-bold">{val2Str}</span>
+                <div key={rIdx} className={`flex items-center justify-between py-2 px-3 rounded-xl text-sm ${isDark ? 'bg-black/30' : 'bg-gray-50'}`}>
+                  <span className={`font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{val1Str}</span>
+                  <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{metric}</span>
+                  <span className={`font-bold ${isDark ? 'text-sky-400' : 'text-sky-600'}`}>{val2Str}</span>
                 </div>
               );
             })}
@@ -232,20 +231,20 @@ function renderFormattedText(text: string) {
       );
     } else {
       elements.push(
-        <div key={`table-${keyIndex}`} className="my-5 w-full overflow-x-auto custom-scrollbar rounded-2xl border border-white/10 shadow-xl bg-black/40 backdrop-blur-md">
+        <div key={`table-${keyIndex}`} className={`my-5 w-full overflow-x-auto custom-scrollbar rounded-2xl border shadow-xl backdrop-blur-md ${isDark ? 'border-white/10 bg-black/40' : 'border-gray-200 bg-white'}`}>
           <table className="w-full text-right border-collapse text-sm min-w-max">
-            <thead className="bg-emerald-950/60 text-emerald-300">
+            <thead className={`${isDark ? 'bg-emerald-950/60 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
               <tr>
                 {headers.map((h, idx) => (
-                  <th key={idx} className="py-3.5 px-4 font-bold border-b border-white/10 whitespace-nowrap">{cleanCell(h)}</th>
+                  <th key={idx} className={`py-3.5 px-4 font-bold border-b whitespace-nowrap ${isDark ? 'border-white/10' : 'border-gray-200'}`}>{cleanCell(h)}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 bg-black/20">
+            <tbody className={`divide-y ${isDark ? 'divide-white/5 bg-black/20' : 'divide-gray-200 bg-white'}`}>
               {body.map((row, rIdx) => (
-                <tr key={rIdx} className="hover:bg-white/5 transition-colors">
+                <tr key={rIdx} className={`transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
                   {row.map((cell, cIdx) => (
-                    <td key={cIdx} className="py-3 px-4 whitespace-nowrap text-gray-200">{cleanCell(cell)}</td>
+                    <td key={cIdx} className={`py-3 px-4 whitespace-nowrap ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{cleanCell(cell)}</td>
                   ))}
                 </tr>
               ))}
@@ -263,7 +262,6 @@ function renderFormattedText(text: string) {
 
     if (trimmed.startsWith('```')) return;
 
-    // التعرف على أكواد واجهات الترتيب
     if (trimmed.startsWith('<api-sports-widget') && trimmed.includes('</api-sports-widget>')) {
       if (inTable) flushTable(index);
       const attrRegex = /data-([a-zA-Z0-9-]+)="([^"]+)"/g;
@@ -273,14 +271,13 @@ function renderFormattedText(text: string) {
         props[`data-${match[1]}`] = match[2];
       }
       elements.push(
-        <div key={`widget-${index}`} className="my-5 w-full rounded-2xl overflow-hidden border border-emerald-900/40 shadow-xl bg-transparent relative z-10 min-h-[100px]">
+        <div key={`widget-${index}`} className={`my-5 w-full rounded-2xl overflow-hidden border shadow-xl bg-transparent relative z-10 min-h-[100px] ${isDark ? 'border-emerald-900/40' : 'border-emerald-200'}`}>
           {React.createElement('api-sports-widget', props)}
         </div>
       );
       return;
     }
 
-    // التعرف على الملعب التكتيكي
     if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
       if (inTable) flushTable(index);
       const teamMatch = trimmed.match(/team="([^"]+)"/);
@@ -307,19 +304,19 @@ function renderFormattedText(text: string) {
     if (!trimmed) {
       elements.push(<div key={index} className="h-1.5" />);
     } else if (trimmed.startsWith('### ')) {
-      elements.push(<h3 key={index} className="text-lg font-bold text-emerald-400 mt-5 mb-2">{renderInlineText(trimmed.replace(/^###\s+/, ''))}</h3>);
+      elements.push(<h3 key={index} className={`text-lg font-bold mt-5 mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{renderInlineText(trimmed.replace(/^###\s+/, ''), isDark)}</h3>);
     } else if (trimmed.startsWith('## ')) {
-      elements.push(<h2 key={index} className="text-xl font-bold text-emerald-400 mt-5 mb-2 pb-2 border-b border-emerald-500/20">{renderInlineText(trimmed.replace(/^##\s+/, ''))}</h2>);
+      elements.push(<h2 key={index} className={`text-xl font-bold mt-5 mb-2 pb-2 border-b ${isDark ? 'text-emerald-400 border-emerald-500/20' : 'text-emerald-600 border-emerald-200'}`}>{renderInlineText(trimmed.replace(/^##\s+/, ''), isDark)}</h2>);
     } else if (trimmed.startsWith('# ')) {
-      elements.push(<h1 key={index} className="text-2xl font-bold text-emerald-400 mt-5 mb-3">{renderInlineText(trimmed.replace(/^#\s+/, ''))}</h1>);
+      elements.push(<h1 key={index} className={`text-2xl font-bold mt-5 mb-3 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{renderInlineText(trimmed.replace(/^#\s+/, ''), isDark)}</h1>);
     } else if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
       const isNumbered = /^\d+\.\s+/.test(trimmed);
       const textPart = trimmed.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '');
       const bullet = isNumbered ? trimmed.match(/^\d+\./)![0] : '•';
       elements.push(
         <div key={index} className="flex items-start gap-2.5 my-2 pr-1.5">
-          <span className="text-emerald-500 mt-0.5 font-bold whitespace-nowrap">{bullet}</span>
-          <span className="flex-1 leading-relaxed text-base text-gray-200">{renderInlineText(textPart)}</span>
+          <span className={`mt-0.5 font-bold whitespace-nowrap ${isDark ? 'text-emerald-500' : 'text-emerald-600'}`}>{bullet}</span>
+          <span className={`flex-1 leading-relaxed text-base ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{renderInlineText(textPart, isDark)}</span>
         </div>
       );
     } else if (trimmed.startsWith('![') && trimmed.includes('](') && trimmed.endsWith(')')) {
@@ -327,30 +324,29 @@ function renderFormattedText(text: string) {
       const urlMatch = trimmed.match(/\((.*?)\)/);
       if (urlMatch && urlMatch[1]) {
         elements.push(
-          <div key={index} className="my-4 rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-black/40 p-2 relative group w-full">
-            <img src={urlMatch[1]} alt={altMatch ? altMatch[1] : 'صورة رياضية'} onError={(e) => { e.currentTarget.src = '/logo.png'; }} className="w-full h-auto rounded-xl object-contain max-h-[28rem] bg-black/30" />
+          <div key={index} className={`my-4 rounded-2xl overflow-hidden border shadow-lg p-2 relative group w-full ${isDark ? 'border-white/10 bg-black/40' : 'border-gray-200 bg-white'}`}>
+            <img src={urlMatch[1]} alt={altMatch ? altMatch[1] : 'صورة رياضية'} onError={(e) => { e.currentTarget.src = '/logo.png'; }} className={`w-full h-auto rounded-xl object-contain max-h-[28rem] ${isDark ? 'bg-black/30' : 'bg-gray-50'}`} />
           </div>
         );
       }
     } else {
-      elements.push(<p key={index} className="leading-relaxed my-2 text-base text-gray-200">{renderInlineText(trimmed)}</p>);
+      elements.push(<p key={index} className={`leading-relaxed my-2 text-base ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{renderInlineText(trimmed, isDark)}</p>);
     }
   });
 
   if (inTable) flushTable(lines.length);
 
-  // عرض حاوية الفيديوهات الحية بتصميم فخم
   if (youtubeIds.length > 0) {
     elements.push(
-      <div key="youtube-embeds" className="mt-8 pt-4 border-t border-white/10">
-        <h4 className="text-emerald-400 font-bold mb-3 flex items-center gap-2 text-sm">
+      <div key="youtube-embeds" className={`mt-8 pt-4 border-t ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
+        <h4 className={`font-bold mb-3 flex items-center gap-2 text-sm ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
           <span>🎥</span> روابط ملخصات اليوتيوب
         </h4>
         {youtubeIds.map((vid) => (
-          <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl mb-4">
-            <div className="flex items-center justify-between px-4 py-3 bg-emerald-950/50 border-b border-white/10">
-              <span className="text-xs sm:text-sm font-bold text-emerald-400">مشاهدة الملخص حياً</span>
-              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-400 hover:text-blue-300 underline transition break-all">
+          <div key={vid} className={`rounded-2xl overflow-hidden border shadow-xl mb-4 ${isDark ? 'border-emerald-500/30 bg-black/40' : 'border-emerald-200 bg-white'}`}>
+            <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-emerald-950/50 border-white/10' : 'bg-emerald-50 border-gray-200'}`}>
+              <span className={`text-xs sm:text-sm font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>مشاهدة الملخص حياً</span>
+              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className={`text-[11px] underline transition break-all ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}>
                 فتح في يوتيوب ↗
               </a>
             </div>
@@ -374,6 +370,7 @@ function renderFormattedText(text: string) {
 }
 
 const STORAGE_KEY = 'aifball_chat_history_v12';
+const THEME_KEY = 'aifball_theme';
 
 export default function FootPlayChat() {
   const { user } = useUser(); 
@@ -389,16 +386,35 @@ export default function FootPlayChat() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<{file: File, url: string}[]>([]);
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const suggestionCards = [
-    { question: 'تحليل تكتيكي لأداء الالماني فيسينغ مع الاتحاد', tag: 'تحليل تكتيكي', icon: '📋' },
-    { question: 'ما هو جدول ترتيب دوري روشن السعودي؟', tag: 'ترتيب وإحصائيات', icon: '📊' },
-    { question: 'أهداف وملخصات أبرز مباريات اليوم', tag: 'أهداف وملخصات', icon: '🎬' },
-    { question: 'ما هو السجل التاريخي لأبطال دوري أبطال أوروبا؟', tag: 'التاريخ والبطولات', icon: '🏆' },
+    { question: 'من هو بطل دوري روشن السعودي لموسم 2025/2026؟', tag: 'أبطال المواسم', icon: '🏆' },
+    { question: 'كم نقطة جمع بطل دوري روشن الموسم الماضي؟', tag: 'إحصائيات الأبطال', icon: '📊' },
+    { question: 'من هو الهداف التاريخي لدوري أبطال أوروبا؟', tag: 'أرقام قياسية', icon: '⚽' },
+    { question: 'ما هو السجل التاريخي لأبطال دوري أبطال أوروبا؟', tag: 'تاريخ البطولات', icon: '📜' },
   ];
+
+  // إعداد الوضع الليلي والنهاري
+  useEffect(() => {
+    const savedTheme = localStorage.getItem(THEME_KEY);
+    if (savedTheme) {
+      setIsDarkMode(savedTheme === 'dark');
+    } else {
+      // فحص إعدادات جهاز المستخدم
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setIsDarkMode(prefersDark);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = !isDarkMode;
+    setIsDarkMode(newTheme);
+    localStorage.setItem(THEME_KEY, newTheme ? 'dark' : 'light');
+  };
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -660,9 +676,11 @@ export default function FootPlayChat() {
   };
 
   return (
-    <div dir="rtl" className="flex flex-col h-[100dvh] relative overflow-hidden font-saudi bg-[#131314] text-[#E3E3E3]">
-      <div className="absolute inset-0 bg-cover bg-center filter brightness-[0.55] pointer-events-none z-0" style={{ backgroundImage: "url('/IMG_0091.jpeg')" }} />
-      <div className="absolute inset-0 bg-[#131314]/75 pointer-events-none z-0" />
+    <div dir="rtl" className={`flex flex-col h-[100dvh] relative overflow-hidden font-saudi transition-colors duration-300 ${isDarkMode ? 'bg-[#131314] text-[#E3E3E3]' : 'bg-gray-50 text-gray-900'}`}>
+      
+      {/* الخلفية */}
+      <div className={`absolute inset-0 bg-cover bg-center filter pointer-events-none z-0 transition-opacity duration-300 ${isDarkMode ? 'brightness-[0.55]' : 'brightness-[0.9] opacity-20'}`} style={{ backgroundImage: "url('/IMG_0091.jpeg')" }} />
+      <div className={`absolute inset-0 pointer-events-none z-0 transition-colors duration-300 ${isDarkMode ? 'bg-[#131314]/75' : 'bg-gray-50/85'}`} />
 
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
@@ -671,19 +689,19 @@ export default function FootPlayChat() {
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         .custom-scrollbar::-webkit-scrollbar { height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #2E3338; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: ${isDarkMode ? '#2E3338' : '#D1D5DB'}; border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #1D6B35; }
       `}</style>
 
       {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/60 z-30 transition-opacity" />}
 
-      <aside className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-[#18191A]/95 backdrop-blur-md border-l border-white/10 z-40 transform transition-transform duration-300 flex flex-col ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
+      <aside className={`fixed top-0 right-0 h-full w-72 sm:w-80 backdrop-blur-md border-l z-40 transform transition-all duration-300 flex flex-col ${isDarkMode ? 'bg-[#18191A]/95 border-white/10' : 'bg-white/95 border-gray-200'} ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className={`flex items-center justify-between p-4 border-b ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
           <div className="flex items-center gap-2.5">
             <AiFBallLogo size="sm"/>
-            <span className="font-bold text-white text-sm">سجل البحوث والمحادثات</span>
+            <span className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>سجل البحوث والمحادثات</span>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 transition">✕</button>
+          <button onClick={() => setSidebarOpen(false)} className={`w-8 h-8 rounded-lg transition ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>✕</button>
         </div>
         <div className="p-3">
           <button onClick={startNewChat} className="w-full py-2.5 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow">
@@ -692,12 +710,12 @@ export default function FootPlayChat() {
         </div>
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5">
           {sessions.map((s) => (
-            <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setConversationId(s.conversationId); setMessages(s.messages); setSidebarOpen(false); }} className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 cursor-pointer text-xs truncate transition border border-transparent hover:border-white/10">
+            <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setConversationId(s.conversationId); setMessages(s.messages); setSidebarOpen(false); }} className={`p-3 rounded-xl cursor-pointer text-xs truncate transition border ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-gray-300 border-transparent hover:border-white/10' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-100 hover:border-gray-300'}`}>
               {s.title}
             </div>
           ))}
         </div>
-        <div className="p-4 border-t border-white/10 bg-[#131517] mt-auto">
+        <div className={`p-4 border-t mt-auto ${isDarkMode ? 'border-white/10 bg-[#131517]' : 'border-gray-200 bg-gray-50'}`}>
           <SignedOut>
             <SignInButton mode="modal">
               <button className="w-full py-3 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-600 text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg">
@@ -707,7 +725,7 @@ export default function FootPlayChat() {
             </SignInButton>
           </SignedOut>
           <SignedIn>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+            <div className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
               <div className="flex items-center gap-3 w-full">
                 <UserButton 
                   afterSignOutUrl="/" 
@@ -719,16 +737,16 @@ export default function FootPlayChat() {
                 />
                 <div className="flex flex-col flex-1 min-w-0">
                   <div className="flex items-center justify-between w-full">
-                    <span className="text-xs font-bold text-gray-200 truncate pr-2">
+                    <span className={`text-xs font-bold truncate pr-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
                       {user?.fullName || user?.firstName || 'حسابي'}
                     </span>
                     {user?.primaryEmailAddress?.emailAddress === 'khalidassaf44@gmail.com' ? (
-                      <span className="text-[9px] font-bold bg-emerald-900/60 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 whitespace-nowrap shadow-sm">المالك</span>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap shadow-sm ${isDarkMode ? 'bg-emerald-900/60 text-emerald-400 border-emerald-500/30' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>المالك</span>
                     ) : (
-                      <span className="text-[9px] font-bold bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full border border-gray-700 whitespace-nowrap shadow-sm">عضو</span>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap shadow-sm ${isDarkMode ? 'bg-gray-800 text-gray-400 border-gray-700' : 'bg-gray-100 text-gray-600 border-gray-300'}`}>عضو</span>
                     )}
                   </div>
-                  <span className="text-[10px] text-emerald-400 text-right mt-0.5">متصل الآن</span>
+                  <span className={`text-[10px] text-right mt-0.5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>متصل الآن</span>
                 </div>
               </div>
             </div>
@@ -736,36 +754,46 @@ export default function FootPlayChat() {
         </div>
       </aside>
 
-      <header className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b border-white/10 bg-[#131314]/80 sticky top-0 z-20 backdrop-blur-md">
+      <header className={`flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b sticky top-0 z-20 backdrop-blur-md transition-colors duration-300 ${isDarkMode ? 'border-white/10 bg-[#131314]/80' : 'border-gray-200 bg-white/80'}`}>
         <div className="flex items-center gap-2.5">
-          <button onClick={() => setSidebarOpen(true)} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-gray-200 transition">
+          <button onClick={() => setSidebarOpen(true)} className={`w-9 h-9 rounded-xl border flex items-center justify-center transition ${isDarkMode ? 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-600'}`}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h10" /></svg>
           </button>
           <AiFBallLogo size="md"/>
           <div>
-            <h1 className="text-base font-bold text-white leading-tight">فوتبلاي</h1>
-            <p className="text-[10px] text-emerald-400 font-medium">صديقك الرياضي</p>
+            <h1 className={`text-base font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>فوتبلاي</h1>
+            <p className={`text-[10px] font-medium ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>صديقك الرياضي</p>
           </div>
         </div>
-        <button onClick={startNewChat} className="px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 transition hidden sm:block">+ محادثة جديدة</button>
+        
+        <div className="flex items-center gap-2">
+          <button onClick={toggleTheme} className={`w-9 h-9 rounded-xl border flex items-center justify-center transition ${isDarkMode ? 'bg-white/5 hover:bg-white/10 border-white/10 text-yellow-400' : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-600'}`} title="تغيير المظهر">
+            {isDarkMode ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+            )}
+          </button>
+          <button onClick={startNewChat} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition hidden sm:block ${isDarkMode ? 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-700'}`}>+ محادثة جديدة</button>
+        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto flex flex-col relative z-10 custom-scrollbar">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
             <div className="text-right space-y-3 mb-6 px-1">
-              <div className="inline-flex items-center gap-2 text-emerald-400 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 border-emerald-500/40">
+              <div className={`inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 ${isDarkMode ? 'text-emerald-400 border-emerald-500/40' : 'text-emerald-600 border-emerald-300'}`}>
                 <span>⚽</span><span>HOME OF FOOTBALL</span>
               </div>
-              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white drop-shadow-md">أهلاً بك في فوتبلاي</h2>
-              <p className="text-base sm:text-lg text-gray-200 leading-relaxed max-w-2xl font-normal drop-shadow">
+              <h2 className={`text-3xl sm:text-5xl font-extrabold tracking-tight drop-shadow-md ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>أهلاً بك في فوتبلاي</h2>
+              <p className={`text-base sm:text-lg leading-relaxed max-w-2xl font-normal drop-shadow ${isDarkMode ? 'text-gray-200' : 'text-gray-600'}`}>
                 تحليل تكتيكي، تشكيلات مباريات، مقارنات إحصائية متقدمة، وأهداف وملخصات المباريات.. كيف أساعدك اليوم؟
               </p>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
-                <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-black/20 backdrop-blur-sm border border-white/10 shadow-lg min-h-[115px] select-none opacity-80">
-                  <p className="text-sm font-bold text-gray-100 leading-relaxed line-clamp-2">{card.question}</p>
+                <div key={i} onClick={() => sendMessage(card.question)} className={`flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl backdrop-blur-sm border shadow-lg min-h-[115px] cursor-pointer transition-all hover:scale-[1.02] select-none ${isDarkMode ? 'bg-black/20 border-white/10 opacity-80 hover:opacity-100' : 'bg-white border-gray-200 opacity-90 hover:opacity-100 hover:shadow-md'}`}>
+                  <p className={`text-sm font-bold leading-relaxed line-clamp-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>{card.question}</p>
                   <div className="flex items-center justify-between w-full mt-3 pt-1">
                     <span className="text-[10px] sm:text-xs font-bold text-[#22C55E] truncate pl-1">{card.tag}</span>
                     <span className="text-lg opacity-80">{card.icon}</span>
@@ -780,16 +808,16 @@ export default function FootPlayChat() {
               (msg.content && msg.content.trim() !== '') || (msg.imageUrls && msg.imageUrls.length > 0) ? (
                 <div key={i} className="flex items-start gap-4 w-full">
                   <div className="flex-shrink-0 mt-1 hidden sm:block">
-                     {msg.role === 'assistant' ? <AiFBallLogo size="sm"/> : <div className="w-8 h-8 rounded-lg bg-emerald-700 flex items-center justify-center text-white text-[10px] font-bold shadow-sm">أنت</div>}
+                     {msg.role === 'assistant' ? <AiFBallLogo size="sm"/> : <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shadow-sm ${isDarkMode ? 'bg-emerald-700' : 'bg-emerald-600'}`}>أنت</div>}
                   </div>
                   <div className="flex flex-col w-full min-w-0">
                      {msg.role === 'user' ? (
-                        <div className="text-white text-lg sm:text-xl font-bold leading-relaxed break-words">
+                        <div className={`text-lg sm:text-xl font-bold leading-relaxed break-words ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                            {msg.content}
                            {msg.imageUrls && msg.imageUrls.length > 0 && (
                             <div className="flex flex-wrap gap-2 mt-3">
                               {msg.imageUrls.map((url, idx) => (
-                                <img key={idx} src={url} alt="مرفق" className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border border-white/20 shadow-sm" />
+                                <img key={idx} src={url} alt="مرفق" className={`w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border shadow-sm ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`} />
                               ))}
                             </div>
                            )}
@@ -798,22 +826,22 @@ export default function FootPlayChat() {
                         <div className="w-full">
                            {msg.thinkingTime !== undefined && msg.thinkingTime > 0 && (
                              <div className="mb-4 w-full">
-                               <details className="text-xs text-gray-400 cursor-pointer group select-none transition-all duration-300">
-                                 <summary className="inline-flex items-center gap-2 bg-[#1A1C1E]/80 hover:bg-[#222528] px-3 py-1.5 rounded-xl border border-white/5 transition-colors shadow-sm">
-                                   <span className="text-emerald-500 font-bold">✓</span>
-                                   <span className="font-bold text-gray-300">تم جلب المعلومات في ({formatSeconds(msg.thinkingTime)})</span>
+                               <details className={`text-xs cursor-pointer group select-none transition-all duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                 <summary className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-colors shadow-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 hover:bg-[#222528] border-white/5' : 'bg-gray-100 hover:bg-gray-200 border-gray-200'}`}>
+                                   <span className={`font-bold ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span>
+                                   <span className={`font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>تم جلب المعلومات في ({formatSeconds(msg.thinkingTime)})</span>
                                    <span className="opacity-50 group-open:rotate-180 transition-transform text-[8px] mr-auto pl-1">▼</span>
                                  </summary>
-                                 <div className="mt-3 mr-4 pr-3 py-1.5 border-r-2 border-emerald-500/30 space-y-2 text-gray-400 font-medium text-xs">
-                                   <p className="flex items-center gap-2"><span className="text-emerald-500 text-[10px]">✓</span> تم التحقق من البيانات الرياضية...</p>
-                                   <p className="flex items-center gap-2"><span className="text-emerald-500 text-[10px]">✓</span> تمت مراجعة الإحصائيات والمصادر...</p>
-                                   <p className="flex items-center gap-2"><span className="text-emerald-500 text-[10px]">✓</span> تم صياغة النتيجة النهائية بنجاح.</p>
+                                 <div className={`mt-3 mr-4 pr-3 py-1.5 border-r-2 space-y-2 font-medium text-xs ${isDarkMode ? 'border-emerald-500/30 text-gray-400' : 'border-emerald-300 text-gray-500'}`}>
+                                   <p className="flex items-center gap-2"><span className={`text-[10px] ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span> تم التحقق من البيانات الرياضية...</p>
+                                   <p className="flex items-center gap-2"><span className={`text-[10px] ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span> تمت مراجعة الإحصائيات والمصادر...</p>
+                                   <p className="flex items-center gap-2"><span className={`text-[10px] ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span> تم صياغة النتيجة النهائية بنجاح.</p>
                                  </div>
                                </details>
                              </div>
                            )}
-                           <div className="bg-[#131814]/85 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl text-gray-200 text-base leading-relaxed break-words">
-                             {renderFormattedText(msg.content)}
+                           <div className={`backdrop-blur-xl border rounded-3xl p-5 sm:p-6 shadow-2xl text-base leading-relaxed break-words transition-colors duration-300 ${isDarkMode ? 'bg-[#131814]/85 border-white/10 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}>
+                             {renderFormattedText(msg.content, isDarkMode)}
                            </div>
                         </div>
                      )}
@@ -826,27 +854,27 @@ export default function FootPlayChat() {
               <div className="flex items-start gap-4 w-full mt-4">
                 <div className="flex-shrink-0 mt-1 hidden sm:block"><AiFBallLogo size="sm"/></div>
                 <div className="w-full min-w-0 flex items-center">
-                   <div className="rounded-2xl px-5 py-4 bg-[#1A1C1E]/80 border border-white/5 shadow-sm text-gray-300 max-w-sm">
+                   <div className={`rounded-2xl px-5 py-4 border shadow-sm max-w-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 border-white/5 text-gray-300' : 'bg-white border-gray-200 text-gray-600'}`}>
                       <div className="flex flex-col gap-3">
                         <div className="flex items-center gap-3">
-                           <svg className="animate-spin text-emerald-500 w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                           <svg className="animate-spin w-5 h-5 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                            </svg>
-                           <span className="text-emerald-400 font-bold text-sm">جاري البحث والتحليل... ({formatSeconds(loadingSeconds)})</span>
+                           <span className={`font-bold text-sm ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>جاري البحث والتحليل... ({formatSeconds(loadingSeconds)})</span>
                         </div>
-                        <div className="pt-3 border-t border-white/5 space-y-2 text-xs font-medium">
+                        <div className={`pt-3 border-t space-y-2 text-xs font-medium ${isDarkMode ? 'border-white/5' : 'border-gray-200'}`}>
                           <div className="flex items-center gap-2">
-                            <span className="text-emerald-400 font-bold">✓</span><span className="text-gray-300">الاتصال بخوادم فوتبلاي...</span>
+                            <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>✓</span><span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>الاتصال بخوادم فوتبلاي...</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            {loadingSeconds >= 2 ? <span className="text-emerald-400 font-bold">✓</span> : <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>}
-                            <span className={loadingSeconds >= 2 ? 'text-gray-300' : 'text-gray-500'}>أتحقق من الإحصائيات والمعلومات...</span>
+                            {loadingSeconds >= 2 ? <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>✓</span> : <span className="text-emerald-500 animate-pulse text-[10px]">⬤</span>}
+                            <span className={loadingSeconds >= 2 ? (isDarkMode ? 'text-gray-300' : 'text-gray-600') : (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>أتحقق من الإحصائيات والمعلومات...</span>
                           </div>
                           {loadingSeconds >= 3 && (
                             <div className="flex items-center gap-2">
-                              {loadingSeconds >= 5 ? <span className="text-emerald-400 font-bold">✓</span> : <span className="text-emerald-500/70 animate-pulse text-[10px]">⬤</span>}
-                              <span className={loadingSeconds >= 5 ? 'text-gray-300' : 'text-gray-500'}>أراجع البيانات والمصادر المتاحة...</span>
+                              {loadingSeconds >= 5 ? <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>✓</span> : <span className="text-emerald-500 animate-pulse text-[10px]">⬤</span>}
+                              <span className={loadingSeconds >= 5 ? (isDarkMode ? 'text-gray-300' : 'text-gray-600') : (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>أراجع البيانات والمصادر المتاحة...</span>
                             </div>
                           )}
                         </div>
@@ -860,27 +888,27 @@ export default function FootPlayChat() {
         )}
       </main>
 
-      <footer className="p-3 bg-[#131314]/90 backdrop-blur-md border-t border-white/10 relative z-20">
+      <footer className={`p-3 backdrop-blur-md border-t relative z-20 transition-colors duration-300 ${isDarkMode ? 'bg-[#131314]/90 border-white/10' : 'bg-white/90 border-gray-200'}`}>
         <div className="max-w-4xl mx-auto">
           {attachedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2 px-2">
               {attachedFiles.map((f, idx) => (
-                <div key={idx} className="flex items-center gap-2 bg-black/40 border border-emerald-500/50 p-1.5 pr-3 rounded-lg shadow-sm backdrop-blur-md">
-                  <img src={f.url} alt="مرفق" className="w-8 h-8 object-cover rounded-md border border-white/10" />
-                  <span className="text-xs text-emerald-300 max-w-[120px] truncate" dir="ltr">{f.file.name}</span>
-                  <button onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-300 font-bold ml-1 mr-1 transition">✕</button>
+                <div key={idx} className={`flex items-center gap-2 p-1.5 pr-3 rounded-lg shadow-sm backdrop-blur-md border ${isDarkMode ? 'bg-black/40 border-emerald-500/50' : 'bg-gray-50 border-emerald-300'}`}>
+                  <img src={f.url} alt="مرفق" className={`w-8 h-8 object-cover rounded-md border ${isDarkMode ? 'border-white/10' : 'border-gray-300'}`} />
+                  <span className={`text-xs max-w-[120px] truncate ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`} dir="ltr">{f.file.name}</span>
+                  <button onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))} className={`font-bold ml-1 mr-1 transition ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-600'}`}>✕</button>
                 </div>
               ))}
             </div>
           )}
 
-          <div className="flex items-center gap-2 bg-[#1A1C1E] border border-white/10 rounded-full px-3 py-2 shadow-xl focus-within:border-emerald-500/40 transition-colors">
+          <div className={`flex items-center gap-2 border rounded-full px-3 py-2 shadow-xl transition-colors duration-300 ${isDarkMode ? 'bg-[#1A1C1E] border-white/10 focus-within:border-emerald-500/40' : 'bg-gray-50 border-gray-300 focus-within:border-emerald-500'}`}>
             <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*" className="hidden" />
-            <button onClick={() => fileInputRef.current?.click()} title="إرفاق ملف" className="w-10 h-10 rounded-full hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center font-bold text-xl flex-shrink-0 transition">
+            <button onClick={() => fileInputRef.current?.click()} title="إرفاق ملف" className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl flex-shrink-0 transition ${isDarkMode ? 'hover:bg-white/10 text-gray-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500 hover:text-gray-800'}`}>
               +
             </button>
 
-            <button onClick={handleVoiceSearch} title="بحث صوتي" className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition shadow-sm ${isListening ? 'bg-emerald-600 text-white animate-pulse' : 'hover:bg-white/10 text-gray-400 hover:text-white'}`}>
+            <button onClick={handleVoiceSearch} title="بحث صوتي" className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition shadow-sm ${isListening ? 'bg-emerald-600 text-white animate-pulse' : (isDarkMode ? 'hover:bg-white/10 text-gray-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500 hover:text-gray-800')}`}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 01-14 0v-1M12 18.5V22M8 22h8" />
@@ -893,14 +921,14 @@ export default function FootPlayChat() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
               placeholder={isListening ? 'جاري الاستماع لصوتك...' : 'اسأل عن أي مباراة، تحليل، أو إحصائية...'}
-              className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none"
+              className={`flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none ${isDarkMode ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
             />
 
-            <button onClick={() => sendMessage()} disabled={loading || (!input.trim() && attachedFiles.length === 0)} className="w-10 h-10 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:bg-white/10 disabled:text-gray-600 flex items-center justify-center text-white flex-shrink-0 transition shadow-md">
+            <button onClick={() => sendMessage()} disabled={loading || (!input.trim() && attachedFiles.length === 0)} className="w-10 h-10 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:bg-gray-300 disabled:text-gray-500 flex items-center justify-center text-white flex-shrink-0 transition shadow-md">
               ➤
             </button>
           </div>
-          <p className="text-[11px] text-center text-gray-500 mt-2.5">منصة فوتبلاي للذكاء الاصطناعي الرياضي • by خالد العايش</p>
+          <p className={`text-[11px] text-center mt-2.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>منصة فوتبلاي للذكاء الاصطناعي الرياضي • by خالد العايش</p>
         </div>
       </footer>
     </div>
