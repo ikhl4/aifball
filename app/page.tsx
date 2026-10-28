@@ -391,11 +391,11 @@ export default function FootPlayChat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const suggestionCards = [
-    { question: 'من هو بطل دوري روشن السعودي لموسم 2025/2026؟', tag: 'أبطال المواسم', icon: '🏆' },
-    { question: 'كم نقطة جمع بطل دوري روشن الموسم الماضي؟', tag: 'إحصائيات الأبطال', icon: '📊' },
-    { question: 'من هو الهداف التاريخي لدوري أبطال أوروبا؟', tag: 'أرقام قياسية', icon: '⚽' },
-    { question: 'ما هو السجل التاريخي لأبطال دوري أبطال أوروبا؟', tag: 'تاريخ البطولات', icon: '📜' },
+const suggestionCards = [
+    { question: 'تحليل تكتيكي لأداء الالماني فيسينغ مع الاتحاد', tag: 'تحليل تكتيكي', icon: '📋' },
+    { question: 'ما هو جدول ترتيب دوري روشن السعودي؟', tag: 'ترتيب وإحصائيات', icon: '📊' },
+    { question: 'أهداف وملخصات أبرز مباريات اليوم', tag: 'أهداف وملخصات', icon: '🎬' },
+    { question: 'ما هو السجل التاريخي لأبطال دوري أبطال أوروبا؟', tag: 'التاريخ والبطولات', icon: '🏆' },
   ];
 
   // إعداد الوضع الليلي والنهاري
