@@ -127,7 +127,7 @@ function renderInlineText(text: string, isDark: boolean) {
   });
 }
 
-function renderFormattedText(text: string, isDark: boolean) {
+function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: (q: string) => void) {
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
   const youtubeIds: string[] = [];
   
@@ -263,7 +263,7 @@ function renderFormattedText(text: string, isDark: boolean) {
 
     if (trimmed.startsWith('```')) return;
 
-    // اعتراض الـ Widget واستخدام المكون الخاص بنا ليدعم الوضع الليلي/النهاري
+    // التعرف على أكواد واجهات الترتيب
     if (trimmed.startsWith('<api-sports-widget') && trimmed.includes('</api-sports-widget>')) {
       if (inTable) flushTable(index);
       
@@ -283,6 +283,7 @@ function renderFormattedText(text: string, isDark: boolean) {
       return;
     }
 
+    // التعرف على الملعب التكتيكي
     if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
       if (inTable) flushTable(index);
       const teamMatch = trimmed.match(/team="([^"]+)"/);
@@ -294,6 +295,24 @@ function renderFormattedText(text: string, isDark: boolean) {
           <TacticalPitch team={team} formation={formation} />
         </div>
       );
+      return;
+    }
+
+    // التعرف على أسئلة المتابعة (❓)
+    if (trimmed.startsWith('❓')) {
+      if (inTable) flushTable(index);
+      const questionText = trimmed.replace('❓', '').trim();
+      if (questionText) {
+        elements.push(
+          <button 
+            key={`suggestion-${index}`} 
+            onClick={() => onSuggestionClick && onSuggestionClick(questionText)}
+            className={`block w-full text-right my-2 p-3 rounded-xl border transition-all duration-200 shadow-sm font-bold text-sm ${isDark ? 'bg-emerald-900/20 hover:bg-emerald-900/40 border-emerald-700/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'}`}
+          >
+            {questionText}
+          </button>
+        );
+      }
       return;
     }
 
@@ -615,7 +634,6 @@ export default function FootPlayChat() {
               try {
                 const parsed = JSON.parse(dataStr);
                 if ((parsed.event === 'message' || parsed.event === 'agent_message') && typeof parsed.answer === 'string') {
-                  // ✅ تم مسح setLoading(false) من هنا عشان تظل شاشة التحميل مستمرة
                   
                   const chunk = parsed.answer;
 
@@ -667,7 +685,7 @@ export default function FootPlayChat() {
         return updated;
       });
     } finally {
-      setLoading(false); // ✅ هنا المكان الصحيح لإخفاء التحميل بعد اكتمال الرد
+      setLoading(false); 
       setMessages(currentMessages => {
         saveSessionProgress(currentMessages);
         return currentMessages;
@@ -845,7 +863,7 @@ export default function FootPlayChat() {
                              </div>
                            )}
                            <div className={`backdrop-blur-xl border rounded-3xl p-5 sm:p-6 shadow-2xl text-base leading-relaxed break-words transition-colors duration-300 ${isDarkMode ? 'bg-[#131814]/85 border-white/10 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}>
-                             {renderFormattedText(msg.content, isDarkMode)}
+                             {renderFormattedText(msg.content, isDarkMode, sendMessage)}
                            </div>
                         </div>
                      )}
