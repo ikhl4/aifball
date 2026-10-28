@@ -672,7 +672,7 @@ export default function FootPlayChat() {
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
-                <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-black/20 backdrop-blur-sm border border-white/10 shadow-lg min-h-[115px] hover:border-emerald-500/50 hover:bg-black/40 transition cursor-pointer" onClick={() => { setInput(card.question); sendMessage(card.question); }}>
+                <div key={i} className="flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl bg-black/20 backdrop-blur-sm border border-white/10 shadow-lg min-h-[115px] select-none opacity-80">
                   <p className="text-sm font-bold text-gray-100 leading-relaxed line-clamp-2">{card.question}</p>
                   <div className="flex items-center justify-between w-full mt-3 pt-1">
                     <span className="text-[10px] sm:text-xs font-bold text-[#22C55E] truncate pl-1">{card.tag}</span>
