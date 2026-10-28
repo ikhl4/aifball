@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
-import TacticalPitch from './TacticalPitch'; // ⚠️ تأكد من وجود هذا الملف في نفس المجلد
+import TacticalPitch from './components/TacticalPitch'; // ⚠️ تأكد من وجود هذا الملف في نفس المجلد
 
 interface Message {
   role: 'user' | 'assistant';
