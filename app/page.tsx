@@ -577,7 +577,7 @@ export default function FootPlayChat() {
       <div className="absolute inset-0 bg-[#131314]/75 pointer-events-none z-0" />
 
       <style jsx global>{`
-        @import url("[https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap)");
+        @import url('[https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap)');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
@@ -655,7 +655,7 @@ export default function FootPlayChat() {
         <button onClick={startNewChat} className="px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 transition hidden sm:block">+ محادثة جديدة</button>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 max-w-4xl w-full mx-auto flex flex-col relative z-10 custom-scrollbar">
+      <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto flex flex-col relative z-10 custom-scrollbar">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
             <div className="text-right space-y-3 mb-6 px-1">
