@@ -6,11 +6,17 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const query = body?.query || 'مرحبا';
+    const query = body?.query?.trim() || 'مرحبا';
     const conversation_id = body?.conversation_id || '';
 
-    const apiKey = 'app-3NlvwtpsjeTUXKG9wurQFF8E'; 
+    if (!query) {
+      return NextResponse.json({ error: 'السؤال فارغ' }, { status: 400 });
+    }
+
+    const apiKey = 'app-8uUii7REAPyPwPhX0d5SFn1S';
     const url = 'https://api.dify.ai/v1/chat-messages';
+
+    console.log('Sending to Dify:', { query, conversation_id });
 
     const apiRes = await fetch(url, {
       method: 'POST',
@@ -23,15 +29,18 @@ export async function POST(req: Request) {
         inputs: {},
         query: query,
         response_mode: 'streaming',
-        conversation_id: conversation_id ? conversation_id : undefined,
+        conversation_id: conversation_id || undefined,
         user: 'aifball-user',
       }),
     });
 
     if (!apiRes.ok) {
       const errorText = await apiRes.text();
-      console.error('DIFY_BAD_REQUEST_ERROR:', errorText);
-      return NextResponse.json({ error: errorText }, { status: 500 });
+      console.error('Dify Error:', apiRes.status, errorText);
+      return NextResponse.json(
+        { error: 'فشل الاتصال بـ Dify', details: errorText },
+        { status: apiRes.status }
+      );
     }
 
     return new Response(apiRes.body, {
@@ -44,7 +53,10 @@ export async function POST(req: Request) {
     });
 
   } catch (err: any) {
-    console.error('ROUTE_CATCH_ERROR:', err?.message || err);
-    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });
+    console.error('Server Error:', err);
+    return NextResponse.json(
+      { error: 'خطأ في السيرفر', message: err?.message || 'Unknown error' },
+      { status: 500 }
+    );
   }
 }
