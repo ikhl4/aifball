@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
-import parse from 'html-react-parser';
 import TacticalPitch from './components/TacticalPitch';
 
 interface Message {
@@ -90,24 +89,6 @@ function deduplicateText(rawText: string): string {
   return text;
 }
 
-const parseOptions = {
-  replace: (domNode: any) => {
-    // 1. التعرف على الملعب التكتيكي
-    if (domNode.name === 'aifball-pitch') {
-      const { team, formation } = domNode.attribs || {};
-      return <TacticalPitch team={team} formation={formation} />;
-    }
-    // 2. التعرف على الـ Widget الرياضي للترتيب والنتائج المباشرة
-    if (domNode.name === 'api-sports-widget') {
-      const props: any = {};
-      Object.keys(domNode.attribs).forEach(key => {
-        props[key] = domNode.attribs[key];
-      });
-      return React.createElement('api-sports-widget', props);
-    }
-  },
-};
-
 function renderInlineText(text: string) {
   const linkParts = text.split(/(\[.*?\]\(.*?\))/g);
   
@@ -146,11 +127,14 @@ function renderInlineText(text: string) {
 }
 
 function renderFormattedText(text: string) {
+  // 1. ميزة الفيديوهات: عزل الـ 11 حرفاً لتجنب وميض الـ Streaming
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
   const youtubeIds: string[] = [];
   
   let processedText = text.replace(youtubeRegex, (url, id) => {
-    if (!youtubeIds.includes(id)) youtubeIds.push(id);
+    if (id && id.length === 11 && !youtubeIds.includes(id)) {
+      youtubeIds.push(id);
+    }
     return ''; 
   });
 
@@ -279,12 +263,33 @@ function renderFormattedText(text: string) {
 
     if (trimmed.startsWith('```')) return;
 
-    // دمج التعرف على أكواد الواجهات باستخدام parseOptions
-    if (trimmed.startsWith('<aifball-pitch') || trimmed.startsWith('<api-sports-widget')) {
+    // التعرف على أكواد واجهات الترتيب
+    if (trimmed.startsWith('<api-sports-widget') && trimmed.includes('</api-sports-widget>')) {
       if (inTable) flushTable(index);
+      const attrRegex = /data-([a-zA-Z0-9-]+)="([^"]+)"/g;
+      let match;
+      const props: any = {};
+      while ((match = attrRegex.exec(trimmed)) !== null) {
+        props[`data-${match[1]}`] = match[2];
+      }
       elements.push(
-        <div key={index} className="w-full my-4">
-          {parse(trimmed, parseOptions)}
+        <div key={`widget-${index}`} className="my-5 w-full rounded-2xl overflow-hidden border border-emerald-900/40 shadow-xl bg-transparent relative z-10 min-h-[100px]">
+          {React.createElement('api-sports-widget', props)}
+        </div>
+      );
+      return;
+    }
+
+    // التعرف على الملعب التكتيكي
+    if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
+      if (inTable) flushTable(index);
+      const teamMatch = trimmed.match(/team="([^"]+)"/);
+      const formationMatch = trimmed.match(/formation="([^"]+)"/);
+      const team = teamMatch ? teamMatch[1] : '';
+      const formation = formationMatch ? formationMatch[1] : '4-3-3';
+      elements.push(
+        <div key={`pitch-${index}`} className="my-5 w-full">
+          <TacticalPitch team={team} formation={formation} />
         </div>
       );
       return;
@@ -334,6 +339,7 @@ function renderFormattedText(text: string) {
 
   if (inTable) flushTable(lines.length);
 
+  // عرض حاوية الفيديوهات الحية بتصميم فخم
   if (youtubeIds.length > 0) {
     elements.push(
       <div key="youtube-embeds" className="mt-8 pt-4 border-t border-white/10">
@@ -343,16 +349,16 @@ function renderFormattedText(text: string) {
         {youtubeIds.map((vid) => (
           <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl mb-4">
             <div className="flex items-center justify-between px-4 py-3 bg-emerald-950/50 border-b border-white/10">
-              <span className="text-xs sm:text-sm font-bold text-emerald-400">مشاهدة الملخص</span>
+              <span className="text-xs sm:text-sm font-bold text-emerald-400">مشاهدة الملخص حياً</span>
               <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-400 hover:text-blue-300 underline transition break-all">
                 فتح في يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video">
               <iframe 
-                src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0`} 
-                title="YouTube video player" 
-                className="w-full h-full border-0" 
+                src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0&modestbranding=1`} 
+                title="AiFBall Live Video Match" 
+                className="absolute top-0 left-0 w-full h-full border-0 object-cover" 
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                 referrerPolicy="strict-origin-when-cross-origin"
                 allowFullScreen 
