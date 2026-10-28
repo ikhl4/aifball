@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
+import TacticalPitch from './TacticalPitch'; // ⚠️ تأكد من وجود هذا الملف في نفس المجلد
 
 interface Message {
   role: 'user' | 'assistant';
@@ -259,6 +260,7 @@ function renderFormattedText(text: string) {
 
     if (trimmed.startsWith('```')) return;
 
+    // 1. التعرف على كود واجهة جدول الترتيب
     if (trimmed.startsWith('<api-sports-widget') && trimmed.includes('</api-sports-widget>')) {
       if (inTable) flushTable(index);
       const attrRegex = /data-([a-zA-Z0-9-]+)="([^"]+)"/g;
@@ -270,6 +272,24 @@ function renderFormattedText(text: string) {
       elements.push(
         <div key={`widget-${index}`} className="my-5 w-full rounded-2xl overflow-hidden border border-emerald-900/40 shadow-xl bg-transparent relative z-10 min-h-[100px]">
           {React.createElement('api-sports-widget', props)}
+        </div>
+      );
+      return;
+    }
+
+    // 2. التعرف على كود الملعب التكتيكي
+    if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
+      if (inTable) flushTable(index);
+      
+      const teamMatch = trimmed.match(/team="([^"]+)"/);
+      const formationMatch = trimmed.match(/formation="([^"]+)"/);
+      
+      const team = teamMatch ? teamMatch[1] : '';
+      const formation = formationMatch ? formationMatch[1] : '4-3-3';
+      
+      elements.push(
+        <div key={`pitch-${index}`} className="my-5 w-full">
+          <TacticalPitch team={team} formation={formation} />
         </div>
       );
       return;
