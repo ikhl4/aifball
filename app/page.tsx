@@ -273,13 +273,13 @@ function renderFormattedText(text: string) {
           <div key={vid} className="rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 backdrop-blur-md shadow-xl mb-4">
             <div className="flex items-center justify-between px-4 py-3 bg-emerald-950/50 border-b border-white/10">
               <span className="text-xs sm:text-sm font-bold text-emerald-400">مشاهدة الملخص</span>
-              <a href={`[https://www.youtube.com/watch?v=$](https://www.youtube.com/watch?v=$){vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-400 hover:text-blue-300 underline transition break-all">
+              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-400 hover:text-blue-300 underline transition break-all">
                 فتح في يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video">
               <iframe 
-                src={`[https://www.youtube-nocookie.com/embed/$](https://www.youtube-nocookie.com/embed/$){vid}?rel=0`} 
+                src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0`} 
                 title="YouTube video player" 
                 className="w-full h-full border-0" 
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
@@ -342,10 +342,10 @@ export default function FootPlayChat() {
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
 
-    if (!document.querySelector('script[src="[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)"]')) {
+    if (!document.querySelector('script[src="https://widgets.api-sports.io/2.0.0/widgets.js"]')) {
       const script = document.createElement('script');
       script.type = 'module';
-      script.src = '[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)';
+      script.src = 'https://widgets.api-sports.io/2.0.0/widgets.js';
       document.body.appendChild(script);
     }
   }, []);
@@ -577,7 +577,7 @@ export default function FootPlayChat() {
       <div className="absolute inset-0 bg-[#131314]/75 pointer-events-none z-0" />
 
       <style jsx global>{`
-        @import url('[https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap)');
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
@@ -621,7 +621,10 @@ export default function FootPlayChat() {
           <SignedIn>
             <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
               <div className="flex items-center gap-3 w-full">
-                <UserButton "w-9 afterSignOutUrl="/" appearance="{{" border-2 border-emerald-500/30 elements: flex-shrink-0" h-9 rounded-full userButtonAvatarBox: { } }}/>
+                <UserButton 
+                  afterSignOutUrl="/" 
+                  appearance={{ elements: { userButtonAvatarBox: "w-9 h-9 border-2 border-emerald-500/30 rounded-full flex-shrink-0" } }} 
+                />
                 <div className="flex flex-col flex-1 min-w-0">
                   <div className="flex items-center justify-between w-full">
                     <span className="text-xs font-bold text-gray-200 truncate pr-2">
@@ -732,7 +735,7 @@ export default function FootPlayChat() {
                    <div className="rounded-2xl px-5 py-4 bg-[#1A1C1E]/80 border border-white/5 shadow-sm text-gray-300 max-w-sm">
                       <div className="flex flex-col gap-3">
                         <div className="flex items-center gap-3">
-                           <svg className="animate-spin text-emerald-500 w-5 h-5" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24">
+                           <svg className="animate-spin text-emerald-500 w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                            </svg>
