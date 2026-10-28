@@ -104,6 +104,19 @@ function renderFormattedText(text: string) {
     return ''; 
   });
 
+  // 🔴 الحماية من التكرار: حذف الأسطر المكررة المتتالية تلقائياً
+  let linesArray = processedText.split('\n');
+  let deduplicatedLines = [];
+  for (let i = 0; i < linesArray.length; i++) {
+    const currentLine = linesArray[i].trim();
+    if (i > 0 && currentLine === linesArray[i-1].trim() && currentLine !== '') {
+      continue; // تخطي السطر إذا كان مطابقاً للسطر الذي قبله
+    }
+    deduplicatedLines.push(linesArray[i]);
+  }
+  processedText = deduplicatedLines.join('\n');
+  // 🔴 نهاية الحماية
+
   processedText = processedText.replace(/\]\s*\n\s*\(/g, '](').replace(/\n\s*\n/g, '\n\n');
   
   const lines = processedText.split('\n');
@@ -720,7 +733,7 @@ export default function FootPlayChat() {
                                </details>
                              </div>
                            )}
-                           {/* هنا تم إضافة الصندوق الأسود الشفاف */}
+                           {/* صندوق الرد الأسود الشفاف */}
                            <div className="bg-[#131814]/85 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl text-gray-200 text-base leading-relaxed break-words">
                              {renderFormattedText(msg.content)}
                            </div>
