@@ -3,12 +3,12 @@ const axios = require('axios');
 const cors = require('cors');
 
 const app = express();
-app.use(cors()); // السماح لموقعك بالاتصال بالسيرفر بدون مشاكل أمنية
+app.use(cors({ origin: 'https://aifball.com' }));
 app.use(express.json());
 
 // دمج مفتاح API-Football الخاص بك مباشرة داخل الكود ليعمل بدون ملف .env
 const RAPIDAPI_KEY = 'c1940d93074f34c797f1321047e21e12'; 
-const BASE_URL = 'https://api-sports.io';
+const BASE_URL = 'https://v3.football.api-sports.io';
 
 const apiHeaders = {
   'x-rapidapi-key': RAPIDAPI_KEY,
