@@ -13,8 +13,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'السؤال فارغ' }, { status: 400 });
     }
 
-    const apiKey = 'app-8uUii7REAPyPwPhX0d5SFn1S';
+    // جلب المفتاح بأمان من إعدادات Vercel بدلاً من كتابته في الكود
+    const apiKey = process.env.DIFY_API_KEY;
     const url = 'https://api.dify.ai/v1/chat-messages';
+
+    if (!apiKey) {
+      return NextResponse.json({ error: 'مفتاح Dify غير مهيأ في السيرفر' }, { status: 500 });
+    }
 
     console.log('Sending to Dify:', { query, conversation_id });
 
@@ -30,7 +35,8 @@ export async function POST(req: Request) {
         query: query,
         response_mode: 'streaming',
         conversation_id: conversation_id || undefined,
-        user: 'aifball-user',
+        // نستخدم معرف مستخدم ديناميكي أو ثابت بحسب ما تفضله
+        user: 'aifball-web-user', 
       }),
     });
 
@@ -43,6 +49,7 @@ export async function POST(req: Request) {
       );
     }
 
+    // إرجاع الـ Stream مباشرة للواجهة الأمامية
     return new Response(apiRes.body, {
       headers: {
         'Content-Type': 'text/event-stream',
