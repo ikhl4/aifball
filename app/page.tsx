@@ -104,23 +104,24 @@ function renderFormattedText(text: string) {
     return ''; 
   });
 
-  // 1. حذف أكواد HTML الخرب
-  processedText = processedText.replace(/a\s*href=.*?target=['"]_blank['"]/gi, '');
+  // 1. تنظيف أكواد HTML
+  processedText = processedText.replace(/<a\s+href=.*?<\/a>/gi, '');
   processedText = processedText.replace(/a\s*href=[^\s>]+/gi, '');
 
-  // 2. حذف الأسطر المكررة المتتالية
-  let linesArray = processedText.split('\n');
-  let deduplicatedLines = [];
-  for (let i = 0; i < linesArray.length; i++) {
-    const currentLine = linesArray[i].trim();
-    if (i > 0 && currentLine === linesArray[i-1].trim() && currentLine !== '') {
-      continue; 
-    }
-    deduplicatedLines.push(linesArray[i]);
-  }
-  processedText = deduplicatedLines.join('\n');
+  // 2. حماية متقدمة ضد التكرار
+  const paragraphs = processedText.split(/\n\s*\n/);
+  const uniqueParagraphs = new Set();
+  let finalText = '';
 
-  processedText = processedText.replace(/\]\s*\n\s*\(/g, '](').replace(/\n\s*\n/g, '\n\n');
+  for (const para of paragraphs) {
+    const trimmedPara = para.trim();
+    if (trimmedPara !== '' && !uniqueParagraphs.has(trimmedPara)) {
+      uniqueParagraphs.add(trimmedPara);
+      finalText += trimmedPara + '\n\n';
+    }
+  }
+  
+  processedText = finalText.replace(/\]\s*\n\s*\(/g, '](');
   
   const lines = processedText.split('\n');
   const elements: React.ReactNode[] = [];
