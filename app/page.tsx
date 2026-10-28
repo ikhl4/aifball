@@ -30,12 +30,7 @@ const formatSeconds = (sec: number) => {
 };
 
 function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  const [imgError, setImgError] = useState(false);
   const dimensions = size === 'sm' ? 'w-8 h-8 rounded-[9px]' : size === 'lg' ? 'w-14 h-14 rounded-[16px]' : 'w-10 h-10 rounded-[11px]';
-
-  if (!imgError) {
-    return <img src="/logo.png" alt="AiFBall" onError={() => setImgError(true)} className={`${dimensions} object-cover shadow-md flex-shrink-0 select-none`} />;
-  }
 
   return (
     <div className={`${dimensions} bg-[#1D6B35] flex items-center justify-center shadow-md flex-shrink-0 select-none overflow-hidden`}>
