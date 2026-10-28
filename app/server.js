@@ -1,14 +1,13 @@
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
-require('dotenv').config(); // لحفظ المفاتيح السرية بأمان في ملف .env
 
 const app = express();
-app.use(cors()); // السماح لموقعك (Next.js) بالاتصال بالسيرفر بدون مشاكل أمنية
+app.use(cors()); // السماح لموقعك بالاتصال بالسيرفر بدون مشاكل أمنية
 app.use(express.json());
 
-// إعدادات الاتصال بـ RapidAPI - API-Football
-const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY; // ضع مفتاحك في ملف .env
+// دمج مفتاح API-Football الخاص بك مباشرة داخل الكود ليعمل بدون ملف .env
+const RAPIDAPI_KEY = 'c1940d93074f34c797f1321047e21e12'; 
 const BASE_URL = 'https://api-sports.io';
 
 const apiHeaders = {
@@ -17,8 +16,7 @@ const apiHeaders = {
 };
 
 /**
- * 1️⃣ نقطة وصول لجلب ترتيب الدوري (Standings)
- * مثال الاستدعاء من موقعك: /api/standings?league=39&season=2026
+ * 1️⃣ جلب ترتيب الدوري (Standings) لموسم 2026-2027
  */
 app.get('/api/standings', async (req, res) => {
   const { league, season } = req.query;
@@ -33,8 +31,7 @@ app.get('/api/standings', async (req, res) => {
       params: { league, season }
     });
     
-    // استخراج مصفوفة الترتيب النظيفة وتمريرها للموقع
-    const standings = response.data.response[0]?.league?.standings[0] || [];
+    const standings = response.data.response?.[0]?.league?.standings?.[0] || [];
     res.json({ standings });
   } catch (error) {
     console.error('Error fetching standings:', error.message);
@@ -43,26 +40,24 @@ app.get('/api/standings', async (req, res) => {
 });
 
 /**
- * 2️⃣ نقطة وصول لجلب نتائج المباريات الحية والمباشرة (Live Scores)
- * مثال الاستدعاء من موقعك: /api/livescores
+ * 2️⃣ جلب نتائج المباريات الحية والمباشرة (Live Scores)
  */
 app.get('/api/livescores', async (req, res) => {
   try {
     const response = await axios.get(`${BASE_URL}/fixtures`, {
       headers: apiHeaders,
-      params: { live: 'all' } // جلب كافة المباريات المباشرة حول العالم حالياً
+      params: { live: 'all' }
     });
 
     res.json({ matches: response.data.response });
   } catch (error) {
     console.error('Error fetching live scores:', error.message);
-    res.status(500).json({ error: 'فشل جلب النتائج الرياضية المباشرة ثانية بثانية' });
+    res.status(500).json({ error: 'فشل جلب النتائج الرياضية المباشرة' });
   }
 });
 
 /**
- * 3️⃣ نقطة وصول لجلب إحصائيات مقارنة أداء اللاعبين التكتيكي
- * مثال الاستدعاء من موقعك: /api/player-compare?player1=276&player2=154&season=2026
+ * 3️⃣ مقارنة أداء اللاعبين التكتيكي
  */
 app.get('/api/player-compare', async (req, res) => {
   const { player1, player2, season } = req.query;
@@ -72,27 +67,23 @@ app.get('/api/player-compare', async (req, res) => {
   }
 
   try {
-    // جلب بيانات اللاعب الأول واللاعب الثاني بالتوازي لسرعة الأداء في الـ Streaming
     const [res1, res2] = await Promise.all([
       axios.get(`${BASE_URL}/players`, { headers: apiHeaders, params: { id: player1, season } }),
       axios.get(`${BASE_URL}/players`, { headers: apiHeaders, params: { id: player2, season } })
     ]);
 
-    const player1Data = res1.data.response[0] || null;
-    const player2Data = res2.data.response[0] || null;
-
     res.json({
-      player1: player1Data,
-      player2: player2Data
+      player1: res1.data.response || null,
+      player2: res2.data.response || null
     });
   } catch (error) {
     console.error('Error comparing players:', error.message);
-    res.status(500).json({ error: 'فشل تحليل أداء ومقارنة اللاعبين تكتيكياً' });
+    res.status(500).json({ error: 'فشل تحليل ومقارنة اللاعبين تكتيكياً' });
   }
 });
 
 // تشغيل السيرفر المطور
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 سيرفر بيانات فوتبلاي الآمن يعمل بنجاح على المنفذ ${PORT}`);
+  console.log(`🚀 سيرفر بيانات فوتبلاي يعمل بنجاح ومباشرة على المنفذ ${PORT}`);
 });
