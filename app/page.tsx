@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
 import TacticalPitch from './components/TacticalPitch';
+import LiveSportsWidget from './components/LiveSportsWidget';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -262,17 +263,21 @@ function renderFormattedText(text: string, isDark: boolean) {
 
     if (trimmed.startsWith('```')) return;
 
+    // اعتراض الـ Widget واستخدام المكون الخاص بنا ليدعم الوضع الليلي/النهاري
     if (trimmed.startsWith('<api-sports-widget') && trimmed.includes('</api-sports-widget>')) {
       if (inTable) flushTable(index);
-      const attrRegex = /data-([a-zA-Z0-9-]+)="([^"]+)"/g;
-      let match;
-      const props: any = {};
-      while ((match = attrRegex.exec(trimmed)) !== null) {
-        props[`data-${match[1]}`] = match[2];
-      }
+      
+      const typeMatch = trimmed.match(/data-type="([^"]+)"/);
+      const leagueMatch = trimmed.match(/data-league="([^"]+)"/);
+      const seasonMatch = trimmed.match(/data-season="([^"]+)"/);
+      
+      const widgetType = typeMatch ? typeMatch[1] as 'standings' | 'livescore' : 'standings';
+      const widgetLeague = leagueMatch ? leagueMatch[1] : '39';
+      const widgetSeason = seasonMatch ? seasonMatch[1] : '2026';
+
       elements.push(
-        <div key={`widget-${index}`} className={`my-5 w-full rounded-2xl overflow-hidden border shadow-xl bg-transparent relative z-10 min-h-[100px] ${isDark ? 'border-emerald-900/40' : 'border-emerald-200'}`}>
-          {React.createElement('api-sports-widget', props)}
+        <div key={`widget-${index}`} className="my-5 w-full relative z-10">
+          <LiveSportsWidget type={widgetType} league={widgetLeague} season={widgetSeason} isDark={isDark} />
         </div>
       );
       return;
@@ -391,20 +396,18 @@ export default function FootPlayChat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-const suggestionCards = [
+  const suggestionCards = [
     { question: 'تحليل تكتيكي لأداء الالماني فيسينغ مع الاتحاد', tag: 'تحليل تكتيكي', icon: '📋' },
     { question: 'ما هو جدول ترتيب دوري روشن السعودي؟', tag: 'ترتيب وإحصائيات', icon: '📊' },
     { question: 'أهداف وملخصات أبرز مباريات اليوم', tag: 'أهداف وملخصات', icon: '🎬' },
     { question: 'ما هو السجل التاريخي لأبطال دوري أبطال أوروبا؟', tag: 'التاريخ والبطولات', icon: '🏆' },
   ];
 
-  // إعداد الوضع الليلي والنهاري
   useEffect(() => {
     const savedTheme = localStorage.getItem(THEME_KEY);
     if (savedTheme) {
       setIsDarkMode(savedTheme === 'dark');
     } else {
-      // فحص إعدادات جهاز المستخدم
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       setIsDarkMode(prefersDark);
     }
@@ -612,7 +615,8 @@ const suggestionCards = [
               try {
                 const parsed = JSON.parse(dataStr);
                 if ((parsed.event === 'message' || parsed.event === 'agent_message') && typeof parsed.answer === 'string') {
-                  setLoading(false); 
+                  // ✅ تم مسح setLoading(false) من هنا عشان تظل شاشة التحميل مستمرة
+                  
                   const chunk = parsed.answer;
 
                   if (chunk.length > 15 && finalAnswer.includes(chunk.trim())) {
@@ -663,7 +667,7 @@ const suggestionCards = [
         return updated;
       });
     } finally {
-      setLoading(false);
+      setLoading(false); // ✅ هنا المكان الصحيح لإخفاء التحميل بعد اكتمال الرد
       setMessages(currentMessages => {
         saveSessionProgress(currentMessages);
         return currentMessages;
