@@ -376,16 +376,20 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
     );
   }
 
+  // تصميم الأسئلة داخل قالب أخضر
   if (suggestedQuestions.length > 0) {
     elements.push(
-      <div key="suggested-questions" className="mt-4 flex flex-col gap-2 w-full">
+      <div key="suggested-questions" className={`mt-5 p-3 sm:p-4 rounded-2xl border w-full flex flex-col gap-2.5 ${isDark ? 'bg-emerald-950/30 border-emerald-800/60' : 'bg-emerald-50 border-emerald-300'}`}>
+        <span className={`text-xs font-bold mb-1 flex items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+          💡 أسئلة مقترحة للمتابعة:
+        </span>
         {suggestedQuestions.map((q, idx) => (
           <button
             key={`sq-${idx}`}
             onClick={() => onSuggestionClick && onSuggestionClick(q)}
-            className={`block w-full text-right p-2 px-3 rounded-lg border transition-all duration-200 shadow-sm font-bold text-[11px] sm:text-xs ${isDark ? 'bg-emerald-900/20 hover:bg-emerald-900/40 border-emerald-700/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'}`}
+            className={`block w-full text-right p-2.5 px-4 rounded-xl border transition-all duration-200 shadow-sm font-bold text-xs sm:text-sm cursor-pointer hover:-translate-y-0.5 active:translate-y-0 ${isDark ? 'bg-emerald-600 hover:bg-emerald-500 border-emerald-500 text-white' : 'bg-[#1D6B35] hover:bg-emerald-600 border-emerald-700 text-white'}`}
           >
-            <span className="opacity-70 ml-1 text-[10px]">❓</span> {q}
+            <span className="opacity-80 ml-1.5 text-[10px]">❓</span> {q}
           </button>
         ))}
       </div>
