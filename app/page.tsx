@@ -259,6 +259,7 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
     if (trimmed.startsWith('```')) return;
 
+    // اعتراض الـ Widget
     if (trimmed.startsWith('<api-sports-widget') && trimmed.includes('</api-sports-widget>')) {
       if (inTable) flushTable(index);
       
@@ -271,13 +272,14 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       const widgetSeason = seasonMatch ? seasonMatch[1] : '2026';
 
       elements.push(
-        <div key={`widget-${index}`} className="my-5 w-full relative z-10">
+        <div key={`widget-${index}`} className="my-3 w-full max-w-2xl mx-auto relative z-10">
           <LiveSportsWidget type={widgetType} league={widgetLeague} season={widgetSeason} isDark={isDark} />
         </div>
       );
       return;
     }
 
+    // اعتراض الملعب
     if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
       if (inTable) flushTable(index);
       const teamMatch = trimmed.match(/team="([^"]+)"/);
@@ -285,16 +287,17 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       const team = teamMatch ? teamMatch[1] : '';
       const formation = formationMatch ? formationMatch[1] : '4-3-3';
       elements.push(
-        <div key={`pitch-${index}`} className="my-5 w-full">
+        <div key={`pitch-${index}`} className="my-5 w-full max-w-2xl mx-auto">
           <TacticalPitch team={team} formation={formation} />
         </div>
       );
       return;
     }
 
-    if (trimmed.startsWith('❓')) {
+    // التقاط الأسئلة المقترحة بذكاء (سواء كانت نقاط أو رموز)
+    if (trimmed.startsWith('❓') || trimmed.startsWith('- هل') || trimmed.startsWith('• هل') || trimmed.startsWith('* هل') || trimmed.match(/^[-*•]\s*هل/)) {
       if (inTable) flushTable(index);
-      const questionText = trimmed.replace('❓', '').trim();
+      const questionText = trimmed.replace(/^[-*•❓]\s*/, '').trim();
       if (questionText) {
         suggestedQuestions.push(questionText);
       }
@@ -346,6 +349,7 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
   if (inTable) flushTable(lines.length);
 
+  // 1. عرض الفيديوهات
   if (youtubeIds.length > 0) {
     elements.push(
       <div key="youtube-embeds" className={`mt-6 pt-4 border-t ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
@@ -376,20 +380,17 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
     );
   }
 
-  // تصميم الأسئلة داخل قالب أخضر
+  // 2. عرض الأسئلة المقترحة تحت الفيديو (كأزرار صغيرة)
   if (suggestedQuestions.length > 0) {
     elements.push(
-      <div key="suggested-questions" className={`mt-5 p-3 sm:p-4 rounded-2xl border w-full flex flex-col gap-2.5 ${isDark ? 'bg-emerald-950/30 border-emerald-800/60' : 'bg-emerald-50 border-emerald-300'}`}>
-        <span className={`text-xs font-bold mb-1 flex items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-          💡 أسئلة مقترحة للمتابعة:
-        </span>
+      <div key="suggested-questions" className="mt-3 flex flex-wrap gap-2 w-full">
         {suggestedQuestions.map((q, idx) => (
           <button
             key={`sq-${idx}`}
             onClick={() => onSuggestionClick && onSuggestionClick(q)}
-            className={`block w-full text-right p-2.5 px-4 rounded-xl border transition-all duration-200 shadow-sm font-bold text-xs sm:text-sm cursor-pointer hover:-translate-y-0.5 active:translate-y-0 ${isDark ? 'bg-emerald-600 hover:bg-emerald-500 border-emerald-500 text-white' : 'bg-[#1D6B35] hover:bg-emerald-600 border-emerald-700 text-white'}`}
+            className={`inline-block text-right p-1.5 px-3 rounded-lg border transition-all duration-200 shadow-sm font-bold text-[11px] sm:text-xs cursor-pointer hover:-translate-y-0.5 active:translate-y-0 ${isDark ? 'bg-emerald-900/30 hover:bg-emerald-800/50 border-emerald-700/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'}`}
           >
-            <span className="opacity-80 ml-1.5 text-[10px]">❓</span> {q}
+            {q}
           </button>
         ))}
       </div>
