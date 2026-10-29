@@ -114,7 +114,7 @@ function renderInlineText(text: string, isDark: boolean) {
       const boldParts = urlPart.split(/(\*\*.*?\*\*)/g);
       return boldParts.map((bPart, bIdx) => {
         if (bPart.startsWith('**') && bPart.endsWith('**')) {
-           return <strong key={`${pIdx}-${uIdx}-${bIdx}`} className={`font-extrabold mx-0.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{bPart.slice(2, -2)}</strong>;
+           return <strong key={`${pIdx}-${uIdx}-${bIdx}`} className={`font-extrabold mx-0.5 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{bPart.slice(2, -2)}</strong>;
         }
         return <span key={`${pIdx}-${uIdx}-${bIdx}`}>{bPart}</span>;
       });
@@ -125,7 +125,7 @@ function renderInlineText(text: string, isDark: boolean) {
 function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: (q: string) => void) {
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
   const youtubeIds: string[] = [];
-  const suggestedQuestions: string[] = []; // مصفوفة لجمع الأسئلة وتأجيل عرضها
+  const suggestedQuestions: string[] = [];
   
   let processedText = text.replace(youtubeRegex, (url, id) => {
     if (id && id.length === 11 && !youtubeIds.includes(id)) {
@@ -259,7 +259,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
     if (trimmed.startsWith('```')) return;
 
-    // التعرف على أكواد واجهات الترتيب
     if (trimmed.startsWith('<api-sports-widget') && trimmed.includes('</api-sports-widget>')) {
       if (inTable) flushTable(index);
       
@@ -279,7 +278,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // التعرف على الملعب التكتيكي
     if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
       if (inTable) flushTable(index);
       const teamMatch = trimmed.match(/team="([^"]+)"/);
@@ -294,7 +292,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // تجميع أسئلة المتابعة (❓) في مصفوفة بدلاً من طباعتها فوراً
     if (trimmed.startsWith('❓')) {
       if (inTable) flushTable(index);
       const questionText = trimmed.replace('❓', '').trim();
@@ -316,19 +313,20 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
     if (!trimmed) {
       elements.push(<div key={index} className="h-1.5" />);
     } else if (trimmed.startsWith('### ')) {
-      elements.push(<h3 key={index} className={`text-lg font-bold mt-5 mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{renderInlineText(trimmed.replace(/^###\s+/, ''), isDark)}</h3>);
+      elements.push(<h3 key={index} className={`text-base sm:text-lg font-bold mt-4 mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{renderInlineText(trimmed.replace(/^###\s+/, ''), isDark)}</h3>);
     } else if (trimmed.startsWith('## ')) {
-      elements.push(<h2 key={index} className={`text-xl font-bold mt-5 mb-2 pb-2 border-b ${isDark ? 'text-emerald-400 border-emerald-500/20' : 'text-emerald-600 border-emerald-200'}`}>{renderInlineText(trimmed.replace(/^##\s+/, ''), isDark)}</h2>);
+      elements.push(<h2 key={index} className={`text-lg sm:text-xl font-bold mt-5 mb-2 pb-2 border-b ${isDark ? 'text-emerald-400 border-emerald-500/20' : 'text-emerald-700 border-emerald-200'}`}>{renderInlineText(trimmed.replace(/^##\s+/, ''), isDark)}</h2>);
     } else if (trimmed.startsWith('# ')) {
-      elements.push(<h1 key={index} className={`text-2xl font-bold mt-5 mb-3 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{renderInlineText(trimmed.replace(/^#\s+/, ''), isDark)}</h1>);
+      elements.push(<h1 key={index} className={`text-xl sm:text-2xl font-bold mt-5 mb-3 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{renderInlineText(trimmed.replace(/^#\s+/, ''), isDark)}</h1>);
     } else if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
       const isNumbered = /^\d+\.\s+/.test(trimmed);
       const textPart = trimmed.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '');
       const bullet = isNumbered ? trimmed.match(/^\d+\./)![0] : '•';
+      
       elements.push(
-        <div key={index} className="flex items-start gap-2.5 my-2 pr-1.5">
-          <span className={`mt-0.5 font-bold whitespace-nowrap ${isDark ? 'text-emerald-500' : 'text-emerald-600'}`}>{bullet}</span>
-          <span className={`flex-1 leading-relaxed text-base ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{renderInlineText(textPart, isDark)}</span>
+        <div key={index} className={`flex items-start gap-2.5 my-1.5 pr-2 border-r-2 ${isDark ? 'border-emerald-500/40' : 'border-emerald-400'}`}>
+          <span className={`mt-0.5 font-bold whitespace-nowrap text-xs sm:text-sm ${isDark ? 'text-emerald-500' : 'text-emerald-600'}`}>{bullet}</span>
+          <span className={`flex-1 leading-relaxed text-sm sm:text-[15px] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{renderInlineText(textPart, isDark)}</span>
         </div>
       );
     } else if (trimmed.startsWith('![') && trimmed.includes('](') && trimmed.endsWith(')')) {
@@ -342,24 +340,23 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
         );
       }
     } else {
-      elements.push(<p key={index} className={`leading-relaxed my-2 text-base ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{renderInlineText(trimmed, isDark)}</p>);
+      elements.push(<p key={index} className={`leading-relaxed my-1.5 text-sm sm:text-[15px] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{renderInlineText(trimmed, isDark)}</p>);
     }
   });
 
   if (inTable) flushTable(lines.length);
 
-  // عرض الفيديوهات أولاً
   if (youtubeIds.length > 0) {
     elements.push(
-      <div key="youtube-embeds" className={`mt-8 pt-4 border-t ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
+      <div key="youtube-embeds" className={`mt-6 pt-4 border-t ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
         <h4 className={`font-bold mb-3 flex items-center gap-2 text-sm ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
           <span>🎥</span> روابط ملخصات اليوتيوب
         </h4>
         {youtubeIds.map((vid) => (
           <div key={vid} className={`rounded-2xl overflow-hidden border shadow-xl mb-4 ${isDark ? 'border-emerald-500/30 bg-black/40' : 'border-emerald-200 bg-white'}`}>
-            <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-emerald-950/50 border-white/10' : 'bg-emerald-50 border-gray-200'}`}>
-              <span className={`text-xs sm:text-sm font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>مشاهدة الملخص حياً</span>
-              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className={`text-[11px] underline transition break-all ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}>
+            <div className={`flex items-center justify-between px-4 py-2 border-b ${isDark ? 'bg-emerald-950/50 border-white/10' : 'bg-emerald-50 border-gray-200'}`}>
+              <span className={`text-xs font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>مشاهدة الملخص حياً</span>
+              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className={`text-[10px] underline transition break-all ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}>
                 فتح في يوتيوب ↗
               </a>
             </div>
@@ -379,15 +376,14 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
     );
   }
 
-  // عرض الأسئلة المقترحة ثانياً (تحت الفيديو) وبحجم أصغر
   if (suggestedQuestions.length > 0) {
     elements.push(
-      <div key="suggested-questions" className="mt-6 flex flex-col gap-2 w-full">
+      <div key="suggested-questions" className="mt-4 flex flex-col gap-2 w-full">
         {suggestedQuestions.map((q, idx) => (
           <button
             key={`sq-${idx}`}
             onClick={() => onSuggestionClick && onSuggestionClick(q)}
-            className={`block w-full text-right p-2.5 px-4 rounded-xl border transition-all duration-200 shadow-sm font-bold text-xs sm:text-sm ${isDark ? 'bg-emerald-900/20 hover:bg-emerald-900/40 border-emerald-700/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'}`}
+            className={`block w-full text-right p-2 px-3 rounded-lg border transition-all duration-200 shadow-sm font-bold text-[11px] sm:text-xs ${isDark ? 'bg-emerald-900/20 hover:bg-emerald-900/40 border-emerald-700/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'}`}
           >
             <span className="opacity-70 ml-1 text-[10px]">❓</span> {q}
           </button>
@@ -814,13 +810,13 @@ export default function FootPlayChat() {
                 <span>⚽</span><span>HOME OF FOOTBALL</span>
               </div>
               <h2 className={`text-3xl sm:text-5xl font-extrabold tracking-tight drop-shadow-md ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>أهلاً بك في فوتبلاي</h2>
-              <p className={`text-base sm:text-lg leading-relaxed max-w-2xl font-normal drop-shadow ${isDarkMode ? 'text-gray-200' : 'text-gray-600'}`}>
+              <p className={`text-sm sm:text-base leading-relaxed max-w-2xl font-normal drop-shadow ${isDarkMode ? 'text-gray-200' : 'text-gray-600'}`}>
                 تحليل تكتيكي، تشكيلات مباريات، مقارنات إحصائية متقدمة، وأهداف وملخصات المباريات.. كيف أساعدك اليوم؟
               </p>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
-                <div key={i} onClick={() => sendMessage(card.question)} className={`flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl backdrop-blur-sm border shadow-lg min-h-[115px] cursor-pointer transition-all hover:scale-[1.02] select-none ${isDarkMode ? 'bg-black/20 border-white/10 opacity-80 hover:opacity-100' : 'bg-white border-gray-200 opacity-90 hover:opacity-100 hover:shadow-md'}`}>
+                <div key={i} className={`flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl backdrop-blur-sm border shadow-lg min-h-[115px] select-none ${isDarkMode ? 'bg-black/20 border-white/10 opacity-80' : 'bg-white border-gray-200 opacity-90'}`}>
                   <p className={`text-sm font-bold leading-relaxed line-clamp-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>{card.question}</p>
                   <div className="flex items-center justify-between w-full mt-3 pt-1">
                     <span className="text-[10px] sm:text-xs font-bold text-[#22C55E] truncate pl-1">{card.tag}</span>
@@ -831,7 +827,7 @@ export default function FootPlayChat() {
             </div>
           </div>
         ) : (
-          <div className="space-y-8 pb-4">
+          <div className="space-y-6 pb-4">
             {messages.map((msg, i) => (
               (msg.content && msg.content.trim() !== '') || (msg.imageUrls && msg.imageUrls.length > 0) ? (
                 <div key={i} className="flex items-start gap-4 w-full">
@@ -840,7 +836,7 @@ export default function FootPlayChat() {
                   </div>
                   <div className="flex flex-col w-full min-w-0">
                      {msg.role === 'user' ? (
-                        <div className={`text-lg sm:text-xl font-bold leading-relaxed break-words ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <div className={`text-base sm:text-lg font-bold leading-relaxed break-words ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                            {msg.content}
                            {msg.imageUrls && msg.imageUrls.length > 0 && (
                             <div className="flex flex-wrap gap-2 mt-3">
@@ -853,9 +849,9 @@ export default function FootPlayChat() {
                      ) : (
                         <div className="w-full">
                            {msg.thinkingTime !== undefined && msg.thinkingTime > 0 && (
-                             <div className="mb-4 w-full">
+                             <div className="mb-3 w-full">
                                <details className={`text-xs cursor-pointer group select-none transition-all duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                 <summary className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-colors shadow-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 hover:bg-[#222528] border-white/5' : 'bg-gray-100 hover:bg-gray-200 border-gray-200'}`}>
+                                 <summary className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl border transition-colors shadow-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 hover:bg-[#222528] border-white/5' : 'bg-gray-100 hover:bg-gray-200 border-gray-200'}`}>
                                    <span className={`font-bold ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span>
                                    <span className={`font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>تم جلب المعلومات في ({formatSeconds(msg.thinkingTime)})</span>
                                    <span className="opacity-50 group-open:rotate-180 transition-transform text-[8px] mr-auto pl-1">▼</span>
@@ -868,7 +864,7 @@ export default function FootPlayChat() {
                                </details>
                              </div>
                            )}
-                           <div className={`backdrop-blur-xl border rounded-3xl p-5 sm:p-6 shadow-2xl text-base leading-relaxed break-words transition-colors duration-300 ${isDarkMode ? 'bg-[#131814]/85 border-white/10 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}>
+                           <div className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-5 shadow-2xl text-sm sm:text-[15px] leading-relaxed break-words transition-colors duration-300 ${isDarkMode ? 'bg-[#131814]/85 border-white/10 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}>
                              {renderFormattedText(msg.content, isDarkMode, sendMessage)}
                            </div>
                         </div>
@@ -882,16 +878,16 @@ export default function FootPlayChat() {
               <div className="flex items-start gap-4 w-full mt-4">
                 <div className="flex-shrink-0 mt-1 hidden sm:block"><AiFBallLogo size="sm"/></div>
                 <div className="w-full min-w-0 flex items-center">
-                   <div className={`rounded-2xl px-5 py-4 border shadow-sm max-w-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 border-white/5 text-gray-300' : 'bg-white border-gray-200 text-gray-600'}`}>
+                   <div className={`rounded-2xl px-4 py-3 border shadow-sm max-w-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 border-white/5 text-gray-300' : 'bg-white border-gray-200 text-gray-600'}`}>
                       <div className="flex flex-col gap-3">
                         <div className="flex items-center gap-3">
-                           <svg className="animate-spin w-5 h-5 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                           <svg className="animate-spin w-4 h-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                            </svg>
-                           <span className={`font-bold text-sm ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>جاري البحث والتحليل... ({formatSeconds(loadingSeconds)})</span>
+                           <span className={`font-bold text-xs sm:text-sm ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>جاري البحث والتحليل... ({formatSeconds(loadingSeconds)})</span>
                         </div>
-                        <div className={`pt-3 border-t space-y-2 text-xs font-medium ${isDarkMode ? 'border-white/5' : 'border-gray-200'}`}>
+                        <div className={`pt-3 border-t space-y-2 text-[11px] font-medium ${isDarkMode ? 'border-white/5' : 'border-gray-200'}`}>
                           <div className="flex items-center gap-2">
                             <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>✓</span><span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>الاتصال بخوادم فوتبلاي...</span>
                           </div>
