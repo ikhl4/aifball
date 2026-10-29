@@ -227,13 +227,14 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
         </div>
       );
     } else {
+      // جدول عادي (مثل جدول الترتيب)
       elements.push(
         <div key={`table-${keyIndex}`} className={`my-5 w-full overflow-x-auto custom-scrollbar rounded-2xl border shadow-xl backdrop-blur-md ${isDark ? 'border-white/10 bg-black/40' : 'border-gray-200 bg-white'}`}>
           <table className="w-full text-right border-collapse text-sm min-w-max">
             <thead className={`${isDark ? 'bg-emerald-950/60 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
               <tr>
                 {headers.map((h, idx) => (
-                  <th key={idx} className={`py-3.5 px-4 font-bold border-b whitespace-nowrap ${isDark ? 'border-white/10' : 'border-gray-200'}`}>{cleanCell(h)}</th>
+                  <th key={idx} className={`py-3 px-4 font-bold border-b whitespace-nowrap ${isDark ? 'border-white/10' : 'border-gray-200'}`}>{cleanCell(h)}</th>
                 ))}
               </tr>
             </thead>
@@ -259,48 +260,12 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
     if (trimmed.startsWith('```')) return;
 
-    // اعتراض الـ Widget
-    if (trimmed.startsWith('<api-sports-widget') && trimmed.includes('</api-sports-widget>')) {
+    // التعديل هنا: التقاط الأسئلة المقترحة بذكاء
+    const isSuggestion = trimmed.startsWith('❓') || trimmed.includes('هل تريد') || trimmed.includes('هل ترغب') || trimmed.includes('هل تود');
+    if (isSuggestion) {
       if (inTable) flushTable(index);
-      
-      const typeMatch = trimmed.match(/data-type="([^"]+)"/);
-      const leagueMatch = trimmed.match(/data-league="([^"]+)"/);
-      const seasonMatch = trimmed.match(/data-season="([^"]+)"/);
-      
-      const widgetType = typeMatch ? typeMatch[1] as 'standings' | 'livescore' : 'standings';
-      const widgetLeague = leagueMatch ? leagueMatch[1] : '39';
-      const widgetSeason = seasonMatch ? seasonMatch[1] : '2026';
-
-      elements.push(
-        <div key={`widget-${index}`} className="my-3 w-full max-w-2xl mx-auto relative z-10">
-          <LiveSportsWidget type={widgetType} league={widgetLeague} season={widgetSeason} isDark={isDark} />
-        </div>
-      );
-      return;
-    }
-
-    // اعتراض الملعب
-    if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
-      if (inTable) flushTable(index);
-      const teamMatch = trimmed.match(/team="([^"]+)"/);
-      const formationMatch = trimmed.match(/formation="([^"]+)"/);
-      const team = teamMatch ? teamMatch[1] : '';
-      const formation = formationMatch ? formationMatch[1] : '4-3-3';
-      elements.push(
-        <div key={`pitch-${index}`} className="my-5 w-full max-w-2xl mx-auto">
-          <TacticalPitch team={team} formation={formation} />
-        </div>
-      );
-      return;
-    }
-
-    // التقاط الأسئلة المقترحة بذكاء (سواء كانت نقاط أو رموز)
-    if (trimmed.startsWith('❓') || trimmed.startsWith('- هل') || trimmed.startsWith('• هل') || trimmed.startsWith('* هل') || trimmed.match(/^[-*•]\s*هل/)) {
-      if (inTable) flushTable(index);
-      const questionText = trimmed.replace(/^[-*•❓]\s*/, '').trim();
-      if (questionText) {
-        suggestedQuestions.push(questionText);
-      }
+      const questionText = trimmed.replace(/^[-*•❓\s]+/, '').trim();
+      if (questionText) suggestedQuestions.push(questionText);
       return;
     }
 
@@ -308,7 +273,10 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       if (/^\|[\s\-:|]+\|$/.test(trimmed)) { inTable = true; return; }
       inTable = true;
       const cells = trimmed.slice(1, -1).split('|').map((c) => c.trim());
-      tableRows.push(cells);
+      // حماية من الجداول المكسورة
+      if (cells.length > 0 && cells.some(c => c !== '')) {
+        tableRows.push(cells);
+      }
       return;
     }
     if (inTable) flushTable(index);
@@ -349,7 +317,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
   if (inTable) flushTable(lines.length);
 
-  // 1. عرض الفيديوهات
   if (youtubeIds.length > 0) {
     elements.push(
       <div key="youtube-embeds" className={`mt-6 pt-4 border-t ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
@@ -380,15 +347,15 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
     );
   }
 
-  // 2. عرض الأسئلة المقترحة تحت الفيديو (كأزرار صغيرة)
+  // أزرار الأسئلة المقترحة
   if (suggestedQuestions.length > 0) {
     elements.push(
-      <div key="suggested-questions" className="mt-3 flex flex-wrap gap-2 w-full">
+      <div key="suggested-questions" className="mt-4 flex flex-wrap gap-2 w-full">
         {suggestedQuestions.map((q, idx) => (
           <button
             key={`sq-${idx}`}
             onClick={() => onSuggestionClick && onSuggestionClick(q)}
-            className={`inline-block text-right p-1.5 px-3 rounded-lg border transition-all duration-200 shadow-sm font-bold text-[11px] sm:text-xs cursor-pointer hover:-translate-y-0.5 active:translate-y-0 ${isDark ? 'bg-emerald-900/30 hover:bg-emerald-800/50 border-emerald-700/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'}`}
+            className={`inline-block text-right p-2 px-3 rounded-xl border transition-all duration-200 shadow-sm font-bold text-[11px] sm:text-xs cursor-pointer hover:-translate-y-0.5 active:translate-y-0 ${isDark ? 'bg-emerald-900/40 hover:bg-emerald-800/60 border-emerald-700/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'}`}
           >
             {q}
           </button>
