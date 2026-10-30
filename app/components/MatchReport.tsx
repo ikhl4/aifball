@@ -14,8 +14,7 @@ const translations = {
     xg: 'الأهداف المتوقعة (xG)', stat: 'الإحصائية', possession: 'الاستحواذ', shotsCount: 'التسديدات', shotsOnTarget: 'على المرمى',
     passes: 'التمريرات', passAccuracy: 'دقة التمرير', fouls: 'الأخطاء', corners: 'الركنيات', tackles: 'الالتحامات', interceptions: 'الاعتراضات',
     lineupTitle: 'التشكيلة الأساسية', backToLineup: '← العودة', rating: 'تقييم',
-    touchMap: 'الخريطة الحرارية', shotMap: 'أماكن التسديد', passMap: 'شبكة التمرير',
-    loading: 'جاري تحليل البيانات...', attackData: 'إحصائيات الهجوم', defenceData: 'إحصائيات الدفاع',
+    loading: 'جاري تحليل البيانات...', 
     explainXg: 'احتمالية تسجيل الهدف بناءً على جودة الفرصة.',
     explainPossession: 'نسبة استحواذ الفريق على الكرة.',
   },
@@ -24,8 +23,7 @@ const translations = {
     xg: 'Expected Goals (xG)', stat: 'Statistic', possession: 'Possession', shotsCount: 'Shots', shotsOnTarget: 'Shots on Target',
     passes: 'Passes', passAccuracy: 'Pass Accuracy', fouls: 'Fouls', corners: 'Corners', tackles: 'Tackles', interceptions: 'Interceptions',
     lineupTitle: 'Starting Lineup', backToLineup: '← Back', rating: 'Rating',
-    touchMap: 'Heatmap', shotMap: 'Shot Map', passNetwork: 'Pass Network',
-    loading: 'Analyzing data...', attackData: 'Attack Stats', defenceData: 'Defence Stats',
+    loading: 'Analyzing data...', 
     explainXg: 'Probability of scoring based on chance quality.',
     explainPossession: 'Percentage of ball possession.',
   }
@@ -45,7 +43,6 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
   const [inputUrl, setInputUrl] = useState(autoMatchUrl || '');
   const [sourceType, setSourceType] = useState<'365' | 'sofascore' | 'fotmob'>('365');
 
-  // --- حالات الخريطة الحرارية ---
   const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
 
@@ -54,7 +51,6 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
   const t = translations[lang];
   const dir = isArabic ? 'rtl' : 'ltr';
 
-  // 🌟 جلب البيانات الحقيقية (التشكيلة + الخرائط) عند تحميل المكون
   useEffect(() => {
     const loadRealData = async () => {
       setLoading(true);
@@ -68,7 +64,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
         setSourceType(source);
       }
 
-      // إعداد بيانات أساسية للتصميم (تجنباً لظهور الخطأ)
+      // بيانات أساسية (يتم تحديثها لاحقاً من السيرفر)
       const baseData = {
         home: { name: matchName.split('ضد')[0] || 'الفريق الأول', score: '-' },
         away: { name: matchName.split('ضد')[1] || 'الفريق الثاني', score: '-' },
@@ -80,18 +76,15 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
           fouls: { home: '0', away: '0' }, interceptions: { home: '0', away: '0' }, tackles: { home: '0', away: '0' },
         },
         lineup: { home: [], away: [] },
-        playersData: {}
       };
 
-      // إذا كان هناك رابط من 365Scores، نجلب التشكيلة الحقيقية
+      // جلب التشكيلة الحقيقية
       if (autoMatchUrl && source === '365') {
         try {
           const lineupRes = await fetch(`/api/advanced?source=365&action=lineup&matchUrl=${encodeURIComponent(autoMatchUrl)}`);
           const lineupJson = await lineupRes.json();
           
           if (lineupJson.data && Array.isArray(lineupJson.data)) {
-            // هنا نقوم بفلترة اللاعبين وتقسيمهم (حسب المنطق الذي يرجعه 365)
-            // افتراضياً، نأخذ أول 11 لاعب كأساسيين للفريق الأول، والباقي للثاني
             const allPlayers = lineupJson.data;
             const homePlayers = allPlayers.filter((p: any) => p.competitorNum === 1).slice(0, 11).map((p: any) => ({
               id: p.playerId, name: p.playerName || `لاعب ${p.playerId}`, pos: p.position || 'N/A', num: p.shirtNumber || '-', image: null
@@ -109,7 +102,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
 
       setData(baseData);
 
-      // جلب خريطة التسديد تلقائياً في الخلفية
+      // جلب خريطة التسديد تلقائياً
       if (autoMatchUrl) {
         fetchLiveShotsData(autoMatchUrl, source);
       }
@@ -208,18 +201,20 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
   ];
 
   return (
-    <div dir={dir} className={`relative w-full max-w-6xl mx-auto my-4 sm:my-6 rounded-2xl sm:rounded-3xl border shadow-2xl overflow-hidden font-saudi transition-all ${isDark ? 'bg-[#0a0a0a] border-emerald-900/30 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
+    <div dir={dir} className={`relative w-full max-w-6xl mx-auto my-4 sm:my-6 rounded-2xl sm:rounded-3xl border shadow-2xl overflow-hidden font-saudi transition-all ${isDark ? 'bg-[#07100B] border-emerald-900/30 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
       
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1D6B35]/15 via-transparent to-[#131314]/90 pointer-events-none z-0"></div>
+      {/* تأثيرات الإضاءة الخلفية */}
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#1D6B35]/20 rounded-full filter blur-[120px] pointer-events-none"></div>
       
       {!selectedPlayer && (
         <>
-          <div className={`relative z-10 p-3 sm:p-6 flex flex-col sm:flex-row justify-between items-center border-b gap-3 sm:gap-0 ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
+          {/* ترويسة المباراة */}
+          <div className={`relative z-10 p-3 sm:p-6 flex flex-col sm:flex-row justify-between items-center border-b gap-3 sm:gap-0 ${isDark ? 'border-emerald-900/50 bg-[#111A14]/80' : 'border-gray-200 bg-white'}`}>
             <div className="flex sm:flex-col items-center justify-between w-full sm:w-1/3 gap-2">
               <span className="font-bold text-xs sm:text-lg text-center">{data.home.name}</span>
             </div>
             <div className="flex flex-col items-center justify-center w-full sm:w-1/3 order-first sm:order-none">
-              <div className={`text-3xl sm:text-6xl font-black px-4 sm:px-6 py-1 sm:py-2 rounded-xl sm:rounded-2xl border-2 shadow-inner ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'}`}>
+              <div className={`text-3xl sm:text-6xl font-black px-4 sm:px-6 py-1 sm:py-2 rounded-xl sm:rounded-2xl border-2 shadow-[0_0_20px_rgba(16,185,129,0.2)] ${isDark ? 'bg-[#07100B] border-emerald-500/30 text-white' : 'bg-white border-gray-200'}`}>
                 {data.home.score} - {data.away.score}
               </div>
             </div>
@@ -228,9 +223,10 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
             </div>
           </div>
 
-          <div className={`relative z-10 flex border-b overflow-x-auto custom-scrollbar ${isDark ? 'border-white/10 bg-[#131314]/80' : 'border-gray-200 bg-gray-100'}`}>
+          {/* التبويبات */}
+          <div className={`relative z-10 flex border-b overflow-x-auto custom-scrollbar ${isDark ? 'border-emerald-900/50 bg-[#07100B]' : 'border-gray-200 bg-gray-100'}`}>
             {tabsList.map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`py-3 px-4 sm:px-6 text-xs sm:text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === tab.id ? (isDark ? 'text-emerald-400 border-b-2 border-emerald-500 bg-white/5' : 'text-emerald-700 border-b-2 border-emerald-600 bg-white') : (isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-white/5' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50')}`}>
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`py-3 px-4 sm:px-6 text-xs sm:text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === tab.id ? (isDark ? 'text-emerald-400 border-b-2 border-emerald-500 bg-[#111A14]' : 'text-emerald-700 border-b-2 border-emerald-600 bg-white') : (isDark ? 'text-gray-400 hover:text-emerald-200 hover:bg-[#111A14]/50' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50')}`}>
                 {tab.label}
               </button>
             ))}
@@ -238,30 +234,124 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
         </>
       )}
 
-      <div className={`relative z-10 p-4 sm:p-6 ${selectedPlayer ? 'h-auto min-h-[500px]' : 'h-[600px] overflow-y-auto custom-scrollbar'} ${isDark ? 'bg-[#0a0a0a]/50' : 'bg-white'}`}>
+      <div className={`relative z-10 p-4 sm:p-6 ${selectedPlayer ? 'h-auto min-h-[500px]' : 'h-auto min-h-[600px] overflow-y-auto custom-scrollbar'} ${isDark ? 'bg-[#07100B]' : 'bg-white'}`}>
         
         {/* شاشة اللاعب */}
         {selectedPlayer ? (
           <div className="animate-in slide-in-from-bottom-4 duration-300">
             <button onClick={() => { setSelectedPlayer(null); setHeatmapUrl(null); }} className="mb-4 flex items-center gap-2 text-sm font-bold text-emerald-500 hover:text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg w-fit">{t.backToLineup}</button>
-            <div className={`p-6 rounded-2xl border ${isDark ? 'bg-[#111] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+            <div className={`p-6 rounded-2xl border ${isDark ? 'bg-[#111A14] border-emerald-900/50' : 'bg-gray-50 border-gray-200'}`}>
                <h2 className="text-2xl font-black mb-2">{selectedPlayer.name}</h2>
                <p className="text-gray-500 text-sm mb-6">{selectedPlayer.pos} | #{selectedPlayer.num}</p>
                
-               <button onClick={() => fetchHeatmap(selectedPlayer.name)} disabled={heatmapLoading} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition-colors disabled:opacity-50 mb-4 flex justify-center items-center gap-2">
+               <button onClick={() => fetchHeatmap(selectedPlayer.name)} disabled={heatmapLoading} className="w-full bg-[#1D6B35] hover:bg-emerald-600 text-white py-3 rounded-xl font-bold transition-colors disabled:opacity-50 mb-4 flex justify-center items-center gap-2 shadow-[0_0_15px_rgba(29,107,53,0.4)]">
                  {heatmapLoading ? 'جاري جلب الخريطة...' : '🔥 عرض الخريطة الحرارية'}
                </button>
-               {heatmapUrl && <img src={heatmapUrl} alt="Heatmap" className="w-full rounded-xl border border-blue-500/30" />}
+               {heatmapUrl && <img src={heatmapUrl} alt="Heatmap" className="w-full rounded-xl border border-emerald-500/30" />}
             </div>
           </div>
         ) : (
           <>
+            {/* 🌟 1. تبويب النظرة العامة (تصميم Omni الفخم بهوية فوتبلاي) 🌟 */}
             {activeTab === 'overview' && (
-              <div className="space-y-6 animate-in fade-in duration-300 text-center p-10 text-gray-500">
-                <p>بيانات الإحصائيات الدقيقة (ستتوفر عند جلب الإحصائيات من FotMob بالكامل)</p>
+              <div className="space-y-6 animate-in fade-in duration-300">
+                
+                {/* لوحة الرؤية التكتيكية */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  
+                  {/* الجانب الأيسر: بطاقات إحصائية سريعة */}
+                  <div className="space-y-4">
+                     <div className="bg-[#111A14]/80 p-5 rounded-2xl border border-emerald-900/50 backdrop-blur-md">
+                        <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold mb-2">
+                           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                           الأهداف المتوقعة (xG)
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="text-2xl font-black text-yellow-500">{data.xg.home}</span>
+                          <div className="flex-1 h-2 rounded-full bg-gray-800 overflow-hidden flex">
+                            <div className="h-full bg-yellow-500" style={{ width: `${(parseFloat(data.xg.home) / (parseFloat(data.xg.home) + parseFloat(data.xg.away) || 1)) * 100}%` }}></div>
+                            <div className="h-full bg-red-500" style={{ width: `${(parseFloat(data.xg.away) / (parseFloat(data.xg.home) + parseFloat(data.xg.away) || 1)) * 100}%` }}></div>
+                          </div>
+                          <span className="text-2xl font-black text-red-500">{data.xg.away}</span>
+                        </div>
+                     </div>
+
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-[#111A14]/80 p-5 rounded-2xl border border-emerald-900/50 flex flex-col items-center justify-center backdrop-blur-md">
+                           <span className="text-3xl font-black text-emerald-400 mb-1">{data.stats.possession.home}</span>
+                           <span className="text-xs text-gray-400 font-bold">{t.possession} (الأول)</span>
+                        </div>
+                        <div className="bg-[#111A14]/80 p-5 rounded-2xl border border-emerald-900/50 flex flex-col items-center justify-center backdrop-blur-md">
+                           <span className="text-3xl font-black text-emerald-400 mb-1">{data.stats.shots.home}</span>
+                           <span className="text-xs text-gray-400 font-bold">{t.shotsCount} (الأول)</span>
+                        </div>
+                     </div>
+                  </div>
+
+                  {/* الجانب الأيمن: لوحة التكتيك المصغرة */}
+                  <div className="bg-[#111A14]/80 p-4 rounded-2xl border border-emerald-900/50 backdrop-blur-md">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[10px] text-gray-500 font-bold tracking-wider">MATCH ANALYSIS</span>
+                      <span className="text-[10px] text-emerald-400 font-bold tracking-wider">AiFBall BOARD</span>
+                    </div>
+                    <div className="relative w-full aspect-[2/1] bg-[#07100B] rounded-xl overflow-hidden border border-emerald-900/30">
+                      <svg viewBox="0 0 120 60" className="w-full h-full">
+                        <g stroke="rgba(16,185,129,0.2)" strokeWidth="0.5" fill="none">
+                          <rect x="2" y="2" width="116" height="56" />
+                          <line x1="60" y1="2" x2="60" y2="58" />
+                          <circle cx="60" cy="30" r="8" />
+                          <rect x="100" y="15" width="18" height="30" />
+                          <rect x="2" y="15" width="18" height="30" />
+                        </g>
+                        <path d="M 20 30 Q 40 10 60 30 T 100 30" fill="none" stroke="#10b981" strokeWidth="1" strokeDasharray="2,2" />
+                        <circle cx="20" cy="30" r="1.5" fill="#10b981" />
+                        <circle cx="60" cy="30" r="1.5" fill="#f59e0b" />
+                        <circle cx="100" cy="30" r="1.5" fill="#10b981" />
+                      </svg>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      <div className="bg-emerald-900/20 border border-emerald-800/50 py-1.5 rounded-lg text-[10px] text-center font-bold text-emerald-100">خطوط التمرير</div>
+                      <div className="bg-emerald-900/20 border border-emerald-800/50 py-1.5 rounded-lg text-[10px] text-center font-bold text-emerald-100">التمركز</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* جدول الإحصائيات التفصيلي (بتصميم داكن) */}
+                <div className="bg-[#111A14]/80 border border-emerald-900/50 rounded-2xl overflow-hidden backdrop-blur-md mt-6">
+                  <div className="p-4 border-b border-emerald-900/50 text-center">
+                    <h3 className="font-bold text-emerald-400 text-sm">مقارنة الأداء الإحصائي الشامل</h3>
+                  </div>
+                  <table className="w-full text-center text-sm">
+                    <thead className="bg-[#07100B] text-gray-400 text-xs">
+                      <tr>
+                        <th className="p-3 font-bold w-1/3 text-white">{data.home.name}</th>
+                        <th className="p-3 font-bold w-1/3 text-emerald-500">الإحصائية</th>
+                        <th className="p-3 font-bold w-1/3 text-white">{data.away.name}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-emerald-900/30">
+                      {[ 
+                        { h: data.stats.possession.home, stat: t.possession, a: data.stats.possession.away },
+                        { h: data.stats.shots.home, stat: t.shotsCount, a: data.stats.shots.away },
+                        { h: data.stats.shotsOnTarget.home, stat: t.shotsOnTarget, a: data.stats.shotsOnTarget.away },
+                        { h: data.stats.passes.home, stat: t.passes, a: data.stats.passes.away },
+                        { h: data.stats.passAccuracy.home, stat: t.passAccuracy, a: data.stats.passAccuracy.away },
+                        { h: data.stats.corners.home, stat: t.corners, a: data.stats.corners.away },
+                      ].map((row, i) => (
+                        <tr key={i} className="hover:bg-emerald-900/10 transition-colors">
+                          <td className="p-3 font-bold text-gray-300">{row.h}</td>
+                          <td className="p-3 text-emerald-500 font-bold text-xs">{row.stat}</td>
+                          <td className="p-3 font-bold text-gray-300">{row.a}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
               </div>
             )}
 
+            {/* 2. تبويب التشكيلة */}
             {activeTab === 'lineup' && (
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -270,12 +360,12 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
                     <h4 className="text-center font-bold text-sm mb-4 text-yellow-500 bg-yellow-500/10 py-2 rounded-lg border border-yellow-500/20">{data.home.name}</h4>
                     <div className="space-y-2">
                       {data.lineup.home.length > 0 ? data.lineup.home.map((p: any) => (
-                        <button key={p.id} onClick={() => setSelectedPlayer(p)} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-white/5 border-white/10 hover:border-emerald-500/50' : 'bg-white border-gray-200 hover:border-emerald-500'}`}>
-                          <div className="w-10 h-10 rounded-full bg-gray-600 flex-shrink-0 overflow-hidden flex items-center justify-center text-white text-sm font-bold shadow-inner">
+                        <button key={p.id} onClick={() => setSelectedPlayer(p)} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-[#111A14] border-emerald-900/50 hover:border-emerald-500/50' : 'bg-white border-gray-200 hover:border-emerald-500'}`}>
+                          <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex-shrink-0 overflow-hidden flex items-center justify-center text-emerald-400 text-sm font-bold shadow-inner border border-emerald-500/30">
                             {p.name.charAt(0)}
                           </div>
                           <div className="text-right flex-1">
-                            <div className="text-sm font-bold">{p.name}</div>
+                            <div className="text-sm font-bold text-gray-200">{p.name}</div>
                             <div className="text-xs text-gray-500">{p.pos} | #{p.num}</div>
                           </div>
                         </button>
@@ -287,12 +377,12 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
                     <h4 className="text-center font-bold text-sm mb-4 text-sky-500 bg-sky-500/10 py-2 rounded-lg border border-sky-500/20">{data.away.name}</h4>
                     <div className="space-y-2">
                       {data.lineup.away.length > 0 ? data.lineup.away.map((p: any) => (
-                        <button key={p.id} onClick={() => setSelectedPlayer(p)} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-white/5 border-white/10 hover:border-emerald-500/50' : 'bg-white border-gray-200 hover:border-emerald-500'}`}>
-                          <div className="w-10 h-10 rounded-full bg-gray-600 flex-shrink-0 overflow-hidden flex items-center justify-center text-white text-sm font-bold shadow-inner">
+                        <button key={p.id} onClick={() => setSelectedPlayer(p)} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-[#111A14] border-emerald-900/50 hover:border-emerald-500/50' : 'bg-white border-gray-200 hover:border-emerald-500'}`}>
+                          <div className="w-10 h-10 rounded-full bg-sky-900/50 flex-shrink-0 overflow-hidden flex items-center justify-center text-sky-400 text-sm font-bold shadow-inner border border-sky-500/30">
                             {p.name.charAt(0)}
                           </div>
                           <div className="text-right flex-1">
-                            <div className="text-sm font-bold">{p.name}</div>
+                            <div className="text-sm font-bold text-gray-200">{p.name}</div>
                             <div className="text-xs text-gray-500">{p.pos} | #{p.num}</div>
                           </div>
                         </button>
@@ -303,6 +393,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
               </div>
             )}
 
+            {/* 3. تبويب الخرائط الحية */}
             {activeTab === 'liveShotmap' && (
               <div className="space-y-4 animate-in fade-in duration-300">
                 {liveLoading ? (
@@ -313,7 +404,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
                 ) : liveShots.length > 0 ? (
                   <ShotMap shots={liveShots} matchName={matchName} isDark={isDark} />
                 ) : (
-                  <div className={`p-10 rounded-xl border text-center ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className={`p-10 rounded-xl border text-center ${isDark ? 'bg-[#111A14] border-emerald-900/50' : 'bg-gray-50 border-gray-200'}`}>
                     <p className="text-red-500 font-bold mb-4">{liveError || "لم نتمكن من جلب الخريطة."}</p>
                   </div>
                 )}
