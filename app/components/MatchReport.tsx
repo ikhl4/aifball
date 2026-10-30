@@ -1,11 +1,12 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import ShotMap, { ShotData } from './ShotMap'; 
+import ShotMap, { ShotData } from './ShotMap';
 
 interface MatchReportProps {
   matchName: string;
   matchId?: string;
   isDark?: boolean;
+  autoMatchUrl?: string;
 }
 
 const translations = {
@@ -36,12 +37,12 @@ const translations = {
     passes: 'Passes', passAccuracy: 'Pass Accuracy', fouls: 'Fouls', corners: 'Corners', tackles: 'Tackles', interceptions: 'Interceptions',
     lineupTitle: 'Lineup (Click player for analysis)', backToLineup: '← Back to Lineup', rating: 'Match Rating',
     distance: 'Distance (Est.)', topSpeed: 'Top Speed (Est.)', passesMade: 'Accurate Passes', shotsMade: 'Shots',
-    progressivePasses: 'Progressive Passes', touchMap: 'Heatmap', shotMap: 'Shot Map', passMap: 'Pass Network',
+    progressivePasses: 'Progressive Passes', touchMap: 'Heatmap', shotMap: 'Shot Map', passNetwork: 'Pass Network',
     loading: 'Loading StatsBomb data...', attackData: 'Attack Stats', defenceData: 'Defence Stats',
   }
 };
 
-export default function MatchReport({ matchName, matchId = '3869685', isDark = true }: MatchReportProps) {
+export default function MatchReport({ matchName, matchId = '3869685', isDark = true, autoMatchUrl }: MatchReportProps) {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
   const [data, setData] = useState<any>(null);
@@ -63,7 +64,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
   const t = translations[lang];
   const dir = isArabic ? 'rtl' : 'ltr';
 
-  // 1. جلب بيانات المباراة (StatsBomb) مع إصلاح مشكلة التحميل اللانهائي
   useEffect(() => {
     const fetchMatchData = async () => {
       setLoading(true);
@@ -81,13 +81,21 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
         console.error("خطأ في الاتصال بالسيرفر:", error);
         setData(null);
       } finally {
-        setLoading(false); // يوقف التحميل مهما حدث
+        setLoading(false);
       }
     };
     fetchMatchData();
   }, [matchId]);
 
-  // 2. دالة جلب خرائط التسديد الحية
+  // 🌟 جلب الخريطة الحرارية تلقائياً إذا تم تمرير الرابط
+  useEffect(() => {
+    if (autoMatchUrl) {
+      setInputUrl(autoMatchUrl);
+      if (autoMatchUrl.includes('sofascore')) setSourceType('sofascore');
+      else if (autoMatchUrl.includes('365scores')) setSourceType('365');
+    }
+  }, [autoMatchUrl]);
+
   const fetchLiveShots = async () => {
     if (!inputUrl) {
       setLiveError("الرجاء إدخال رابط المباراة أولاً.");
@@ -143,7 +151,7 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
           return {
             id: String(index),
             player: playerName,
-            team: isHomeTeam ? data?.home?.name : data?.away?.name,
+            team: isHomeTeam ? (data?.home?.name || 'Home') : (data?.away?.name || 'Away'),
             x: mappedX, 
             y: mappedY, 
             xg: shot.xg || shot.expected_goals || 0,
@@ -163,7 +171,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
     }
   };
 
-  // 3. دالة جلب الخريطة الحرارية
   const fetchHeatmap = async (playerName: string) => {
     if (!inputUrl) {
       alert("الرجاء إدخال رابط المباراة في تبويب خرائط التسديد أولاً.");
@@ -197,16 +204,53 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
     );
   }
 
-  // معالجة حالة عدم وجود بيانات
+  // 🌟 الحل السحري: إذا لم توجد بيانات StatsBomb، لا نعرض خطأ، بل نفتح واجهة الخرائط الحية 🌟
   if (!data) {
     return (
-      <div className={`w-full max-w-6xl mx-auto my-4 p-8 rounded-3xl border flex flex-col items-center justify-center ${isDark ? 'bg-[#0a0a0a] border-red-900/30' : 'bg-gray-50 border-red-200'}`}>
-        <p className={`font-bold text-sm text-red-500`}>عذراً، لا تتوفر بيانات StatsBomb لهذه المباراة.</p>
-        <p className="text-xs text-gray-500 mt-2">جرّب مباراة من كأس العالم 2022 أو استخدم تبويب "خرائط التسديد الحية".</p>
+      <div className={`relative w-full max-w-6xl mx-auto my-4 sm:my-6 rounded-2xl sm:rounded-3xl border shadow-2xl overflow-hidden font-saudi transition-all ${isDark ? 'bg-[#0a0a0a] border-emerald-900/30 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
+        <div className={`absolute inset-0 bg-gradient-to-br from-[#1D6B35]/15 via-transparent to-[#131314]/90 pointer-events-none z-0`}></div>
+        <div className={`relative z-10 p-4 sm:p-6 border-b ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
+          <h3 className={`text-lg font-bold text-center ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+            🎯 خرائط التسديد الحية
+          </h3>
+          <p className={`text-xs text-center mt-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            لا تتوفر بيانات StatsBomb التاريخية لهذه المباراة. يرجى استخدام محرك البيانات الحية أدناه.
+          </p>
+        </div>
+        
+        <div className="relative z-10 p-4 sm:p-6">
+          <div className="space-y-4 animate-in fade-in duration-300">
+            <div className={`p-4 sm:p-6 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="max-w-xl mx-auto space-y-4">
+                <div className="flex justify-center gap-2 mb-4">
+                  <button onClick={() => setSourceType('sofascore')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === 'sofascore' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}>SofaScore</button>
+                  <button onClick={() => setSourceType('365')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === '365' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}>365Scores</button>
+                </div>
+                <input 
+                  type="text" 
+                  placeholder={`الصق رابط المباراة من ${sourceType === 'sofascore' ? 'SofaScore' : '365Scores'} هنا...`}
+                  value={inputUrl}
+                  onChange={(e) => setInputUrl(e.target.value)}
+                  className={`w-full p-3 rounded-lg border outline-none ${isDark ? 'bg-black/50 border-white/20 text-white focus:border-emerald-500' : 'bg-white border-gray-300 text-black focus:border-emerald-500'}`}
+                  dir="ltr"
+                />
+                <button onClick={fetchLiveShots} disabled={liveLoading || !inputUrl} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                  {liveLoading ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>جاري المعالجة...</> : '🎯 استخراج الخريطة'}
+                </button>
+              </div>
+              {liveError && <div className="mt-4 p-3 bg-red-900/30 border border-red-500/50 rounded-lg text-center text-red-400 text-sm max-w-xl mx-auto">{liveError}</div>}
+            </div>
+            
+            {liveShots.length > 0 && (
+              <ShotMap shots={liveShots} matchName={matchName} isDark={isDark} />
+            )}
+          </div>
+        </div>
       </div>
     );
   }
 
+  // من هنا يبدأ عرض البيانات الكاملة إذا كانت متوفرة
   const tabsList = [
     { id: 'overview', label: t.tabs.overview },
     { id: 'attack', label: t.tabs.attack },
@@ -296,7 +340,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                     <h2 className="text-xl sm:text-3xl font-black">{selectedPlayer.name}</h2>
                     <p className="text-[10px] sm:text-sm text-gray-400">{selectedPlayer.pos} | {selectedPlayer.num}</p>
                     
-                    {/* زر جلب الخريطة الحرارية */}
                     <button 
                       onClick={() => fetchHeatmap(selectedPlayer.name)}
                       disabled={heatmapLoading}
@@ -311,7 +354,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                  </div>
               </div>
 
-              {/* عرض الخريطة الحرارية إذا تم جلبها */}
               {heatmapUrl && (
                 <div className="mb-6 rounded-xl overflow-hidden border border-blue-500/30">
                    <img src={heatmapUrl} alt="Player Heatmap" className="w-full object-cover" />
@@ -500,15 +542,9 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {data.lineup.home.map((p: any) => (
                         <button key={p.id} onClick={() => setSelectedPlayer(p)} className={`flex items-center gap-2 p-2 rounded-xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-white/5 border-white/10 hover:border-emerald-500/50' : 'bg-white border-gray-200 hover:border-emerald-500'}`}>
-                          
                           <div className="w-8 h-8 rounded-full bg-gray-600 flex-shrink-0 overflow-hidden flex items-center justify-center text-gray-300 text-xs font-bold shadow-inner">
-                            {p.image ? (
-                              <img src={p.image} alt={p.name} className="w-full h-full object-cover object-top" />
-                            ) : (
-                              p.name.charAt(0)
-                            )}
+                            {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover object-top" /> : p.name.charAt(0)}
                           </div>
-
                           <div className={`${isArabic ? 'text-right' : 'text-left'} min-w-0 flex-1`}>
                             <div className="text-[11px] sm:text-xs font-bold truncate">{p.name}</div>
                             <div className="text-[9px] text-gray-500">{p.pos}</div>
@@ -522,15 +558,9 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {data.lineup.away.map((p: any) => (
                         <button key={p.id} onClick={() => setSelectedPlayer(p)} className={`flex items-center gap-2 p-2 rounded-xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-white/5 border-white/10 hover:border-emerald-500/50' : 'bg-white border-gray-200 hover:border-emerald-500'}`}>
-                          
                           <div className="w-8 h-8 rounded-full bg-gray-600 flex-shrink-0 overflow-hidden flex items-center justify-center text-gray-300 text-xs font-bold shadow-inner">
-                            {p.image ? (
-                              <img src={p.image} alt={p.name} className="w-full h-full object-cover object-top" />
-                            ) : (
-                              p.name.charAt(0)
-                            )}
+                            {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover object-top" /> : p.name.charAt(0)}
                           </div>
-
                           <div className={`${isArabic ? 'text-right' : 'text-left'} min-w-0 flex-1`}>
                             <div className="text-[11px] sm:text-xs font-bold truncate">{p.name}</div>
                             <div className="text-[9px] text-gray-500">{p.pos}</div>
@@ -543,32 +573,16 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
               </div>
             )}
 
-            {/* التبويب: خرائط التسديد الحية */}
             {activeTab === 'liveShotmap' && (
               <div className="space-y-4 animate-in fade-in duration-300">
-                
-                {/* صندوق التحكم */}
-                <div className={`p-4 sm:p-6 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
-                  <h3 className="text-lg font-bold text-emerald-500 mb-4 text-center">جلب خريطة التسديدات</h3>
-                  
+                <div className={`p-4 sm:p-6 rounded-xl border text-center ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                  <h3 className="text-lg font-bold text-emerald-500 mb-2">{t.tabs.liveShotmap}</h3>
+                  <p className="text-sm text-gray-400 mb-4">جلب خرائط التسديدات الحية مباشرة من 365Scores أو SofaScore.</p>
                   <div className="max-w-xl mx-auto space-y-4">
-                    {/* اختيار المصدر */}
                     <div className="flex justify-center gap-2 mb-4">
-                      <button
-                        onClick={() => setSourceType('sofascore')}
-                        className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === 'sofascore' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}
-                      >
-                        SofaScore
-                      </button>
-                      <button
-                        onClick={() => setSourceType('365')}
-                        className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === '365' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}
-                      >
-                        365Scores
-                      </button>
+                      <button onClick={() => setSourceType('sofascore')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === 'sofascore' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}>SofaScore</button>
+                      <button onClick={() => setSourceType('365')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === '365' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}>365Scores</button>
                     </div>
-
-                    {/* حقل الإدخال */}
                     <input 
                       type="text" 
                       placeholder={`الصق رابط المباراة من ${sourceType === 'sofascore' ? 'SofaScore' : '365Scores'} هنا...`}
@@ -577,39 +591,14 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                       className={`w-full p-3 rounded-lg border outline-none ${isDark ? 'bg-black/50 border-white/20 text-white focus:border-emerald-500' : 'bg-white border-gray-300 text-black focus:border-emerald-500'}`}
                       dir="ltr"
                     />
-
-                    {/* زر الجلب */}
-                    <button
-                      onClick={fetchLiveShots}
-                      disabled={liveLoading || !inputUrl}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {liveLoading ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          جاري المعالجة (قد يستغرق دقيقة)...
-                        </>
-                      ) : (
-                        '🎯 استخراج الخريطة'
-                      )}
+                    <button onClick={fetchLiveShots} disabled={liveLoading || !inputUrl} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                      {liveLoading ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>جاري المعالجة...</> : '🎯 استخراج الخريطة'}
                     </button>
                   </div>
-
-                  {/* رسائل الخطأ */}
-                  {liveError && (
-                    <div className="mt-4 p-3 bg-red-900/30 border border-red-500/50 rounded-lg text-center text-red-400 text-sm max-w-xl mx-auto">
-                      {liveError}
-                    </div>
-                  )}
+                  {liveError && <div className="mt-4 p-3 bg-red-900/30 border border-red-500/50 rounded-lg text-center text-red-400 text-sm max-w-xl mx-auto">{liveError}</div>}
                 </div>
-
-                {/* عرض الخريطة */}
                 {liveShots.length > 0 && (
-                  <ShotMap 
-                    shots={liveShots} 
-                    matchName={`${data?.home?.name} ضد ${data?.away?.name}`}
-                    isDark={isDark}
-                  />
+                  <ShotMap shots={liveShots} matchName={`${data?.home?.name} ضد ${data?.away?.name}`} isDark={isDark} />
                 )}
               </div>
             )}
