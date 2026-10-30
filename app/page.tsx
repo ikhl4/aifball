@@ -132,21 +132,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
   processedText = processedText.replace(/a\s*href=[^\s>]+/gi, '');
   processedText = deduplicateText(processedText);
 
-  // 🌟 خوارزمية إصلاح الوسوم المكسورة
-  processedText = processedText.replace(/aifball-compare[\s\S]*?(?:<\/aifball-compare>|$)/gi, (match) => {
-      let clean = match.replace(/[\n\r]+/g, ' ');
-      clean = clean.replace(/></g, ' ');
-      clean = clean.replace(/<|>/g, ' ');
-      
-      const p1 = clean.match(/player1\s*=\s*"?([^"]+)"?/i);
-      const p2 = clean.match(/player2\s*=\s*"?([^"]+)"?/i);
-      
-      const name1 = p1 ? p1[1].trim().replace(/['"]/g, '') : 'Player 1';
-      const name2 = p2 ? p2[1].trim().replace(/['"]/g, '') : 'Player 2';
-      
-      return `<aifball-compare player1="${name1}" player2="${name2}"></aifball-compare>`;
-  });
-
   const paragraphs = processedText.split(/\n\s*\n/);
   const uniqueParagraphs = new Set();
   let finalText = '';
@@ -344,13 +329,19 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    if (trimmed.startsWith('<aifball-compare') && trimmed.includes('</aifball-compare>')) {
+    // 🌟 خوارزمية استخراج المقارنة (تتعامل مع أي كسر أو رموز غريبة)
+    if (trimmed.includes('aifball-compare')) {
       if (inTable) flushTable(index);
-      const p1Match = trimmed.match(/player1="([^"]+)"/);
-      const p2Match = trimmed.match(/player2="([^"]+)"/);
       
-      const player1 = p1Match ? p1Match[1] : 'اللاعب الأول';
-      const player2 = p2Match ? p2Match[1] : 'اللاعب الثاني';
+      // نبحث عن الأسماء بتعبير نمطي مرن جداً
+      const p1Match = trimmed.match(/player1\s*=\s*["']?([^"'\n<>]+)["']?/i);
+      const p2Match = trimmed.match(/player2\s*=\s*["']?([^"'\n<>]+)["']?/i);
+
+      let player1 = 'اللاعب الأول';
+      let player2 = 'اللاعب الثاني';
+
+      if (p1Match && p1Match[1]) player1 = p1Match[1].replace(/[<>"']/g, '').trim();
+      if (p2Match && p2Match[1]) player2 = p2Match[1].replace(/[<>"']/g, '').trim();
 
       elements.push(
         <div key={`compare-${index}`} className="my-5 w-full">
@@ -943,7 +934,7 @@ export default function FootPlayChat() {
                              {renderFormattedText(msg.content, isDarkMode, sendMessage)}
                            </div>
                            
-                           {/* أزرار التفاعل (نسخ، مشاركة، إعجاب، إعادة توليد) */}
+                           {/* أزرار التفاعل */}
                            <div className={`flex items-center gap-1.5 mt-3 pt-3 border-t ${isDarkMode ? 'border-white/5' : 'border-gray-100'}`}>
                              <button 
                                onClick={() => navigator.clipboard.writeText(msg.content)} 
