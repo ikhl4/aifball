@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import ShotMap, { ShotData } from './ShotMap';
+import TacticalBoard from './TacticalBoard'; // 🌟 استدعاء لوحة التكتيك الجديدة
 
 interface MatchReportProps {
   matchName: string;
@@ -35,6 +36,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
   const [inputUrl, setInputUrl] = useState(autoMatchUrl || '');
   const [sourceType, setSourceType] = useState<'365' | 'sofascore' | 'fotmob'>('365');
 
+  // --- حالات الخريطة الحرارية ---
   const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
 
@@ -107,7 +109,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
             const homeId = competitorIds[0];
             const awayId = competitorIds[1] || competitorIds[0];
 
-            // جلب صور اللاعبين (بشكل متوازي لتسريع العملية)
+            // جلب صور اللاعبين
             const homePlayers = await Promise.all(allPlayers.filter((p: any) => p.competitorId === homeId).slice(0, 11).map(async (p: any) => {
               const img = await fetchWikiImage(p.name, 'player');
               return {
@@ -139,6 +141,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
 
       setData(baseData);
 
+      // 3. جلب خريطة التسديد تلقائياً
       if (autoMatchUrl) {
         fetchLiveShotsData(autoMatchUrl, source);
       }
@@ -290,6 +293,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
 
       <div className={`relative z-10 p-4 sm:p-6 ${selectedPlayer ? 'h-auto min-h-[500px]' : 'h-auto min-h-[600px] overflow-y-auto custom-scrollbar'} ${isDark ? 'bg-[#07100B]' : 'bg-white'}`}>
         
+        {/* شاشة اللاعب الفردية */}
         {selectedPlayer ? (
           <div className="animate-in slide-in-from-bottom-4 duration-300">
             <button onClick={() => { setSelectedPlayer(null); setHeatmapUrl(null); }} className="mb-4 flex items-center gap-2 text-sm font-bold text-emerald-500 hover:text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg w-fit">{t.tabs.lineup}</button>
@@ -316,6 +320,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
           </div>
         ) : (
           <>
+            {/* 1. تبويب النظرة العامة (تصميم Omni) */}
             {activeTab === 'overview' && (
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -365,45 +370,35 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
               </div>
             )}
 
+            {/* 2. تبويب التشكيلة (اللوحة التكتيكية الداكنة) */}
             {activeTab === 'lineup' && (
-              <div className="space-y-6 animate-in fade-in duration-300">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-8 animate-in fade-in duration-300">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  
+                  {/* ملعب الفريق الأول */}
                   <div>
-                    <h4 className="text-center font-bold text-sm mb-4 text-yellow-500 bg-yellow-500/10 py-2 rounded-lg border border-yellow-500/20">{data.home.name}</h4>
-                    <div className="space-y-2">
-                      {data.lineup.home.length > 0 ? data.lineup.home.map((p: any) => (
-                        <button key={p.id} onClick={() => setSelectedPlayer(p)} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-[#111A14] border-emerald-900/50 hover:border-emerald-500/50' : 'bg-white border-gray-200 hover:border-emerald-500'}`}>
-                          <div className="w-10 h-10 rounded-full bg-[#1D6B35]/20 flex-shrink-0 overflow-hidden flex items-center justify-center text-emerald-400 text-sm font-bold shadow-inner border border-emerald-500/30">
-                            {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : p.name.charAt(0)}
-                          </div>
-                          <div className="text-right flex-1">
-                            <div className="text-sm font-bold text-gray-200">{p.name}</div>
-                            <div className="text-xs text-gray-500">{p.pos} | #{p.num}</div>
-                          </div>
-                        </button>
-                      )) : <p className="text-center text-xs text-gray-500">التشكيلة غير متوفرة لهذه المباراة.</p>}
-                    </div>
+                    <TacticalBoard 
+                      team={data.home.name} 
+                      players={data.lineup.home} 
+                      formation="4-3-3" 
+                    />
                   </div>
+
+                  {/* ملعب الفريق الثاني */}
                   <div>
-                    <h4 className="text-center font-bold text-sm mb-4 text-sky-500 bg-sky-500/10 py-2 rounded-lg border border-sky-500/20">{data.away.name}</h4>
-                    <div className="space-y-2">
-                      {data.lineup.away.length > 0 ? data.lineup.away.map((p: any) => (
-                        <button key={p.id} onClick={() => setSelectedPlayer(p)} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-[#111A14] border-emerald-900/50 hover:border-emerald-500/50' : 'bg-white border-gray-200 hover:border-emerald-500'}`}>
-                          <div className="w-10 h-10 rounded-full bg-sky-900/20 flex-shrink-0 overflow-hidden flex items-center justify-center text-sky-400 text-sm font-bold shadow-inner border border-sky-500/30">
-                            {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : p.name.charAt(0)}
-                          </div>
-                          <div className="text-right flex-1">
-                            <div className="text-sm font-bold text-gray-200">{p.name}</div>
-                            <div className="text-xs text-gray-500">{p.pos} | #{p.num}</div>
-                          </div>
-                        </button>
-                      )) : <p className="text-center text-xs text-gray-500">التشكيلة غير متوفرة لهذه المباراة.</p>}
-                    </div>
+                    <TacticalBoard 
+                      team={data.away.name} 
+                      players={data.lineup.away} 
+                      formation="4-2-3-1" 
+                      isAway={true}
+                    />
                   </div>
+
                 </div>
               </div>
             )}
 
+            {/* 3. تبويب الخرائط الحية */}
             {activeTab === 'liveShotmap' && (
               <div className="space-y-4 animate-in fade-in duration-300">
                 {liveLoading ? (
