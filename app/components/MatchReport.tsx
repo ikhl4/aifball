@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import ShotMap, { ShotData } from '@/components/ShotMap';
+import ShotMap, { ShotData } from './ShotMap';
 
 interface MatchReportProps {
   matchName: string;
