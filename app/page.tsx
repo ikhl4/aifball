@@ -9,6 +9,7 @@ import PlayerProfile from './components/PlayerProfile';
 import MatchReport from './components/MatchReport';
 import TrainingDrillWidget from './components/TrainingDrillWidget';
 import PlayerComparison from './components/PlayerComparison';
+import LeagueDashboard from './components/LeagueDashboard'; // 🌟 استدعاء لوحة الإحصائيات الجديدة
 
 interface Message {
   role: 'user' | 'assistant';
@@ -131,6 +132,21 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
   processedText = processedText.replace(/<a\s+href=.*?<\/a>/gi, '');
   processedText = processedText.replace(/a\s*href=[^\s>]+/gi, '');
   processedText = deduplicateText(processedText);
+
+  // 🌟 خوارزمية إصلاح الوسوم المكسورة (مقارنة اللاعبين)
+  processedText = processedText.replace(/aifball-compare[\s\S]*?(?:<\/aifball-compare>|$)/gi, (match) => {
+      let clean = match.replace(/[\n\r]+/g, ' ');
+      clean = clean.replace(/></g, ' ');
+      clean = clean.replace(/<|>/g, ' ');
+      
+      const p1 = clean.match(/player1\s*=\s*"?([^"]+)"?/i);
+      const p2 = clean.match(/player2\s*=\s*"?([^"]+)"?/i);
+      
+      const name1 = p1 ? p1[1].trim().replace(/['"]/g, '') : 'Player 1';
+      const name2 = p2 ? p2[1].trim().replace(/['"]/g, '') : 'Player 2';
+      
+      return `<aifball-compare player1="${name1}" player2="${name2}"></aifball-compare>`;
+  });
 
   const paragraphs = processedText.split(/\n\s*\n/);
   const uniqueParagraphs = new Set();
@@ -261,6 +277,24 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
+    // 🌟 إضافة شرط إحصائيات الدوري الجديد
+    if (trimmed.includes('aifball-league')) {
+      if (inTable) flushTable(index);
+      const leagueMatch = trimmed.match(/league="([^"]+)"/);
+      const leagueCode = leagueMatch ? leagueMatch[1] : 'ksa.1'; 
+      
+      let displayName = 'دوري روشن السعودي';
+      if (leagueCode === 'eng.1') displayName = 'الدوري الإنجليزي';
+      if (leagueCode === 'esp.1') displayName = 'الدوري الإسباني';
+
+      elements.push(
+        <div key={`league-${index}`} className="my-5 w-full">
+          <LeagueDashboard leagueName={displayName} leagueCode={leagueCode} isDark={isDark} />
+        </div>
+      );
+      return;
+    }
+
     if (trimmed.includes('aifball-match-report')) {
       if (inTable) flushTable(index);
       const matchMatch = trimmed.match(/match="([^"]+)"/);
@@ -329,11 +363,10 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // 🌟 خوارزمية استخراج المقارنة (تتعامل مع أي كسر أو رموز غريبة)
+    // 🌟 مكون المقارنة
     if (trimmed.includes('aifball-compare')) {
       if (inTable) flushTable(index);
       
-      // نبحث عن الأسماء بتعبير نمطي مرن جداً
       const p1Match = trimmed.match(/player1\s*=\s*["']?([^"'\n<>]+)["']?/i);
       const p2Match = trimmed.match(/player2\s*=\s*["']?([^"'\n<>]+)["']?/i);
 
@@ -770,9 +803,32 @@ export default function FootPlayChat() {
   return (
     <div dir="rtl" className={`flex flex-col h-[100dvh] relative overflow-hidden font-saudi transition-colors duration-300 ${isDarkMode ? 'bg-[#131314] text-[#E3E3E3]' : 'bg-gray-50 text-gray-900'}`}>
       
-      {/* الخلفية */}
-      <div className={`absolute inset-0 bg-cover bg-center filter pointer-events-none z-0 transition-opacity duration-300 ${isDarkMode ? 'brightness-[0.55]' : 'brightness-[0.9] opacity-20'}`} style={{ backgroundImage: "url('/IMG_0091.jpeg')" }} />
-      <div className={`absolute inset-0 pointer-events-none z-0 transition-colors duration-300 ${isDarkMode ? 'bg-[#131314]/75' : 'bg-gray-50/85'}`} />
+      {/* 🌟 الخلفية الجديدة (ملعب SVG خطوط خضراء) 🌟 */}
+      <div className={`absolute inset-0 pointer-events-none z-0 transition-colors duration-300 overflow-hidden ${isDarkMode ? 'bg-[#0a0f0d]' : 'bg-gray-50'}`}>
+        {/* إضاءة خلفية (توهج أخضر) */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#1D6B35]/15 rounded-full blur-[120px]"></div>
+        
+        {/* خطوط الملعب المضيئة */}
+        <svg viewBox="0 0 1200 800" className="absolute inset-0 w-full h-full opacity-30" preserveAspectRatio="xMidYMid slice">
+          <g stroke="#10b981" strokeWidth="2.5" fill="none" opacity="0.4">
+            <rect x="100" y="100" width="1000" height="600" rx="10" />
+            <line x1="600" y1="100" x2="600" y2="700" />
+            <circle cx="600" cy="400" r="100" />
+            <circle cx="600" cy="400" r="5" fill="#10b981" />
+            <rect x="950" y="200" width="150" height="400" />
+            <rect x="1100" y="300" width="50" height="200" />
+            <circle cx="1050" cy="400" r="5" fill="#10b981" />
+            <path d="M 950 300 A 80 80 0 0 1 950 500" />
+            <rect x="100" y="200" width="150" height="400" />
+            <rect x="100" y="300" width="50" height="200" />
+            <circle cx="150" cy="400" r="5" fill="#10b981" />
+            <path d="M 250 300 A 80 80 0 0 0 250 500" />
+          </g>
+        </svg>
+
+        {/* طبقة تعتيم خفيفة لكي لا تشوش على النصوص */}
+        <div className={`absolute inset-0 ${isDarkMode ? 'bg-gradient-to-b from-[#131314]/40 to-[#131314]/90' : 'bg-white/80'}`}></div>
+      </div>
 
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
