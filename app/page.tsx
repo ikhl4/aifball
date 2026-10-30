@@ -269,14 +269,16 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       
       const matchMatch = trimmed.match(/match="([^"]+)"/);
       const matchName = matchMatch ? matchMatch[1] : 'تقرير المباراة';
+      
+      // استخراج معرف المباراة إذا وجد (الافتراضي هو نهائي كأس العالم)
+      const idMatch = trimmed.match(/matchId="([^"]+)"/);
+      const matchId = idMatch ? idMatch[1] : '3869685';
 
       elements.push(
         <div key={`match-report-${index}`} className="my-5 w-full">
-          <MatchReport matchName={matchName} isDark={isDark} />
+          <MatchReport matchName={matchName} matchId={matchId} isDark={isDark} />
         </div>
       );
-      return;
-    }
 
     // ✅ اعتراض بطاقة اللاعب
     if (trimmed.startsWith('<aifball-player') && trimmed.includes('</aifball-player>')) {
