@@ -16,40 +16,61 @@ export async function GET(request: Request) {
     const homeTeamName = lineupsData[0]?.team_name || 'Home';
     const awayTeamName = lineupsData[1]?.team_name || 'Away';
 
-    // قاموس شعارات الأندية المعروفة
-    const teamLogos: { [key: string]: string } = {
-      'Argentina': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Argentina_national_football_team_logo.svg/200px-Argentina_national_football_team_logo.svg.png',
-      'France': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/France_national_football_team_logo.svg/200px-France_national_football_team_logo.svg.png',
-      'Real Madrid': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Real_Madrid_CF.svg/200px-Real_Madrid_CF.svg.png',
-      'Barcelona': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/FC_Barcelona_%28crest%29.svg/200px-FC_Barcelona_%28crest%29.svg.png',
-      'Al Hilal': 'https://upload.wikimedia.org/wikipedia/en/thumb/8/8b/Al_Hilal_SFC_Logo.svg/200px-Al_Hilal_SFC_Logo.svg.png',
-      'Al Nassr': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/44/Al_Nassr_FC_Logo.svg/200px-Al_Nassr_FC_Logo.svg.png',
-      'Al Ittihad': 'https://upload.wikimedia.org/wikipedia/en/thumb/0/0e/Al-Ittihad_Club_%28Jeddah%29_logo.svg/200px-Al-Ittihad_Club_%28Jeddah%29_logo.svg.png',
-    };
+    // دالة ذكية لجلب الصور من ويكيبيديا مع مهلة زمنية (Timeout) لتجنب تعليق السيرفر
+    const fetchWikiImage = async (searchQuery: string) => {
+      const url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(searchQuery)}&gsrlimit=1&prop=pageimages&format=json&pithumbsize=300&origin=*`;
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // مهلة 3 ثواني
 
-    const getTeamLogo = (teamName: string) => {
-      // إذا كان الفريق في القاموس نرجع الشعار، وإلا نرجع null لكي تتعامل الواجهة مع اللون الرمادي
-      return teamLogos[teamName] || null;
-    };
-
-    // دالة جلب صورة اللاعب
-    const fetchPlayerImage = async (playerName: string) => {
       try {
-        const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/searchplayers.php?p=${encodeURIComponent(playerName)}`);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
         const data = await res.json();
-        return data.player?.[0]?.strThumb || null;
-      } catch {
+        const pages = data.query?.pages;
+        
+        if (pages) {
+          const pageId = Object.keys(pages)[0];
+          if (pageId !== '-1' && pages[pageId].thumbnail) {
+            return pages[pageId].thumbnail.source;
+          }
+        }
+        return null;
+      } catch (error) {
+        clearTimeout(timeoutId);
         return null;
       }
     };
 
-    const homeLogo = getTeamLogo(homeTeamName);
-    const awayLogo = getTeamLogo(awayTeamName);
+    // دالة ذكية للبحث عن شعار النادي
+    const fetchTeamLogo = async (teamName: string) => {
+      // إذا كان الفريق منتخباً وطنياً، نبحث باسم المنتخب لضمان جلب الشعار
+      const nationalTeams = ['Argentina', 'France', 'Brazil', 'England', 'Spain', 'Germany', 'Italy', 'Portugal'];
+      let query = teamName;
+      
+      if (nationalTeams.includes(teamName)) {
+        query = `${teamName} national football team`;
+      } else {
+        query = `${teamName} football club`;
+      }
 
+      let img = await fetchWikiImage(query);
+      if (!img) {
+         // محاولة ثانية: البحث بالاسم فقط
+         img = await fetchWikiImage(teamName);
+      }
+      return img;
+    };
+
+    // جلب الشعارات
+    const homeLogo = await fetchTeamLogo(homeTeamName);
+    const awayLogo = await fetchTeamLogo(awayTeamName);
+
+    // تجهيز التشكيلة مع جلب صور اللاعبين بشكل متوازي (Parallel) لتسريع العملية
     const mapLineup = async (teamData: any) => {
       const starters = teamData.lineup.slice(0, 11);
       return await Promise.all(starters.map(async (p: any) => {
-        const img = await fetchPlayerImage(p.player_name);
+        const img = await fetchWikiImage(p.player_name);
         return {
           id: p.player_id,
           name: p.player_name,
@@ -64,6 +85,7 @@ export async function GET(request: Request) {
     const lineupHome = await mapLineup(lineupsData[0]);
     const lineupAway = await mapLineup(lineupsData[1]);
 
+    // --- حساب الإحصائيات كما هي ---
     let homeXg = 0, awayXg = 0, homeShots = 0, awayShots = 0;
     let homeCorners = 0, awayCorners = 0, homeFouls = 0, awayFouls = 0;
     let homePasses = 0, awayPasses = 0, homeTackles = 0, awayTackles = 0, homeInterceptions = 0, awayInterceptions = 0;
