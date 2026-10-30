@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import ShotMap, { ShotData } from './ShotMap';
 
 // واجهة لبيانات التسديدة (متوافقة مع StatsBomb والتصميم الخاص بك)
 export interface ShotData {
