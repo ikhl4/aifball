@@ -380,6 +380,7 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
   if (inTable) flushTable(lines.length);
 
+  // ✅ عرض الفيديوهات (مع الزر الأحمر والملاحظة)
   if (youtubeIds.length > 0) {
     elements.push(
       <div key="youtube-embeds" className={`mt-6 pt-4 border-t ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
@@ -387,14 +388,23 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
           <span>🎥</span> روابط ملخصات اليوتيوب
         </h4>
         {youtubeIds.map((vid) => (
-          <div key={vid} className={`rounded-2xl overflow-hidden border shadow-xl mb-4 ${isDark ? 'border-emerald-500/30 bg-black/40' : 'border-emerald-200 bg-white'}`}>
-            <div className={`flex items-center justify-between px-4 py-2 border-b ${isDark ? 'bg-emerald-950/50 border-white/10' : 'bg-emerald-50 border-gray-200'}`}>
-              <span className={`text-xs font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>مشاهدة الملخص حياً</span>
-              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className={`text-[10px] underline transition break-all ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}>
-                فتح في يوتيوب ↗
+          <div key={vid} className={`rounded-2xl overflow-hidden border shadow-xl mb-6 ${isDark ? 'border-emerald-500/30 bg-black/40' : 'border-emerald-200 bg-white'}`}>
+            
+            {/* ترويسة الفيديو مع زر مشاهدة بارز */}
+            <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-emerald-950/50 border-white/10' : 'bg-emerald-50 border-gray-200'}`}>
+              <span className={`text-xs sm:text-sm font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>الملخص الرسمي</span>
+              <a 
+                href={`https://www.youtube.com/watch?v=${vid}`} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white`}
+              >
+                مشاهدة على يوتيوب ↗
               </a>
             </div>
-            <div className="relative w-full aspect-video">
+
+            {/* مشغل الفيديو */}
+            <div className="relative w-full aspect-video bg-black">
               <iframe 
                 src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0&modestbranding=1`} 
                 title="AiFBall Live Video Match" 
@@ -404,6 +414,12 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
                 allowFullScreen 
               />
             </div>
+
+            {/* ملاحظة للمستخدم في حال الحظر */}
+            <div className={`px-4 py-2 text-center text-[10px] sm:text-xs ${isDark ? 'bg-black/60 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+              إذا لم يعمل المشغل هنا، يمكنك الضغط على زر <strong className="text-red-500">"مشاهدة على يوتيوب"</strong> في الأعلى للمشاهدة مباشرة.
+            </div>
+
           </div>
         ))}
       </div>
