@@ -48,7 +48,7 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
     };
 
     fetchAllLeagues();
-    const interval = setInterval(fetchAllLeagues, 60000);
+    const interval = setInterval(fetchAllLeagues, 60000); // تحديث تلقائي كل دقيقة
     return () => clearInterval(interval);
   }, [dateMode]);
 
@@ -87,7 +87,7 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
           {LEAGUES.map((league) => {
             const leagueMatches = matchesByLeague[league.id] || [];
             
-            // إذا لم توجد مباريات في هذا الدوري، لا نعرضه
+            // إذا لم توجد مباريات في هذا الدوري في هذا اليوم، لا نعرضه
             if (leagueMatches.length === 0) return null;
 
             return (
@@ -101,36 +101,41 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
                     const comp = event.competitions[0];
                     const home = comp.competitors.find((c: any) => c.homeAway === 'home');
                     const away = comp.competitors.find((c: any) => c.homeAway === 'away');
-                    const isLive = event.status.type.state === 'in'; 
                     
+                    const isLive = event.status.type.state === 'in'; 
+                    const isFinished = event.status.type.state === 'post';
+                    const isScheduled = !isLive && !isFinished;
+
                     return (
                       <div key={event.id} className={`p-3 flex items-center justify-between ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
                         
                         {/* الوقت / الحالة */}
-                        <div className="w-20 text-center flex-shrink-0">
+                        <div className="w-16 sm:w-20 text-center flex-shrink-0">
                           {isLive ? (
                             <span className="text-red-500 font-bold text-xs animate-pulse bg-red-900/20 px-2 py-1 rounded">{event.status.displayClock}'</span>
-                          ) : event.status.type.state === 'post' ? (
+                          ) : isFinished ? (
                             <span className="text-gray-500 text-xs font-bold">انتهت</span>
                           ) : (
-                            <span className="text-emerald-500 text-[10px] font-bold">{event.status.type.shortDetail}</span>
+                            <span className="text-emerald-500 text-[10px] sm:text-xs font-bold">{event.status.type.shortDetail}</span>
                           )}
                         </div>
 
                         {/* الفريق الأول */}
                         <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
                           <span className={`font-bold text-sm truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{home.team.shortDisplayName}</span>
-                          <img src={home.team.logo} className="w-6 h-6 object-contain flex-shrink-0" />
+                          <img src={home.team.logo} alt={home.team.name} className="w-6 h-6 object-contain flex-shrink-0" />
                         </div>
 
-                        {/* النتيجة */}
-                        <div className={`mx-3 w-14 text-center font-black text-lg px-1 py-0.5 rounded flex-shrink-0 ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                          {home.score || '0'} - {away.score || '0'}
+                        {/* النتيجة (VS للمباريات التي لم تبدأ) */}
+                        <div className={`mx-2 sm:mx-3 w-12 sm:w-16 text-center font-black px-1 py-0.5 rounded flex-shrink-0 flex items-center justify-center ${isDark ? 'bg-gray-800' : 'bg-gray-200'} ${isScheduled ? 'text-gray-400 text-[10px] sm:text-xs font-bold' : 'text-lg text-white'}`}>
+                          {isScheduled 
+                            ? 'VS' 
+                            : `${home.score || 0} - ${away.score || 0}`}
                         </div>
 
                         {/* الفريق الثاني */}
                         <div className="flex-1 flex items-center justify-start gap-2 min-w-0">
-                          <img src={away.team.logo} className="w-6 h-6 object-contain flex-shrink-0" />
+                          <img src={away.team.logo} alt={away.team.name} className="w-6 h-6 object-contain flex-shrink-0" />
                           <span className={`font-bold text-sm truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{away.team.shortDisplayName}</span>
                         </div>
 
