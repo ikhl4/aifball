@@ -16,12 +16,24 @@ export async function GET(request: Request) {
     const homeTeamName = lineupsData[0]?.team_name || 'Home';
     const awayTeamName = lineupsData[1]?.team_name || 'Away';
 
-    // دالة ذكية لجلب الصور من ويكيبيديا مع مهلة زمنية (Timeout) لتجنب تعليق السيرفر
-    const fetchWikiImage = async (searchQuery: string) => {
-      const url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(searchQuery)}&gsrlimit=1&prop=pageimages&format=json&pithumbsize=300&origin=*`;
+    // 🌟 دالة محسنة لجلب الصور من ويكيبيديا
+    const fetchWikiImage = async (searchQuery: string, type: 'logo' | 'player' = 'logo') => {
+      let query = searchQuery;
+      
+      // تحسين كلمة البحث لجلب الشعار أو صورة اللاعب
+      if (type === 'logo') {
+        const nationalTeams = ['Argentina', 'France', 'Brazil', 'England', 'Spain', 'Germany', 'Italy', 'Portugal'];
+        query = nationalTeams.includes(searchQuery) 
+          ? `${searchQuery} national football team logo` 
+          : `${searchQuery} football club logo`;
+      } else {
+        query = `${searchQuery} footballer`;
+      }
+
+      const url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=1&prop=pageimages&format=json&pithumbsize=300&origin=*`;
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // مهلة 3 ثواني
+      const timeoutId = setTimeout(() => controller.abort(), 4000); // زيادة المهلة لـ 4 ثواني
 
       try {
         const res = await fetch(url, { signal: controller.signal });
@@ -35,42 +47,22 @@ export async function GET(request: Request) {
             return pages[pageId].thumbnail.source;
           }
         }
-        return null;
+        return null; // إذا لم يجد صورة
       } catch (error) {
         clearTimeout(timeoutId);
         return null;
       }
     };
 
-    // دالة ذكية للبحث عن شعار النادي
-    const fetchTeamLogo = async (teamName: string) => {
-      // إذا كان الفريق منتخباً وطنياً، نبحث باسم المنتخب لضمان جلب الشعار
-      const nationalTeams = ['Argentina', 'France', 'Brazil', 'England', 'Spain', 'Germany', 'Italy', 'Portugal'];
-      let query = teamName;
-      
-      if (nationalTeams.includes(teamName)) {
-        query = `${teamName} national football team`;
-      } else {
-        query = `${teamName} football club`;
-      }
+    // جلب الشعارات بالبحث المحسن
+    const homeLogo = await fetchWikiImage(homeTeamName, 'logo');
+    const awayLogo = await fetchWikiImage(awayTeamName, 'logo');
 
-      let img = await fetchWikiImage(query);
-      if (!img) {
-         // محاولة ثانية: البحث بالاسم فقط
-         img = await fetchWikiImage(teamName);
-      }
-      return img;
-    };
-
-    // جلب الشعارات
-    const homeLogo = await fetchTeamLogo(homeTeamName);
-    const awayLogo = await fetchTeamLogo(awayTeamName);
-
-    // تجهيز التشكيلة مع جلب صور اللاعبين بشكل متوازي (Parallel) لتسريع العملية
+    // تجهيز التشكيلة مع جلب صور اللاعبين
     const mapLineup = async (teamData: any) => {
       const starters = teamData.lineup.slice(0, 11);
       return await Promise.all(starters.map(async (p: any) => {
-        const img = await fetchWikiImage(p.player_name);
+        const img = await fetchWikiImage(p.player_name, 'player');
         return {
           id: p.player_id,
           name: p.player_name,
