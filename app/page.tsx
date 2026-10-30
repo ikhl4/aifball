@@ -9,7 +9,8 @@ import PlayerProfile from './components/PlayerProfile';
 import MatchReport from './components/MatchReport';
 import TrainingDrillWidget from './components/TrainingDrillWidget';
 import PlayerComparison from './components/PlayerComparison';
-import LeagueDashboard from './components/LeagueDashboard'; // 🌟 استدعاء لوحة الإحصائيات الجديدة
+import LeagueDashboard from './components/LeagueDashboard'; 
+import MatchSummary from './components/MatchSummary'; // 🌟 استدعاء مكون الملخص الجديد
 
 interface Message {
   role: 'user' | 'assistant';
@@ -277,7 +278,7 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-// 🌟 خوارزمية ذكية لالتقاط إحصائيات الدوري
+    // 🌟 خوارزمية ذكية لالتقاط إحصائيات الدوري
     if (trimmed.includes('aifball-league') || trimmed.includes('aifball-standings') || trimmed.includes('standings')) {
       if (inTable) flushTable(index);
       
@@ -287,10 +288,28 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       let displayName = 'دوري روشن السعودي';
       if (leagueCode === 'eng.1') displayName = 'الدوري الإنجليزي';
       if (leagueCode === 'esp.1') displayName = 'الدوري الإسباني';
+      if (leagueCode === 'ita.1') displayName = 'الدوري الإيطالي';
 
       elements.push(
         <div key={`league-${index}`} className="my-5 w-full">
           <LeagueDashboard leagueName={displayName} leagueCode={leagueCode} isDark={isDark} />
+        </div>
+      );
+      return;
+    }
+
+    // 🌟 مكون ملخص المباراة
+    if (trimmed.includes('aifball-summary')) {
+      if (inTable) flushTable(index);
+      const matchMatch = trimmed.match(/match="([^"]+)"/);
+      const matchName = matchMatch ? matchMatch[1] : 'ملخص المباراة';
+      
+      const home = matchName.split('ضد')[0]?.trim() || 'الفريق الأول';
+      const away = matchName.split('ضد')[1]?.trim() || 'الفريق الثاني';
+
+      elements.push(
+        <div key={`summary-${index}`} className="my-5 w-full">
+          <MatchSummary homeTeam={home} awayTeam={away} isDark={isDark} />
         </div>
       );
       return;
