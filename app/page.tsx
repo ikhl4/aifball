@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
 import TacticalPitch from './components/TacticalPitch';
 import LiveSportsWidget from './components/LiveSportsWidget';
+import LiveMatchCenter from './components/LiveMatchCenter'; // 🌟 استدعاء المركز الإعلامي الجديد
 import ShotMap from './components/ShotMap';
 import PlayerProfile from './components/PlayerProfile';
 import MatchReport from './components/MatchReport';
@@ -61,19 +62,14 @@ function parseStatNumber(val: string): number | null {
 function deduplicateText(rawText: string): string {
   if (!rawText) return '';
   let text = rawText;
-
   text = text.replace(/(\|\s*\d+\s*\|[^\n]+\|)\s*([^\n|]+)/g, '$1\n\n$2');
-
   const trimmed = text.trim();
   const half = Math.floor(trimmed.length / 2);
   if (half > 12) {
     const firstHalf = trimmed.slice(0, half).trim();
     const secondHalf = trimmed.slice(half).trim();
-    if (firstHalf === secondHalf) {
-      text = firstHalf;
-    }
+    if (firstHalf === secondHalf) { text = firstHalf; }
   }
-
   text = text.split('\n').map(line => {
     const tLine = line.trim();
     if (tLine.length > 15 && !tLine.startsWith('|')) {
@@ -84,27 +80,22 @@ function deduplicateText(rawText: string): string {
     }
     return line.replace(/([^.\n]{10,}\.)\s*\1+/g, '$1');
   }).join('\n');
-
   return text;
 }
 
 function renderInlineText(text: string, isDark: boolean) {
   const linkParts = text.split(/(\[.*?\]\(.*?\))/g);
-  
   return linkParts.map((part, pIdx) => {
     if (part.startsWith('[') && part.endsWith(')')) {
       const match = part.match(/\[(.*?)\]\((.*?)\)/);
       if (match) {
         return (
           <a key={pIdx} href={match[2]} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-1.5 my-1 mx-1 px-3 py-1.5 rounded-xl border text-sm font-bold transition shadow-sm ${isDark ? 'bg-blue-900/25 hover:bg-blue-900/40 border-blue-500/30 text-blue-400 hover:text-blue-300' : 'bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-600'}`}>
-            <span>🔗</span>
-            <span>{match[1]}</span>
-            <span className="text-[10px] opacity-70">↗</span>
+            <span>🔗</span><span>{match[1]}</span><span className="text-[10px] opacity-70">↗</span>
           </a>
         );
       }
     }
-
     const urlParts = part.split(/(https?:\/\/[^\s]+)/g);
     return urlParts.map((urlPart, uIdx) => {
       if (urlPart.match(/^https?:\/\//)) {
@@ -131,9 +122,7 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
   const suggestedQuestions: string[] = [];
   
   let processedText = text.replace(youtubeRegex, (url, id) => {
-    if (id && id.length === 11 && !youtubeIds.includes(id)) {
-      youtubeIds.push(id);
-    }
+    if (id && id.length === 11 && !youtubeIds.includes(id)) { youtubeIds.push(id); }
     return ''; 
   });
 
@@ -154,24 +143,20 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
   }
   
   processedText = finalText.replace(/\]\s*\n\s*\(/g, '](');
-  
   const lines = processedText.split('\n');
   const elements: React.ReactNode[] = [];
   let tableRows: string[][] = [];
   let inTable = false;
   const renderedTables = new Set<string>();
+  let expectedCols = 0;
+  let tempRow: string[] = [];
 
   const cleanCell = (str: string) => str.replace(/\*\*/g, '').trim();
 
   const flushTable = (keyIndex: number) => {
     if (tableRows.length === 0) return;
-    
     const tableSignature = JSON.stringify(tableRows.map(r => r.map(cleanCell)));
-    if (renderedTables.has(tableSignature)) {
-      tableRows = [];
-      inTable = false;
-      return;
-    }
+    if (renderedTables.has(tableSignature)) { tableRows = []; inTable = false; tempRow = []; expectedCols = 0; return; }
     renderedTables.add(tableSignature);
 
     const headers = tableRows[0];
@@ -253,24 +238,19 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
         </div>
       );
     }
-    tableRows = [];
-    inTable = false;
+    tableRows = []; inTable = false; tempRow = []; expectedCols = 0;
   };
 
   lines.forEach((line, index) => {
     const trimmed = line.trim();
-
     if (trimmed.startsWith('```')) return;
 
     if (trimmed.includes('aifball-livescores')) {
       if (inTable) flushTable(index);
-      
       const leagueMatch = trimmed.match(/league="([^"]+)"/);
       const leagueName = leagueMatch ? leagueMatch[1] : 'ksa.1'; 
-      
       const dateMatch = trimmed.match(/date="([^"]+)"/);
       const matchDate = dateMatch ? dateMatch[1] : 'today'; 
-
       elements.push(
         <div key={`livescores-${index}`} className="my-5 w-full">
           <LiveSportsWidget league={leagueName} date={matchDate} isDark={isDark} />
@@ -281,13 +261,10 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
     if (trimmed.includes('aifball-match-report')) {
       if (inTable) flushTable(index);
-      
       const matchMatch = trimmed.match(/match="([^"]+)"/);
       const matchName = matchMatch ? matchMatch[1] : 'تقرير المباراة';
-      
       const idMatch = trimmed.match(/matchId="([^"]+)"/);
       const matchId = idMatch ? idMatch[1] : '3869685';
-
       elements.push(
         <div key={`match-report-${index}`} className="my-5 w-full">
           <MatchReport matchName={matchName} matchId={matchId} isDark={isDark} />
@@ -298,10 +275,8 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
     if (trimmed.startsWith('<aifball-player') && trimmed.includes('</aifball-player>')) {
       if (inTable) flushTable(index);
-      
       const nameMatch = trimmed.match(/name="([^"]+)"/);
       const playerName = nameMatch ? nameMatch[1] : 'لاعب غير معروف';
-
       elements.push(
         <div key={`player-${index}`} className="my-5 w-full">
           <PlayerProfile playerName={playerName} isDark={isDark} />
@@ -312,10 +287,8 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
     if (trimmed.startsWith('<aifball-shotmap') && trimmed.includes('</aifball-shotmap>')) {
       if (inTable) flushTable(index);
-      
       const matchMatch = trimmed.match(/match="([^"]+)"/);
       const matchName = matchMatch ? matchMatch[1] : 'تحليل تكتيكي متقدم';
-
       elements.push(
         <div key={`shotmap-${index}`} className="my-5 w-full">
           <ShotMap matchName={matchName} isDark={isDark} />
@@ -346,20 +319,30 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // 🌟 هنا تم تحديث منطق قراءة الجداول ليكون أكثر صرامة وذكاءً 🌟
+    // خوارزمية الجداول الذكية
     if (trimmed.startsWith('|')) {
       if (/^\|[\s\-:|]+\|?$/.test(trimmed)) { inTable = true; return; }
       inTable = true;
-      
       let cells = trimmed.split('|').map((c) => c.trim());
-      // تنظيف الأعمدة الفارغة الناتجة عن الانقسام
       if (cells[0] === '') cells.shift();
       if (cells[cells.length - 1] === '') cells.pop();
       
-      if (cells.length > 0 && cells.some(c => c !== '')) {
+      if (tableRows.length === 0 && tempRow.length === 0) {
+        expectedCols = cells.length;
         tableRows.push(cells);
+      } else {
+        tempRow.push(...cells);
+        if (tempRow.length >= expectedCols) {
+          tableRows.push(tempRow.slice(0, expectedCols));
+          tempRow = [];
+        }
       }
       return;
+    }
+    if (inTable && tempRow.length > 0) {
+      while (tempRow.length < expectedCols) tempRow.push('-');
+      tableRows.push(tempRow.slice(0, expectedCols));
+      tempRow = [];
     }
     if (inTable) flushTable(index);
 
@@ -375,7 +358,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       const isNumbered = /^\d+\.\s+/.test(trimmed);
       const textPart = trimmed.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '');
       const bullet = isNumbered ? trimmed.match(/^\d+\./)![0] : '•';
-      
       elements.push(
         <div key={index} className={`flex items-start gap-2.5 my-1.5 pr-2 border-r-2 ${isDark ? 'border-emerald-500/40' : 'border-emerald-400'}`}>
           <span className={`mt-0.5 font-bold whitespace-nowrap text-xs sm:text-sm ${isDark ? 'text-emerald-500' : 'text-emerald-600'}`}>{bullet}</span>
@@ -409,24 +391,12 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
           <div key={vid} className={`rounded-2xl overflow-hidden border shadow-xl mb-6 ${isDark ? 'border-emerald-500/30 bg-black/40' : 'border-emerald-200 bg-white'}`}>
             <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-emerald-950/50 border-white/10' : 'bg-emerald-50 border-gray-200'}`}>
               <span className={`text-xs sm:text-sm font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>الملخص الرسمي</span>
-              <a 
-                href={`https://www.youtube.com/watch?v=${vid}`} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white`}
-              >
+              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white`}>
                 مشاهدة على يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video bg-black">
-              <iframe 
-                src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0&modestbranding=1`} 
-                title="AiFBall Live Video Match" 
-                className="absolute top-0 left-0 w-full h-full border-0 object-cover" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                referrerPolicy="strict-origin-when-cross-origin"
-                allowFullScreen 
-              />
+              <iframe src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0&modestbranding=1`} title="AiFBall Live Video Match" className="absolute top-0 left-0 w-full h-full border-0 object-cover" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
             </div>
             <div className={`px-4 py-2 text-center text-[10px] sm:text-xs ${isDark ? 'bg-black/60 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
               إذا لم يعمل المشغل هنا، يمكنك الضغط على زر <strong className="text-red-500">"مشاهدة على يوتيوب"</strong> في الأعلى للمشاهدة مباشرة.
@@ -441,11 +411,7 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
     elements.push(
       <div key="suggested-questions" className="mt-4 flex flex-wrap gap-2 w-full">
         {suggestedQuestions.map((q, idx) => (
-          <button
-            key={`sq-${idx}`}
-            onClick={() => onSuggestionClick && onSuggestionClick(q)}
-            className={`inline-block text-right p-2 px-3 rounded-xl border transition-all duration-200 shadow-sm font-bold text-[11px] sm:text-xs cursor-pointer hover:-translate-y-0.5 active:translate-y-0 ${isDark ? 'bg-emerald-900/40 hover:bg-emerald-800/60 border-emerald-700/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'}`}
-          >
+          <button key={`sq-${idx}`} onClick={() => onSuggestionClick && onSuggestionClick(q)} className={`inline-block text-right p-2 px-3 rounded-xl border transition-all duration-200 shadow-sm font-bold text-[11px] sm:text-xs cursor-pointer hover:-translate-y-0.5 active:translate-y-0 ${isDark ? 'bg-emerald-900/40 hover:bg-emerald-800/60 border-emerald-700/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'}`}>
             {q}
           </button>
         ))}
@@ -461,6 +427,9 @@ const THEME_KEY = 'aifball_theme';
 
 export default function FootPlayChat() {
   const { user } = useUser(); 
+
+  // 🌟 حالة جديدة للتبديل بين المركز الإعلامي والشات
+  const [activeView, setActiveView] = useState<'matches' | 'chat'>('matches'); 
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -487,9 +456,7 @@ export default function FootPlayChat() {
 
   useEffect(() => {
     const savedTheme = localStorage.getItem(THEME_KEY);
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark');
-    } else {
+    if (savedTheme) { setIsDarkMode(savedTheme === 'dark'); } else {
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       setIsDarkMode(prefersDark);
     }
@@ -505,13 +472,9 @@ export default function FootPlayChat() {
     let interval: NodeJS.Timeout;
     if (loading) {
       setLoadingSeconds(0);
-      interval = setInterval(() => {
-        setLoadingSeconds((prev) => prev + 1);
-      }, 1000);
+      interval = setInterval(() => { setLoadingSeconds((prev) => prev + 1); }, 1000);
     }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    return () => { if (interval) clearInterval(interval); };
   }, [loading]);
 
   useEffect(() => {
@@ -519,7 +482,6 @@ export default function FootPlayChat() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
-
     if (!document.querySelector('script[src="https://widgets.api-sports.io/2.0.0/widgets.js"]')) {
       const script = document.createElement('script');
       script.type = 'module';
@@ -530,19 +492,13 @@ export default function FootPlayChat() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+  }, [messages, loading, activeView]);
 
   const handleVoiceSearch = () => {
     if (typeof window === 'undefined') return;
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert('متصفحك لا يدعم البحث الصوتي.');
-      return;
-    }
-    if (isListening) {
-      setIsListening(false);
-      return;
-    }
+    if (!SpeechRecognition) { alert('متصفحك لا يدعم البحث الصوتي.'); return; }
+    if (isListening) { setIsListening(false); return; }
     const recognition = new SpeechRecognition();
     recognition.lang = 'ar-SA';
     recognition.onstart = () => setIsListening(true);
@@ -557,10 +513,7 @@ export default function FootPlayChat() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files).map(file => ({
-        file,
-        url: URL.createObjectURL(file) 
-      }));
+      const newFiles = Array.from(e.target.files).map(file => ({ file, url: URL.createObjectURL(file) }));
       setAttachedFiles((prev) => [...prev, ...newFiles]);
     }
   };
@@ -568,26 +521,15 @@ export default function FootPlayChat() {
   const sendMessage = async (textToSend?: string) => {
     const query = (textToSend ?? input).trim();
     if ((!query && attachedFiles.length === 0) || loading) return;
-
     const cleanQuery = query.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?؟]/g, "").trim();
     const greetings = ['مرحبا', 'هلا', 'السلام عليكم', 'هاي', 'hi', 'hello', 'صباح الخير', 'مساء الخير'];
     
     if (greetings.includes(cleanQuery) && attachedFiles.length === 0) {
       const assistantReply = 'مرحبا، الله حيه، أنا فوتبلاي مساعدك الرياضي. ماذا تريد أن تعرف؟';
-      const newMsgs: Message[] = [
-        ...messages, 
-        { role: 'user', content: query, userQuery: query },
-        { role: 'assistant', content: assistantReply }
-      ];
-      setMessages(newMsgs);
-      setInput('');
-      
+      const newMsgs: Message[] = [ ...messages, { role: 'user', content: query, userQuery: query }, { role: 'assistant', content: assistantReply } ];
+      setMessages(newMsgs); setInput(''); setActiveView('chat'); // التبديل للشات تلقائياً
       let activeSessionId = currentSessionId;
-      if (!activeSessionId) {
-        activeSessionId = Date.now().toString();
-        setCurrentSessionId(activeSessionId);
-      }
-
+      if (!activeSessionId) { activeSessionId = Date.now().toString(); setCurrentSessionId(activeSessionId); }
       setSessions(prevSessions => {
         const idx = prevSessions.findIndex(s => s.id === activeSessionId);
         const updatedSession = { id: activeSessionId, title: 'محادثة جديدة', conversationId, messages: newMsgs, updatedAt: new Date().toISOString() };
@@ -603,16 +545,14 @@ export default function FootPlayChat() {
     const newMessages: Message[] = [...messages, { role: 'user', content: query, userQuery: query, imageUrls }];
     setMessages([...newMessages, { role: 'assistant', content: '', userQuery: query }]);
     setInput('');
+    setActiveView('chat'); // التبديل للشات تلقائياً
     
     const filesToUpload = [...attachedFiles];
     setAttachedFiles([]);
     setLoading(true);
 
     let activeSessionId = currentSessionId;
-    if (!activeSessionId) {
-      activeSessionId = Date.now().toString();
-      setCurrentSessionId(activeSessionId);
-    }
+    if (!activeSessionId) { activeSessionId = Date.now().toString(); setCurrentSessionId(activeSessionId); }
     
     let finalConvId = conversationId;
     let finalAnswer = '';
@@ -652,15 +592,8 @@ export default function FootPlayChat() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 90000); 
 
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal,
-      });
-
+      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody), signal: controller.signal });
       clearTimeout(timeoutId);
-
       if (!res.ok) throw new Error('Network response was not ok');
 
       const reader = res.body?.getReader();
@@ -670,19 +603,10 @@ export default function FootPlayChat() {
       if (reader) {
         while (true) {
           let readResult;
-          try {
-             readResult = await reader.read();
-          } catch (streamError) {
-             break; 
-          }
-          
+          try { readResult = await reader.read(); } catch (streamError) { break; }
           const { done, value } = readResult;
           if (done) break;
-          
-          if (isThinking) {
-             finalThinkingTime = Math.max(1, Math.floor((Date.now() - requestStartTime) / 1000));
-             isThinking = false;
-          }
+          if (isThinking) { finalThinkingTime = Math.max(1, Math.floor((Date.now() - requestStartTime) / 1000)); isThinking = false; }
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
@@ -693,22 +617,12 @@ export default function FootPlayChat() {
             if (trimmedLine.startsWith('data:')) {
               const dataStr = trimmedLine.replace(/^data:\s*/, '');
               if (!dataStr || dataStr === '[DONE]') continue;
-
               try {
                 const parsed = JSON.parse(dataStr);
                 if ((parsed.event === 'message' || parsed.event === 'agent_message') && typeof parsed.answer === 'string') {
-                  
                   const chunk = parsed.answer;
-
-                  if (chunk.length > 15 && finalAnswer.includes(chunk.trim())) {
-                    continue;
-                  }
-                  if (finalAnswer.length > 15 && chunk.trim().startsWith(finalAnswer.trim())) {
-                    finalAnswer = chunk;
-                  } else {
-                    finalAnswer += chunk;
-                  }
-
+                  if (chunk.length > 15 && finalAnswer.includes(chunk.trim())) { continue; }
+                  if (finalAnswer.length > 15 && chunk.trim().startsWith(finalAnswer.trim())) { finalAnswer = chunk; } else { finalAnswer += chunk; }
                   finalAnswer = deduplicateText(finalAnswer);
                   
                   setMessages(prev => {
@@ -722,42 +636,33 @@ export default function FootPlayChat() {
                     return updated;
                   });
                 }
-                if (parsed.conversation_id) {
-                  finalConvId = parsed.conversation_id;
-                  setConversationId(finalConvId);
-                }
+                if (parsed.conversation_id) { finalConvId = parsed.conversation_id; setConversationId(finalConvId); }
               } catch (e) {}
             }
           }
         }
       }
-
     } catch (error: any) {
       setMessages(prev => {
         const updated = [...prev];
         const lastIndex = updated.length - 1;
         if (updated[lastIndex].role === 'assistant') {
           if (!finalAnswer) {
-            if (error.name === 'AbortError') {
-              updated[lastIndex].content = 'عذراً، استغرق البحث وقتاً طويلاً جداً. حاول تقليل تعقيد السؤال.';
-            } else {
-              updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت.';
-            }
+            if (error.name === 'AbortError') { updated[lastIndex].content = 'عذراً، استغرق البحث وقتاً طويلاً جداً. حاول تقليل تعقيد السؤال.'; } 
+            else { updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت.'; }
           }
         }
         return updated;
       });
     } finally {
       setLoading(false); 
-      setMessages(currentMessages => {
-        saveSessionProgress(currentMessages);
-        return currentMessages;
-      });
+      setMessages(currentMessages => { saveSessionProgress(currentMessages); return currentMessages; });
     }
   };
 
   const startNewChat = () => {
     setMessages([]); setConversationId(''); setCurrentSessionId(''); setInput(''); setAttachedFiles([]); setSidebarOpen(false);
+    setActiveView('chat'); // التبديل للشات عند بدء محادثة جديدة
   };
 
   return (
@@ -772,7 +677,7 @@ export default function FootPlayChat() {
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        .custom-scrollbar::-webkit-scrollbar { height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: ${isDarkMode ? '#2E3338' : '#D1D5DB'}; border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #1D6B35; }
@@ -795,7 +700,7 @@ export default function FootPlayChat() {
         </div>
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5">
           {sessions.map((s) => (
-            <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setConversationId(s.conversationId); setMessages(s.messages); setSidebarOpen(false); }} className={`p-3 rounded-xl cursor-pointer text-xs truncate transition border ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-gray-300 border-transparent hover:border-white/10' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-100 hover:border-gray-300'}`}>
+            <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setConversationId(s.conversationId); setMessages(s.messages); setSidebarOpen(false); setActiveView('chat'); }} className={`p-3 rounded-xl cursor-pointer text-xs truncate transition border ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-gray-300 border-transparent hover:border-white/10' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-100 hover:border-gray-300'}`}>
               {s.title}
             </div>
           ))}
@@ -812,14 +717,7 @@ export default function FootPlayChat() {
           <SignedIn>
             <div className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
               <div className="flex items-center gap-3 w-full">
-                <UserButton 
-                  afterSignOutUrl="/" 
-                  appearance={{ 
-                    elements: { 
-                      userButtonAvatarBox: "w-9 h-9 rounded-full border-2 border-emerald-500/30 flex-shrink-0" 
-                    } 
-                  }} 
-                />
+                <UserButton afterSignOutUrl="/" appearance={{ elements: { userButtonAvatarBox: "w-9 h-9 rounded-full border-2 border-emerald-500/30 flex-shrink-0" } }} />
                 <div className="flex flex-col flex-1 min-w-0">
                   <div className="flex items-center justify-between w-full">
                     <span className={`text-xs font-bold truncate pr-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
@@ -851,7 +749,13 @@ export default function FootPlayChat() {
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* 🌟 أزرار التبديل بين المركز والشات 🌟 */}
+          <div className={`flex items-center p-1 rounded-xl border ${isDarkMode ? 'bg-black/40 border-white/10' : 'bg-gray-100 border-gray-200'}`}>
+            <button onClick={() => setActiveView('matches')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${activeView === 'matches' ? 'bg-emerald-600 text-white shadow-sm' : (isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')}`}>المركز الإعلامي</button>
+            <button onClick={() => setActiveView('chat')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${activeView === 'chat' ? 'bg-emerald-600 text-white shadow-sm' : (isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')}`}>المساعد الذكي</button>
+          </div>
+
           <button onClick={toggleTheme} className={`w-9 h-9 rounded-xl border flex items-center justify-center transition ${isDarkMode ? 'bg-white/5 hover:bg-white/10 border-white/10 text-yellow-400' : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-600'}`} title="تغيير المظهر">
             {isDarkMode ? (
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
@@ -859,163 +763,175 @@ export default function FootPlayChat() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
             )}
           </button>
-          <button onClick={startNewChat} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition hidden sm:block ${isDarkMode ? 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-700'}`}>+ محادثة جديدة</button>
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto flex flex-col relative z-10 custom-scrollbar">
-        {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col justify-center my-auto py-2">
-            <div className="text-right space-y-3 mb-6 px-1">
-              <div className={`inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 ${isDarkMode ? 'text-emerald-400 border-emerald-500/40' : 'text-emerald-600 border-emerald-300'}`}>
-                <span>⚽</span><span>HOME OF FOOTBALL</span>
-              </div>
-              <h2 className={`text-3xl sm:text-5xl font-extrabold tracking-tight drop-shadow-md ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>أهلاً بك في فوتبلاي</h2>
-              <p className={`text-sm sm:text-base leading-relaxed max-w-2xl font-normal drop-shadow ${isDarkMode ? 'text-gray-200' : 'text-gray-600'}`}>
-                تحليل تكتيكي، تشكيلات مباريات، مقارنات إحصائية متقدمة، وأهداف وملخصات المباريات.. كيف أساعدك اليوم؟
-              </p>
-            </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
-              {suggestionCards.map((card, i) => (
-                <div key={i} className={`flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl backdrop-blur-sm border shadow-lg min-h-[115px] select-none ${isDarkMode ? 'bg-black/20 border-white/10 opacity-80' : 'bg-white border-gray-200 opacity-90'}`}>
-                  <p className={`text-sm font-bold leading-relaxed line-clamp-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>{card.question}</p>
-                  <div className="flex items-center justify-between w-full mt-3 pt-1">
-                    <span className="text-[10px] sm:text-xs font-bold text-[#22C55E] truncate pl-1">{card.tag}</span>
-                    <span className="text-lg opacity-80">{card.icon}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+      <main className="flex-1 overflow-y-auto relative z-10 custom-scrollbar">
+        {activeView === 'matches' ? (
+           // 🌟 عرض المركز الإعلامي 🌟
+          <div className="px-4 sm:px-8 py-6 w-full mx-auto max-w-5xl">
+            <LiveMatchCenter isDark={isDarkMode} />
           </div>
         ) : (
-          <div className="space-y-6 pb-4">
-            {messages.map((msg, i) => (
-              (msg.content && msg.content.trim() !== '') || (msg.imageUrls && msg.imageUrls.length > 0) ? (
-                <div key={i} className="flex items-start gap-4 w-full">
-                  <div className="flex-shrink-0 mt-1 hidden sm:block">
-                     {msg.role === 'assistant' ? <AiFBallLogo size="sm"/> : <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shadow-sm ${isDarkMode ? 'bg-emerald-700' : 'bg-emerald-600'}`}>أنت</div>}
+          // 🌟 عرض واجهة الشات 🌟
+          <div className="px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto flex flex-col min-h-full">
+            {messages.length === 0 ? (
+              <div className="flex-1 flex flex-col justify-center my-auto py-2">
+                <div className="text-right space-y-3 mb-6 px-1">
+                  <div className={`inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 ${isDarkMode ? 'text-emerald-400 border-emerald-500/40' : 'text-emerald-600 border-emerald-300'}`}>
+                    <span>⚽</span><span>HOME OF FOOTBALL</span>
                   </div>
-                  <div className="flex flex-col w-full min-w-0">
-                     {msg.role === 'user' ? (
-                        <div className={`text-base sm:text-lg font-bold leading-relaxed break-words ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                           {msg.content}
-                           {msg.imageUrls && msg.imageUrls.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-3">
-                              {msg.imageUrls.map((url, idx) => (
-                                <img key={idx} src={url} alt="مرفق" className={`w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border shadow-sm ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`} />
-                              ))}
-                            </div>
-                           )}
-                        </div>
-                     ) : (
-                        <div className="w-full">
-                           {msg.thinkingTime !== undefined && msg.thinkingTime > 0 && (
-                             <div className="mb-3 w-full">
-                               <details className={`text-xs cursor-pointer group select-none transition-all duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                 <summary className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl border transition-colors shadow-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 hover:bg-[#222528] border-white/5' : 'bg-gray-100 hover:bg-gray-200 border-gray-200'}`}>
-                                   <span className={`font-bold ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span>
-                                   <span className={`font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>تم جلب المعلومات في ({formatSeconds(msg.thinkingTime)})</span>
-                                   <span className="opacity-50 group-open:rotate-180 transition-transform text-[8px] mr-auto pl-1">▼</span>
-                                 </summary>
-                                 <div className={`mt-3 mr-4 pr-3 py-1.5 border-r-2 space-y-2 font-medium text-xs ${isDarkMode ? 'border-emerald-500/30 text-gray-400' : 'border-emerald-300 text-gray-500'}`}>
-                                   <p className="flex items-center gap-2"><span className={`text-[10px] ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span> تم التحقق من البيانات الرياضية...</p>
-                                   <p className="flex items-center gap-2"><span className={`text-[10px] ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span> تمت مراجعة الإحصائيات والمصادر...</p>
-                                   <p className="flex items-center gap-2"><span className={`text-[10px] ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span> تم صياغة النتيجة النهائية بنجاح.</p>
-                                 </div>
-                               </details>
-                             </div>
-                           )}
-                           <div className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-5 shadow-2xl text-sm sm:text-[15px] leading-relaxed break-words transition-colors duration-300 ${isDarkMode ? 'bg-[#131814]/85 border-white/10 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}>
-                             {renderFormattedText(msg.content, isDarkMode, sendMessage)}
-                           </div>
-                        </div>
-                     )}
-                  </div>
+                  <h2 className={`text-3xl sm:text-5xl font-extrabold tracking-tight drop-shadow-md ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>أهلاً بك في فوتبلاي</h2>
+                  <p className={`text-sm sm:text-base leading-relaxed max-w-2xl font-normal drop-shadow ${isDarkMode ? 'text-gray-200' : 'text-gray-600'}`}>
+                    تحليل تكتيكي، تشكيلات مباريات، مقارنات إحصائية متقدمة، وأهداف وملخصات المباريات.. كيف أساعدك اليوم؟
+                  </p>
                 </div>
-              ) : null
-            ))}
-            
-            {loading && (
-              <div className="flex items-start gap-4 w-full mt-4">
-                <div className="flex-shrink-0 mt-1 hidden sm:block"><AiFBallLogo size="sm"/></div>
-                <div className="w-full min-w-0 flex items-center">
-                   <div className={`rounded-2xl px-4 py-3 border shadow-sm max-w-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 border-white/5 text-gray-300' : 'bg-white border-gray-200 text-gray-600'}`}>
-                      <div className="flex flex-col gap-3">
-                        <div className="flex items-center gap-3">
-                           <svg className="animate-spin w-4 h-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                           </svg>
-                           <span className={`font-bold text-xs sm:text-sm ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>جاري البحث والتحليل... ({formatSeconds(loadingSeconds)})</span>
-                        </div>
-                        <div className={`pt-3 border-t space-y-2 text-[11px] font-medium ${isDarkMode ? 'border-white/5' : 'border-gray-200'}`}>
-                          <div className="flex items-center gap-2">
-                            <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>✓</span><span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>الاتصال بخوادم فوتبلاي...</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {loadingSeconds >= 2 ? <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>✓</span> : <span className="text-emerald-500 animate-pulse text-[10px]">⬤</span>}
-                            <span className={loadingSeconds >= 2 ? (isDarkMode ? 'text-gray-300' : 'text-gray-600') : (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>أتحقق من الإحصائيات والمعلومات...</span>
-                          </div>
-                          {loadingSeconds >= 3 && (
-                            <div className="flex items-center gap-2">
-                              {loadingSeconds >= 5 ? <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>✓</span> : <span className="text-emerald-500 animate-pulse text-[10px]">⬤</span>}
-                              <span className={loadingSeconds >= 5 ? (isDarkMode ? 'text-gray-300' : 'text-gray-600') : (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>أراجع البيانات والمصادر المتاحة...</span>
-                            </div>
-                          )}
-                        </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
+                  {suggestionCards.map((card, i) => (
+                    <div key={i} onClick={() => sendMessage(card.question)} className={`cursor-pointer flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl backdrop-blur-sm border shadow-lg min-h-[115px] select-none hover:scale-[1.02] transition-transform ${isDarkMode ? 'bg-black/20 border-white/10 opacity-80' : 'bg-white border-gray-200 opacity-90'}`}>
+                      <p className={`text-sm font-bold leading-relaxed line-clamp-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>{card.question}</p>
+                      <div className="flex items-center justify-between w-full mt-3 pt-1">
+                        <span className="text-[10px] sm:text-xs font-bold text-[#22C55E] truncate pl-1">{card.tag}</span>
+                        <span className="text-lg opacity-80">{card.icon}</span>
                       </div>
-                   </div>
+                    </div>
+                  ))}
                 </div>
               </div>
+            ) : (
+              <div className="space-y-6 pb-4">
+                {messages.map((msg, i) => (
+                  (msg.content && msg.content.trim() !== '') || (msg.imageUrls && msg.imageUrls.length > 0) ? (
+                    <div key={i} className="flex items-start gap-4 w-full">
+                      <div className="flex-shrink-0 mt-1 hidden sm:block">
+                         {msg.role === 'assistant' ? <AiFBallLogo size="sm"/> : <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shadow-sm ${isDarkMode ? 'bg-emerald-700' : 'bg-emerald-600'}`}>أنت</div>}
+                      </div>
+                      <div className="flex flex-col w-full min-w-0">
+                         {msg.role === 'user' ? (
+                            <div className={`text-base sm:text-lg font-bold leading-relaxed break-words ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                               {msg.content}
+                               {msg.imageUrls && msg.imageUrls.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-3">
+                                  {msg.imageUrls.map((url, idx) => (
+                                    <img key={idx} src={url} alt="مرفق" className={`w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border shadow-sm ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`} />
+                                  ))}
+                                </div>
+                               )}
+                            </div>
+                         ) : (
+                            <div className="w-full">
+                               {msg.thinkingTime !== undefined && msg.thinkingTime > 0 && (
+                                 <div className="mb-3 w-full">
+                                   <details className={`text-xs cursor-pointer group select-none transition-all duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                     <summary className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl border transition-colors shadow-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 hover:bg-[#222528] border-white/5' : 'bg-gray-100 hover:bg-gray-200 border-gray-200'}`}>
+                                       <span className={`font-bold ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span>
+                                       <span className={`font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>تم جلب المعلومات في ({formatSeconds(msg.thinkingTime)})</span>
+                                       <span className="opacity-50 group-open:rotate-180 transition-transform text-[8px] mr-auto pl-1">▼</span>
+                                     </summary>
+                                     <div className={`mt-3 mr-4 pr-3 py-1.5 border-r-2 space-y-2 font-medium text-xs ${isDarkMode ? 'border-emerald-500/30 text-gray-400' : 'border-emerald-300 text-gray-500'}`}>
+                                       <p className="flex items-center gap-2"><span className={`text-[10px] ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span> تم التحقق من البيانات الرياضية...</p>
+                                       <p className="flex items-center gap-2"><span className={`text-[10px] ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span> تمت مراجعة الإحصائيات والمصادر...</p>
+                                       <p className="flex items-center gap-2"><span className={`text-[10px] ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span> تم صياغة النتيجة النهائية بنجاح.</p>
+                                     </div>
+                                   </details>
+                                 </div>
+                               )}
+                               <div className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-5 shadow-2xl text-sm sm:text-[15px] leading-relaxed break-words transition-colors duration-300 ${isDarkMode ? 'bg-[#131814]/85 border-white/10 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}>
+                                 {renderFormattedText(msg.content, isDarkMode, sendMessage)}
+                               </div>
+                            </div>
+                         )}
+                      </div>
+                    </div>
+                  ) : null
+                ))}
+                
+                {loading && (
+                  <div className="flex items-start gap-4 w-full mt-4">
+                    <div className="flex-shrink-0 mt-1 hidden sm:block"><AiFBallLogo size="sm"/></div>
+                    <div className="w-full min-w-0 flex items-center">
+                       <div className={`rounded-2xl px-4 py-3 border shadow-sm max-w-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 border-white/5 text-gray-300' : 'bg-white border-gray-200 text-gray-600'}`}>
+                          <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-3">
+                               <svg className="animate-spin w-4 h-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                               </svg>
+                               <span className={`font-bold text-xs sm:text-sm ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>جاري البحث والتحليل... ({formatSeconds(loadingSeconds)})</span>
+                            </div>
+                            <div className={`pt-3 border-t space-y-2 text-[11px] font-medium ${isDarkMode ? 'border-white/5' : 'border-gray-200'}`}>
+                              <div className="flex items-center gap-2">
+                                <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>✓</span><span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>الاتصال بخوادم فوتبلاي...</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {loadingSeconds >= 2 ? <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>✓</span> : <span className="text-emerald-500 animate-pulse text-[10px]">⬤</span>}
+                                <span className={loadingSeconds >= 2 ? (isDarkMode ? 'text-gray-300' : 'text-gray-600') : (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>أتحقق من الإحصائيات والمعلومات...</span>
+                              </div>
+                              {loadingSeconds >= 3 && (
+                                <div className="flex items-center gap-2">
+                                  {loadingSeconds >= 5 ? <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>✓</span> : <span className="text-emerald-500 animate-pulse text-[10px]">⬤</span>}
+                                  <span className={loadingSeconds >= 5 ? (isDarkMode ? 'text-gray-300' : 'text-gray-600') : (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>أراجع البيانات والمصادر المتاحة...</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                       </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
         )}
       </main>
 
-      <footer className={`p-3 backdrop-blur-md border-t relative z-20 transition-colors duration-300 ${isDarkMode ? 'bg-[#131314]/90 border-white/10' : 'bg-white/90 border-gray-200'}`}>
-        <div className="max-w-4xl mx-auto">
-          {attachedFiles.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-2 px-2">
-              {attachedFiles.map((f, idx) => (
-                <div key={idx} className={`flex items-center gap-2 p-1.5 pr-3 rounded-lg shadow-sm backdrop-blur-md border ${isDarkMode ? 'bg-black/40 border-emerald-500/50' : 'bg-gray-50 border-emerald-300'}`}>
-                  <img src={f.url} alt="مرفق" className={`w-8 h-8 object-cover rounded-md border ${isDarkMode ? 'border-white/10' : 'border-gray-300'}`} />
-                  <span className={`text-xs max-w-[120px] truncate ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`} dir="ltr">{f.file.name}</span>
-                  <button onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))} className={`font-bold ml-1 mr-1 transition ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-600'}`}>✕</button>
-                </div>
-              ))}
+      {/* 🌟 إخفاء صندوق الدردشة إذا كنا في المركز الإعلامي 🌟 */}
+      {activeView === 'chat' && (
+        <footer className={`p-3 backdrop-blur-md border-t relative z-20 transition-colors duration-300 ${isDarkMode ? 'bg-[#131314]/90 border-white/10' : 'bg-white/90 border-gray-200'}`}>
+          <div className="max-w-4xl mx-auto">
+            {attachedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2 px-2">
+                {attachedFiles.map((f, idx) => (
+                  <div key={idx} className={`flex items-center gap-2 p-1.5 pr-3 rounded-lg shadow-sm backdrop-blur-md border ${isDarkMode ? 'bg-black/40 border-emerald-500/50' : 'bg-gray-50 border-emerald-300'}`}>
+                    <img src={f.url} alt="مرفق" className={`w-8 h-8 object-cover rounded-md border ${isDarkMode ? 'border-white/10' : 'border-gray-300'}`} />
+                    <span className={`text-xs max-w-[120px] truncate ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`} dir="ltr">{f.file.name}</span>
+                    <button onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))} className={`font-bold ml-1 mr-1 transition ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-600'}`}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className={`flex items-center gap-2 border rounded-full px-3 py-2 shadow-xl transition-colors duration-300 ${isDarkMode ? 'bg-[#1A1C1E] border-white/10 focus-within:border-emerald-500/40' : 'bg-gray-50 border-gray-300 focus-within:border-emerald-500'}`}>
+              <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*" className="hidden" />
+              <button onClick={() => fileInputRef.current?.click()} title="إرفاق ملف" className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl flex-shrink-0 transition ${isDarkMode ? 'hover:bg-white/10 text-gray-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500 hover:text-gray-800'}`}>
+                +
+              </button>
+
+              <button onClick={handleVoiceSearch} title="بحث صوتي" className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition shadow-sm ${isListening ? 'bg-emerald-600 text-white animate-pulse' : (isDarkMode ? 'hover:bg-white/10 text-gray-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500 hover:text-gray-800')}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 01-14 0v-1M12 18.5V22M8 22h8" />
+                </svg>
+              </button>
+
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                placeholder={isListening ? 'جاري الاستماع لصوتك...' : 'اسأل عن أي مباراة، تحليل، أو إحصائية...'}
+                className={`flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none ${isDarkMode ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
+              />
+
+              <button onClick={() => sendMessage()} disabled={loading || (!input.trim() && attachedFiles.length === 0)} className="w-10 h-10 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:bg-gray-300 disabled:text-gray-500 flex items-center justify-center text-white flex-shrink-0 transition shadow-md">
+                ➤
+              </button>
             </div>
-          )}
-
-          <div className={`flex items-center gap-2 border rounded-full px-3 py-2 shadow-xl transition-colors duration-300 ${isDarkMode ? 'bg-[#1A1C1E] border-white/10 focus-within:border-emerald-500/40' : 'bg-gray-50 border-gray-300 focus-within:border-emerald-500'}`}>
-            <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*" className="hidden" />
-            <button onClick={() => fileInputRef.current?.click()} title="إرفاق ملف" className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl flex-shrink-0 transition ${isDarkMode ? 'hover:bg-white/10 text-gray-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500 hover:text-gray-800'}`}>
-              +
-            </button>
-
-            <button onClick={handleVoiceSearch} title="بحث صوتي" className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition shadow-sm ${isListening ? 'bg-emerald-600 text-white animate-pulse' : (isDarkMode ? 'hover:bg-white/10 text-gray-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500 hover:text-gray-800')}`}>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 01-14 0v-1M12 18.5V22M8 22h8" />
-              </svg>
-            </button>
-
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder={isListening ? 'جاري الاستماع لصوتك...' : 'اسأل عن أي مباراة، تحليل، أو إحصائية...'}
-              className={`flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none ${isDarkMode ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
-            />
-
-            <button onClick={() => sendMessage()} disabled={loading || (!input.trim() && attachedFiles.length === 0)} className="w-10 h-10 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:bg-gray-300 disabled:text-gray-500 flex items-center justify-center text-white flex-shrink-0 transition shadow-md">
-              ➤
-            </button>
+            <p className={`text-[11px] text-center mt-2.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>منصة فوتبلاي للذكاء الاصطناعي الرياضي • by خالد العايش</p>
           </div>
-          <p className={`text-[11px] text-center mt-2.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>منصة فوتبلاي للذكاء الاصطناعي الرياضي • by خالد العايش</p>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 }
