@@ -7,7 +7,8 @@ import LiveMatchCenter from './components/LiveMatchCenter';
 import ShotMap from './components/ShotMap';
 import PlayerProfile from './components/PlayerProfile';
 import MatchReport from './components/MatchReport';
-import TrainingDrillWidget from './components/TrainingDrillWidget'; // 🌟 استدعاء مكون التمارين الجديد
+import TrainingDrillWidget from './components/TrainingDrillWidget';
+import PlayerComparison from './components/PlayerComparison'; // 🌟 استدعاء مكون المقارنة
 
 interface Message {
   role: 'user' | 'assistant';
@@ -130,6 +131,23 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
   processedText = processedText.replace(/<a\s+href=.*?<\/a>/gi, '');
   processedText = processedText.replace(/a\s*href=[^\s>]+/gi, '');
   processedText = deduplicateText(processedText);
+
+  // 🌟 خوارزمية إصلاح الوسوم المكسورة من Dify (خاصة aifball-compare)
+  processedText = processedText.replace(/aifball-compare[\s\S]*?(?:<\/aifball-compare>|$)/gi, (match) => {
+      // إزالة أي أسطر جديدة أو أقواس زائدة كسرها الذكاء الاصطناعي
+      let clean = match.replace(/[\n\r]+/g, ' ');
+      clean = clean.replace(/></g, ' ');
+      clean = clean.replace(/<|>/g, ' '); // مسح الأقواس العشوائية
+      
+      // استخراج الأسماء
+      const p1 = clean.match(/player1\s*=\s*"?([^"]+)"?/i);
+      const p2 = clean.match(/player2\s*=\s*"?([^"]+)"?/i);
+      
+      const name1 = p1 ? p1[1].trim().replace(/['"]/g, '') : 'Player 1';
+      const name2 = p2 ? p2[1].trim().replace(/['"]/g, '') : 'Player 2';
+      
+      return `<aifball-compare player1="${name1}" player2="${name2}"></aifball-compare>`;
+  });
 
   const paragraphs = processedText.split(/\n\s*\n/);
   const uniqueParagraphs = new Set();
@@ -316,16 +334,30 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // 🌟 إضافة شرط التمارين التكتيكية (Drills)
     if (trimmed.startsWith('<aifball-training') && trimmed.includes('</aifball-training>')) {
       if (inTable) flushTable(index);
-      
       const nameMatch = trimmed.match(/name="([^"]+)"/);
       const drillName = nameMatch ? nameMatch[1] : 'تمرين تكتيكي';
-
       elements.push(
         <div key={`training-${index}`} className="my-5 w-full">
           <TrainingDrillWidget drillName={drillName} isDark={isDark} />
+        </div>
+      );
+      return;
+    }
+
+    // 🌟 مكون المقارنة (يقرأ الوسم الذي تم إصلاحه)
+    if (trimmed.startsWith('<aifball-compare') && trimmed.includes('</aifball-compare>')) {
+      if (inTable) flushTable(index);
+      const p1Match = trimmed.match(/player1="([^"]+)"/);
+      const p2Match = trimmed.match(/player2="([^"]+)"/);
+      
+      const player1 = p1Match ? p1Match[1] : 'اللاعب الأول';
+      const player2 = p2Match ? p2Match[1] : 'اللاعب الثاني';
+
+      elements.push(
+        <div key={`compare-${index}`} className="my-5 w-full">
+          <PlayerComparison player1={player1} player2={player2} isDark={isDark} />
         </div>
       );
       return;
@@ -469,7 +501,7 @@ export default function FootPlayChat() {
     { question: 'داشبورد لاسلوب لعب الاتحاد', tag: 'تحليل تكتيكي', icon: '📋' },
     { question: 'ما هو جدول ترتيب دوري روشن السعودي؟', tag: 'ترتيب وإحصائيات', icon: '📊' },
     { question: 'أهداف وملخصات أبرز مباريات اليوم', tag: 'أهداف وملخصات', icon: '🎬' },
-    { question: 'ما هو السجل التاريخي لأبطال دوري أبطال أوروبا؟', tag: 'التاريخ والبطولات', icon: '🏆' },
+    { question: 'قارن بين رونالدو وميسي', tag: 'مقارنة لاعبين', icon: '⚔️' },
   ];
 
   useEffect(() => {
