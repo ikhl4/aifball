@@ -8,12 +8,15 @@ export async function POST(req: Request) {
     const body = await req.json();
     const query = body?.query?.trim() || 'مرحبا';
     const conversation_id = body?.conversation_id || '';
+    
+    // 🌟 إضافة: استقبال الملفات المرفقة من الواجهة
+    const files = body?.files || []; 
 
     if (!query) {
       return NextResponse.json({ error: 'السؤال فارغ' }, { status: 400 });
     }
 
-    // جلب المفتاح بأمان من إعدادات Vercel بدلاً من كتابته في الكود
+    // جلب المفتاح بأمان من إعدادات Vercel
     const apiKey = process.env.DIFY_API_KEY;
     const url = 'https://api.dify.ai/v1/chat-messages';
 
@@ -21,7 +24,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'مفتاح Dify غير مهيأ في السيرفر' }, { status: 500 });
     }
 
-    console.log('Sending to Dify:', { query, conversation_id });
+    console.log('Sending to Dify:', { query, conversation_id, hasFiles: files.length > 0 });
 
     const apiRes = await fetch(url, {
       method: 'POST',
@@ -35,8 +38,8 @@ export async function POST(req: Request) {
         query: query,
         response_mode: 'streaming',
         conversation_id: conversation_id || undefined,
-        // نستخدم معرف مستخدم ديناميكي أو ثابت بحسب ما تفضله
         user: 'aifball-web-user', 
+        files: files, // 🌟 إضافة: تمرير الملفات إلى Dify
       }),
     });
 
