@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 
-// ضعنا رابط سيرفر Render الخاص بك هنا
 const LANUS_API = 'https://aifball-python-api.onrender.com';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const source = searchParams.get('source'); // '365', 'sofascore', 'fotmob', 'fbref', 'tm'
-  const action = searchParams.get('action'); // 'shotmap', 'heatmap', 'table', 'stats', 'match', 'value', 'transfers'
+  const source = searchParams.get('source'); 
+  const action = searchParams.get('action'); 
   
   let endpoint = '';
 
@@ -15,6 +14,8 @@ export async function GET(request: Request) {
     endpoint = `${LANUS_API}/365scores/shotmap?match_url=${encodeURIComponent(searchParams.get('matchUrl') || '')}`;
   } else if (source === '365' && action === 'heatmap') {
     endpoint = `${LANUS_API}/365scores/heatmap?match_url=${encodeURIComponent(searchParams.get('matchUrl') || '')}&player_name=${encodeURIComponent(searchParams.get('playerName') || '')}`;
+  } else if (source === '365' && action === 'lineup') { // <--- هذا السطر كان ناقصاً
+    endpoint = `${LANUS_API}/365scores/lineup?match_url=${encodeURIComponent(searchParams.get('matchUrl') || '')}`;
   
   // 2. SofaScore
   } else if (source === 'sofascore' && action === 'shotmap') {
@@ -46,10 +47,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    // نرسل الطلب إلى سيرفر Render
     const res = await fetch(endpoint, {
-        // ملاحظة هامة: الخطة المجانية في Render تنام بعد 15 دقيقة من الخمول
-        // أول طلب قد يستغرق 50 ثانية ليستيقظ السيرفر
         next: { revalidate: 0 } 
     });
     
