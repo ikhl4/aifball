@@ -54,28 +54,40 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
   const [inputUrl, setInputUrl] = useState('');
   const [sourceType, setSourceType] = useState<'365' | 'sofascore'>('sofascore');
 
+  // --- حالات الخريطة الحرارية ---
+  const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
+  const [heatmapLoading, setHeatmapLoading] = useState(false);
+
   const isArabic = /[\u0600-\u06FF]/.test(matchName);
   const lang = isArabic ? 'ar' : 'en';
   const t = translations[lang];
   const dir = isArabic ? 'rtl' : 'ltr';
 
+  // 1. جلب بيانات المباراة (StatsBomb) مع إصلاح مشكلة التحميل اللانهائي
   useEffect(() => {
     const fetchMatchData = async () => {
       setLoading(true);
       try {
         const res = await fetch(`/api/match-report?matchId=${matchId}`);
         const result = await res.json();
-        if (res.ok) setData(result);
+        
+        if (res.ok) {
+          setData(result);
+        } else {
+          console.error("فشل جلب البيانات:", result);
+          setData(null); 
+        }
       } catch (error) {
-        console.error("Error fetching match data:", error);
+        console.error("خطأ في الاتصال بالسيرفر:", error);
+        setData(null);
       } finally {
-        setLoading(false);
+        setLoading(false); // يوقف التحميل مهما حدث
       }
     };
     fetchMatchData();
   }, [matchId]);
 
-  // --- دالة جلب البيانات الذكية (تدعم 365 و SofaScore) ---
+  // 2. دالة جلب خرائط التسديد الحية
   const fetchLiveShots = async () => {
     if (!inputUrl) {
       setLiveError("الرجاء إدخال رابط المباراة أولاً.");
@@ -90,9 +102,7 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
       const res = await fetch(`/api/advanced?source=${sourceType}&action=shotmap&matchUrl=${encodeURIComponent(inputUrl)}`);
       const json = await res.json();
 
-      if (json.error) {
-        throw new Error(json.details || json.error);
-      }
+      if (json.error) throw new Error(json.details || json.error);
 
       if (json.data && Array.isArray(json.data)) {
         const mappedShots: ShotData[] = json.data.map((shot: any, index: number) => {
@@ -103,7 +113,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
           let playerName = '';
           let isHomeTeam = true;
 
-          // 1. معالجة بيانات 365Scores
           if (sourceType === '365') {
             if (shot.shot_outcome === 'Gol') mappedOutcome = 'Goal';
             else if (shot.shot_outcome === 'Atajado') mappedOutcome = 'Saved';
@@ -114,7 +123,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
             isHomeTeam = shot.competitorNum === 1;
             playerName = `لاعب ${shot.playerId}`; 
 
-          // 2. معالجة بيانات SofaScore
           } else if (sourceType === 'sofascore') {
             const outcomeStr = (shot.shot_type || shot.outcome || '').toLowerCase();
             if (outcomeStr.includes('goal')) mappedOutcome = 'Goal';
@@ -127,7 +135,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
             playerName = shot.player_name || shot.player || 'لاعب غير معروف';
           }
 
-          // قلب الإحداثيات للفريق الضيف
           if (!isHomeTeam) {
             mappedX = 120 - mappedX; 
             mappedY = 80 - mappedY;  
@@ -156,6 +163,31 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
     }
   };
 
+  // 3. دالة جلب الخريطة الحرارية
+  const fetchHeatmap = async (playerName: string) => {
+    if (!inputUrl) {
+      alert("الرجاء إدخال رابط المباراة في تبويب خرائط التسديد أولاً.");
+      return;
+    }
+    setHeatmapLoading(true);
+    setHeatmapUrl(null);
+    try {
+      const res = await fetch(`/api/advanced?source=${sourceType}&action=heatmap&matchUrl=${encodeURIComponent(inputUrl)}&playerName=${encodeURIComponent(playerName)}`);
+      const json = await res.json();
+      
+      if (json.url) {
+        setHeatmapUrl(json.url);
+      } else {
+        alert("لم يتم العثور على خريطة حرارية لهذا اللاعب.");
+      }
+    } catch (error) {
+      console.error("خطأ في جلب الخريطة الحرارية:", error);
+      alert("فشل جلب الخريطة الحرارية.");
+    } finally {
+      setHeatmapLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className={`w-full max-w-6xl mx-auto my-4 p-8 rounded-3xl border flex flex-col items-center justify-center ${isDark ? 'bg-[#0a0a0a] border-emerald-900/30' : 'bg-gray-50 border-gray-200'}`}>
@@ -165,7 +197,15 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
     );
   }
 
-  if (!data) return null;
+  // معالجة حالة عدم وجود بيانات
+  if (!data) {
+    return (
+      <div className={`w-full max-w-6xl mx-auto my-4 p-8 rounded-3xl border flex flex-col items-center justify-center ${isDark ? 'bg-[#0a0a0a] border-red-900/30' : 'bg-gray-50 border-red-200'}`}>
+        <p className={`font-bold text-sm text-red-500`}>عذراً، لا تتوفر بيانات StatsBomb لهذه المباراة.</p>
+        <p className="text-xs text-gray-500 mt-2">جرّب مباراة من كأس العالم 2022 أو استخدم تبويب "خرائط التسديد الحية".</p>
+      </div>
+    );
+  }
 
   const tabsList = [
     { id: 'overview', label: t.tabs.overview },
@@ -237,7 +277,7 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
         {/* شاشة اللاعب */}
         {selectedPlayer ? (
           <div className="animate-in slide-in-from-bottom-4 duration-300">
-            <button onClick={() => setSelectedPlayer(null)} className="mb-3 sm:mb-4 flex items-center gap-1.5 text-xs sm:text-sm font-bold text-emerald-500 hover:text-emerald-400">
+            <button onClick={() => { setSelectedPlayer(null); setHeatmapUrl(null); }} className="mb-3 sm:mb-4 flex items-center gap-1.5 text-xs sm:text-sm font-bold text-emerald-500 hover:text-emerald-400">
               {t.backToLineup}
             </button>
             <div className={`p-3 sm:p-6 rounded-2xl border ${isDark ? 'bg-[#111] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
@@ -255,12 +295,28 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                  <div>
                     <h2 className="text-xl sm:text-3xl font-black">{selectedPlayer.name}</h2>
                     <p className="text-[10px] sm:text-sm text-gray-400">{selectedPlayer.pos} | {selectedPlayer.num}</p>
+                    
+                    {/* زر جلب الخريطة الحرارية */}
+                    <button 
+                      onClick={() => fetchHeatmap(selectedPlayer.name)}
+                      disabled={heatmapLoading}
+                      className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-bold transition-colors disabled:opacity-50"
+                    >
+                      {heatmapLoading ? 'جاري جلب الخريطة...' : 'عرض الخريطة الحرارية'}
+                    </button>
                  </div>
                  <div className={`${isArabic ? 'sm:mr-auto' : 'sm:ml-auto'} text-center`}>
                     <div className="text-2xl sm:text-4xl font-black text-emerald-400">{selectedPlayer.rating}</div>
                     <div className="text-[9px] sm:text-[10px] text-gray-500">{t.rating}</div>
                  </div>
               </div>
+
+              {/* عرض الخريطة الحرارية إذا تم جلبها */}
+              {heatmapUrl && (
+                <div className="mb-6 rounded-xl overflow-hidden border border-blue-500/30">
+                   <img src={heatmapUrl} alt="Player Heatmap" className="w-full object-cover" />
+                </div>
+              )}
 
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 mb-4 sm:mb-6">
                 {[
