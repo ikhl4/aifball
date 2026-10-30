@@ -262,16 +262,18 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
     if (trimmed.startsWith('```')) return;
 
-    // 🌟 هنا تم إضافة وسم النتائج الحية (ESPN) 🌟
     if (trimmed.includes('aifball-livescores')) {
       if (inTable) flushTable(index);
       
       const leagueMatch = trimmed.match(/league="([^"]+)"/);
       const leagueName = leagueMatch ? leagueMatch[1] : 'sau.1'; 
+      
+      const dateMatch = trimmed.match(/date="([^"]+)"/);
+      const matchDate = dateMatch ? dateMatch[1] : 'today'; 
 
       elements.push(
         <div key={`livescores-${index}`} className="my-5 w-full">
-          <LiveSportsWidget league={leagueName} isDark={isDark} />
+          <LiveSportsWidget league={leagueName} date={matchDate} isDark={isDark} />
         </div>
       );
       return;
