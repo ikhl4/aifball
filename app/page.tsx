@@ -8,7 +8,7 @@ import ShotMap from './components/ShotMap';
 import PlayerProfile from './components/PlayerProfile';
 import MatchReport from './components/MatchReport';
 import TrainingDrillWidget from './components/TrainingDrillWidget';
-import PlayerComparison from './components/PlayerComparison'; // 🌟 استدعاء مكون المقارنة
+import PlayerComparison from './components/PlayerComparison';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -132,14 +132,12 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
   processedText = processedText.replace(/a\s*href=[^\s>]+/gi, '');
   processedText = deduplicateText(processedText);
 
-  // 🌟 خوارزمية إصلاح الوسوم المكسورة من Dify (خاصة aifball-compare)
+  // 🌟 خوارزمية إصلاح الوسوم المكسورة
   processedText = processedText.replace(/aifball-compare[\s\S]*?(?:<\/aifball-compare>|$)/gi, (match) => {
-      // إزالة أي أسطر جديدة أو أقواس زائدة كسرها الذكاء الاصطناعي
       let clean = match.replace(/[\n\r]+/g, ' ');
       clean = clean.replace(/></g, ' ');
-      clean = clean.replace(/<|>/g, ' '); // مسح الأقواس العشوائية
+      clean = clean.replace(/<|>/g, ' ');
       
-      // استخراج الأسماء
       const p1 = clean.match(/player1\s*=\s*"?([^"]+)"?/i);
       const p2 = clean.match(/player2\s*=\s*"?([^"]+)"?/i);
       
@@ -346,7 +344,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // 🌟 مكون المقارنة (يقرأ الوسم الذي تم إصلاحه)
     if (trimmed.startsWith('<aifball-compare') && trimmed.includes('</aifball-compare>')) {
       if (inTable) flushTable(index);
       const p1Match = trimmed.match(/player1="([^"]+)"/);
@@ -945,6 +942,49 @@ export default function FootPlayChat() {
                            <div className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-5 shadow-2xl text-sm sm:text-[15px] leading-relaxed break-words transition-colors duration-300 ${isDarkMode ? 'bg-[#131814]/85 border-white/10 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}>
                              {renderFormattedText(msg.content, isDarkMode, sendMessage)}
                            </div>
+                           
+                           {/* أزرار التفاعل (نسخ، مشاركة، إعجاب، إعادة توليد) */}
+                           <div className={`flex items-center gap-1.5 mt-3 pt-3 border-t ${isDarkMode ? 'border-white/5' : 'border-gray-100'}`}>
+                             <button 
+                               onClick={() => navigator.clipboard.writeText(msg.content)} 
+                               className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-gray-500 hover:text-gray-300' : 'hover:bg-gray-200 text-gray-400 hover:text-gray-700'}`}
+                               title="نسخ النص"
+                             >
+                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                             </button>
+                             
+                             <button 
+                               onClick={() => {
+                                 if (navigator.share) navigator.share({ title: 'فوتبلاي', text: msg.content, url: window.location.href });
+                               }}
+                               className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-gray-500 hover:text-gray-300' : 'hover:bg-gray-200 text-gray-400 hover:text-gray-700'}`}
+                               title="مشاركة"
+                             >
+                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                             </button>
+
+                             <div className={`flex items-center rounded-lg border ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+                               <button className={`p-1.5 rounded-l-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-gray-500 hover:text-emerald-400' : 'hover:bg-gray-200 text-gray-400 hover:text-emerald-600'}`}>
+                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" /></svg>
+                               </button>
+                               <div className={`w-px h-4 ${isDarkMode ? 'bg-white/10' : 'bg-gray-300'}`}></div>
+                               <button className={`p-1.5 rounded-r-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-gray-500 hover:text-red-400' : 'hover:bg-gray-200 text-gray-400 hover:text-red-600'}`}>
+                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" /></svg>
+                               </button>
+                             </div>
+
+                             <button 
+                               onClick={() => {
+                                 const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+                                 if (lastUserMsg) sendMessage(lastUserMsg.content);
+                               }}
+                               className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-gray-500 hover:text-emerald-400' : 'hover:bg-gray-200 text-gray-400 hover:text-emerald-600'}`}
+                               title="إعادة التوليد"
+                             >
+                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                             </button>
+                           </div>
+
                         </div>
                      )}
                   </div>
