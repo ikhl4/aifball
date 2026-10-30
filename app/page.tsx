@@ -262,7 +262,7 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
     if (trimmed.startsWith('```')) return;
 
-    if (trimmed.startsWith('<aifball-match-report') && trimmed.includes('</aifball-match-report>')) {
+    if (trimmed.includes('aifball-match-report')) {
       if (inTable) flushTable(index);
       
       const matchMatch = trimmed.match(/match="([^"]+)"/);
