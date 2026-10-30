@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import ShotMap, { ShotData } from '@/components/ShotMap';
 
 interface MatchReportProps {
   matchName: string;
@@ -9,7 +10,13 @@ interface MatchReportProps {
 
 const translations = {
   ar: {
-    tabs: { overview: '📊 النظرة العامة', attack: '⚔️ الهجوم والانتقالات', defence: '🛡️ الدفاع والصراعات', lineup: '👥 التشكيلة والتحليل' },
+    tabs: { 
+      overview: '📊 النظرة العامة', 
+      attack: '⚔️ الهجوم والانتقالات', 
+      defence: '🛡️ الدفاع والصراعات', 
+      lineup: '👥 التشكيلة والتحليل',
+      liveShotmap: '🎯 خرائط التسديد الحية' 
+    },
     xg: 'الأهداف المتوقعة (xG)', stat: 'الإحصائية', possession: 'الاستحواذ', shotsCount: 'التسديدات', shotsOnTarget: 'على المرمى',
     passes: 'التمريرات', passAccuracy: 'دقة التمرير', fouls: 'الأخطاء', corners: 'الركنيات', tackles: 'الالتحامات', interceptions: 'الاعتراضات',
     lineupTitle: 'التشكيلة (اضغط لعرض التحليل الفردي)', backToLineup: '← العودة للتشكيلة', rating: 'تقييم المباراة',
@@ -18,7 +25,13 @@ const translations = {
     loading: 'جاري جلب بيانات StatsBomb...', attackData: 'إحصائيات الهجوم', defenceData: 'إحصائيات الدفاع',
   },
   en: {
-    tabs: { overview: '📊 Overview', attack: '⚔️ Attack & Transitions', defence: '🛡️ Defence & Duels', lineup: '👥 Lineup & Analysis' },
+    tabs: { 
+      overview: '📊 Overview', 
+      attack: '⚔️ Attack & Transitions', 
+      defence: '🛡️ Defence & Duels', 
+      lineup: '👥 Lineup & Analysis',
+      liveShotmap: '🎯 Live Shot Maps' 
+    },
     xg: 'Expected Goals (xG)', stat: 'Statistic', possession: 'Possession', shotsCount: 'Shots', shotsOnTarget: 'Shots on Target',
     passes: 'Passes', passAccuracy: 'Pass Accuracy', fouls: 'Fouls', corners: 'Corners', tackles: 'Tackles', interceptions: 'Interceptions',
     lineupTitle: 'Lineup (Click player for analysis)', backToLineup: '← Back to Lineup', rating: 'Match Rating',
@@ -33,6 +46,11 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
   const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // --- حالات جديدة لخريطة التسديدات الحية ---
+  const [liveShots, setLiveShots] = useState<ShotData[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
 
   const isArabic = /[\u0600-\u06FF]/.test(matchName);
   const lang = isArabic ? 'ar' : 'en';
@@ -55,6 +73,53 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
     fetchMatchData();
   }, [matchId]);
 
+  // دالة جلب خرائط التسديد من 365Scores
+  const fetchLiveShots = async (matchUrl: string) => {
+    setLiveLoading(true);
+    setLiveError(null);
+    try {
+      const res = await fetch(`/api/advanced?source=365&action=shotmap&matchUrl=${encodeURIComponent(matchUrl)}`);
+      const json = await res.json();
+      
+      if (json.error) {
+        throw new Error(json.details || json.error);
+      }
+
+      if (json.data && Array.isArray(json.data)) {
+        // تحويل بيانات 365Scores إلى الشكل الذي يتوقعه ShotMap
+        const mappedShots: ShotData[] = json.data.map((shot: any, index: number) => {
+          // 1. ترجمة النتيجة
+          let mappedOutcome: 'Goal' | 'Saved' | 'Off Target' | 'Blocked' = 'Off Target';
+          if (shot.shot_outcome === 'Gol') mappedOutcome = 'Goal';
+          else if (shot.shot_outcome === 'Atajado') mappedOutcome = 'Saved';
+          else if (shot.shot_outcome === 'Bloqueado') mappedOutcome = 'Blocked';
+          else if (shot.shot_outcome === 'Fallado' || shot.shot_outcome === 'Poste') mappedOutcome = 'Off Target';
+
+          // 2. تحويل الإحداثيات (من 100 إلى 120 و 80)
+          const mappedX = shot.line ? (shot.line / 100) * 120 : 60; 
+          const mappedY = shot.y ? (shot.y / 100) * 80 : 40;
+
+          return {
+            id: shot.key || String(index),
+            player: `ID: ${shot.playerId}`, 
+            team: shot.competitorNum === 1 ? data?.home?.name : data?.away?.name,
+            x: mappedX,
+            y: mappedY,
+            xg: shot.xg || 0,
+            outcome: mappedOutcome
+          };
+        });
+        
+        setLiveShots(mappedShots);
+      }
+    } catch (error: any) {
+      console.error("خطأ في جلب البيانات الحية:", error);
+      setLiveError(error.message || "حدث خطأ أثناء جلب البيانات من السيرفر.");
+    } finally {
+      setLiveLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className={`w-full max-w-6xl mx-auto my-4 p-8 rounded-3xl border flex flex-col items-center justify-center ${isDark ? 'bg-[#0a0a0a] border-emerald-900/30' : 'bg-gray-50 border-gray-200'}`}>
@@ -71,6 +136,7 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
     { id: 'attack', label: t.tabs.attack },
     { id: 'defence', label: t.tabs.defence },
     { id: 'lineup', label: t.tabs.lineup },
+    { id: 'liveShotmap', label: t.tabs.liveShotmap },
   ];
 
   return (
@@ -87,7 +153,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
           {/* ترويسة المباراة */}
           <div className={`relative z-10 p-3 sm:p-6 flex flex-col sm:flex-row justify-between items-center border-b gap-3 sm:gap-0 ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
             <div className="flex sm:flex-col items-center justify-between w-full sm:w-1/3 gap-2">
-              {/* شعار الفريق الأول - لون رمادي إذا لم يوجد */}
               {data.home.logo ? (
                 <img src={data.home.logo} alt={data.home.name} className="w-12 h-12 sm:w-20 sm:h-20 object-contain drop-shadow-md" />
               ) : (
@@ -106,7 +171,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
             </div>
 
             <div className="flex sm:flex-col items-center justify-between w-full sm:w-1/3 gap-2">
-               {/* شعار الفريق الثاني - لون رمادي إذا لم يوجد */}
                {data.away.logo ? (
                 <img src={data.away.logo} alt={data.away.name} className="w-12 h-12 sm:w-20 sm:h-20 object-contain drop-shadow-md" />
               ) : (
@@ -142,15 +206,10 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
             </button>
             <div className={`p-3 sm:p-6 rounded-2xl border ${isDark ? 'bg-[#111] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
               
-              {/* ترويسة اللاعب - لون رمادي إذا لم يوجد */}
               <div className={`flex flex-col sm:flex-row items-center gap-3 sm:gap-4 mb-4 sm:mb-6 border-b pb-4 border-gray-700 ${isArabic ? 'text-center sm:text-right' : 'text-center sm:text-left'}`}>
                  <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-gray-600 shadow-inner bg-gray-600 flex-shrink-0">
                    {selectedPlayer.image ? (
-                     <img 
-                       src={selectedPlayer.image} 
-                       alt={selectedPlayer.name} 
-                       className="w-full h-full object-cover object-top" 
-                     />
+                     <img src={selectedPlayer.image} alt={selectedPlayer.name} className="w-full h-full object-cover object-top" />
                    ) : (
                      <div className="w-full h-full flex items-center justify-center text-gray-300 text-xl sm:text-3xl font-bold">
                        {selectedPlayer.name.charAt(0)}
@@ -350,14 +409,9 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                       {data.lineup.home.map((p: any) => (
                         <button key={p.id} onClick={() => setSelectedPlayer(p)} className={`flex items-center gap-2 p-2 rounded-xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-white/5 border-white/10 hover:border-emerald-500/50' : 'bg-white border-gray-200 hover:border-emerald-500'}`}>
                           
-                          {/* صورة اللاعب - لون رمادي مع الحرف الأول إذا لم توجد */}
                           <div className="w-8 h-8 rounded-full bg-gray-600 flex-shrink-0 overflow-hidden flex items-center justify-center text-gray-300 text-xs font-bold shadow-inner">
                             {p.image ? (
-                              <img 
-                                src={p.image} 
-                                alt={p.name} 
-                                className="w-full h-full object-cover object-top" 
-                              />
+                              <img src={p.image} alt={p.name} className="w-full h-full object-cover object-top" />
                             ) : (
                               p.name.charAt(0)
                             )}
@@ -377,14 +431,9 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                       {data.lineup.away.map((p: any) => (
                         <button key={p.id} onClick={() => setSelectedPlayer(p)} className={`flex items-center gap-2 p-2 rounded-xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-white/5 border-white/10 hover:border-emerald-500/50' : 'bg-white border-gray-200 hover:border-emerald-500'}`}>
                           
-                          {/* صورة اللاعب - لون رمادي مع الحرف الأول إذا لم توجد */}
                           <div className="w-8 h-8 rounded-full bg-gray-600 flex-shrink-0 overflow-hidden flex items-center justify-center text-gray-300 text-xs font-bold shadow-inner">
                             {p.image ? (
-                              <img 
-                                src={p.image} 
-                                alt={p.name} 
-                                className="w-full h-full object-cover object-top" 
-                              />
+                              <img src={p.image} alt={p.name} className="w-full h-full object-cover object-top" />
                             ) : (
                               p.name.charAt(0)
                             )}
@@ -399,6 +448,47 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* التبويب الجديد: خرائط التسديد الحية */}
+            {activeTab === 'liveShotmap' && (
+              <div className="space-y-4 animate-in fade-in duration-300">
+                <div className={`p-4 sm:p-6 rounded-xl border text-center ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                  <h3 className="text-lg font-bold text-emerald-500 mb-2">{t.tabs.liveShotmap}</h3>
+                  <p className="text-sm text-gray-400 mb-4">
+                    جلب خرائط التسديدات الحية مباشرة من 365Scores. (قد يستغرق السيرفر 50 ثانية للاستيقاظ في المرة الأولى)
+                  </p>
+                  <button
+                    onClick={() => {
+                      const url = prompt("أدخل رابط المباراة من 365Scores:");
+                      if (url) fetchLiveShots(url);
+                    }}
+                    disabled={liveLoading}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mx-auto"
+                  >
+                    {liveLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        جاري الجلب...
+                      </>
+                    ) : (
+                      '🎯 جلب خرائط التسديد'
+                    )}
+                  </button>
+                  
+                  {liveError && (
+                    <p className="text-red-400 text-sm mt-4 bg-red-900/20 p-2 rounded">{liveError}</p>
+                  )}
+                </div>
+
+                {liveShots.length > 0 && (
+                  <ShotMap 
+                    shots={liveShots} 
+                    matchName={`${data?.home?.name} ضد ${data?.away?.name}`}
+                    isDark={isDark}
+                  />
+                )}
               </div>
             )}
           </>
