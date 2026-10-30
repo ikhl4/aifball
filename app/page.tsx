@@ -3,7 +3,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
 import TacticalPitch from './components/TacticalPitch';
 import LiveSportsWidget from './components/LiveSportsWidget';
-import ShotMap from './components/ShotMap'; // ✅ تم الاستيراد
+import ShotMap from './components/ShotMap';
+import PlayerProfile from './components/PlayerProfile';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -261,7 +262,22 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
     if (trimmed.startsWith('```')) return;
 
-    // ✅ التقاط خريطة التسديدات (ShotMap) - تمت الإضافة هنا
+    // ✅ اعتراض بطاقة اللاعب
+    if (trimmed.startsWith('<aifball-player') && trimmed.includes('</aifball-player>')) {
+      if (inTable) flushTable(index);
+      
+      const nameMatch = trimmed.match(/name="([^"]+)"/);
+      const playerName = nameMatch ? nameMatch[1] : 'لاعب غير معروف';
+
+      elements.push(
+        <div key={`player-${index}`} className="my-5 w-full">
+          <PlayerProfile playerName={playerName} isDark={isDark} />
+        </div>
+      );
+      return;
+    }
+
+    // ✅ اعتراض خريطة التسديدات (ShotMap)
     if (trimmed.startsWith('<aifball-shotmap') && trimmed.includes('</aifball-shotmap>')) {
       if (inTable) flushTable(index);
       
@@ -276,7 +292,22 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // التقاط الأسئلة المقترحة بذكاء
+    // ✅ اعتراض الملعب التكتيكي
+    if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
+      if (inTable) flushTable(index);
+      const teamMatch = trimmed.match(/team="([^"]+)"/);
+      const formationMatch = trimmed.match(/formation="([^"]+)"/);
+      const team = teamMatch ? teamMatch[1] : '';
+      const formation = formationMatch ? formationMatch[1] : '4-3-3';
+      elements.push(
+        <div key={`pitch-${index}`} className="my-5 w-full">
+          <TacticalPitch team={team} formation={formation} />
+        </div>
+      );
+      return;
+    }
+
+    // ✅ اعتراض الأسئلة المقترحة
     const isSuggestion = trimmed.startsWith('❓') || trimmed.includes('هل تريد') || trimmed.includes('هل ترغب') || trimmed.includes('هل تود');
     if (isSuggestion) {
       if (inTable) flushTable(index);
@@ -285,6 +316,7 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
+    // ✅ اعتراض الجداول
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
       if (/^\|[\s\-:|]+\|$/.test(trimmed)) { inTable = true; return; }
       inTable = true;
