@@ -277,15 +277,18 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // 🌟 إضافة شرط إحصائيات الدوري الجديد
-    if (trimmed.includes('aifball-league')) {
+// 🌟 خوارزمية ذكية لالتقاط إحصائيات الدوري (تتعامل مع أي كسر أو أخطاء إملائية)
+    if (trimmed.includes('aifball-league') || trimmed.includes('aifball-standings') || trimmed.includes('standings')) {
       if (inTable) flushTable(index);
-      const leagueMatch = trimmed.match(/league="([^"]+)"/);
-      const leagueCode = leagueMatch ? leagueMatch[1] : 'ksa.1'; 
+      
+      // استخراج كود الدوري مهما كان النص مكسوراً
+      const leagueMatch = trimmed.match(/league\s*=\s*["']?([^"'\s>]+)["']?/i);
+      const leagueCode = leagueMatch ? leagueMatch[1].replace(/[^a-z0-9.]/gi, '') : 'ksa.1'; 
       
       let displayName = 'دوري روشن السعودي';
       if (leagueCode === 'eng.1') displayName = 'الدوري الإنجليزي';
       if (leagueCode === 'esp.1') displayName = 'الدوري الإسباني';
+      if (leagueCode === 'ita.1') displayName = 'الدوري الإيطالي';
 
       elements.push(
         <div key={`league-${index}`} className="my-5 w-full">
