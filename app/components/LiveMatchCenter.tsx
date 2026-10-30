@@ -25,6 +25,20 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
   const [matchesByLeague, setMatchesByLeague] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
 
+  // 🌟 دالة لتنسيق التوقيت المحلي للمستخدم
+  const formatMatchTime = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return new Intl.DateTimeFormat('ar-SA', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }).format(date);
+    } catch (e) {
+      return 'غير محدد';
+    }
+  };
+
   useEffect(() => {
     const fetchAllLeagues = async () => {
       setLoading(true);
@@ -116,7 +130,9 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
                           ) : isFinished ? (
                             <span className="text-gray-500 text-xs font-bold">انتهت</span>
                           ) : (
-                            <span className="text-emerald-500 text-[10px] sm:text-xs font-bold">{event.status.type.shortDetail}</span>
+                            <span className="text-emerald-500 text-[10px] sm:text-xs font-bold" dir="ltr">
+                              {formatMatchTime(event.date)}
+                            </span>
                           )}
                         </div>
 
