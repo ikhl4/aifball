@@ -39,7 +39,9 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
   const [liveLoading, setLiveLoading] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
   const [inputUrl, setInputUrl] = useState(autoMatchUrl || '');
-  const [sourceType, setSourceType] = useState<'365' | 'sofascore' | 'fotmob'>('sofascore');
+  
+  // 🌟 تم التعديل هنا: جعلنا 365Scores هو الخيار الافتراضي لتجنب حظر SofaScore
+  const [sourceType, setSourceType] = useState<'365' | 'sofascore' | 'fotmob'>('365');
 
   // --- حالات الخريطة الحرارية ---
   const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
@@ -60,9 +62,11 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
     setInputUrl(autoMatchUrl);
     
     // نحدد المصدر بناءً على الرابط
-    let source: '365' | 'sofascore' | 'fotmob' = 'sofascore';
+    let source: '365' | 'sofascore' | 'fotmob' = '365'; // الافتراضي 365
     if (autoMatchUrl.includes('365scores')) source = '365';
     else if (autoMatchUrl.includes('fotmob')) source = 'fotmob';
+    else if (autoMatchUrl.includes('sofascore')) source = 'sofascore';
+    
     setSourceType(source);
 
     // إذا كان الرابط من FotMob، نجلب الإحصائيات الكاملة من البايثون
@@ -70,13 +74,10 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
       const fetchMatchData = async () => {
         setLoading(true);
         try {
-          // 🌟 التعديل هنا: استخدمنا source=fotmob&action=match ليتطابق مع route.ts
           const res = await fetch(`/api/advanced?source=fotmob&action=match&matchUrl=${encodeURIComponent(autoMatchUrl)}`);
           const result = await res.json();
           
           if (res.ok && result.data) {
-            // مابنة البيانات القادمة من LanusStats (FotMob)
-            // ملاحظة: قد تحتاج لتعديل أسماء الحقول (مثل stats.possession.home) بناءً على شكل البيانات الفعلي الذي يرجعه البايثون
             const fotmobData = result.data;
             
             setData({
@@ -98,7 +99,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
               playersData: fotmobData.playersData || {}
             });
           } else {
-            setData(null); // إذا فشل الجلب، نرجع للواجهة الاحتياطية
+            setData(null); 
           }
         } catch (error) {
           setData(null);
@@ -218,8 +219,9 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
             <div className={`p-4 sm:p-6 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
               <div className="max-w-xl mx-auto space-y-4">
                 <div className="flex justify-center gap-2 mb-4">
-                  <button onClick={() => setSourceType('sofascore')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === 'sofascore' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}>SofaScore</button>
                   <button onClick={() => setSourceType('365')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === '365' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}>365Scores</button>
+                  <button onClick={() => setSourceType('sofascore')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === 'sofascore' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}>SofaScore</button>
+                  <button onClick={() => setSourceType('fotmob')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === 'fotmob' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}>FotMob</button>
                 </div>
                 <input type="text" placeholder={`الصق رابط المباراة هنا...`} value={inputUrl} onChange={(e) => setInputUrl(e.target.value)} className={`w-full p-3 rounded-lg border outline-none ${isDark ? 'bg-black/50 border-white/20 text-white focus:border-emerald-500' : 'bg-white border-gray-300 text-black focus:border-emerald-500'}`} dir="ltr" />
                 <button onClick={fetchLiveShots} disabled={liveLoading || !inputUrl} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
@@ -316,8 +318,8 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
                   <h3 className="text-lg font-bold text-emerald-500 mb-2">{t.tabs.liveShotmap}</h3>
                   <div className="max-w-xl mx-auto space-y-4">
                     <div className="flex justify-center gap-2 mb-4">
-                      <button onClick={() => setSourceType('sofascore')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === 'sofascore' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}>SofaScore</button>
                       <button onClick={() => setSourceType('365')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === '365' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}>365Scores</button>
+                      <button onClick={() => setSourceType('sofascore')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === 'sofascore' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}>SofaScore</button>
                     </div>
                     <input type="text" placeholder={`الصق رابط المباراة هنا...`} value={inputUrl} onChange={(e) => setInputUrl(e.target.value)} className={`w-full p-3 rounded-lg border outline-none ${isDark ? 'bg-black/50 border-white/20 text-white focus:border-emerald-500' : 'bg-white border-gray-300 text-black focus:border-emerald-500'}`} dir="ltr" />
                     <button onClick={fetchLiveShots} disabled={liveLoading || !inputUrl} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
@@ -330,7 +332,6 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
               </div>
             )}
             
-            {/* تبويبات إضافية (هجوم ودفاع وتشكيلة) يمكن إضافتها هنا بنفس التصميم السابق */}
             {activeTab === 'attack' && (
                <div className="text-center p-6 text-gray-500">إحصائيات الهجوم قيد التطوير (تعتمد على شكل رد FotMob)</div>
             )}
