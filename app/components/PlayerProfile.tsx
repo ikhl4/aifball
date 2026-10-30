@@ -1,62 +1,98 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface PlayerProfileProps {
   playerName: string;
   isDark?: boolean;
 }
 
-const RONALDO_DATA = {
-  name: "Cristiano Ronaldo",
-  club: "النصر",
-  nationality: "البرتغال",
-  height: "187 سم",
-  age: 41,
-  position: "مهاجم",
-  contract: "30-06-2025",
-  season: "2026",
-  league: "دوري روشن",
-  matchesPlayed: "31 مباراة",
-  foot: "القدم اليمنى",
-  overall: { matches: 1215, goals: 897, assists: 251, cards: 145 },
-  stats: { goals: 35, xg: 28.4, assists: 11, xa: 7.2, shots: 142, xg_per_shot: 0.20, key_passes: 45, pass_accuracy: 82, duels_won: 65 },
-  career: [
-    { season: "2026", club: "النصر", matches: 31, goals: 35, assists: 11 },
-    { season: "2025", club: "النصر", matches: 30, goals: 28, assists: 7 },
-    { season: "2024", club: "النصر", matches: 29, goals: 26, assists: 5 },
-    { season: "2023", club: "النصر", matches: 19, goals: 14, assists: 2 },
-    { season: "2022", club: "مان يونايتد", matches: 16, goals: 3, assists: 2 },
-  ]
-};
-
-const VINICIUS_DATA = {
-  name: "Carlos Vinicius",
-  club: "Grêmio",
-  nationality: "Brazil",
-  height: "190 سم",
-  age: 31,
-  position: "مهاجم",
-  contract: "31-12-2026 (باقي شهرين)",
-  season: "2026",
-  league: "Serie A (BRA) - Grêmio",
-  matchesPlayed: "31 مباراة",
-  foot: "القدم اليسرى",
-  overall: { matches: 315, goals: 115, assists: 24, cards: 10 },
-  stats: { goals: 11, xg: 9.5, assists: 1, xa: 0.9, shots: 54, xg_per_shot: 0.29, key_passes: 27, pass_accuracy: 83, duels_won: 84 },
-  career: [
-    { season: "2026", club: "Grêmio", matches: 20, goals: 2, assists: 1 },
-    { season: "2025", club: "Grêmio", matches: 12, goals: 1, assists: 1 },
-    { season: "2024/2025", club: "Fulham", matches: 0, goals: 0, assists: 0 },
-    { season: "2023/2024", club: "Galatasaray", matches: 2, goals: 0, assists: 0 },
-    { season: "2023/2024", club: "Fulham", matches: 3, goals: 0, assists: 0 },
-  ]
-};
-
 export default function PlayerProfile({ playerName, isDark = true }: PlayerProfileProps) {
-  // فحص اسم اللاعب لاختيار البيانات المناسبة (مؤقتاً حتى ربط الـ API)
-  const isRonaldo = playerName.toLowerCase().includes('رونالدو') || playerName.toLowerCase().includes('ronaldo');
-  const data = isRonaldo ? RONALDO_DATA : VINICIUS_DATA;
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
 
+  // جلب البيانات من السيرفر
+  useEffect(() => {
+    const fetchPlayerData = async () => {
+      setLoading(true);
+      try {
+        // هنا نطلب البيانات من الوسيط (الذي يمررها بدوره لسيرفر البايثون)
+        // ملاحظة: المسار الحالي مجرد مثال، سنحتاج لتأكيد اسم المسار في main.py
+        const res = await fetch(`/api/advanced?source=fbref&action=player-stats&playerName=${encodeURIComponent(playerName)}`);
+        const json = await res.json();
+        
+        if (json.data && json.data.length > 0) {
+          // نفترض أن السيرفر يرجع مصفوفة، نأخذ أول عنصر
+          const playerInfo = json.data[0];
+          
+          setData({
+            name: playerName,
+            club: playerInfo.team || 'غير محدد',
+            nationality: playerInfo.nation || 'غير محدد',
+            height: 'غير محدد', // قد لا تتوفر في FBRef
+            age: playerInfo.age || 'غير محدد',
+            position: playerInfo.position || 'لاعب',
+            contract: 'غير متوفر',
+            season: '2026',
+            league: 'الدوري',
+            matchesPlayed: playerInfo.matches || '0',
+            foot: playerInfo.footed || 'غير محدد',
+            overall: { 
+              matches: playerInfo.matches || 0, 
+              goals: playerInfo.goals || 0, 
+              assists: playerInfo.assists || 0, 
+              cards: 0 
+            },
+            stats: { 
+              goals: playerInfo.goals || 0, 
+              xg: playerInfo.xg || '0.0', 
+              assists: playerInfo.assists || 0, 
+              xa: '0.0', 
+              shots: playerInfo.shots || 0, 
+              xg_per_shot: '0.0', 
+              key_passes: 0, 
+              pass_accuracy: 0, 
+              duels_won: 0 
+            },
+            career: [
+              { season: '2026', club: playerInfo.team || 'غير محدد', matches: playerInfo.matches || 0, goals: playerInfo.goals || 0, assists: playerInfo.assists || 0 }
+            ]
+          });
+        } else {
+          // إذا لم يرجع السيرفر بيانات، نعرض خطأ
+          setData(null);
+        }
+      } catch (error) {
+        console.error("فشل جلب بيانات اللاعب:", error);
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlayerData();
+  }, [playerName]);
+
+  // شاشة التحميل
+  if (loading) {
+    return (
+      <div className={`w-full max-w-6xl mx-auto my-6 p-12 rounded-3xl border flex flex-col items-center justify-center ${isDark ? 'bg-[#0a0a0a] border-emerald-900/30' : 'bg-gray-50 border-gray-200'}`}>
+        <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className={`font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>جاري جلب ملف اللاعب: {playerName}...</p>
+      </div>
+    );
+  }
+
+  // شاشة عدم توفر البيانات
+  if (!data) {
+    return (
+      <div className={`w-full max-w-6xl mx-auto my-6 p-8 rounded-3xl border text-center flex flex-col items-center justify-center ${isDark ? 'bg-[#0a0a0a] border-red-900/30' : 'bg-gray-50 border-red-200'}`}>
+         <p className="text-red-500 font-bold mb-2">عذراً، لم نتمكن من العثور على بيانات دقيقة لهذا اللاعب.</p>
+         <p className="text-xs text-gray-500">قد يكون اسم اللاعب غير صحيح أو أن بياناته غير متوفرة في مصدرنا حالياً.</p>
+      </div>
+    );
+  }
+
+  // عرض بيانات اللاعب
   return (
     <div dir="rtl" className={`relative w-full max-w-6xl mx-auto my-6 rounded-3xl border shadow-2xl overflow-hidden font-saudi transition-all duration-300 ${isDark ? 'bg-[#0a0a0a] border-gray-800 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
       
@@ -67,12 +103,13 @@ export default function PlayerProfile({ playerName, isDark = true }: PlayerProfi
         <span className="text-[9px] bg-emerald-500 text-black px-1 rounded font-bold">PRO</span>
       </div>
 
+      {/* الترويسة العلوية */}
       <div className={`relative z-10 p-4 sm:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b ${isDark ? 'border-white/5' : 'border-gray-200'}`}>
         <div className="flex items-center gap-5">
           <div className="relative">
             <div className="absolute inset-0 bg-[#1D6B35] rounded-full blur-md opacity-40 animate-pulse-slow"></div>
-            <div className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 shadow-xl ${isDark ? 'border-emerald-500/50' : 'border-emerald-600'}`}>
-              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${data.name}`} alt={data.name} className="w-full h-full object-cover bg-[#1a1a1a]" />
+            <div className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 shadow-xl flex items-center justify-center text-4xl font-black text-emerald-500 bg-[#1a1a1a] ${isDark ? 'border-emerald-500/50' : 'border-emerald-600'}`}>
+               {data.name.charAt(0)}
             </div>
           </div>
           <div>
@@ -80,22 +117,19 @@ export default function PlayerProfile({ playerName, isDark = true }: PlayerProfi
             <div className="flex flex-wrap items-center gap-2 mt-3">
               <span className={`px-3 py-1 text-xs font-bold rounded-lg backdrop-blur-md ${isDark ? 'bg-white/5 text-gray-300 border border-white/10' : 'bg-gray-200 text-gray-700'}`}>{data.club}</span>
               <span className={`px-3 py-1 text-xs font-bold rounded-lg backdrop-blur-md ${isDark ? 'bg-white/5 text-gray-300 border border-white/10' : 'bg-gray-200 text-gray-700'}`}>{data.nationality}</span>
-              <span className={`px-3 py-1 text-xs font-bold rounded-lg backdrop-blur-md ${isDark ? 'bg-white/5 text-gray-300 border border-white/10' : 'bg-gray-200 text-gray-700'}`}>{data.height}</span>
               <span className={`px-3 py-1 text-xs font-bold rounded-lg backdrop-blur-md ${isDark ? 'bg-white/5 text-gray-300 border border-white/10' : 'bg-gray-200 text-gray-700'}`}>{data.age} سنة</span>
             </div>
           </div>
         </div>
 
         <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-gray-400">ينتهي العقد</span>
-            <span className={`px-3 py-1 text-xs font-bold rounded-lg border ${isDark ? 'bg-red-900/20 text-red-400 border-red-900/50' : 'bg-red-50 text-red-600 border-red-200'}`}>{data.contract}</span>
-          </div>
           <span className={`px-3 py-1 text-xs font-bold rounded-lg border ${isDark ? 'bg-[#1D6B35]/30 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>{data.position}</span>
         </div>
       </div>
 
       <div className="relative z-10 p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* المسيرة */}
         <div className="lg:col-span-4 space-y-4">
           <h3 className={`text-sm font-bold flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span> المسيرة
@@ -125,7 +159,7 @@ export default function PlayerProfile({ playerName, isDark = true }: PlayerProfi
                 </tr>
               </thead>
               <tbody className={`divide-y ${isDark ? 'divide-white/5' : 'divide-gray-200'}`}>
-                {data.career.map((row, idx) => (
+                {data.career.map((row: any, idx: number) => (
                   <tr key={idx} className={isDark ? 'hover:bg-white/5 transition-colors' : 'hover:bg-gray-50'}>
                     <td className={`p-2 font-bold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{row.season}</td>
                     <td className={`p-2 font-bold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{row.club}</td>
@@ -139,12 +173,12 @@ export default function PlayerProfile({ playerName, isDark = true }: PlayerProfi
           </div>
         </div>
 
+        {/* أرقام الموسم */}
         <div className="lg:col-span-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className={`text-sm font-bold flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span> أرقام الموسم {data.season}
             </h3>
-            <span className="text-[10px] font-bold text-gray-500 bg-white/5 px-2 py-1 rounded-md">{data.league}</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
@@ -161,34 +195,14 @@ export default function PlayerProfile({ playerName, isDark = true }: PlayerProfi
               <span className={`text-xl sm:text-2xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>{data.stats.assists}</span>
               <span className="text-[10px] font-bold text-gray-500 mt-1">صناعة</span>
             </div>
-            <div className={`p-3 rounded-xl border relative overflow-hidden backdrop-blur-sm transition-all hover:-translate-y-1 ${isDark ? 'bg-sky-900/20 border-sky-500/30' : 'bg-sky-50 border-sky-200 shadow-sm'}`}>
-              <div className="absolute top-0 right-0 w-16 h-16 bg-sky-500 blur-2xl opacity-20"></div>
-              <span className={`text-xl sm:text-2xl font-black ${isDark ? 'text-sky-400' : 'text-sky-600'}`}>{data.stats.xa}</span>
-              <span className={`text-[10px] font-bold mt-1 ${isDark ? 'text-sky-500/80' : 'text-sky-700/80'}`}>xA (صناعة متوقعة)</span>
-            </div>
             <div className={`p-3 rounded-xl border flex flex-col justify-between backdrop-blur-sm transition-all hover:-translate-y-1 ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
               <span className={`text-xl sm:text-2xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>{data.stats.shots}</span>
               <span className="text-[10px] font-bold text-gray-500 mt-1">تسديدات</span>
             </div>
-            <div className={`p-3 rounded-xl border flex flex-col justify-between backdrop-blur-sm transition-all hover:-translate-y-1 ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
-              <span className={`text-xl sm:text-2xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>{data.stats.xg_per_shot}</span>
-              <span className="text-[10px] font-bold text-gray-500 mt-1">xG/تسديدة</span>
-            </div>
-            <div className={`p-3 rounded-xl border flex flex-col justify-between backdrop-blur-sm transition-all hover:-translate-y-1 ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
-              <span className={`text-xl sm:text-2xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>{data.stats.key_passes}</span>
-              <span className="text-[10px] font-bold text-gray-500 mt-1">تمريرات مفتاحية</span>
-            </div>
-            <div className={`p-3 rounded-xl border flex flex-col justify-between backdrop-blur-sm transition-all hover:-translate-y-1 ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
-              <span className={`text-xl sm:text-2xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>{data.stats.pass_accuracy}%</span>
-              <span className="text-[10px] font-bold text-gray-500 mt-1">دقة التمرير</span>
-            </div>
-            <div className={`p-3 rounded-xl border flex flex-col justify-between backdrop-blur-sm transition-all hover:-translate-y-1 ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
-              <span className={`text-xl sm:text-2xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>{data.stats.duels_won}</span>
-              <span className="text-[10px] font-bold text-gray-500 mt-1">التحامات مكسوبة</span>
-            </div>
           </div>
         </div>
 
+        {/* الملعب */}
         <div className="lg:col-span-3 space-y-4">
           <h3 className={`text-sm font-bold flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span> المراكز والملعب
@@ -204,7 +218,6 @@ export default function PlayerProfile({ playerName, isDark = true }: PlayerProfi
               </g>
               <circle cx="50" cy="35" r="16" fill="#22C55E" opacity="0.2" filter="blur(3px)" />
               <circle cx="50" cy="35" r="12" fill="#ef4444" opacity="0.9" />
-              <text x="50" y="38" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">51</text>
             </svg>
           </div>
           <div className={`rounded-xl border p-3 flex flex-col gap-2 backdrop-blur-md ${isDark ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200'}`}>
