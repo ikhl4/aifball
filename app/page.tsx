@@ -266,7 +266,7 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       if (inTable) flushTable(index);
       
       const leagueMatch = trimmed.match(/league="([^"]+)"/);
-      const leagueName = leagueMatch ? leagueMatch[1] : 'sau.1'; 
+      const leagueName = leagueMatch ? leagueMatch[1] : 'ksa.1'; 
       
       const dateMatch = trimmed.match(/date="([^"]+)"/);
       const matchDate = dateMatch ? dateMatch[1] : 'today'; 
@@ -346,10 +346,16 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-      if (/^\|[\s\-:|]+\|$/.test(trimmed)) { inTable = true; return; }
+    // 🌟 هنا تم تحديث منطق قراءة الجداول ليكون أكثر صرامة وذكاءً 🌟
+    if (trimmed.startsWith('|')) {
+      if (/^\|[\s\-:|]+\|?$/.test(trimmed)) { inTable = true; return; }
       inTable = true;
-      const cells = trimmed.slice(1, -1).split('|').map((c) => c.trim());
+      
+      let cells = trimmed.split('|').map((c) => c.trim());
+      // تنظيف الأعمدة الفارغة الناتجة عن الانقسام
+      if (cells[0] === '') cells.shift();
+      if (cells[cells.length - 1] === '') cells.pop();
+      
       if (cells.length > 0 && cells.some(c => c !== '')) {
         tableRows.push(cells);
       }
