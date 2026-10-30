@@ -2,24 +2,28 @@
 import React, { useState, useEffect } from 'react';
 
 export default function LeagueDashboard({ leagueName = 'دوري روشن السعودي', leagueCode = 'ksa.1', isDark = true }: { leagueName?: string, leagueCode?: string, isDark?: boolean }) {
-  const [activeTab, setActiveTab] = useState<'scorers' | 'cards' | 'matrix'>('scorers');
+  const [activeTab, setActiveTab] = useState<'standings' | 'cards' | 'matrix'>('standings');
   const [loading, setLoading] = useState(true);
   const [realData, setRealData] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  // 🌟 دالة لجلب البيانات الحقيقية من سيرفر البايثون (FotMob)
   useEffect(() => {
     const fetchLeagueData = async () => {
       setLoading(true);
+      setError(null);
       try {
-        // نطلب جدول الترتيب من FotMob (الذي يحتوي على إحصائيات الفرق)
+        // نطلب جدول الترتيب من FotMob
         const res = await fetch(`/api/advanced?source=fotmob&action=table&league=${leagueCode}&season=2026`);
         const json = await res.json();
         
         if (json.data && Array.isArray(json.data)) {
           setRealData(json.data);
+        } else if (json.error) {
+          setError(json.error);
         }
-      } catch (error) {
-        console.error("فشل جلب إحصائيات الدوري:", error);
+      } catch (err) {
+        console.error("فشل جلب إحصائيات الدوري:", err);
+        setError("تعذر الاتصال بالسيرفر لجلب بيانات الدوري.");
       } finally {
         setLoading(false);
       }
@@ -45,7 +49,7 @@ export default function LeagueDashboard({ leagueName = 'دوري روشن الس
       {/* التبويبات */}
       <div className={`flex overflow-x-auto custom-scrollbar border-b ${isDark ? 'border-gray-700 bg-[#0f172a]' : 'border-gray-200 bg-gray-100'}`}>
         {[
-          { id: 'scorers', label: '⚽ ترتيب الفرق' },
+          { id: 'standings', label: '🏆 ترتيب الفرق' },
           { id: 'cards', label: '🟨 البطاقات' },
           { id: 'matrix', label: '⏱️ الأهداف حسب الدقائق' }
         ].map((tab) => (
@@ -68,21 +72,23 @@ export default function LeagueDashboard({ leagueName = 'دوري روشن الس
         {loading ? (
            <div className="flex flex-col items-center justify-center py-20">
              <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-             <p className="text-emerald-500 font-bold text-sm">جاري جلب البيانات الحقيقية من السيرفر...</p>
+             <p className="text-emerald-500 font-bold text-sm">جاري جلب البيانات الحقيقية...</p>
            </div>
+        ) : error ? (
+           <div className="text-center py-10 text-red-500">{error}</div>
         ) : (
           <>
-            {/* 1. ترتيب الفرق (البيانات الحقيقية من FotMob) */}
-            {activeTab === 'scorers' && (
+            {/* 1. ترتيب الفرق */}
+            {activeTab === 'standings' && (
               <div className="space-y-3 animate-in fade-in duration-300">
                 {realData.length > 0 ? realData.map((team: any, i: number) => (
-                  <div key={i} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isDark ? 'bg-[#1e293b]/50 border-gray-700/50' : 'bg-white border-gray-200'}`}>
+                  <div key={i} className={`flex items-center justify-between p-4 rounded-2xl border transition-all hover:scale-[1.01] ${isDark ? 'bg-[#1e293b]/50 border-gray-700/50 hover:border-emerald-500/50' : 'bg-white border-gray-200'}`}>
                     <div className="flex items-center gap-4">
                       <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${i === 0 ? 'bg-yellow-500 text-black' : i === 1 ? 'bg-gray-300 text-black' : i === 2 ? 'bg-amber-700 text-white' : 'bg-gray-700 text-white'}`}>{i + 1}</span>
                       <div>
-                        <h3 className="font-bold text-lg">{team.team || team.name || 'فريق'}</h3>
-                        {/* ملاحظة: أسماء الحقول تعتمد على شكل رد FotMob */}
-                        <p className="text-xs text-gray-400">لعب: {team.matches_played || team.played || '-'}</p>
+                        {/* قراءة اسم الفريق بأي صيغة تأتي */}
+                        <h3 className="font-bold text-lg">{team.team || team.name || team.team_name || 'فريق'}</h3>
+                        <p className="text-xs text-gray-400">لعب: {team.matches_played || team.played || team.mp || '-'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -91,7 +97,7 @@ export default function LeagueDashboard({ leagueName = 'دوري روشن الس
                     </div>
                   </div>
                 )) : (
-                  <div className="text-center py-10 text-gray-500">لا توجد بيانات متاحة حالياً (تأكد من ربط مسار FotMob في السيرفر).</div>
+                  <div className="text-center py-10 text-gray-500">لا توجد بيانات متاحة حالياً (تأكد من إعدادات FotMob في السيرفر).</div>
                 )}
               </div>
             )}
