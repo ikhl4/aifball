@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import ShotMap, { ShotData } from './ShotMap';
+import ShotMap, { ShotData } from './ShotMap'; // <-- استيراد صحيح
 
 interface MatchReportProps {
   matchName: string;
@@ -73,38 +73,59 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
     fetchMatchData();
   }, [matchId]);
 
-  // دالة جلب خرائط التسديد من 365Scores
+  // دالة جلب خرائط التسديد والتشكيلة من 365Scores
   const fetchLiveShots = async (matchUrl: string) => {
     setLiveLoading(true);
     setLiveError(null);
     try {
-      const res = await fetch(`/api/advanced?source=365&action=shotmap&matchUrl=${encodeURIComponent(matchUrl)}`);
-      const json = await res.json();
-      
-      if (json.error) {
-        throw new Error(json.details || json.error);
+      // 1. جلب التسديدات والتشكيلة في نفس الوقت
+      const [shotsRes, lineupRes] = await Promise.all([
+        fetch(`/api/advanced?source=365&action=shotmap&matchUrl=${encodeURIComponent(matchUrl)}`),
+        fetch(`/api/advanced?source=365&action=lineup&matchUrl=${encodeURIComponent(matchUrl)}`)
+      ]);
+
+      const shotsJson = await shotsRes.json();
+      const lineupJson = await lineupRes.json();
+
+      // 2. إنشاء قاموس لربط رقم اللاعب باسمه
+      const playerMap: Record<number, string> = {};
+      if (lineupJson.data && Array.isArray(lineupJson.data)) {
+        lineupJson.data.forEach((player: any) => {
+          const id = player.playerId || player.id;
+          const name = player.playerName || player.name;
+          if (id && name) playerMap[id] = name;
+        });
       }
 
-      if (json.data && Array.isArray(json.data)) {
-        // تحويل بيانات 365Scores إلى الشكل الذي يتوقعه ShotMap
-        const mappedShots: ShotData[] = json.data.map((shot: any, index: number) => {
-          // 1. ترجمة النتيجة
+      if (shotsJson.error) throw new Error(shotsJson.details || shotsJson.error);
+
+      if (shotsJson.data && Array.isArray(shotsJson.data)) {
+        const mappedShots: ShotData[] = shotsJson.data.map((shot: any, index: number) => {
+          // ترجمة النتيجة
           let mappedOutcome: 'Goal' | 'Saved' | 'Off Target' | 'Blocked' = 'Off Target';
           if (shot.shot_outcome === 'Gol') mappedOutcome = 'Goal';
           else if (shot.shot_outcome === 'Atajado') mappedOutcome = 'Saved';
           else if (shot.shot_outcome === 'Bloqueado') mappedOutcome = 'Blocked';
-          else if (shot.shot_outcome === 'Fallado' || shot.shot_outcome === 'Poste') mappedOutcome = 'Off Target';
 
-          // 2. تحويل الإحداثيات (من 100 إلى 120 و 80)
-          const mappedX = shot.line ? (shot.line / 100) * 120 : 60; 
-          const mappedY = shot.y ? (shot.y / 100) * 80 : 40;
+          // تحويل الإحداثيات الأساسية
+          let mappedX = shot.line ? (shot.line / 100) * 120 : 60; 
+          let mappedY = shot.y ? (shot.y / 100) * 80 : 40;
+
+          // 🚨 قلب اتجاه التسديدات للفريق الثاني (الضيف)
+          if (shot.competitorNum === 2) {
+            mappedX = 120 - mappedX; 
+            mappedY = 80 - mappedY;  
+          }
+
+          // جلب اسم اللاعب من القاموس
+          const playerName = playerMap[shot.playerId] || `لاعب ${shot.playerId}`;
 
           return {
             id: shot.key || String(index),
-            player: `ID: ${shot.playerId}`, 
+            player: playerName,
             team: shot.competitorNum === 1 ? data?.home?.name : data?.away?.name,
-            x: mappedX,
-            y: mappedY,
+            x: mappedX, 
+            y: mappedY, 
             xg: shot.xg || 0,
             outcome: mappedOutcome
           };
@@ -114,7 +135,7 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
       }
     } catch (error: any) {
       console.error("خطأ في جلب البيانات الحية:", error);
-      setLiveError(error.message || "حدث خطأ أثناء جلب البيانات من السيرفر.");
+      setLiveError(error.message || "حدث خطأ أثناء جلب البيانات.");
     } finally {
       setLiveLoading(false);
     }
