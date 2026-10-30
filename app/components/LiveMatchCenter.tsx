@@ -19,8 +19,6 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
   const [dateMode, setDateMode] = useState<'yesterday' | 'today' | 'tomorrow'>('today');
   const [matchesByLeague, setMatchesByLeague] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
-  
-  // 🌟 حالة جديدة لمعرفة أي مباراة تم الضغط عليها
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
 
   const formatMatchTime = (dateStr: string) => {
@@ -101,15 +99,13 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
                     const isFinished = event.status.type.state === 'post';
                     const isScheduled = !isLive && !isFinished;
                     
-                    // 🌟 استخراج الأهداف من بيانات ESPN
                     const details = comp.details || [];
                     const goals = details.filter((d: any) => d.scoringPlay === true);
-
                     const isExpanded = expandedMatchId === event.id;
 
                     return (
                       <div key={event.id} className="flex flex-col">
-                        {/* صف المباراة (قابل للضغط) */}
+                        {/* صف المباراة */}
                         <div 
                           onClick={() => setExpandedMatchId(isExpanded ? null : event.id)}
                           className={`p-3 flex items-center justify-between cursor-pointer transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${isExpanded ? (isDark ? 'bg-white/5 border-b border-gray-700' : 'bg-gray-50 border-b border-gray-200') : ''}`}
@@ -139,16 +135,37 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
                           </div>
                         </div>
 
-                        {/* 🌟 قائمة الأهداف (تظهر عند الضغط) 🌟 */}
+                        {/* 🌟 قائمة الأهداف (محدثة لاستخراج الاسم بدقة) 🌟 */}
                         {isExpanded && (
                           <div className={`p-3 text-sm ${isDark ? 'bg-[#0a0e17] text-gray-300' : 'bg-white text-gray-700'}`}>
                             {goals.length > 0 ? (
                               <div className="space-y-2">
                                 <p className={`font-bold text-xs mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>⚽ سجل الأهداف:</p>
                                 {goals.map((goal: any, idx: number) => {
-                                  const scorer = goal.participants?.[0]?.athlete?.displayName || 'لاعب غير معروف';
+                                  let scorer = 'لاعب غير معروف';
+                                  
+                                  // 1. محاولة استخراج الاسم من المسار القياسي
+                                  if (goal.athletesInvolved && goal.athletesInvolved.length > 0) {
+                                    scorer = goal.athletesInvolved[0].displayName;
+                                  } 
+                                  // 2. محاولة استخراج الاسم من مسار آخر
+                                  else if (goal.participants && goal.participants.length > 0 && goal.participants[0].athlete) {
+                                    scorer = goal.participants[0].athlete.displayName;
+                                  }
+                                  // 3. خوارزمية ذكية: استخراج الاسم من نص الهدف (Text)
+                                  else if (goal.text) {
+                                    // النص غالباً يكون: "Goal! Al Nassr 1, Al Khaleej 0. Cristiano Ronaldo (Al Nassr) right footed..."
+                                    const match = goal.text.match(/\.\s([^(]+)\(/);
+                                    if (match && match[1]) {
+                                      scorer = match[1].trim();
+                                    } else {
+                                      // محاولة أخرى إذا كانت الصيغة مختلفة
+                                      const match2 = goal.text.match(/Goal!\s(.*?)\s\(/);
+                                      if (match2 && match2[1]) scorer = match2[1].trim();
+                                    }
+                                  }
+
                                   const minute = goal.clock?.displayValue || '';
-                                  // معرفة الفريق الذي سجل
                                   const isHomeGoal = goal.team?.id === home.team.id;
                                   
                                   return (
