@@ -1,37 +1,34 @@
 'use client';
 import React, { useState } from 'react';
 
-// واجهة لبيانات التسديدة (متوافقة مع StatsBomb)
-interface ShotData {
+// واجهة لبيانات التسديدة (متوافقة مع StatsBomb والتصميم الخاص بك)
+export interface ShotData {
   id: string;
   player: string;
   team: string;
   x: number; // من 0 إلى 120
   y: number; // من 0 إلى 80
-  xg: number; // الأهداف المتوقعة (0.01 إلى 0.99)
+  xg: number; // الأهداف المتوقعة
   outcome: 'Goal' | 'Saved' | 'Off Target' | 'Blocked';
 }
 
 interface ShotMapProps {
   matchName?: string;
   isDark?: boolean;
+  shots?: ShotData[]; // جعلنا البيانات الحية تأتي من الخارج (اختياري)
 }
 
-// بيانات تجريبية (محاكاة لبيانات StatsBomb - نهائي كأس العالم 2022)
+// بيانات تجريبية (تظهر فقط إذا لم يتم تمرير بيانات حية)
 const SAMPLE_SHOTS: ShotData[] = [
-  { id: '1', player: 'Lionel Messi', team: 'Argentina', x: 108, y: 40, xg: 0.78, outcome: 'Goal' }, // ركلة جزاء
-  { id: '2', player: 'Lionel Messi', team: 'Argentina', x: 102, y: 35, xg: 0.25, outcome: 'Goal' },
-  { id: '3', player: 'Angel Di Maria', team: 'Argentina', x: 105, y: 42, xg: 0.45, outcome: 'Goal' },
-  { id: '4', player: 'Kylian Mbappe', team: 'France', x: 106, y: 48, xg: 0.65, outcome: 'Goal' }, // ركلة جزاء
-  { id: '5', player: 'Kylian Mbappe', team: 'France', x: 98, y: 50, xg: 0.15, outcome: 'Goal' },
-  { id: '6', player: 'Kylian Mbappe', team: 'France', x: 95, y: 38, xg: 0.12, outcome: 'Goal' },
-  { id: '7', player: 'Lionel Messi', team: 'Argentina', x: 110, y: 30, xg: 0.08, outcome: 'Saved' },
-  { id: '8', player: 'Kylian Mbappe', team: 'France', x: 100, y: 45, xg: 0.05, outcome: 'Blocked' },
-  { id: '9', player: 'Antoine Griezmann', team: 'France', x: 90, y: 35, xg: 0.03, outcome: 'Off Target' },
+  { id: '1', player: 'Lionel Messi', team: 'Argentina', x: 108, y: 40, xg: 0.78, outcome: 'Goal' },
+  { id: '2', player: 'Kylian Mbappe', team: 'France', x: 106, y: 48, xg: 0.65, outcome: 'Goal' },
 ];
 
-export default function ShotMap({ matchName = "نهائي كأس العالم 2022", isDark = true }: ShotMapProps) {
+export default function ShotMap({ matchName = "خريطة التسديدات", isDark = true, shots }: ShotMapProps) {
   const [hoveredShot, setHoveredShot] = useState<ShotData | null>(null);
+  
+  // استخدام البيانات الحية إن وجدت، وإلا استخدام التجريبية
+  const displayShots = shots && shots.length > 0 ? shots : SAMPLE_SHOTS;
 
   return (
     <div className={`w-full max-w-3xl mx-auto my-6 rounded-2xl border shadow-2xl overflow-hidden ${isDark ? 'bg-[#131a2a] border-gray-800' : 'bg-white border-gray-200'}`}>
@@ -54,20 +51,15 @@ export default function ShotMap({ matchName = "نهائي كأس العالم 20
           
           {/* خطوط الملعب */}
           <g stroke="white" strokeWidth="0.4" fill="none" opacity="0.6">
-            {/* الخطوط الخارجية */}
             <rect x="0" y="0" width="120" height="80" />
-            {/* خط منتصف الملعب */}
             <line x1="60" y1="0" x2="60" y2="80" />
-            {/* دائرة المنتصف */}
             <circle cx="60" cy="40" r="10" />
             <circle cx="60" cy="40" r="0.8" fill="white" />
             
             {/* منطقة الجزاء (اليمين) */}
             <rect x="102" y="18" width="18" height="44" />
             <rect x="114" y="30" width="6" height="20" />
-            {/* نقطة الجزاء */}
             <circle cx="108" cy="40" r="0.6" fill="white" />
-            {/* قوس منطقة الجزاء */}
             <path d="M 102 30 A 10 10 0 0 1 102 50" />
 
             {/* منطقة الجزاء (اليسار) */}
@@ -82,7 +74,7 @@ export default function ShotMap({ matchName = "نهائي كأس العالم 20
           </g>
 
           {/* رسم التسديدات */}
-          {SAMPLE_SHOTS.map((shot) => {
+          {displayShots.map((shot, idx) => {
             // حساب حجم الدائرة بناءً على قيمة xG
             const radius = 1.5 + (shot.xg * 4); 
             
@@ -93,12 +85,11 @@ export default function ShotMap({ matchName = "نهائي كأس العالم 20
 
             return (
               <g 
-                key={shot.id} 
+                key={shot.id || idx} 
                 onMouseEnter={() => setHoveredShot(shot)}
                 onMouseLeave={() => setHoveredShot(null)}
                 className="cursor-pointer transition-all duration-300 hover:opacity-80"
               >
-                {/* دائرة التسديدة */}
                 <circle 
                   cx={shot.x} 
                   cy={shot.y} 
@@ -108,14 +99,13 @@ export default function ShotMap({ matchName = "نهائي كأس العالم 20
                   stroke={isDark ? 'white' : 'black'} 
                   strokeWidth="0.3" 
                 />
-                {/* نقطة صغيرة في المنتصف */}
                 <circle cx={shot.x} cy={shot.y} r="0.4" fill="white" />
               </g>
             );
           })}
         </svg>
 
-        {/* نافذة منبثقة (Tooltip) تظهر عند تمرير الماوس */}
+        {/* نافذة منبثقة (Tooltip) */}
         {hoveredShot && (
           <div 
             className="absolute z-10 bg-black/90 text-white text-xs rounded-lg p-2.5 border border-gray-600 shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full"
@@ -144,7 +134,6 @@ export default function ShotMap({ matchName = "نهائي كأس العالم 20
         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-yellow-500 opacity-80"></span> تصدي</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-gray-500 opacity-80"></span> اعتراض</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 opacity-80"></span> خارج</div>
-        <span className="mr-auto opacity-70">* حجم الدائرة يمثل قيمة xG</span>
       </div>
     </div>
   );
