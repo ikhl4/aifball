@@ -5,6 +5,7 @@ import TacticalPitch from './components/TacticalPitch';
 import LiveSportsWidget from './components/LiveSportsWidget';
 import ShotMap from './components/ShotMap';
 import PlayerProfile from './components/PlayerProfile';
+import MatchReport from './components/MatchReport';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -261,6 +262,21 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
     const trimmed = line.trim();
 
     if (trimmed.startsWith('```')) return;
+
+    // ✅ اعتراض تقرير المباراة الشامل
+    if (trimmed.startsWith('<aifball-match-report') && trimmed.includes('</aifball-match-report>')) {
+      if (inTable) flushTable(index);
+      
+      const matchMatch = trimmed.match(/match="([^"]+)"/);
+      const matchName = matchMatch ? matchMatch[1] : 'تقرير المباراة';
+
+      elements.push(
+        <div key={`match-report-${index}`} className="my-5 w-full">
+          <MatchReport matchName={matchName} isDark={isDark} />
+        </div>
+      );
+      return;
+    }
 
     // ✅ اعتراض بطاقة اللاعب
     if (trimmed.startsWith('<aifball-player') && trimmed.includes('</aifball-player>')) {
