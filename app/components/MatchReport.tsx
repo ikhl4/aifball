@@ -10,14 +10,7 @@ interface MatchReportProps {
 
 const translations = {
   ar: {
-    tabs: { 
-      overview: '📊 النظرة العامة', 
-      attack: '⚔️ الهجوم', 
-      defence: '🛡️ الدفاع', 
-      tactics: '🧠 التكتيك والتمرير',
-      lineup: '👥 التشكيلة',
-      liveShotmap: '🎯 خرائط التسديد' 
-    },
+    tabs: { overview: '📊 النظرة العامة', attack: '⚔️ الهجوم', defence: '🛡️ الدفاع', tactics: '🧠 التكتيك والتمرير', lineup: '👥 التشكيلة', liveShotmap: '🎯 خرائط التسديد' },
     xg: 'الأهداف المتوقعة (xG)', stat: 'الإحصائية', possession: 'الاستحواذ', shotsCount: 'التسديدات', shotsOnTarget: 'على المرمى',
     passes: 'التمريرات', passAccuracy: 'دقة التمرير', fouls: 'الأخطاء', corners: 'الركنيات', tackles: 'الالتحامات', interceptions: 'الاعتراضات',
     lineupTitle: 'التشكيلة الأساسية', backToLineup: '← العودة', rating: 'تقييم',
@@ -27,14 +20,7 @@ const translations = {
     explainPossession: 'نسبة استحواذ الفريق على الكرة.',
   },
   en: {
-    tabs: { 
-      overview: '📊 Overview', 
-      attack: '⚔️ Attack', 
-      defence: '🛡️ Defence', 
-      tactics: '🧠 Tactics & Passing',
-      lineup: '👥 Lineup',
-      liveShotmap: '🎯 Shot Maps' 
-    },
+    tabs: { overview: '📊 Overview', attack: '⚔️ Attack', defence: '🛡️ Defence', tactics: '🧠 Tactics', lineup: '👥 Lineup', liveShotmap: '🎯 Shot Maps' },
     xg: 'Expected Goals (xG)', stat: 'Statistic', possession: 'Possession', shotsCount: 'Shots', shotsOnTarget: 'Shots on Target',
     passes: 'Passes', passAccuracy: 'Pass Accuracy', fouls: 'Fouls', corners: 'Corners', tackles: 'Tackles', interceptions: 'Interceptions',
     lineupTitle: 'Starting Lineup', backToLineup: '← Back', rating: 'Rating',
@@ -48,7 +34,10 @@ const translations = {
 export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: MatchReportProps) {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
+  
+  // حالة البيانات، نبدأ بـ null
   const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   // --- حالات خرائط التسديد الحية ---
   const [liveShots, setLiveShots] = useState<ShotData[]>([]);
@@ -65,8 +54,38 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
   const t = translations[lang];
   const dir = isArabic ? 'rtl' : 'ltr';
 
-  // 🌟 1. التحميل التلقائي للخريطة إذا وُجد رابط
+  // 🌟 جلب البيانات الوهمية الغنية في useEffect لضمان عدم انهيار الموقع
   useEffect(() => {
+    // إعداد البيانات الوهمية للتصميم
+    const generateMockData = (name: string) => {
+      const teams = name.split('ضد');
+      return {
+        home: { name: teams[0] || 'الفريق الأول', score: 2 },
+        away: { name: teams[1] || 'الفريق الثاني', score: 1 },
+        xg: { home: '1.85', away: '1.20' },
+        stats: {
+          possession: { home: '55%', away: '45%' },
+          shots: { home: '15', away: '10' },
+          shotsOnTarget: { home: '6', away: '4' },
+          passes: { home: '500', away: '400' },
+          passAccuracy: { home: '85%', away: '80%' },
+          corners: { home: '7', away: '3' },
+          fouls: { home: '10', away: '14' },
+          interceptions: { home: '12', away: '8' },
+          tackles: { home: '18', away: '15' },
+        },
+        lineup: { 
+          home: [{id: 1, name: 'لاعب 1', pos: 'FW', num: 9, image: null}, {id: 2, name: 'لاعب 2', pos: 'MF', num: 10, image: null}], 
+          away: [{id: 3, name: 'لاعب 3', pos: 'DF', num: 4, image: null}, {id: 4, name: 'لاعب 4', pos: 'GK', num: 1, image: null}] 
+        },
+        playersData: {
+          1: { shots: [], passes: [], heatmap: [], touches: 10, progressivePasses: 5 },
+        }
+      };
+    };
+
+    setData(generateMockData(matchName));
+
     if (autoMatchUrl) {
       setInputUrl(autoMatchUrl);
       let source: '365' | 'sofascore' | 'fotmob' = '365';
@@ -77,10 +96,9 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
       
       // جلب الخريطة في الخلفية
       fetchLiveShotsData(autoMatchUrl, source);
-      
-      // جلب بيانات وهمية غنية لكي يظهر التصميم الاحترافي
-      setData(generateMockData(matchName));
     }
+    
+    setLoading(false);
   }, [autoMatchUrl, matchName]);
 
   // دالة جلب الخريطة
@@ -138,34 +156,6 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
     }
   };
 
-  // دالة لتوليد بيانات وهمية غنية لكي يظهر التصميم الاحترافي
-  const generateMockData = (name: string) => {
-    const teams = name.split('ضد');
-    return {
-      home: { name: teams[0] || 'الفريق الأول', score: 2 },
-      away: { name: teams[1] || 'الفريق الثاني', score: 1 },
-      xg: { home: '1.85', away: '1.20' },
-      stats: {
-        possession: { home: '55%', away: '45%' },
-        shots: { home: '15', away: '10' },
-        shotsOnTarget: { home: '6', away: '4' },
-        passes: { home: '500', away: '400' },
-        passAccuracy: { home: '85%', away: '80%' },
-        corners: { home: '7', away: '3' },
-        fouls: { home: '10', away: '14' },
-        interceptions: { home: '12', away: '8' },
-        tackles: { home: '18', away: '15' },
-      },
-      lineup: { 
-        home: [{id: 1, name: 'لاعب 1', pos: 'FW', num: 9, image: null}, {id: 2, name: 'لاعب 2', pos: 'MF', num: 10, image: null}], 
-        away: [{id: 3, name: 'لاعب 3', pos: 'DF', num: 4, image: null}, {id: 4, name: 'لاعب 4', pos: 'GK', num: 1, image: null}] 
-      },
-      playersData: {
-        1: { shots: [], passes: [], heatmap: [], touches: 10, progressivePasses: 5 },
-      }
-    };
-  };
-
   const fetchHeatmap = async (playerName: string) => {
     if (!inputUrl) return;
     setHeatmapLoading(true);
@@ -182,7 +172,17 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
     }
   };
 
-  // إذا لم يكن هناك رابط، نعرض واجهة الإدخال للمستخدم
+  // 🌟 1. إذا كان الموقع لا يزال يحمل، نعرض شاشة تحميل
+  if (loading) {
+    return (
+      <div className={`w-full max-w-6xl mx-auto my-4 p-8 rounded-3xl border flex flex-col items-center justify-center ${isDark ? 'bg-[#0a0a0a] border-emerald-900/30' : 'bg-gray-50 border-gray-200'}`}>
+        <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className={`font-bold text-sm ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{t.loading}</p>
+      </div>
+    );
+  }
+
+  // 🌟 2. إذا لم تكن هناك بيانات ولا رابط، نعرض واجهة الإدخال
   if (!data && !autoMatchUrl) {
      return (
         <div className={`w-full max-w-2xl mx-auto my-4 p-6 rounded-3xl border shadow-xl ${isDark ? 'bg-[#131a2a] border-gray-800 text-white' : 'bg-white border-gray-200'}`}>
@@ -194,7 +194,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
      )
   }
 
-  // 🌟 2. التصميم الكامل الاحترافي (التبويبات الأفقية والتفاعل)
+  // 🌟 3. التصميم الكامل الاحترافي (التبويبات الأفقية والتفاعل)
   const tabsList = [
     { id: 'overview', label: t.tabs.overview },
     { id: 'attack', label: t.tabs.attack },
@@ -267,7 +267,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
           </div>
         ) : (
           <>
-            {/* 1. تبويب النظرة العامة (xG والإحصائيات) */}
+            {/* 1. تبويب النظرة العامة */}
             {activeTab === 'overview' && (
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div className={`p-6 rounded-2xl border flex flex-col items-center ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
