@@ -230,7 +230,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
         </div>
       );
     } else {
-      // جدول عادي (مثل جدول الترتيب)
       elements.push(
         <div key={`table-${keyIndex}`} className={`my-5 w-full overflow-x-auto custom-scrollbar rounded-2xl border shadow-xl backdrop-blur-md ${isDark ? 'border-white/10 bg-black/40' : 'border-gray-200 bg-white'}`}>
           <table className="w-full text-right border-collapse text-sm min-w-max">
@@ -263,14 +262,12 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
     if (trimmed.startsWith('```')) return;
 
-    // ✅ اعتراض تقرير المباراة الشامل
     if (trimmed.startsWith('<aifball-match-report') && trimmed.includes('</aifball-match-report>')) {
       if (inTable) flushTable(index);
       
       const matchMatch = trimmed.match(/match="([^"]+)"/);
       const matchName = matchMatch ? matchMatch[1] : 'تقرير المباراة';
       
-      // استخراج معرف المباراة إذا وجد (الافتراضي هو نهائي كأس العالم)
       const idMatch = trimmed.match(/matchId="([^"]+)"/);
       const matchId = idMatch ? idMatch[1] : '3869685';
 
@@ -279,8 +276,9 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
           <MatchReport matchName={matchName} matchId={matchId} isDark={isDark} />
         </div>
       );
+      return;
+    }
 
-    // ✅ اعتراض بطاقة اللاعب
     if (trimmed.startsWith('<aifball-player') && trimmed.includes('</aifball-player>')) {
       if (inTable) flushTable(index);
       
@@ -295,7 +293,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // ✅ اعتراض خريطة التسديدات (ShotMap)
     if (trimmed.startsWith('<aifball-shotmap') && trimmed.includes('</aifball-shotmap>')) {
       if (inTable) flushTable(index);
       
@@ -310,7 +307,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // ✅ اعتراض الملعب التكتيكي
     if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
       if (inTable) flushTable(index);
       const teamMatch = trimmed.match(/team="([^"]+)"/);
@@ -325,7 +321,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // ✅ اعتراض الأسئلة المقترحة
     const isSuggestion = trimmed.startsWith('❓') || trimmed.includes('هل تريد') || trimmed.includes('هل ترغب') || trimmed.includes('هل تود');
     if (isSuggestion) {
       if (inTable) flushTable(index);
@@ -334,7 +329,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // ✅ اعتراض الجداول
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
       if (/^\|[\s\-:|]+\|$/.test(trimmed)) { inTable = true; return; }
       inTable = true;
@@ -382,7 +376,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
   if (inTable) flushTable(lines.length);
 
-  // ✅ عرض الفيديوهات (مع الزر الأحمر والملاحظة)
   if (youtubeIds.length > 0) {
     elements.push(
       <div key="youtube-embeds" className={`mt-6 pt-4 border-t ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
@@ -391,8 +384,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
         </h4>
         {youtubeIds.map((vid) => (
           <div key={vid} className={`rounded-2xl overflow-hidden border shadow-xl mb-6 ${isDark ? 'border-emerald-500/30 bg-black/40' : 'border-emerald-200 bg-white'}`}>
-            
-            {/* ترويسة الفيديو مع زر مشاهدة بارز */}
             <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-emerald-950/50 border-white/10' : 'bg-emerald-50 border-gray-200'}`}>
               <span className={`text-xs sm:text-sm font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>الملخص الرسمي</span>
               <a 
@@ -404,8 +395,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
                 مشاهدة على يوتيوب ↗
               </a>
             </div>
-
-            {/* مشغل الفيديو */}
             <div className="relative w-full aspect-video bg-black">
               <iframe 
                 src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0&modestbranding=1`} 
@@ -416,19 +405,15 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
                 allowFullScreen 
               />
             </div>
-
-            {/* ملاحظة للمستخدم في حال الحظر */}
             <div className={`px-4 py-2 text-center text-[10px] sm:text-xs ${isDark ? 'bg-black/60 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
               إذا لم يعمل المشغل هنا، يمكنك الضغط على زر <strong className="text-red-500">"مشاهدة على يوتيوب"</strong> في الأعلى للمشاهدة مباشرة.
             </div>
-
           </div>
         ))}
       </div>
     );
   }
 
-  // أزرار الأسئلة المقترحة
   if (suggestedQuestions.length > 0) {
     elements.push(
       <div key="suggested-questions" className="mt-4 flex flex-wrap gap-2 w-full">
