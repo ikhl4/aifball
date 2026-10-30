@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
 import TacticalPitch from './components/TacticalPitch';
 import LiveSportsWidget from './components/LiveSportsWidget';
-import LiveMatchCenter from './components/LiveMatchCenter'; // 🌟 استدعاء المركز الإعلامي
+import LiveMatchCenter from './components/LiveMatchCenter'; 
 import ShotMap from './components/ShotMap';
 import PlayerProfile from './components/PlayerProfile';
 import MatchReport from './components/MatchReport';
@@ -265,9 +265,13 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       const matchName = matchMatch ? matchMatch[1] : 'تقرير المباراة';
       const idMatch = trimmed.match(/matchId="([^"]+)"/);
       const matchId = idMatch ? idMatch[1] : '3869685';
+      
+      const urlMatch = trimmed.match(/match_url="([^"]+)"/);
+      const autoMatchUrl = urlMatch ? urlMatch[1] : undefined;
+
       elements.push(
         <div key={`match-report-${index}`} className="my-5 w-full">
-          <MatchReport matchName={matchName} matchId={matchId} isDark={isDark} />
+          <MatchReport matchName={matchName} matchId={matchId} isDark={isDark} autoMatchUrl={autoMatchUrl} />
         </div>
       );
       return;
@@ -440,14 +444,14 @@ export default function FootPlayChat() {
   const [attachedFiles, setAttachedFiles] = useState<{file: File, url: string}[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // 🌟 حالة فتح نافذة النتائج المباشرة
   const [showLiveScores, setShowLiveScores] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // 🌟 تحديث نصوص وبطاقات الديكور هنا
   const suggestionCards = [
-    { question: 'تحليل تكتيكي لأداء الالماني فيسينغ مع الاتحاد', tag: 'تحليل تكتيكي', icon: '📋' },
+    { question: 'داشبورد لاسلوب لعب الاتحاد', tag: 'تحليل تكتيكي', icon: '📋' },
     { question: 'ما هو جدول ترتيب دوري روشن السعودي؟', tag: 'ترتيب وإحصائيات', icon: '📊' },
     { question: 'أهداف وملخصات أبرز مباريات اليوم', tag: 'أهداف وملخصات', icon: '🎬' },
     { question: 'ما هو السجل التاريخي لأبطال دوري أبطال أوروبا؟', tag: 'التاريخ والبطولات', icon: '🏆' },
@@ -780,14 +784,7 @@ export default function FootPlayChat() {
           <SignedIn>
             <div className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
               <div className="flex items-center gap-3 w-full">
-                <UserButton 
-                  afterSignOutUrl="/" 
-                  appearance={{ 
-                    elements: { 
-                      userButtonAvatarBox: "w-9 h-9 rounded-full border-2 border-emerald-500/30 flex-shrink-0" 
-                    } 
-                  }} 
-                />
+                <UserButton afterSignOutUrl="/" appearance={{ elements: { userButtonAvatarBox: "w-9 h-9 rounded-full border-2 border-emerald-500/30 flex-shrink-0" } }} />
                 <div className="flex flex-col flex-1 min-w-0">
                   <div className="flex items-center justify-between w-full">
                     <span className={`text-xs font-bold truncate pr-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
@@ -820,11 +817,7 @@ export default function FootPlayChat() {
         </div>
         
         <div className="flex items-center gap-2">
-          {/* 🌟 زر النتائج المباشرة الجديد 🌟 */}
-          <button 
-            onClick={() => setShowLiveScores(true)} 
-            className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 transition font-bold text-xs ${isDarkMode ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-600/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'}`}
-          >
+          <button onClick={() => setShowLiveScores(true)} className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 transition font-bold text-xs ${isDarkMode ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-600/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'}`}>
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
             النتائج المباشرة
           </button>
@@ -854,7 +847,8 @@ export default function FootPlayChat() {
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
-                <div key={i} onClick={() => sendMessage(card.question)} className={`cursor-pointer flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl backdrop-blur-sm border shadow-lg min-h-[115px] select-none hover:scale-[1.02] transition-transform ${isDarkMode ? 'bg-black/20 border-white/10 opacity-80' : 'bg-white border-gray-200 opacity-90'}`}>
+                // 🌟 تمت إزالة onClick و cursor-pointer لتصبح مجرد ديكور
+                <div key={i} className={`flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl backdrop-blur-sm border shadow-lg min-h-[115px] select-none ${isDarkMode ? 'bg-black/20 border-white/10 opacity-80' : 'bg-white border-gray-200 opacity-90'}`}>
                   <p className={`text-sm font-bold leading-relaxed line-clamp-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>{card.question}</p>
                   <div className="flex items-center justify-between w-full mt-3 pt-1">
                     <span className="text-[10px] sm:text-xs font-bold text-[#22C55E] truncate pl-1">{card.tag}</span>
@@ -994,25 +988,15 @@ export default function FootPlayChat() {
         </div>
       </footer>
 
-      {/* 🌟 نافذة النتائج المباشرة (Modal) 🌟 */}
       {showLiveScores && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl shadow-2xl ${isDarkMode ? 'bg-[#131314] border border-white/10' : 'bg-white border border-gray-200'}`}>
-            
-            {/* ترويسة النافذة */}
             <div className={`sticky top-0 z-10 flex items-center justify-between p-4 border-b backdrop-blur-md ${isDarkMode ? 'bg-[#131314]/90 border-white/10' : 'bg-white/90 border-gray-200'}`}>
               <h2 className={`font-bold text-lg flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                 <span>⚽</span> مركز النتائج المباشرة
               </h2>
-              <button 
-                onClick={() => setShowLiveScores(false)}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
-              >
-                ✕
-              </button>
+              <button onClick={() => setShowLiveScores(false)} className={`w-8 h-8 rounded-full flex items-center justify-center transition ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>✕</button>
             </div>
-
-            {/* محتوى المكون */}
             <div className="p-2 sm:p-4">
               <LiveMatchCenter isDark={isDarkMode} />
             </div>
