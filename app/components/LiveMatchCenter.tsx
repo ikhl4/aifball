@@ -21,7 +21,7 @@ const LEAGUES = [
 ];
 
 export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean }) {
-  const [dateMode, setDateMode] = useState<'today' | 'yesterday'>('today');
+  const [dateMode, setDateMode] = useState<'yesterday' | 'today' | 'tomorrow'>('today');
   const [matchesByLeague, setMatchesByLeague] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
 
@@ -52,24 +52,42 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
     return () => clearInterval(interval);
   }, [dateMode]);
 
-  // ... (باقي كود العرض كما هو تماماً، عرض المباريات والنتائج)
   return (
     <div className={`w-full max-w-4xl mx-auto p-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
       
-      <div className={`flex justify-center gap-4 mb-6 p-1 rounded-xl ${isDark ? 'bg-[#1A1C1E]' : 'bg-gray-100'}`}>
-        <button onClick={() => setDateMode('today')} className={`flex-1 py-2 rounded-lg font-bold transition-all ${dateMode === 'today' ? 'bg-emerald-600 text-white' : 'text-gray-400'}`}>مباريات اليوم</button>
-        <button onClick={() => setDateMode('yesterday')} className={`flex-1 py-2 rounded-lg font-bold transition-all ${dateMode === 'yesterday' ? 'bg-emerald-600 text-white' : 'text-gray-400'}`}>نتائج الأمس</button>
+      {/* 🌟 أزرار التحكم (الأمس، اليوم، غداً) 🌟 */}
+      <div className={`flex justify-center gap-2 mb-6 p-1 rounded-xl ${isDark ? 'bg-[#1A1C1E]' : 'bg-gray-100'}`}>
+        <button 
+          onClick={() => setDateMode('yesterday')}
+          className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${dateMode === 'yesterday' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}
+        >
+          نتائج الأمس
+        </button>
+        <button 
+          onClick={() => setDateMode('today')}
+          className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${dateMode === 'today' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}
+        >
+          مباريات اليوم
+        </button>
+        <button 
+          onClick={() => setDateMode('tomorrow')}
+          className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${dateMode === 'tomorrow' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}
+        >
+          مباريات غداً
+        </button>
       </div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-10">
           <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-emerald-500 font-bold text-sm">جاري تحديث النتائج...</p>
+          <p className="text-emerald-500 font-bold text-sm">جاري جلب المباريات...</p>
         </div>
       ) : (
         <div className="space-y-6">
           {LEAGUES.map((league) => {
             const leagueMatches = matchesByLeague[league.id] || [];
+            
+            // إذا لم توجد مباريات في هذا الدوري، لا نعرضه
             if (leagueMatches.length === 0) return null;
 
             return (
@@ -87,26 +105,35 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
                     
                     return (
                       <div key={event.id} className={`p-3 flex items-center justify-between ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-                        <div className="w-16 text-center">
+                        
+                        {/* الوقت / الحالة */}
+                        <div className="w-20 text-center flex-shrink-0">
                           {isLive ? (
-                            <span className="text-red-500 font-bold text-xs animate-pulse">{event.status.displayClock}'</span>
+                            <span className="text-red-500 font-bold text-xs animate-pulse bg-red-900/20 px-2 py-1 rounded">{event.status.displayClock}'</span>
                           ) : event.status.type.state === 'post' ? (
                             <span className="text-gray-500 text-xs font-bold">انتهت</span>
                           ) : (
-                            <span className="text-emerald-500 text-xs font-bold">{event.status.type.shortDetail}</span>
+                            <span className="text-emerald-500 text-[10px] font-bold">{event.status.type.shortDetail}</span>
                           )}
                         </div>
-                        <div className="flex-1 flex items-center justify-end gap-2">
+
+                        {/* الفريق الأول */}
+                        <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
                           <span className={`font-bold text-sm truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{home.team.shortDisplayName}</span>
-                          <img src={home.team.logo} className="w-6 h-6 object-contain" />
+                          <img src={home.team.logo} className="w-6 h-6 object-contain flex-shrink-0" />
                         </div>
-                        <div className={`mx-4 w-14 text-center font-black text-lg px-1 py-0.5 rounded ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
+
+                        {/* النتيجة */}
+                        <div className={`mx-3 w-14 text-center font-black text-lg px-1 py-0.5 rounded flex-shrink-0 ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
                           {home.score || '0'} - {away.score || '0'}
                         </div>
-                        <div className="flex-1 flex items-center justify-start gap-2">
-                          <img src={away.team.logo} className="w-6 h-6 object-contain" />
+
+                        {/* الفريق الثاني */}
+                        <div className="flex-1 flex items-center justify-start gap-2 min-w-0">
+                          <img src={away.team.logo} className="w-6 h-6 object-contain flex-shrink-0" />
                           <span className={`font-bold text-sm truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{away.team.shortDisplayName}</span>
                         </div>
+
                       </div>
                     );
                   })}
@@ -114,6 +141,13 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
               </div>
             );
           })}
+          
+          {/* رسالة في حال عدم وجود مباريات في اليوم المحدد */}
+          {Object.values(matchesByLeague).every(arr => arr.length === 0) && (
+            <div className={`text-center py-20 rounded-2xl border ${isDark ? 'bg-[#131a2a] border-gray-800' : 'bg-white border-gray-200'}`}>
+              <p className="text-gray-500 font-bold">لا توجد مباريات في هذه الدوريات {dateMode === 'today' ? 'اليوم' : dateMode === 'yesterday' ? 'بالأمس' : 'غداً'}.</p>
+            </div>
+          )}
         </div>
       )}
     </div>
