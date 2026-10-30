@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
 import TacticalPitch from './components/TacticalPitch';
 import LiveSportsWidget from './components/LiveSportsWidget';
+import ShotMap from './components/ShotMap'; // ✅ تم الاستيراد
 
 interface Message {
   role: 'user' | 'assistant';
@@ -260,7 +261,22 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
     if (trimmed.startsWith('```')) return;
 
-    // التعديل هنا: التقاط الأسئلة المقترحة بذكاء
+    // ✅ التقاط خريطة التسديدات (ShotMap) - تمت الإضافة هنا
+    if (trimmed.startsWith('<aifball-shotmap') && trimmed.includes('</aifball-shotmap>')) {
+      if (inTable) flushTable(index);
+      
+      const matchMatch = trimmed.match(/match="([^"]+)"/);
+      const matchName = matchMatch ? matchMatch[1] : 'تحليل تكتيكي متقدم';
+
+      elements.push(
+        <div key={`shotmap-${index}`} className="my-5 w-full">
+          <ShotMap matchName={matchName} isDark={isDark} />
+        </div>
+      );
+      return;
+    }
+
+    // التقاط الأسئلة المقترحة بذكاء
     const isSuggestion = trimmed.startsWith('❓') || trimmed.includes('هل تريد') || trimmed.includes('هل ترغب') || trimmed.includes('هل تود');
     if (isSuggestion) {
       if (inTable) flushTable(index);
@@ -273,7 +289,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       if (/^\|[\s\-:|]+\|$/.test(trimmed)) { inTable = true; return; }
       inTable = true;
       const cells = trimmed.slice(1, -1).split('|').map((c) => c.trim());
-      // حماية من الجداول المكسورة
       if (cells.length > 0 && cells.some(c => c !== '')) {
         tableRows.push(cells);
       }
