@@ -7,16 +7,14 @@ interface MatchReportProps {
   isDark?: boolean;
 }
 
-// قاموس الترجمة (Bilingual Dictionary)
 const translations = {
   ar: {
     tabs: {
       overview: '📊 النظرة العامة',
-      attack: '⚔️ الهجوم',
-      defence: '🛡️ الدفاع',
-      lineup: '👥 التشكيلة',
-      passing: '🔗 التمرير',
-      shots: '🎯 التسديدات',
+      attack: '⚔️ الهجوم والانتقالات',
+      defence: '🛡️ الدفاع والصراعات',
+      lineup: '👥 التشكيلة والتحليل',
+      passing: '🔗 شبكة التمرير',
     },
     xg: 'الأهداف المتوقعة (xG)',
     stat: 'الإحصائية',
@@ -26,25 +24,31 @@ const translations = {
     passes: 'التمريرات',
     passAccuracy: 'دقة التمرير',
     fouls: 'الأخطاء',
-    lineupTitle: 'التشكيلة (اضغط لعرض التحليل)',
+    corners: 'الركنيات',
+    tackles: 'الالتحامات',
+    interceptions: 'الاعتراضات',
+    lineupTitle: 'التشكيلة (اضغط لعرض التحليل الفردي)',
     backToLineup: '← العودة للتشكيلة',
     rating: 'تقييم المباراة',
-    distance: 'المسافة المقطوعة',
-    topSpeed: 'أعلى سرعة',
-    passesMade: 'تمريرات',
+    distance: 'المسافة المقطوعة (تقديري)',
+    topSpeed: 'أعلى سرعة (تقديري)',
+    passesMade: 'تمريرات صحيحة',
     shotsMade: 'تسديدات',
+    progressivePasses: 'تمريرات تقدمية',
+    touchMap: 'الخريطة الحرارية (أماكن التواجد)',
     shotMap: 'أماكن التسديد',
     passMap: 'شبكة التمرير',
     loading: 'جاري جلب بيانات StatsBomb...',
+    attackData: 'إحصائيات الهجوم من StatsBomb',
+    defenceData: 'إحصائيات الدفاع من StatsBomb',
   },
   en: {
     tabs: {
       overview: '📊 Overview',
-      attack: '⚔️ Attack',
-      defence: '🛡️ Defence',
-      lineup: '👥 Lineup',
-      passing: '🔗 Passing',
-      shots: '🎯 Shots',
+      attack: '⚔️ Attack & Transitions',
+      defence: '🛡️ Defence & Duels',
+      lineup: '👥 Lineup & Analysis',
+      passing: '🔗 Passing Network',
     },
     xg: 'Expected Goals (xG)',
     stat: 'Statistic',
@@ -54,16 +58,23 @@ const translations = {
     passes: 'Passes',
     passAccuracy: 'Pass Accuracy',
     fouls: 'Fouls',
-    lineupTitle: 'Lineup (Click player for analysis)',
+    corners: 'Corners',
+    tackles: 'Tackles',
+    interceptions: 'Interceptions',
+    lineupTitle: 'Lineup (Click player for individual analysis)',
     backToLineup: '← Back to Lineup',
     rating: 'Match Rating',
-    distance: 'Distance Covered',
-    topSpeed: 'Top Speed',
-    passesMade: 'Passes',
+    distance: 'Distance Covered (Est.)',
+    topSpeed: 'Top Speed (Est.)',
+    passesMade: 'Accurate Passes',
     shotsMade: 'Shots',
+    progressivePasses: 'Progressive Passes',
+    touchMap: 'Heatmap (Touch Locations)',
     shotMap: 'Shot Map',
     passMap: 'Pass Network',
     loading: 'Loading StatsBomb data...',
+    attackData: 'Attack Stats from StatsBomb',
+    defenceData: 'Defence Stats from StatsBomb',
   }
 };
 
@@ -73,7 +84,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // اكتشاف اللغة تلقائياً (إذا كان اسم المباراة يحتوي على حروف عربية نستخدم العربية)
   const isArabic = /[\u0600-\u06FF]/.test(matchName);
   const lang = isArabic ? 'ar' : 'en';
   const t = translations[lang];
@@ -113,21 +123,17 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
     { id: 'attack', label: t.tabs.attack },
     { id: 'defence', label: t.tabs.defence },
     { id: 'lineup', label: t.tabs.lineup },
-    { id: 'passing', label: t.tabs.passing },
-    { id: 'shots', label: t.tabs.shots },
   ];
 
   return (
     <div dir={dir} className={`relative w-full max-w-6xl mx-auto my-4 sm:my-6 rounded-2xl sm:rounded-3xl border shadow-2xl overflow-hidden font-saudi transition-all ${isDark ? 'bg-[#0a0a0a] border-emerald-900/30 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
       
-      {/* خلفية */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#1D6B35]/15 via-transparent to-[#131314]/90 pointer-events-none z-0"></div>
       <div className={`absolute top-3 ${isArabic ? 'left-3' : 'right-3'} sm:top-4 sm:${isArabic ? 'left-4' : 'right-4'} opacity-30 flex items-center gap-1 z-20`}>
         <span className="text-emerald-500 font-black italic text-sm sm:text-lg tracking-wider">AiFBall</span>
         <span className="text-[8px] sm:text-[9px] bg-emerald-500 text-black px-1 rounded font-bold">PRO</span>
       </div>
 
-      {/* الترويسة */}
       {!selectedPlayer && (
         <>
           <div className={`relative z-10 p-3 sm:p-6 flex flex-col sm:flex-row justify-between items-center border-b gap-3 sm:gap-0 ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
@@ -161,7 +167,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
         </>
       )}
 
-      {/* المحتوى */}
       <div className={`relative z-10 p-3 sm:p-6 ${selectedPlayer ? 'h-auto min-h-[500px]' : 'h-[500px] sm:h-[600px] overflow-y-auto custom-scrollbar'} ${isDark ? 'bg-[#0a0a0a]/50' : 'bg-white'}`}>
         
         {/* شاشة اللاعب */}
@@ -185,21 +190,44 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                  </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 mb-4 sm:mb-6">
                 {[
                   { label: t.distance, val: '10.5 km' }, 
                   { label: t.topSpeed, val: '32.4 km/h' },
-                  { label: t.passesMade, val: data.playersData[selectedPlayer.id]?.passes.length || 0 },
+                  { label: t.passesMade, val: data.playersData[selectedPlayer.id]?.touches || 0 },
+                  { label: t.progressivePasses, val: data.playersData[selectedPlayer.id]?.progressivePasses || 0 },
                   { label: t.shotsMade, val: data.playersData[selectedPlayer.id]?.shots.length || 0 },
                 ].map((item, i) => (
                   <div key={i} className={`p-2 sm:p-3 rounded-xl border text-center ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'}`}>
-                    <div className="text-sm sm:text-xl font-bold">{item.val}</div>
-                    <div className="text-[9px] sm:text-xs text-gray-500 mt-0.5">{item.label}</div>
+                    <div className="text-sm sm:text-lg font-bold">{item.val}</div>
+                    <div className="text-[9px] sm:text-[10px] text-gray-500 mt-0.5">{item.label}</div>
                   </div>
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                {/* 1. الخريطة الحرارية */}
+                <div className={`rounded-xl border p-2 bg-[#2E8B57] ${isDark ? 'border-gray-700' : 'border-emerald-600'}`}>
+                  <h4 className="text-center font-bold text-[10px] sm:text-xs mb-1.5 text-white bg-black/40 py-1 rounded">{t.touchMap}</h4>
+                  <div className="aspect-[3/4] w-full max-w-[200px] mx-auto">
+                    <svg viewBox="0 0 120 80" className="w-full h-full">
+                      <g stroke="rgba(255,255,255,0.3)" strokeWidth="1" fill="none">
+                        <rect x="0" y="0" width="120" height="80" />
+                        <line x1="60" y1="0" x2="60" y2="80" />
+                        <circle cx="60" cy="40" r="10" />
+                        <rect x="102" y="18" width="18" height="44" />
+                        <rect x="114" y="30" width="6" height="20" />
+                        <rect x="0" y="18" width="18" height="44" />
+                      </g>
+                      {/* Heatmap Points */}
+                      {data.playersData[selectedPlayer.id]?.heatmap.map((pt: any, idx: number) => (
+                        <circle key={idx} cx={pt[0]} cy={pt[1]} r="2.5" fill="#ef4444" opacity="0.15" filter="blur(1px)" />
+                      ))}
+                    </svg>
+                  </div>
+                </div>
+
+                {/* 2. خريطة التسديدات */}
                 <div className={`rounded-xl border p-2 bg-[#2E8B57] ${isDark ? 'border-gray-700' : 'border-emerald-600'}`}>
                   <h4 className="text-center font-bold text-[10px] sm:text-xs mb-1.5 text-white bg-black/40 py-1 rounded">{t.shotMap}</h4>
                   <div className="aspect-[3/4] w-full max-w-[200px] mx-auto">
@@ -219,6 +247,7 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                   </div>
                 </div>
 
+                {/* 3. شبكة التمرير */}
                 <div className={`rounded-xl border p-2 bg-[#2E8B57] ${isDark ? 'border-gray-700' : 'border-emerald-600'}`}>
                   <h4 className="text-center font-bold text-[10px] sm:text-xs mb-1.5 text-white bg-black/40 py-1 rounded">{t.passMap}</h4>
                   <div className="aspect-[3/4] w-full max-w-[200px] mx-auto">
@@ -273,6 +302,7 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                         { h: data.stats.shotsOnTarget.home, stat: t.shotsOnTarget, a: data.stats.shotsOnTarget.away },
                         { h: data.stats.passes.home, stat: t.passes, a: data.stats.passes.away },
                         { h: data.stats.passAccuracy.home, stat: t.passAccuracy, a: data.stats.passAccuracy.away },
+                        { h: data.stats.corners.home, stat: t.corners, a: data.stats.corners.away },
                         { h: data.stats.fouls.home, stat: t.fouls, a: data.stats.fouls.away },
                       ].map((row, i) => (
                         <tr key={i} className={isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}>
@@ -283,6 +313,56 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'attack' && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                <h3 className="text-lg font-bold text-emerald-500 border-b pb-2 mb-4">{t.attackData}</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'}`}>
+                    <h4 className="text-sm font-bold mb-3 text-gray-300">{data.home.name}</h4>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between border-b border-gray-700 pb-1"><span>التسديدات</span> <span className="font-bold">{data.stats.shots.home}</span></div>
+                      <div className="flex justify-between border-b border-gray-700 pb-1"><span>الركنيات</span> <span className="font-bold">{data.stats.corners.home}</span></div>
+                      <div className="flex justify-between border-b border-gray-700 pb-1"><span>التمريرات</span> <span className="font-bold">{data.stats.passes.home}</span></div>
+                      <div className="flex justify-between pb-1"><span>دقة التمرير</span> <span className="font-bold">{data.stats.passAccuracy.home}</span></div>
+                    </div>
+                  </div>
+                  <div className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'}`}>
+                    <h4 className="text-sm font-bold mb-3 text-gray-300">{data.away.name}</h4>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between border-b border-gray-700 pb-1"><span>التسديدات</span> <span className="font-bold">{data.stats.shots.away}</span></div>
+                      <div className="flex justify-between border-b border-gray-700 pb-1"><span>الركنيات</span> <span className="font-bold">{data.stats.corners.away}</span></div>
+                      <div className="flex justify-between border-b border-gray-700 pb-1"><span>التمريرات</span> <span className="font-bold">{data.stats.passes.away}</span></div>
+                      <div className="flex justify-between pb-1"><span>دقة التمرير</span> <span className="font-bold">{data.stats.passAccuracy.away}</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'defence' && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                <h3 className="text-lg font-bold text-emerald-500 border-b pb-2 mb-4">{t.defenceData}</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'}`}>
+                    <h4 className="text-sm font-bold mb-3 text-gray-300">{data.home.name}</h4>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between border-b border-gray-700 pb-1"><span>الاعتراضات</span> <span className="font-bold">{data.stats.interceptions.home}</span></div>
+                      <div className="flex justify-between border-b border-gray-700 pb-1"><span>الالتحامات</span> <span className="font-bold">{data.stats.tackles.home}</span></div>
+                      <div className="flex justify-between pb-1"><span>الأخطاء</span> <span className="font-bold">{data.stats.fouls.home}</span></div>
+                    </div>
+                  </div>
+                  <div className={`p-4 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'}`}>
+                    <h4 className="text-sm font-bold mb-3 text-gray-300">{data.away.name}</h4>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between border-b border-gray-700 pb-1"><span>الاعتراضات</span> <span className="font-bold">{data.stats.interceptions.away}</span></div>
+                      <div className="flex justify-between border-b border-gray-700 pb-1"><span>الالتحامات</span> <span className="font-bold">{data.stats.tackles.away}</span></div>
+                      <div className="flex justify-between pb-1"><span>الأخطاء</span> <span className="font-bold">{data.stats.fouls.away}</span></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -320,14 +400,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {(activeTab === 'attack' || activeTab === 'defence' || activeTab === 'passing' || activeTab === 'shots') && (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                 <span className="text-4xl mb-4">📊</span>
-                 <h3 className="text-lg font-bold text-emerald-500 mb-2">{isArabic ? 'قريباً' : 'Coming Soon'}</h3>
-                 <p className="text-xs text-gray-500">{isArabic ? 'هذا القسم قيد التطوير باستخدام بيانات StatsBomb الحقيقية.' : 'This section is under development using real StatsBomb data.'}</p>
               </div>
             )}
           </>
