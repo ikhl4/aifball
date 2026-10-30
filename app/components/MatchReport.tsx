@@ -9,72 +9,22 @@ interface MatchReportProps {
 
 const translations = {
   ar: {
-    tabs: {
-      overview: '📊 النظرة العامة',
-      attack: '⚔️ الهجوم والانتقالات',
-      defence: '🛡️ الدفاع والصراعات',
-      lineup: '👥 التشكيلة والتحليل',
-      passing: '🔗 شبكة التمرير',
-    },
-    xg: 'الأهداف المتوقعة (xG)',
-    stat: 'الإحصائية',
-    possession: 'الاستحواذ',
-    shotsCount: 'التسديدات',
-    shotsOnTarget: 'على المرمى',
-    passes: 'التمريرات',
-    passAccuracy: 'دقة التمرير',
-    fouls: 'الأخطاء',
-    corners: 'الركنيات',
-    tackles: 'الالتحامات',
-    interceptions: 'الاعتراضات',
-    lineupTitle: 'التشكيلة (اضغط لعرض التحليل الفردي)',
-    backToLineup: '← العودة للتشكيلة',
-    rating: 'تقييم المباراة',
-    distance: 'المسافة المقطوعة (تقديري)',
-    topSpeed: 'أعلى سرعة (تقديري)',
-    passesMade: 'تمريرات صحيحة',
-    shotsMade: 'تسديدات',
-    progressivePasses: 'تمريرات تقدمية',
-    touchMap: 'الخريطة الحرارية (أماكن التواجد)',
-    shotMap: 'أماكن التسديد',
-    passMap: 'شبكة التمرير',
-    loading: 'جاري جلب بيانات StatsBomb...',
-    attackData: 'إحصائيات الهجوم من StatsBomb',
-    defenceData: 'إحصائيات الدفاع من StatsBomb',
+    tabs: { overview: '📊 النظرة العامة', attack: '⚔️ الهجوم والانتقالات', defence: '🛡️ الدفاع والصراعات', lineup: '👥 التشكيلة والتحليل' },
+    xg: 'الأهداف المتوقعة (xG)', stat: 'الإحصائية', possession: 'الاستحواذ', shotsCount: 'التسديدات', shotsOnTarget: 'على المرمى',
+    passes: 'التمريرات', passAccuracy: 'دقة التمرير', fouls: 'الأخطاء', corners: 'الركنيات', tackles: 'الالتحامات', interceptions: 'الاعتراضات',
+    lineupTitle: 'التشكيلة (اضغط لعرض التحليل الفردي)', backToLineup: '← العودة للتشكيلة', rating: 'تقييم المباراة',
+    distance: 'المسافة (تقديري)', topSpeed: 'أعلى سرعة (تقديري)', passesMade: 'تمريرات صحيحة', shotsMade: 'تسديدات',
+    progressivePasses: 'تمريرات تقدمية', touchMap: 'الخريطة الحرارية', shotMap: 'أماكن التسديد', passMap: 'شبكة التمرير',
+    loading: 'جاري جلب بيانات StatsBomb...', attackData: 'إحصائيات الهجوم', defenceData: 'إحصائيات الدفاع',
   },
   en: {
-    tabs: {
-      overview: '📊 Overview',
-      attack: '⚔️ Attack & Transitions',
-      defence: '🛡️ Defence & Duels',
-      lineup: '👥 Lineup & Analysis',
-      passing: '🔗 Passing Network',
-    },
-    xg: 'Expected Goals (xG)',
-    stat: 'Statistic',
-    possession: 'Possession',
-    shotsCount: 'Shots',
-    shotsOnTarget: 'Shots on Target',
-    passes: 'Passes',
-    passAccuracy: 'Pass Accuracy',
-    fouls: 'Fouls',
-    corners: 'Corners',
-    tackles: 'Tackles',
-    interceptions: 'Interceptions',
-    lineupTitle: 'Lineup (Click player for individual analysis)',
-    backToLineup: '← Back to Lineup',
-    rating: 'Match Rating',
-    distance: 'Distance Covered (Est.)',
-    topSpeed: 'Top Speed (Est.)',
-    passesMade: 'Accurate Passes',
-    shotsMade: 'Shots',
-    progressivePasses: 'Progressive Passes',
-    touchMap: 'Heatmap (Touch Locations)',
-    shotMap: 'Shot Map',
-    passMap: 'Pass Network',
-    loading: 'Loading StatsBomb data...',
-    attackData: 'Attack Stats from StatsBomb',
-    defenceData: 'Defence Stats from StatsBomb',
+    tabs: { overview: '📊 Overview', attack: '⚔️ Attack & Transitions', defence: '🛡️ Defence & Duels', lineup: '👥 Lineup & Analysis' },
+    xg: 'Expected Goals (xG)', stat: 'Statistic', possession: 'Possession', shotsCount: 'Shots', shotsOnTarget: 'Shots on Target',
+    passes: 'Passes', passAccuracy: 'Pass Accuracy', fouls: 'Fouls', corners: 'Corners', tackles: 'Tackles', interceptions: 'Interceptions',
+    lineupTitle: 'Lineup (Click player for analysis)', backToLineup: '← Back to Lineup', rating: 'Match Rating',
+    distance: 'Distance (Est.)', topSpeed: 'Top Speed (Est.)', passesMade: 'Accurate Passes', shotsMade: 'Shots',
+    progressivePasses: 'Progressive Passes', touchMap: 'Heatmap', shotMap: 'Shot Map', passMap: 'Pass Network',
+    loading: 'Loading StatsBomb data...', attackData: 'Attack Stats', defenceData: 'Defence Stats',
   }
 };
 
@@ -105,8 +55,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
     fetchMatchData();
   }, [matchId]);
 
-  const getAvatar = (name: string) => `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`;
-
   if (loading) {
     return (
       <div className={`w-full max-w-6xl mx-auto my-4 p-8 rounded-3xl border flex flex-col items-center justify-center ${isDark ? 'bg-[#0a0a0a] border-emerald-900/30' : 'bg-gray-50 border-gray-200'}`}>
@@ -136,20 +84,37 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
 
       {!selectedPlayer && (
         <>
+          {/* ترويسة المباراة */}
           <div className={`relative z-10 p-3 sm:p-6 flex flex-col sm:flex-row justify-between items-center border-b gap-3 sm:gap-0 ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
             <div className="flex sm:flex-col items-center justify-between w-full sm:w-1/3 gap-2">
-              <span className="text-3xl sm:text-5xl">{data.home.logo}</span>
-              <span className="font-bold text-xs sm:text-base">{data.home.name}</span>
+              {/* شعار الفريق الأول - لون رمادي إذا لم يوجد */}
+              {data.home.logo ? (
+                <img src={data.home.logo} alt={data.home.name} className="w-12 h-12 sm:w-20 sm:h-20 object-contain drop-shadow-md" />
+              ) : (
+                <div className="w-12 h-12 sm:w-20 sm:h-20 rounded-full bg-gray-600 flex items-center justify-center text-gray-300 shadow-inner">
+                  <svg className="w-6 h-6 sm:w-10 sm:h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5z"/></svg>
+                </div>
+              )}
+              <span className="font-bold text-xs sm:text-base text-center">{data.home.name}</span>
             </div>
+            
             <div className="flex flex-col items-center justify-center w-full sm:w-1/3 order-first sm:order-none">
               <div className={`text-3xl sm:text-6xl font-black px-4 sm:px-6 py-1 sm:py-2 rounded-xl sm:rounded-2xl border-2 shadow-inner ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'}`}>
                 {data.home.score} - {data.away.score}
               </div>
               <span className="text-[9px] sm:text-xs text-gray-500 mt-1 sm:mt-2 font-bold tracking-widest">StatsBomb Data</span>
             </div>
+
             <div className="flex sm:flex-col items-center justify-between w-full sm:w-1/3 gap-2">
-              <span className="text-3xl sm:text-5xl">{data.away.logo}</span>
-              <span className="font-bold text-xs sm:text-base">{data.away.name}</span>
+               {/* شعار الفريق الثاني - لون رمادي إذا لم يوجد */}
+               {data.away.logo ? (
+                <img src={data.away.logo} alt={data.away.name} className="w-12 h-12 sm:w-20 sm:h-20 object-contain drop-shadow-md" />
+              ) : (
+                <div className="w-12 h-12 sm:w-20 sm:h-20 rounded-full bg-gray-600 flex items-center justify-center text-gray-300 shadow-inner">
+                  <svg className="w-6 h-6 sm:w-10 sm:h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5z"/></svg>
+                </div>
+              )}
+              <span className="font-bold text-xs sm:text-base text-center">{data.away.name}</span>
             </div>
           </div>
 
@@ -176,16 +141,28 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
               {t.backToLineup}
             </button>
             <div className={`p-3 sm:p-6 rounded-2xl border ${isDark ? 'bg-[#111] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+              
+              {/* ترويسة اللاعب - لون رمادي إذا لم يوجد */}
               <div className={`flex flex-col sm:flex-row items-center gap-3 sm:gap-4 mb-4 sm:mb-6 border-b pb-4 border-gray-700 ${isArabic ? 'text-center sm:text-right' : 'text-center sm:text-left'}`}>
-                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-emerald-500 shadow-[0_0_15px_rgba(34,197,94,0.3)]">
-                   <img src={getAvatar(selectedPlayer.name)} alt={selectedPlayer.name} className="w-full h-full bg-gray-800" />
+                 <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-gray-600 shadow-inner bg-gray-600 flex-shrink-0">
+                   {selectedPlayer.image ? (
+                     <img 
+                       src={selectedPlayer.image} 
+                       alt={selectedPlayer.name} 
+                       className="w-full h-full object-cover object-top" 
+                     />
+                   ) : (
+                     <div className="w-full h-full flex items-center justify-center text-gray-300 text-xl sm:text-3xl font-bold">
+                       {selectedPlayer.name.charAt(0)}
+                     </div>
+                   )}
                  </div>
                  <div>
-                    <h2 className="text-xl sm:text-2xl font-black">{selectedPlayer.name}</h2>
+                    <h2 className="text-xl sm:text-3xl font-black">{selectedPlayer.name}</h2>
                     <p className="text-[10px] sm:text-sm text-gray-400">{selectedPlayer.pos} | {selectedPlayer.num}</p>
                  </div>
                  <div className={`${isArabic ? 'sm:mr-auto' : 'sm:ml-auto'} text-center`}>
-                    <div className="text-2xl sm:text-3xl font-black text-emerald-400">{selectedPlayer.rating}</div>
+                    <div className="text-2xl sm:text-4xl font-black text-emerald-400">{selectedPlayer.rating}</div>
                     <div className="text-[9px] sm:text-[10px] text-gray-500">{t.rating}</div>
                  </div>
               </div>
@@ -206,7 +183,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                {/* 1. الخريطة الحرارية */}
                 <div className={`rounded-xl border p-2 bg-[#2E8B57] ${isDark ? 'border-gray-700' : 'border-emerald-600'}`}>
                   <h4 className="text-center font-bold text-[10px] sm:text-xs mb-1.5 text-white bg-black/40 py-1 rounded">{t.touchMap}</h4>
                   <div className="aspect-[3/4] w-full max-w-[200px] mx-auto">
@@ -219,7 +195,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                         <rect x="114" y="30" width="6" height="20" />
                         <rect x="0" y="18" width="18" height="44" />
                       </g>
-                      {/* Heatmap Points */}
                       {data.playersData[selectedPlayer.id]?.heatmap.map((pt: any, idx: number) => (
                         <circle key={idx} cx={pt[0]} cy={pt[1]} r="2.5" fill="#ef4444" opacity="0.15" filter="blur(1px)" />
                       ))}
@@ -227,7 +202,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                   </div>
                 </div>
 
-                {/* 2. خريطة التسديدات */}
                 <div className={`rounded-xl border p-2 bg-[#2E8B57] ${isDark ? 'border-gray-700' : 'border-emerald-600'}`}>
                   <h4 className="text-center font-bold text-[10px] sm:text-xs mb-1.5 text-white bg-black/40 py-1 rounded">{t.shotMap}</h4>
                   <div className="aspect-[3/4] w-full max-w-[200px] mx-auto">
@@ -247,7 +221,6 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                   </div>
                 </div>
 
-                {/* 3. شبكة التمرير */}
                 <div className={`rounded-xl border p-2 bg-[#2E8B57] ${isDark ? 'border-gray-700' : 'border-emerald-600'}`}>
                   <h4 className="text-center font-bold text-[10px] sm:text-xs mb-1.5 text-white bg-black/40 py-1 rounded">{t.passMap}</h4>
                   <div className="aspect-[3/4] w-full max-w-[200px] mx-auto">
@@ -376,7 +349,20 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {data.lineup.home.map((p: any) => (
                         <button key={p.id} onClick={() => setSelectedPlayer(p)} className={`flex items-center gap-2 p-2 rounded-xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-white/5 border-white/10 hover:border-emerald-500/50' : 'bg-white border-gray-200 hover:border-emerald-500'}`}>
-                          <img src={getAvatar(p.name)} alt={p.name} className="w-8 h-8 rounded-full bg-gray-800 flex-shrink-0" />
+                          
+                          {/* صورة اللاعب - لون رمادي مع الحرف الأول إذا لم توجد */}
+                          <div className="w-8 h-8 rounded-full bg-gray-600 flex-shrink-0 overflow-hidden flex items-center justify-center text-gray-300 text-xs font-bold shadow-inner">
+                            {p.image ? (
+                              <img 
+                                src={p.image} 
+                                alt={p.name} 
+                                className="w-full h-full object-cover object-top" 
+                              />
+                            ) : (
+                              p.name.charAt(0)
+                            )}
+                          </div>
+
                           <div className={`${isArabic ? 'text-right' : 'text-left'} min-w-0 flex-1`}>
                             <div className="text-[11px] sm:text-xs font-bold truncate">{p.name}</div>
                             <div className="text-[9px] text-gray-500">{p.pos}</div>
@@ -390,7 +376,20 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {data.lineup.away.map((p: any) => (
                         <button key={p.id} onClick={() => setSelectedPlayer(p)} className={`flex items-center gap-2 p-2 rounded-xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-white/5 border-white/10 hover:border-emerald-500/50' : 'bg-white border-gray-200 hover:border-emerald-500'}`}>
-                          <img src={getAvatar(p.name)} alt={p.name} className="w-8 h-8 rounded-full bg-gray-800 flex-shrink-0" />
+                          
+                          {/* صورة اللاعب - لون رمادي مع الحرف الأول إذا لم توجد */}
+                          <div className="w-8 h-8 rounded-full bg-gray-600 flex-shrink-0 overflow-hidden flex items-center justify-center text-gray-300 text-xs font-bold shadow-inner">
+                            {p.image ? (
+                              <img 
+                                src={p.image} 
+                                alt={p.name} 
+                                className="w-full h-full object-cover object-top" 
+                              />
+                            ) : (
+                              p.name.charAt(0)
+                            )}
+                          </div>
+
                           <div className={`${isArabic ? 'text-right' : 'text-left'} min-w-0 flex-1`}>
                             <div className="text-[11px] sm:text-xs font-bold truncate">{p.name}</div>
                             <div className="text-[9px] text-gray-500">{p.pos}</div>
