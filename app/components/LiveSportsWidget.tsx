@@ -4,9 +4,10 @@ import React, { useEffect, useState } from 'react';
 interface LiveSportsWidgetProps {
   league?: string;
   isDark?: boolean;
+  date?: string; // أضفنا هذا المتغير
 }
 
-export default function LiveSportsWidget({ league = 'sau.1', isDark = true }: LiveSportsWidgetProps) {
+export default function LiveSportsWidget({ league = 'sau.1', isDark = true, date = 'today' }: LiveSportsWidgetProps) {
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +17,7 @@ export default function LiveSportsWidget({ league = 'sau.1', isDark = true }: Li
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/espn?league=${league}`);
+        const res = await fetch(`/api/espn?league=${league}&date=${date}`);
         const result = await res.json();
         
         if (!res.ok) throw new Error(result.error || 'فشل جلب البيانات');
@@ -32,13 +33,13 @@ export default function LiveSportsWidget({ league = 'sau.1', isDark = true }: Li
     fetchData();
     const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);
-  }, [league]);
+  }, [league, date]); // أضفنا date هنا
 
   if (loading) {
     return (
       <div className={`w-full p-6 flex flex-col items-center justify-center rounded-2xl border shadow-lg my-4 ${isDark ? 'bg-[#131a2a] border-gray-800/80' : 'bg-white border-gray-200'}`}>
         <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-        <p className={`font-bold text-sm ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>جاري جلب مباريات اليوم...</p>
+        <p className={`font-bold text-sm ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>جاري جلب مباريات {date === 'yesterday' ? 'الأمس' : 'اليوم'}...</p>
       </div>
     );
   }
@@ -54,7 +55,7 @@ export default function LiveSportsWidget({ league = 'sau.1', isDark = true }: Li
   if (matches.length === 0) {
     return (
       <div className={`w-full p-4 rounded-2xl border text-center my-4 ${isDark ? 'bg-[#131a2a] border-gray-800/80' : 'bg-white border-gray-200'}`}>
-        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>لا توجد مباريات مجدولة أو مباشرة حالياً في هذا الدوري.</p>
+        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>لا توجد مباريات في هذا الدوري {date === 'yesterday' ? 'بالأمس' : 'اليوم'}.</p>
       </div>
     );
   }
@@ -63,7 +64,7 @@ export default function LiveSportsWidget({ league = 'sau.1', isDark = true }: Li
     <div className={`w-full rounded-2xl border shadow-xl my-4 overflow-hidden ${isDark ? 'border-gray-800/80 bg-[#131a2a]' : 'border-gray-200 bg-white'}`}>
       <div className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? 'bg-emerald-950/60 border-gray-800/80' : 'bg-emerald-50 border-gray-200'}`}>
         <span className={`font-bold text-sm flex items-center gap-2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> نتائج مباشرة (ESPN)
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> نتائج {date === 'yesterday' ? 'الأمس' : 'اليوم'} (ESPN)
         </span>
       </div>
       
