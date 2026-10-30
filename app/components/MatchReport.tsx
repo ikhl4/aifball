@@ -1,6 +1,6 @@
 'use client';
-import React, { useState } from 'react';
-import ShotMap, { ShotData } from './ShotMap'; // <-- استيراد صحيح
+import React, { useState, useEffect } from 'react';
+import ShotMap, { ShotData } from './ShotMap'; 
 
 interface MatchReportProps {
   matchName: string;
@@ -47,10 +47,12 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // --- حالات جديدة لخريطة التسديدات الحية ---
+  // --- حالات خرائط التسديد الحية ---
   const [liveShots, setLiveShots] = useState<ShotData[]>([]);
   const [liveLoading, setLiveLoading] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
+  const [inputUrl, setInputUrl] = useState('');
+  const [sourceType, setSourceType] = useState<'365' | 'sofascore'>('sofascore');
 
   const isArabic = /[\u0600-\u06FF]/.test(matchName);
   const lang = isArabic ? 'ar' : 'en';
@@ -73,69 +75,82 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
     fetchMatchData();
   }, [matchId]);
 
-  // دالة جلب خرائط التسديد والتشكيلة من 365Scores
-  const fetchLiveShots = async (matchUrl: string) => {
+  // --- دالة جلب البيانات الذكية (تدعم 365 و SofaScore) ---
+  const fetchLiveShots = async () => {
+    if (!inputUrl) {
+      setLiveError("الرجاء إدخال رابط المباراة أولاً.");
+      return;
+    }
+
     setLiveLoading(true);
     setLiveError(null);
+    setLiveShots([]); 
+
     try {
-      // 1. جلب التسديدات والتشكيلة في نفس الوقت
-      const [shotsRes, lineupRes] = await Promise.all([
-        fetch(`/api/advanced?source=365&action=shotmap&matchUrl=${encodeURIComponent(matchUrl)}`),
-        fetch(`/api/advanced?source=365&action=lineup&matchUrl=${encodeURIComponent(matchUrl)}`)
-      ]);
+      const res = await fetch(`/api/advanced?source=${sourceType}&action=shotmap&matchUrl=${encodeURIComponent(inputUrl)}`);
+      const json = await res.json();
 
-      const shotsJson = await shotsRes.json();
-      const lineupJson = await lineupRes.json();
-
-      // 2. إنشاء قاموس لربط رقم اللاعب باسمه
-      const playerMap: Record<number, string> = {};
-      if (lineupJson.data && Array.isArray(lineupJson.data)) {
-        lineupJson.data.forEach((player: any) => {
-          const id = player.playerId || player.id;
-          const name = player.playerName || player.name;
-          if (id && name) playerMap[id] = name;
-        });
+      if (json.error) {
+        throw new Error(json.details || json.error);
       }
 
-      if (shotsJson.error) throw new Error(shotsJson.details || shotsJson.error);
-
-      if (shotsJson.data && Array.isArray(shotsJson.data)) {
-        const mappedShots: ShotData[] = shotsJson.data.map((shot: any, index: number) => {
-          // ترجمة النتيجة
+      if (json.data && Array.isArray(json.data)) {
+        const mappedShots: ShotData[] = json.data.map((shot: any, index: number) => {
+          
           let mappedOutcome: 'Goal' | 'Saved' | 'Off Target' | 'Blocked' = 'Off Target';
-          if (shot.shot_outcome === 'Gol') mappedOutcome = 'Goal';
-          else if (shot.shot_outcome === 'Atajado') mappedOutcome = 'Saved';
-          else if (shot.shot_outcome === 'Bloqueado') mappedOutcome = 'Blocked';
+          let mappedX = 60;
+          let mappedY = 40;
+          let playerName = '';
+          let isHomeTeam = true;
 
-          // تحويل الإحداثيات الأساسية
-          let mappedX = shot.line ? (shot.line / 100) * 120 : 60; 
-          let mappedY = shot.y ? (shot.y / 100) * 80 : 40;
+          // 1. معالجة بيانات 365Scores
+          if (sourceType === '365') {
+            if (shot.shot_outcome === 'Gol') mappedOutcome = 'Goal';
+            else if (shot.shot_outcome === 'Atajado') mappedOutcome = 'Saved';
+            else if (shot.shot_outcome === 'Bloqueado') mappedOutcome = 'Blocked';
+            
+            mappedX = shot.line ? (shot.line / 100) * 120 : 60; 
+            mappedY = shot.y ? (shot.y / 100) * 80 : 40;
+            isHomeTeam = shot.competitorNum === 1;
+            playerName = `لاعب ${shot.playerId}`; 
 
-          // 🚨 قلب اتجاه التسديدات للفريق الثاني (الضيف)
-          if (shot.competitorNum === 2) {
+          // 2. معالجة بيانات SofaScore
+          } else if (sourceType === 'sofascore') {
+            const outcomeStr = (shot.shot_type || shot.outcome || '').toLowerCase();
+            if (outcomeStr.includes('goal')) mappedOutcome = 'Goal';
+            else if (outcomeStr.includes('save')) mappedOutcome = 'Saved';
+            else if (outcomeStr.includes('block')) mappedOutcome = 'Blocked';
+
+            mappedX = shot.x ? (shot.x / 100) * 120 : 60; 
+            mappedY = shot.y ? (shot.y / 100) * 80 : 40;
+            isHomeTeam = shot.is_home === true; 
+            playerName = shot.player_name || shot.player || 'لاعب غير معروف';
+          }
+
+          // قلب الإحداثيات للفريق الضيف
+          if (!isHomeTeam) {
             mappedX = 120 - mappedX; 
             mappedY = 80 - mappedY;  
           }
 
-          // جلب اسم اللاعب من القاموس
-          const playerName = playerMap[shot.playerId] || `لاعب ${shot.playerId}`;
-
           return {
-            id: shot.key || String(index),
+            id: String(index),
             player: playerName,
-            team: shot.competitorNum === 1 ? data?.home?.name : data?.away?.name,
+            team: isHomeTeam ? data?.home?.name : data?.away?.name,
             x: mappedX, 
             y: mappedY, 
-            xg: shot.xg || 0,
+            xg: shot.xg || shot.expected_goals || 0,
             outcome: mappedOutcome
           };
         });
         
         setLiveShots(mappedShots);
+      } else {
+        setLiveError("لم يتم العثور على تسديدات في هذه المباراة أو أن الرابط غير صحيح.");
       }
     } catch (error: any) {
-      console.error("خطأ في جلب البيانات الحية:", error);
-      setLiveError(error.message || "حدث خطأ أثناء جلب البيانات.");
+      console.error(`خطأ في جلب البيانات من ${sourceType}:`, error);
+      setLiveError(`فشل جلب البيانات. تأكد من صحة الرابط، أو جرب المصدر الآخر.`);
     } finally {
       setLiveLoading(false);
     }
@@ -472,37 +487,67 @@ export default function MatchReport({ matchName, matchId = '3869685', isDark = t
               </div>
             )}
 
-            {/* التبويب الجديد: خرائط التسديد الحية */}
+            {/* التبويب: خرائط التسديد الحية */}
             {activeTab === 'liveShotmap' && (
               <div className="space-y-4 animate-in fade-in duration-300">
-                <div className={`p-4 sm:p-6 rounded-xl border text-center ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
-                  <h3 className="text-lg font-bold text-emerald-500 mb-2">{t.tabs.liveShotmap}</h3>
-                  <p className="text-sm text-gray-400 mb-4">
-                    جلب خرائط التسديدات الحية مباشرة من 365Scores. (قد يستغرق السيرفر 50 ثانية للاستيقاظ في المرة الأولى)
-                  </p>
-                  <button
-                    onClick={() => {
-                      const url = prompt("أدخل رابط المباراة من 365Scores:");
-                      if (url) fetchLiveShots(url);
-                    }}
-                    disabled={liveLoading}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mx-auto"
-                  >
-                    {liveLoading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        جاري الجلب...
-                      </>
-                    ) : (
-                      '🎯 جلب خرائط التسديد'
-                    )}
-                  </button>
+                
+                {/* صندوق التحكم */}
+                <div className={`p-4 sm:p-6 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                  <h3 className="text-lg font-bold text-emerald-500 mb-4 text-center">جلب خريطة التسديدات</h3>
                   
+                  <div className="max-w-xl mx-auto space-y-4">
+                    {/* اختيار المصدر */}
+                    <div className="flex justify-center gap-2 mb-4">
+                      <button
+                        onClick={() => setSourceType('sofascore')}
+                        className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === 'sofascore' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}
+                      >
+                        SofaScore
+                      </button>
+                      <button
+                        onClick={() => setSourceType('365')}
+                        className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${sourceType === '365' ? 'bg-emerald-600 text-white' : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-700')}`}
+                      >
+                        365Scores
+                      </button>
+                    </div>
+
+                    {/* حقل الإدخال */}
+                    <input 
+                      type="text" 
+                      placeholder={`الصق رابط المباراة من ${sourceType === 'sofascore' ? 'SofaScore' : '365Scores'} هنا...`}
+                      value={inputUrl}
+                      onChange={(e) => setInputUrl(e.target.value)}
+                      className={`w-full p-3 rounded-lg border outline-none ${isDark ? 'bg-black/50 border-white/20 text-white focus:border-emerald-500' : 'bg-white border-gray-300 text-black focus:border-emerald-500'}`}
+                      dir="ltr"
+                    />
+
+                    {/* زر الجلب */}
+                    <button
+                      onClick={fetchLiveShots}
+                      disabled={liveLoading || !inputUrl}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {liveLoading ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          جاري المعالجة (قد يستغرق دقيقة)...
+                        </>
+                      ) : (
+                        '🎯 استخراج الخريطة'
+                      )}
+                    </button>
+                  </div>
+
+                  {/* رسائل الخطأ */}
                   {liveError && (
-                    <p className="text-red-400 text-sm mt-4 bg-red-900/20 p-2 rounded">{liveError}</p>
+                    <div className="mt-4 p-3 bg-red-900/30 border border-red-500/50 rounded-lg text-center text-red-400 text-sm max-w-xl mx-auto">
+                      {liveError}
+                    </div>
                   )}
                 </div>
 
+                {/* عرض الخريطة */}
                 {liveShots.length > 0 && (
                   <ShotMap 
                     shots={liveShots} 
