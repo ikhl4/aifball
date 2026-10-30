@@ -34,12 +34,14 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
+  // --- حالات خرائط التسديد الحية ---
   const [liveShots, setLiveShots] = useState<ShotData[]>([]);
   const [liveLoading, setLiveLoading] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
   const [inputUrl, setInputUrl] = useState(autoMatchUrl || '');
   const [sourceType, setSourceType] = useState<'365' | 'sofascore' | 'fotmob'>('sofascore');
 
+  // --- حالات الخريطة الحرارية ---
   const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
 
@@ -48,6 +50,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
   const t = translations[lang];
   const dir = isArabic ? 'rtl' : 'ltr';
 
+  // 🌟 جلب البيانات من سيرفر البايثون (عبر FotMob) إذا توفر الرابط
   useEffect(() => {
     if (!autoMatchUrl) {
       setLoading(false);
@@ -55,6 +58,8 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
     }
 
     setInputUrl(autoMatchUrl);
+    
+    // نحدد المصدر بناءً على الرابط
     let source: '365' | 'sofascore' | 'fotmob' = 'sofascore';
     if (autoMatchUrl.includes('365scores')) source = '365';
     else if (autoMatchUrl.includes('fotmob')) source = 'fotmob';
@@ -65,17 +70,18 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
       const fetchMatchData = async () => {
         setLoading(true);
         try {
+          // 🌟 التعديل هنا: استخدمنا source=fotmob&action=match ليتطابق مع route.ts
           const res = await fetch(`/api/advanced?source=fotmob&action=match&matchUrl=${encodeURIComponent(autoMatchUrl)}`);
           const result = await res.json();
           
           if (res.ok && result.data) {
-            // 🚨 ملاحظة: هنا يتم مابنة بيانات FotMob لتتناسب مع التصميم
-            // بناءً على هيكل البيانات الذي يرجعه LanusStats، قد تحتاج لتعديل أسماء الحقول
+            // مابنة البيانات القادمة من LanusStats (FotMob)
+            // ملاحظة: قد تحتاج لتعديل أسماء الحقول (مثل stats.possession.home) بناءً على شكل البيانات الفعلي الذي يرجعه البايثون
             const fotmobData = result.data;
             
             setData({
-              home: { name: matchName.split('ضد')[0] || fotmobData.home?.name || 'الفريق الأول', logo: fotmobData.home?.logo || null, score: fotmobData.home?.score || 0 },
-              away: { name: matchName.split('ضد')[1] || fotmobData.away?.name || 'الفريق الثاني', logo: fotmobData.away?.logo || null, score: fotmobData.away?.score || 0 },
+              home: { name: fotmobData.home?.name || matchName.split('ضد')[0] || 'الفريق الأول', logo: fotmobData.home?.logo || null, score: fotmobData.home?.score || 0 },
+              away: { name: fotmobData.away?.name || matchName.split('ضد')[1] || 'الفريق الثاني', logo: fotmobData.away?.logo || null, score: fotmobData.away?.score || 0 },
               xg: { home: fotmobData.xg?.home || '0.00', away: fotmobData.xg?.away || '0.00' },
               stats: {
                 possession: { home: fotmobData.stats?.possession?.home || '50%', away: fotmobData.stats?.possession?.away || '50%' },
@@ -92,7 +98,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
               playersData: fotmobData.playersData || {}
             });
           } else {
-            setData(null);
+            setData(null); // إذا فشل الجلب، نرجع للواجهة الاحتياطية
           }
         } catch (error) {
           setData(null);
@@ -102,7 +108,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
       };
       fetchMatchData();
     } else {
-      // إذا كان الرابط من SofaScore أو 365، لا نجلب إحصائيات، بل نعرض واجهة الخرائط
+      // إذا كان الرابط من SofaScore أو 365، لا نجلب إحصائيات، بل نعرض واجهة الخرائط الحية مباشرة
       setLoading(false);
       setData(null);
     }
@@ -197,7 +203,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
     );
   }
 
-  // 🌟 إذا لم توجد بيانات كاملة (رابط Sofa/365)، نعرض واجهة الخرائط الحية فوراً 🌟
+  // 🌟 الحل الاحتياطي: إذا لم توجد بيانات من FotMob (أو كان الرابط Sofa/365)، نعرض واجهة الخرائط الحية فوراً 🌟
   if (!data) {
     return (
       <div className={`relative w-full max-w-6xl mx-auto my-4 sm:my-6 rounded-2xl sm:rounded-3xl border shadow-2xl overflow-hidden font-saudi transition-all ${isDark ? 'bg-[#0a0a0a] border-emerald-900/30 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
@@ -241,6 +247,7 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
   return (
     <div dir={dir} className={`relative w-full max-w-6xl mx-auto my-4 sm:my-6 rounded-2xl sm:rounded-3xl border shadow-2xl overflow-hidden font-saudi transition-all ${isDark ? 'bg-[#0a0a0a] border-emerald-900/30 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
       <div className="absolute inset-0 bg-gradient-to-br from-[#1D6B35]/15 via-transparent to-[#131314]/90 pointer-events-none z-0"></div>
+      
       {!selectedPlayer && (
         <>
           <div className={`relative z-10 p-3 sm:p-6 flex flex-col sm:flex-row justify-between items-center border-b gap-3 sm:gap-0 ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
@@ -321,6 +328,17 @@ export default function MatchReport({ matchName, isDark = true, autoMatchUrl }: 
                 </div>
                 {liveShots.length > 0 && <ShotMap shots={liveShots} matchName={`${data?.home?.name} ضد ${data?.away?.name}`} isDark={isDark} />}
               </div>
+            )}
+            
+            {/* تبويبات إضافية (هجوم ودفاع وتشكيلة) يمكن إضافتها هنا بنفس التصميم السابق */}
+            {activeTab === 'attack' && (
+               <div className="text-center p-6 text-gray-500">إحصائيات الهجوم قيد التطوير (تعتمد على شكل رد FotMob)</div>
+            )}
+            {activeTab === 'defence' && (
+               <div className="text-center p-6 text-gray-500">إحصائيات الدفاع قيد التطوير (تعتمد على شكل رد FotMob)</div>
+            )}
+            {activeTab === 'lineup' && (
+               <div className="text-center p-6 text-gray-500">التشكيلة قيد التطوير (تعتمد على شكل رد FotMob)</div>
             )}
           </>
         )}
