@@ -1,7 +1,7 @@
 'use client';
-import ShotMap, { ShotData } from './ShotMap';
+import React, { useState } from 'react';
 
-// واجهة لبيانات التسديدة (متوافقة مع StatsBomb والتصميم الخاص بك)
+// واجهة لبيانات التسديدة
 export interface ShotData {
   id: string;
   player: string;
@@ -15,7 +15,7 @@ export interface ShotData {
 interface ShotMapProps {
   matchName?: string;
   isDark?: boolean;
-  shots?: ShotData[]; // جعلنا البيانات الحية تأتي من الخارج (اختياري)
+  shots?: ShotData[]; 
 }
 
 // بيانات تجريبية (تظهر فقط إذا لم يتم تمرير بيانات حية)
@@ -75,7 +75,6 @@ export default function ShotMap({ matchName = "خريطة التسديدات", i
 
           {/* رسم التسديدات */}
           {displayShots.map((shot, idx) => {
-            // حساب حجم الدائرة بناءً على قيمة xG
             const radius = 1.5 + (shot.xg * 4); 
             
             let fillColor = '#ef4444'; // Off Target (أحمر)
