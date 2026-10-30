@@ -7,6 +7,7 @@ import LiveMatchCenter from './components/LiveMatchCenter';
 import ShotMap from './components/ShotMap';
 import PlayerProfile from './components/PlayerProfile';
 import MatchReport from './components/MatchReport';
+import TrainingDrillWidget from './components/TrainingDrillWidget'; // 🌟 استدعاء مكون التمارين الجديد
 
 interface Message {
   role: 'user' | 'assistant';
@@ -315,6 +316,21 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
+    // 🌟 إضافة شرط التمارين التكتيكية (Drills)
+    if (trimmed.startsWith('<aifball-training') && trimmed.includes('</aifball-training>')) {
+      if (inTable) flushTable(index);
+      
+      const nameMatch = trimmed.match(/name="([^"]+)"/);
+      const drillName = nameMatch ? nameMatch[1] : 'تمرين تكتيكي';
+
+      elements.push(
+        <div key={`training-${index}`} className="my-5 w-full">
+          <TrainingDrillWidget drillName={drillName} isDark={isDark} />
+        </div>
+      );
+      return;
+    }
+
     const isSuggestion = trimmed.startsWith('❓') || trimmed.includes('هل تريد') || trimmed.includes('هل ترغب') || trimmed.includes('هل تود');
     if (isSuggestion) {
       if (inTable) flushTable(index);
@@ -449,7 +465,6 @@ export default function FootPlayChat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 🌟 تحديث نصوص وبطاقات الديكور هنا
   const suggestionCards = [
     { question: 'داشبورد لاسلوب لعب الاتحاد', tag: 'تحليل تكتيكي', icon: '📋' },
     { question: 'ما هو جدول ترتيب دوري روشن السعودي؟', tag: 'ترتيب وإحصائيات', icon: '📊' },
@@ -847,7 +862,6 @@ export default function FootPlayChat() {
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
               {suggestionCards.map((card, i) => (
-                // 🌟 تمت إزالة onClick و cursor-pointer لتصبح مجرد ديكور
                 <div key={i} className={`flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl backdrop-blur-sm border shadow-lg min-h-[115px] select-none ${isDarkMode ? 'bg-black/20 border-white/10 opacity-80' : 'bg-white border-gray-200 opacity-90'}`}>
                   <p className={`text-sm font-bold leading-relaxed line-clamp-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>{card.question}</p>
                   <div className="flex items-center justify-between w-full mt-3 pt-1">
