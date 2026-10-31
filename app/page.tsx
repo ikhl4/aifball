@@ -1,16 +1,8 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
-import TacticalPitch from './components/TacticalPitch';
 import LiveSportsWidget from './components/LiveSportsWidget';
 import LiveMatchCenter from './components/LiveMatchCenter'; 
-import ShotMap from './components/ShotMap';
-import PlayerProfile from './components/PlayerProfile';
-import MatchReport from './components/MatchReport';
-import TrainingDrillWidget from './components/TrainingDrillWidget';
-import PlayerComparison from './components/PlayerComparison';
-import LeagueDashboard from './components/LeagueDashboard'; 
-import MatchSummary from './components/MatchSummary'; // 🌟 استدعاء مكون الملخص
 
 interface Message {
   role: 'user' | 'assistant';
@@ -133,21 +125,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
   processedText = processedText.replace(/<a\s+href=.*?<\/a>/gi, '');
   processedText = processedText.replace(/a\s*href=[^\s>]+/gi, '');
   processedText = deduplicateText(processedText);
-
-  // 🌟 خوارزمية إصلاح الوسوم المكسورة (مقارنة اللاعبين)
-  processedText = processedText.replace(/aifball-compare[\s\S]*?(?:<\/aifball-compare>|$)/gi, (match) => {
-      let clean = match.replace(/[\n\r]+/g, ' ');
-      clean = clean.replace(/></g, ' ');
-      clean = clean.replace(/<|>/g, ' ');
-      
-      const p1 = clean.match(/player1\s*=\s*"?([^"]+)"?/i);
-      const p2 = clean.match(/player2\s*=\s*"?([^"]+)"?/i);
-      
-      const name1 = p1 ? p1[1].trim().replace(/['"]/g, '') : 'Player 1';
-      const name2 = p2 ? p2[1].trim().replace(/['"]/g, '') : 'Player 2';
-      
-      return `<aifball-compare player1="${name1}" player2="${name2}"></aifball-compare>`;
-  });
 
   const paragraphs = processedText.split(/\n\s*\n/);
   const uniqueParagraphs = new Set();
@@ -273,129 +250,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       elements.push(
         <div key={`livescores-${index}`} className="my-5 w-full">
           <LiveSportsWidget league={leagueName} date={matchDate} isDark={isDark} />
-        </div>
-      );
-      return;
-    }
-
-    // 🌟 خوارزمية ذكية لالتقاط إحصائيات الدوري
-    if (trimmed.includes('aifball-league') || trimmed.includes('aifball-standings') || trimmed.includes('standings')) {
-      if (inTable) flushTable(index);
-      
-      const leagueMatch = trimmed.match(/league\s*=\s*["']?([^"'\s>]+)["']?/i);
-      const leagueCode = leagueMatch ? leagueMatch[1].replace(/[^a-z0-9.]/gi, '') : 'ksa.1'; 
-      
-      let displayName = 'دوري روشن السعودي';
-      if (leagueCode === 'eng.1') displayName = 'الدوري الإنجليزي';
-      if (leagueCode === 'esp.1') displayName = 'الدوري الإسباني';
-      if (leagueCode === 'ita.1') displayName = 'الدوري الإيطالي';
-
-      elements.push(
-        <div key={`league-${index}`} className="my-5 w-full">
-          <LeagueDashboard leagueName={displayName} leagueCode={leagueCode} isDark={isDark} />
-        </div>
-      );
-      return;
-    }
-
-    // 🌟 مكون ملخص المباراة (تم تعديله ليتوافق مع المكون الجديد)
-    if (trimmed.includes('aifball-summary')) {
-      if (inTable) flushTable(index);
-      const matchMatch = trimmed.match(/match="([^"]+)"/);
-      const matchName = matchMatch ? matchMatch[1] : 'ملخص المباراة';
-
-      elements.push(
-        <div key={`summary-${index}`} className="my-5 w-full">
-          <MatchSummary match={matchName} isDark={isDark} />
-        </div>
-      );
-      return;
-    }
-
-    if (trimmed.includes('aifball-match-report')) {
-      if (inTable) flushTable(index);
-      const matchMatch = trimmed.match(/match="([^"]+)"/);
-      const matchName = matchMatch ? matchMatch[1] : 'تقرير المباراة';
-      const idMatch = trimmed.match(/matchId="([^"]+)"/);
-      const matchId = idMatch ? idMatch[1] : '3869685';
-      
-      const urlMatch = trimmed.match(/match_url="([^"]+)"/);
-      const autoMatchUrl = urlMatch ? urlMatch[1] : undefined;
-
-      elements.push(
-        <div key={`match-report-${index}`} className="my-5 w-full">
-          <MatchReport matchName={matchName} matchId={matchId} isDark={isDark} autoMatchUrl={autoMatchUrl} />
-        </div>
-      );
-      return;
-    }
-
-    if (trimmed.startsWith('<aifball-player') && trimmed.includes('</aifball-player>')) {
-      if (inTable) flushTable(index);
-      const nameMatch = trimmed.match(/name="([^"]+)"/);
-      const playerName = nameMatch ? nameMatch[1] : 'لاعب غير معروف';
-      elements.push(
-        <div key={`player-${index}`} className="my-5 w-full">
-          <PlayerProfile playerName={playerName} isDark={isDark} />
-        </div>
-      );
-      return;
-    }
-
-    if (trimmed.startsWith('<aifball-shotmap') && trimmed.includes('</aifball-shotmap>')) {
-      if (inTable) flushTable(index);
-      const matchMatch = trimmed.match(/match="([^"]+)"/);
-      const matchName = matchMatch ? matchMatch[1] : 'تحليل تكتيكي متقدم';
-      elements.push(
-        <div key={`shotmap-${index}`} className="my-5 w-full">
-          <ShotMap matchName={matchName} isDark={isDark} />
-        </div>
-      );
-      return;
-    }
-
-    if (trimmed.startsWith('<aifball-pitch') && trimmed.includes('</aifball-pitch>')) {
-      if (inTable) flushTable(index);
-      const teamMatch = trimmed.match(/team="([^"]+)"/);
-      const formationMatch = trimmed.match(/formation="([^"]+)"/);
-      const team = teamMatch ? teamMatch[1] : '';
-      const formation = formationMatch ? formationMatch[1] : '4-3-3';
-      elements.push(
-        <div key={`pitch-${index}`} className="my-5 w-full">
-          <TacticalPitch team={team} formation={formation} />
-        </div>
-      );
-      return;
-    }
-
-    if (trimmed.startsWith('<aifball-training') && trimmed.includes('</aifball-training>')) {
-      if (inTable) flushTable(index);
-      const nameMatch = trimmed.match(/name="([^"]+)"/);
-      const drillName = nameMatch ? nameMatch[1] : 'تمرين تكتيكي';
-      elements.push(
-        <div key={`training-${index}`} className="my-5 w-full">
-          <TrainingDrillWidget drillName={drillName} isDark={isDark} />
-        </div>
-      );
-      return;
-    }
-
-    // 🌟 مكون المقارنة
-    if (trimmed.includes('aifball-compare')) {
-      if (inTable) flushTable(index);
-      
-      const p1Match = trimmed.match(/player1\s*=\s*["']?([^"'\n<>]+)["']?/i);
-      const p2Match = trimmed.match(/player2\s*=\s*["']?([^"'\n<>]+)["']?/i);
-
-      let player1 = 'اللاعب الأول';
-      let player2 = 'اللاعب الثاني';
-
-      if (p1Match && p1Match[1]) player1 = p1Match[1].replace(/[<>"']/g, '').trim();
-      if (p2Match && p2Match[1]) player2 = p2Match[1].replace(/[<>"']/g, '').trim();
-
-      elements.push(
-        <div key={`compare-${index}`} className="my-5 w-full">
-          <PlayerComparison player1={player1} player2={player2} isDark={isDark} />
         </div>
       );
       return;
@@ -820,7 +674,6 @@ export default function FootPlayChat() {
   return (
     <div dir="rtl" className={`flex flex-col h-[100dvh] relative overflow-hidden font-saudi transition-colors duration-300 ${isDarkMode ? 'bg-[#131314] text-[#E3E3E3]' : 'bg-gray-50 text-gray-900'}`}>
       
-      {/* 🌟 الخلفية الجديدة (ملعب SVG خطوط خضراء) 🌟 */}
       <div className={`absolute inset-0 pointer-events-none z-0 transition-colors duration-300 overflow-hidden ${isDarkMode ? 'bg-[#0a0f0d]' : 'bg-gray-50'}`}>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#1D6B35]/15 rounded-full blur-[120px]"></div>
         
