@@ -255,7 +255,8 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
         const matchDate = extractAttr(trimmed, 'date') || 'today'; 
         elements.push(
           <div key={`livescores-${index}`} className="my-5 w-full">
-            <LiveSportsWidget date="{matchDate}" isDark="{isDark}" league="{leagueName}"/>
+            {/* ✅ إصلاح: تمرير القيم كتعبيرات وليس كنصوص */}
+            <LiveSportsWidget date={matchDate} isDark={isDark} league={leagueName} />
           </div>
         );
         return;
@@ -400,12 +401,14 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
           <div key={vid} className={`rounded-2xl overflow-hidden border shadow-xl mb-6 ${isDark ? 'border-emerald-500/30 bg-black/40' : 'border-emerald-200 bg-white'}`}>
             <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-emerald-950/50 border-white/10' : 'bg-emerald-50 border-gray-200'}`}>
               <span className={`text-xs sm:text-sm font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>الملخص الرسمي</span>
-              <a href={`[https://www.youtube.com/watch?v=$](https://www.youtube.com/watch?v=$){vid}`} target="_blank" rel="noopener noreferrer" className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white`}>
+              {/* ✅ إصلاح: رابط يوتيوب نظيف بدون markdown */}
+              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white`}>
                 مشاهدة على يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video bg-black">
-              <iframe src={`[https://www.youtube-nocookie.com/embed/$](https://www.youtube-nocookie.com/embed/$){vid}?rel=0&modestbranding=1`} title="AiFBall Live Video Match" className="absolute top-0 left-0 w-full h-full border-0 object-cover" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+              {/* ✅ إصلاح: رابط iframe نظيف بدون markdown */}
+              <iframe src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0&modestbranding=1`} title="AiFBall Live Video Match" className="absolute top-0 left-0 w-full h-full border-0 object-cover" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
             </div>
             <div className={`px-4 py-2 text-center text-[10px] sm:text-xs ${isDark ? 'bg-black/60 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
               إذا لم يعمل المشغل هنا، يمكنك الضغط على زر <strong className="text-red-500">"مشاهدة على يوتيوب"</strong> في الأعلى للمشاهدة مباشرة.
@@ -497,10 +500,12 @@ export default function FootPlayChat() {
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
 
-    if (!document.querySelector('script[src="[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)"]')) {
+    // ✅ إصلاح: رابط سكربت الودجت نظيف (بدون markdown)
+    const widgetScriptSrc = 'https://widgets.api-sports.io/2.0.0/widgets.js';
+    if (!document.querySelector(`script[src="${widgetScriptSrc}"]`)) {
       const script = document.createElement('script');
       script.type = 'module';
-      script.src = '[https://widgets.api-sports.io/2.0.0/widgets.js](https://widgets.api-sports.io/2.0.0/widgets.js)';
+      script.src = widgetScriptSrc;
       document.body.appendChild(script);
     }
   }, []);
@@ -764,7 +769,8 @@ export default function FootPlayChat() {
       </div>
 
       <style jsx global>{`
-        @import url('[https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap)');
+        /* ✅ إصلاح: رابط خط Cairo نظيف (بدون markdown) */
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
@@ -808,7 +814,15 @@ export default function FootPlayChat() {
           <SignedIn>
             <div className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
               <div className="flex items-center gap-3 w-full">
-                <UserButton "w-9 afterSignOutUrl="/" appearance="{{" border-2 border-emerald-500/30 elements: flex-shrink-0" h-9 rounded-full userButtonAvatarBox: { } }}/>
+                {/* ✅ إصلاح: صياغة UserButton الصحيحة - كانت سبب فشل البناء */}
+                <UserButton
+                  afterSignOutUrl="/"
+                  appearance={{
+                    elements: {
+                      userButtonAvatarBox: "w-9 h-9 rounded-full border-2 border-emerald-500/30 flex-shrink-0",
+                    },
+                  }}
+                />
                 <div className="flex flex-col flex-1 min-w-0">
                   <div className="flex items-center justify-between w-full">
                     <span className={`text-xs font-bold truncate pr-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
@@ -978,7 +992,8 @@ export default function FootPlayChat() {
                    <div className={`rounded-2xl px-4 py-3 border shadow-sm max-w-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 border-white/5 text-gray-300' : 'bg-white border-gray-200 text-gray-600'}`}>
                       <div className="flex flex-col gap-3">
                         <div className="flex items-center gap-3">
-                           <svg className="animate-spin w-4 h-4 text-emerald-500" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24">
+                           {/* ✅ إصلاح: xmlns SVG نظيف (بدون markdown) */}
+                           <svg className="animate-spin w-4 h-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                            </svg>
@@ -1063,7 +1078,8 @@ export default function FootPlayChat() {
               <button onClick={() => setShowLiveScores(false)} className={`w-8 h-8 rounded-full flex items-center justify-center transition ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>✕</button>
             </div>
             <div className="p-2 sm:p-4">
-              <LiveMatchCenter isDark="{isDarkMode}"/>
+              {/* ✅ إصلاح: تمرير isDarkMode كتعبير */}
+              <LiveMatchCenter isDark={isDarkMode} />
             </div>
           </div>
         </div>
