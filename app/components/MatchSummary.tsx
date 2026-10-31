@@ -11,7 +11,6 @@ export default function MatchSummary({
   isDark = true 
 }: MatchSummaryProps) {
   
-  // 🌟 كود ذكي عالمي: يفصل بين الفرق بالعربية أو الإنجليزية
   let homeTeam = 'Team A';
   let awayTeam = 'Team B';
   
@@ -33,7 +32,6 @@ export default function MatchSummary({
     }
   }
 
-  // بيانات تجريبية (مؤقتاً)
   const homeScore = 5;
   const awayScore = 1;
 
@@ -84,7 +82,7 @@ export default function MatchSummary({
         </div>
       </div>
 
-      {/* 2. التبويبات (تصميم فقط) */}
+      {/* 2. التبويبات */}
       <div className={`flex justify-center gap-4 sm:gap-8 py-3 text-xs sm:text-sm font-bold border-b overflow-x-auto custom-scrollbar ${isDark ? 'bg-[#0f1115] border-gray-800 text-gray-400' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
         <button className="text-blue-500 border-b-2 border-blue-500 pb-1">Events | أحداث</button>
         <button className="hover:text-gray-300">Lineups | التشكيلة</button>
@@ -119,7 +117,7 @@ export default function MatchSummary({
           <div className="absolute top-4 left-4 bg-[#1a2a3a]/90 text-white text-xs px-3 py-1 rounded-full border border-white/10">beIN SPORTS</div>
         </div>
 
-        {/* 🌟 قسم الرعاية والاحتمالات (نسخة عالمية) */}
+        {/* قسم الاحتمالات */}
         <div className="flex justify-between items-center bg-gray-800/50 p-3 rounded-xl border border-gray-700">
            <div className="flex gap-2">
              <span className="bg-gray-700 px-4 py-1.5 rounded text-xs text-gray-300 font-mono">1.29</span>
