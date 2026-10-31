@@ -3,9 +3,18 @@ import 'katex/dist/katex.min.css'
 import RemarkMath from 'remark-math'
 import RemarkBreaks from 'remark-breaks'
 import RehypeKatex from 'rehype-katex'
+import RehypeRaw from 'rehype-raw' // 🌟 إضافة جديدة
 import RemarkGfm from 'remark-gfm'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
+
+// 🌟 استيراد المكونات الخاصة بك (تأكد من صحة المسارات)
+import MatchSummary from '../MatchSummary' 
+// import MatchReport from '../MatchReport'
+// import Standings from '../Standings'
+// import ShotMap from '../ShotMap'
+// import PlayerComparison from '../PlayerComparison'
+// import PlayerProfile from '../PlayerProfile'
 
 export function Markdown(props: { content: string }) {
   return (
@@ -14,9 +23,15 @@ export function Markdown(props: { content: string }) {
         remarkPlugins={[RemarkMath, RemarkGfm, RemarkBreaks]}
         rehypePlugins={[
           RehypeKatex,
+          RehypeRaw, // 🌟 ضروري جداً لتفعيل قراءة وسومنا المخصصة
         ]}
         components={{
-          code({ node, inline, className, children, ...props }) {
+          // 🌟 إضافة الوسوم المخصصة هنا
+          'aifball-summary': ({ node, ...props }: any) => <MatchSummary match={props.match} />,
+          // 'aifball-match-report': ({ node, ...props }: any) => <MatchReport match={props.match} match_url={props.match_url} />,
+          // 'aifball-standings': ({ node, ...props }: any) => <Standings league={props.league} season={props.season} />,
+          
+          code({ node, inline, className, children, ...props }: any) {
             const match = /language-(\w+)/.exec(className || '')
             if (!inline && match) {
               return (
@@ -56,7 +71,7 @@ export function Markdown(props: { content: string }) {
             )
           },
           
-          img({ node, ...props }) {
+          img({ node, ...props }: any) {
             return (
               <img 
                 {...props} 
@@ -66,7 +81,7 @@ export function Markdown(props: { content: string }) {
             )
           },
           
-          a({ node, href, children, ...props }) {
+          a({ node, href, children, ...props }: any) {
             if (!href) return null;
 
             // 1. هل الرابط يوتيوب؟ (عرض المقطع مباشرة داخل المحادثة)
