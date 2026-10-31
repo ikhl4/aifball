@@ -10,7 +10,7 @@ import MatchReport from './components/MatchReport';
 import TrainingDrillWidget from './components/TrainingDrillWidget';
 import PlayerComparison from './components/PlayerComparison';
 import LeagueDashboard from './components/LeagueDashboard'; 
-import MatchSummary from './components/MatchSummary'; // 🌟 استدعاء مكون الملخص الجديد
+import MatchSummary from './components/MatchSummary'; // 🌟 استدعاء مكون الملخص
 
 interface Message {
   role: 'user' | 'assistant';
@@ -298,18 +298,15 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // 🌟 مكون ملخص المباراة
+    // 🌟 مكون ملخص المباراة (تم تعديله ليتوافق مع المكون الجديد)
     if (trimmed.includes('aifball-summary')) {
       if (inTable) flushTable(index);
       const matchMatch = trimmed.match(/match="([^"]+)"/);
       const matchName = matchMatch ? matchMatch[1] : 'ملخص المباراة';
-      
-      const home = matchName.split('ضد')[0]?.trim() || 'الفريق الأول';
-      const away = matchName.split('ضد')[1]?.trim() || 'الفريق الثاني';
 
       elements.push(
         <div key={`summary-${index}`} className="my-5 w-full">
-          <MatchSummary homeTeam={home} awayTeam={away} isDark={isDark} />
+          <MatchSummary match={matchName} isDark={isDark} />
         </div>
       );
       return;
@@ -825,10 +822,8 @@ export default function FootPlayChat() {
       
       {/* 🌟 الخلفية الجديدة (ملعب SVG خطوط خضراء) 🌟 */}
       <div className={`absolute inset-0 pointer-events-none z-0 transition-colors duration-300 overflow-hidden ${isDarkMode ? 'bg-[#0a0f0d]' : 'bg-gray-50'}`}>
-        {/* إضاءة خلفية (توهج أخضر) */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#1D6B35]/15 rounded-full blur-[120px]"></div>
         
-        {/* خطوط الملعب المضيئة */}
         <svg viewBox="0 0 1200 800" className="absolute inset-0 w-full h-full opacity-30" preserveAspectRatio="xMidYMid slice">
           <g stroke="#10b981" strokeWidth="2.5" fill="none" opacity="0.4">
             <rect x="100" y="100" width="1000" height="600" rx="10" />
@@ -846,7 +841,6 @@ export default function FootPlayChat() {
           </g>
         </svg>
 
-        {/* طبقة تعتيم خفيفة لكي لا تشوش على النصوص */}
         <div className={`absolute inset-0 ${isDarkMode ? 'bg-gradient-to-b from-[#131314]/40 to-[#131314]/90' : 'bg-white/80'}`}></div>
       </div>
 
@@ -1010,7 +1004,6 @@ export default function FootPlayChat() {
                              {renderFormattedText(msg.content, isDarkMode, sendMessage)}
                            </div>
                            
-                           {/* أزرار التفاعل */}
                            <div className={`flex items-center gap-1.5 mt-3 pt-3 border-t ${isDarkMode ? 'border-white/5' : 'border-gray-100'}`}>
                              <button 
                                onClick={() => navigator.clipboard.writeText(msg.content)} 
