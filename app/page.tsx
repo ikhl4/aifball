@@ -2,7 +2,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
 import LiveSportsWidget from './components/LiveSportsWidget';
-import LiveMatchCenter from './components/LiveMatchCenter'; 
+import LiveMatchCenter from './components/LiveMatchCenter';
+import MatchReport from './components/MatchReport';
+import PlayerComparison from './components/PlayerComparison';
+import PlayerProfile from './components/PlayerProfile';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -255,7 +258,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
         const matchDate = extractAttr(trimmed, 'date') || 'today'; 
         elements.push(
           <div key={`livescores-${index}`} className="my-5 w-full">
-            {/* ✅ إصلاح: تمرير القيم كتعبيرات وليس كنصوص */}
             <LiveSportsWidget date={matchDate} isDark={isDark} league={leagueName} />
           </div>
         );
@@ -285,7 +287,47 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
         return;
       }
 
-      // 3. UI Cards for Custom Tags
+      // 3. المكونات الحقيقية
+      // تجاهل الوسم إن لم يكتمل بعد أثناء البث (لا يوجد '>')
+      if (!trimmed.includes('>')) return;
+
+      const tagMatch = extractAttr(trimmed, 'match') || extractAttr(trimmed, 'name');
+      const tagUrl = extractAttr(trimmed, 'match_url');
+
+      if (trimmed.includes('<aifball-match-report') || trimmed.includes('<aifball-shotmap')) {
+        if (!tagMatch) return;
+        elements.push(
+          <div key={`report-${index}`} className="my-5 w-full">
+            <MatchReport matchName={tagMatch} autoMatchUrl={tagUrl || undefined} isDark={isDark} />
+          </div>
+        );
+        return;
+      }
+
+      if (trimmed.includes('<aifball-compare')) {
+        const p1 = extractAttr(trimmed, 'player1');
+        const p2 = extractAttr(trimmed, 'player2');
+        if (!p1 || !p2) return;
+        elements.push(
+          <div key={`compare-${index}`} className="my-5 w-full">
+            <PlayerComparison player1={p1} player2={p2} isDark={isDark} />
+          </div>
+        );
+        return;
+      }
+
+      if (trimmed.includes('<aifball-player')) {
+        const playerName = extractAttr(trimmed, 'name') || extractAttr(trimmed, 'player');
+        if (!playerName) return;
+        elements.push(
+          <div key={`player-${index}`} className="my-5 w-full">
+            <PlayerProfile playerName={playerName} isDark={isDark} />
+          </div>
+        );
+        return;
+      }
+
+      // 4. بطاقات بسيطة للوسوم التي ما زالت بدون مكوّن حقيقي
       const parseCustomTag = (tagName: string, icon: string, titlePrefix: string) => {
         if (trimmed.includes(`<${tagName}`)) {
           const matchName = extractAttr(trimmed, 'match') || extractAttr(trimmed, 'name') || extractAttr(trimmed, 'player1');
@@ -315,10 +357,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       };
 
       if (parseCustomTag('aifball-summary', '📺', 'ملخص المباراة')) return;
-      if (parseCustomTag('aifball-match-report', '📝', 'التقرير الشامل')) return;
-      if (parseCustomTag('aifball-shotmap', '🎯', 'خريطة التسديدات (xG)')) return;
-      if (parseCustomTag('aifball-compare', '⚖️', 'مقارنة لاعبين')) return;
-      if (parseCustomTag('aifball-player', '👤', 'بطاقة اللاعب')) return;
       if (parseCustomTag('aifball-training', '🏃‍♂️', 'تمرين تكتيكي')) return;
     }
 
@@ -401,13 +439,11 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
           <div key={vid} className={`rounded-2xl overflow-hidden border shadow-xl mb-6 ${isDark ? 'border-emerald-500/30 bg-black/40' : 'border-emerald-200 bg-white'}`}>
             <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-emerald-950/50 border-white/10' : 'bg-emerald-50 border-gray-200'}`}>
               <span className={`text-xs sm:text-sm font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>الملخص الرسمي</span>
-              {/* ✅ إصلاح: رابط يوتيوب نظيف بدون markdown */}
               <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white`}>
                 مشاهدة على يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video bg-black">
-              {/* ✅ إصلاح: رابط iframe نظيف بدون markdown */}
               <iframe src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0&modestbranding=1`} title="AiFBall Live Video Match" className="absolute top-0 left-0 w-full h-full border-0 object-cover" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
             </div>
             <div className={`px-4 py-2 text-center text-[10px] sm:text-xs ${isDark ? 'bg-black/60 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
@@ -459,10 +495,10 @@ export default function FootPlayChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const suggestionCards = [
-    { question: 'داشبورد لاسلوب لعب الاتحاد', tag: 'تحليل تكتيكي', icon: '📋' },
-    { question: 'ما هو جدول ترتيب دوري روشن السعودي؟', tag: 'ترتيب وإحصائيات', icon: '📊' },
-    { question: 'أهداف وملخصات أبرز مباريات اليوم', tag: 'أهداف وملخصات', icon: '🎬' },
-    { question: 'قارن بين رونالدو وميسي', tag: 'مقارنة لاعبين', icon: '⚔️' },
+    { question: 'احصائيات و اساليب لعب وشرح تمارين', tag: 'تحليل تكتيكي', icon: '📋' },
+    { question: 'جداول المباريات و النتائج اول بأول ؟', tag: 'ترتيب وإحصائيات', icon: '📊' },
+    { question: 'أهداف وملخصات أبرز مباريات الدوريات الكبرى', tag: 'أهداف وملخصات', icon: '🎬' },
+    { question: 'معلومات تاريخية وقصص', tag: 'تاريخ وبطولات', icon: '⚔️' },
   ];
 
   useEffect(() => {
@@ -500,7 +536,6 @@ export default function FootPlayChat() {
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
 
-    // ✅ إصلاح: رابط سكربت الودجت نظيف (بدون markdown)
     const widgetScriptSrc = 'https://widgets.api-sports.io/2.0.0/widgets.js';
     if (!document.querySelector(`script[src="${widgetScriptSrc}"]`)) {
       const script = document.createElement('script');
@@ -769,7 +804,6 @@ export default function FootPlayChat() {
       </div>
 
       <style jsx global>{`
-        /* ✅ إصلاح: رابط خط Cairo نظيف (بدون markdown) */
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
@@ -814,9 +848,7 @@ export default function FootPlayChat() {
           <SignedIn>
             <div className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
               <div className="flex items-center gap-3 w-full">
-                {/* ✅ إصلاح: صياغة UserButton الصحيحة - كانت سبب فشل البناء */}
                 <UserButton
-                  afterSignOutUrl="/"
                   appearance={{
                     elements: {
                       userButtonAvatarBox: "w-9 h-9 rounded-full border-2 border-emerald-500/30 flex-shrink-0",
@@ -992,7 +1024,6 @@ export default function FootPlayChat() {
                    <div className={`rounded-2xl px-4 py-3 border shadow-sm max-w-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 border-white/5 text-gray-300' : 'bg-white border-gray-200 text-gray-600'}`}>
                       <div className="flex flex-col gap-3">
                         <div className="flex items-center gap-3">
-                           {/* ✅ إصلاح: xmlns SVG نظيف (بدون markdown) */}
                            <svg className="animate-spin w-4 h-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -1078,7 +1109,6 @@ export default function FootPlayChat() {
               <button onClick={() => setShowLiveScores(false)} className={`w-8 h-8 rounded-full flex items-center justify-center transition ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>✕</button>
             </div>
             <div className="p-2 sm:p-4">
-              {/* ✅ إصلاح: تمرير isDarkMode كتعبير */}
               <LiveMatchCenter isDark={isDarkMode} />
             </div>
           </div>
