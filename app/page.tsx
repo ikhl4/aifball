@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
 import LiveSportsWidget from './components/LiveSportsWidget';
 import LiveMatchCenter from './components/LiveMatchCenter';
+import LeagueDashboard from './components/LeagueDashboard';
 import MatchReport from './components/MatchReport';
 import PlayerComparison from './components/PlayerComparison';
 import PlayerProfile from './components/PlayerProfile';
@@ -266,22 +267,11 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
       // 2. Standings
       if (trimmed.includes('<aifball-standings')) {
+        if (!trimmed.includes('>')) return;
         const leagueCode = extractAttr(trimmed, 'league') || 'ksa.1';
-        const season = extractAttr(trimmed, 'season') || '2026';
-        
-        const leagueIds: Record<string, string> = { 'ksa.1': '307', 'eng.1': '39', 'esp.1': '140', 'ita.1': '135', 'ger.1': '78', 'fra.1': '61' };
-        const leagueId = leagueIds[leagueCode] || '307';
-        
         elements.push(
-          <div key={`standings-${index}`} className={`my-5 w-full rounded-2xl overflow-hidden border shadow-xl relative z-10 min-h-[100px] ${isDark ? 'border-emerald-900/40 bg-black/20' : 'border-emerald-200 bg-white'}`}>
-             {React.createElement('api-sports-widget', {
-                 'data-type': 'standings',
-                 'data-league': leagueId,
-                 'data-season': season,
-                 'data-theme': isDark ? 'dark' : 'light',
-                 'data-show-errors': 'false',
-                 'data-show-logos': 'true'
-             })}
+          <div key={`standings-${index}`} className="my-5 w-full">
+            <LeagueDashboard leagueCode={leagueCode} isDark={isDark} />
           </div>
         );
         return;
@@ -495,10 +485,10 @@ export default function FootPlayChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const suggestionCards = [
-    { question: 'احصائيات و اساليب لعب وشرح تمارين', tag: 'تحليل تكتيكي', icon: '📋' },
-    { question: 'جداول المباريات و النتائج اول بأول ؟', tag: 'ترتيب وإحصائيات', icon: '📊' },
-    { question: 'أهداف وملخصات أبرز مباريات الدوريات الكبرى', tag: 'أهداف وملخصات', icon: '🎬' },
-    { question: 'معلومات تاريخية وقصص', tag: 'تاريخ وبطولات', icon: '⚔️' },
+    { question: 'داشبورد لاسلوب لعب الاتحاد', tag: 'تحليل تكتيكي', icon: '📋' },
+    { question: 'ما هو جدول ترتيب دوري روشن السعودي؟', tag: 'ترتيب وإحصائيات', icon: '📊' },
+    { question: 'أهداف وملخصات أبرز مباريات اليوم', tag: 'أهداف وملخصات', icon: '🎬' },
+    { question: 'قارن بين رونالدو وميسي', tag: 'مقارنة لاعبين', icon: '⚔️' },
   ];
 
   useEffect(() => {
@@ -535,14 +525,6 @@ export default function FootPlayChat() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
-
-    const widgetScriptSrc = 'https://widgets.api-sports.io/2.0.0/widgets.js';
-    if (!document.querySelector(`script[src="${widgetScriptSrc}"]`)) {
-      const script = document.createElement('script');
-      script.type = 'module';
-      script.src = widgetScriptSrc;
-      document.body.appendChild(script);
-    }
   }, []);
 
   useEffect(() => {
