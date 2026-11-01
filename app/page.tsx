@@ -145,7 +145,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
   processedText = finalText.replace(/\]\s*\n\s*\(/g, '](');
   const lines = processedText.split('\n');
   const elements: React.ReactNode[] = [];
-  const suggestedQuestionsList: string[] = [];
 
   const extractAttr = (line: string, attr: string) => {
     const match = line.match(new RegExp(`${attr}="([^"]+)"`));
@@ -169,7 +168,7 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
         return;
       }
 
-      // 2. Standings (الاعتماد الكلي على الودجت التفاعلي وسيرفر Render)
+      // 2. Standings
       if (trimmed.includes('<aifball-standings')) {
         if (!trimmed.includes('>')) return;
         const leagueCode = extractAttr(trimmed, 'league') || 'ksa.1';
@@ -267,7 +266,7 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
       return;
     }
 
-    // إيقاف وتجاوز جداول Markdown النصية نهائياً لمنع أي تداخل أو تشويه بصري
+    // إيقاف وتجاوز جداول Markdown النصية نهائياً لمنع التداخل
     if (trimmed.startsWith('|')) {
       return;
     }
@@ -539,7 +538,7 @@ export default function FootPlayChat() {
 
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Type': 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
         signal: controller.signal,
       });
@@ -921,7 +920,7 @@ export default function FootPlayChat() {
         <div className="max-w-4xl mx-auto">
           {attachedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2 px-2">
-              {attachedFiles.label ? null : attachedFiles.map((f, idx) => (
+              {attachedFiles.map((f, idx) => (
                 <div key={idx} className={`flex items-center gap-2 p-1.5 pr-3 rounded-lg shadow-sm backdrop-blur-md border ${isDarkMode ? 'bg-black/40 border-emerald-500/50' : 'bg-gray-50 border-emerald-300'}`}>
                   <img src={f.url} alt="مرفق" className={`w-8 h-8 object-cover rounded-md border ${isDarkMode ? 'border-white/10' : 'border-gray-300'}`} />
                   <span className={`text-xs max-w-[120px] truncate ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`} dir="ltr">{f.file.name}</span>
@@ -946,12 +945,11 @@ export default function FootPlayChat() {
 
             <input
               type="text"
-              inputMode="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
               placeholder={isListening ? 'جاري الاستماع لصوتك...' : 'اسأل عن أي مباراة، تحليل، أو إحصائية...'}
-              className={`flex-1 bg-rendering-auto bg-transparent px-3 py-2 text-sm focus:outline-none ${isDarkMode ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
+              className={`flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none ${isDarkMode ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
             />
 
             <button onClick={() => sendMessage()} disabled={loading || (!input.trim() && attachedFiles.length === 0)} className="w-10 h-10 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:bg-gray-300 disabled:text-gray-500 flex items-center justify-center text-white flex-shrink-0 transition shadow-md">
@@ -962,13 +960,12 @@ export default function FootPlayChat() {
         </div>
       </footer>
 
-      {showLiveScores}
       {showLiveScores && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl shadow-2xl ${isDarkMode ? 'bg-[#131314] border border-white/10' : 'bg-white border border-gray-200'}`}>
             <div className={`sticky top-0 z-10 flex items-center justify-between p-4 border-b backdrop-blur-md ${isDarkMode ? 'bg-[#131314]/90 border-white/10' : 'bg-white/90 border-gray-200'}`}>
               <h2 className={`font-bold text-lg flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                <span>⚽</span><span>مركز النتائج المباشرة</span>
+                <span>⚽</span> مركز النتائج المباشرة
               </h2>
               <button onClick={() => setShowLiveScores(false)} className={`w-8 h-8 rounded-full flex items-center justify-center transition ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>✕</button>
             </div>
