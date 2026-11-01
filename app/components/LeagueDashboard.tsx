@@ -4,6 +4,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 
@@ -52,22 +53,7 @@ const LEAGUE_NAMES: Record<string, string> = {
   'ita.1': 'الدوري الإيطالي',
   'ger.1': 'الدوري الألماني',
   'fra.1': 'الدوري الفرنسي',
-  'por.1': 'الدوري البرتغالي',
-  'ned.1': 'الدوري الهولندي',
-  'tur.1': 'الدوري التركي',
-  'egy.1': 'الدوري المصري الممتاز',
-  'uae.1': 'الدوري الإماراتي',
-  'qat.1': 'الدوري القطري',
-  'kuw.1': 'الدوري الكويتي',
-  'bhr.1': 'الدوري البحريني',
-  'oma.1': 'الدوري العُماني',
-  'irq.1': 'الدوري العراقي',
-  'bra.1': 'الدوري البرازيلي',
-  'arg.1': 'الدوري الأرجنتيني',
-  'usa.1': 'الدوري الأمريكي',
-  'mex.1': 'الدوري المكسيكي',
-  'jpn.1': 'الدوري الياباني',
-  'kor.1': 'الدوري الكوري',
+  'usa.1': 'الدوري الأمريكي MLS',
   'uefa.champions': 'دوري أبطال أوروبا',
 };
 
@@ -121,7 +107,9 @@ function textValue(value: unknown): string {
   return '';
 }
 
-function numberValue(value: unknown): number | null {
+function numberValue(
+  value: unknown
+): number | null {
   if (
     typeof value === 'number' &&
     Number.isFinite(value)
@@ -133,30 +121,74 @@ function numberValue(value: unknown): number | null {
     typeof value === 'string' &&
     value.trim() !== ''
   ) {
-    const normalized = value.replace(/,/g, '').trim();
+    const normalized = value
+      .replace(/,/g, '')
+      .trim();
 
     if (/^[-+]?\d+(?:\.\d+)?$/.test(normalized)) {
       const parsed = Number(normalized);
-      return Number.isFinite(parsed) ? parsed : null;
+
+      return Number.isFinite(parsed)
+        ? parsed
+        : null;
     }
   }
 
   return null;
 }
 
-function safeImageUrl(value: unknown): string | null {
-  if (typeof value !== 'string' || !value.trim()) {
-    return null;
-  }
+function safeImageUrl(
+  value: unknown
+): string | null {
+  const raw = textValue(value);
+
+  if (!raw) return null;
 
   try {
-    const url = new URL(value.trim());
+    const url = new URL(raw);
 
     return url.protocol === 'https:'
       ? url.toString()
       : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * إصلاح محدود لبعض النصوص المشوهة
+ * دون المساس بالأسماء السليمة.
+ */
+function cleanText(value: string): string {
+  if (!/[ÃÂ]/.test(value)) {
+    return value;
+  }
+
+  try {
+    const bytes = new Uint8Array(
+      Array.from(value).map((char) =>
+        char.charCodeAt(0)
+      )
+    );
+
+    if (
+      Array.from(value).some(
+        (char) => char.charCodeAt(0) > 255
+      )
+    ) {
+      return value;
+    }
+
+    const decoded = new TextDecoder(
+      'utf-8',
+      { fatal: true }
+    ).decode(bytes);
+
+    return decoded.includes('\uFFFD')
+      ? value
+      : decoded;
+  } catch {
+    return value;
   }
 }
 
@@ -172,7 +204,7 @@ function normalizeTeam(
     asRecord(item.team) ||
     asRecord(item.club);
 
-  const name =
+  const rawName =
     textValue(
       firstValue(item, [
         'name',
@@ -188,6 +220,8 @@ function normalizeTeam(
         'shortDisplayName',
       ])
     );
+
+  const name = cleanText(rawName);
 
   if (!name) return null;
 
@@ -220,14 +254,20 @@ function normalizeTeam(
 
   const goalDifference =
     suppliedDifference ??
-    (goalsFor !== null && goalsAgainst !== null
-      ? goalsFor - goalsAgainst
-      : null);
+    (
+      goalsFor !== null &&
+      goalsAgainst !== null
+        ? goalsFor - goalsAgainst
+        : null
+    );
 
   return {
     id:
       textValue(
-        firstValue(item, ['id', 'teamId'])
+        firstValue(item, [
+          'id',
+          'teamId',
+        ])
       ) ||
       textValue(
         firstValue(nestedTeam, ['id'])
@@ -269,7 +309,11 @@ function normalizeTeam(
     ),
 
     won: numberValue(
-      firstValue(item, ['won', 'wins', 'w'])
+      firstValue(item, [
+        'won',
+        'wins',
+        'w',
+      ])
     ),
 
     draw: numberValue(
@@ -294,34 +338,54 @@ function normalizeTeam(
     goalDifference,
 
     points: numberValue(
-      firstValue(item, ['points', 'pts'])
+      firstValue(item, [
+        'points',
+        'pts',
+      ])
     ),
   };
 }
 
-function normalizeRows(value: unknown): StandingTeam[] {
-  if (!Array.isArray(value)) return [];
+function normalizeRows(
+  value: unknown
+): StandingTeam[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
 
   const rows = value
-    .map((item, index) => normalizeTeam(item, index))
+    .map((item, index) =>
+      normalizeTeam(item, index)
+    )
     .filter(
-      (item): item is StandingTeam => item !== null
+      (item): item is StandingTeam =>
+        item !== null
     );
 
-  // الترتيب الرسمي إن كان متاحًا،
-  // وإلا نحافظ على ترتيب المصدر.
   return rows
-    .map((team, index) => ({ team, index }))
+    .map((team, index) => ({
+      team,
+      index,
+    }))
     .sort((a, b) => {
-      if (a.team.position === null && b.team.position === null) {
+      if (
+        a.team.position === null &&
+        b.team.position === null
+      ) {
         return a.index - b.index;
       }
 
-      if (a.team.position === null) return 1;
-      if (b.team.position === null) return -1;
+      if (a.team.position === null) {
+        return 1;
+      }
+
+      if (b.team.position === null) {
+        return -1;
+      }
 
       return (
-        a.team.position - b.team.position ||
+        a.team.position -
+          b.team.position ||
         a.index - b.index
       );
     })
@@ -343,41 +407,51 @@ function normalizeResponse(
     };
   }
 
-  const rawGroups = Array.isArray(root.groups)
+  const rawGroups = Array.isArray(
+    root.groups
+  )
     ? root.groups
     : [];
 
-  let groups: StandingGroup[] = rawGroups
+  let groups = rawGroups
     .map((value, index) => {
       const group = asRecord(value);
 
       if (!group) return null;
 
-      const rows = normalizeRows(group.rows);
+      const rows = normalizeRows(
+        group.rows
+      );
 
-      if (rows.length === 0) return null;
+      if (!rows.length) return null;
 
       return {
         id:
           textValue(group.id) ||
           `group-${index + 1}`,
         name:
-          textValue(group.name) ||
+          cleanText(
+            textValue(group.name)
+          ) ||
           `المجموعة ${index + 1}`,
         rows,
       };
     })
     .filter(
-      (group): group is StandingGroup => group !== null
+      (
+        group
+      ): group is StandingGroup =>
+        group !== null
     );
 
-  // توافق مع API القديم الذي يعيد rows فقط.
-  if (groups.length === 0) {
+  if (!groups.length) {
     const rows = normalizeRows(
-      root.rows ?? root.data ?? root.table
+      root.rows ??
+      root.data ??
+      root.table
     );
 
-    if (rows.length > 0) {
+    if (rows.length) {
       groups = [
         {
           id: 'main',
@@ -390,24 +464,43 @@ function normalizeResponse(
 
   return {
     groups,
-    source: textValue(root.source) || null,
+    source:
+      textValue(root.source) ||
+      null,
     season:
       root.season === null ||
       root.season === undefined
         ? null
         : textValue(root.season),
-    seasonName: textValue(root.seasonName) || null,
-    updatedAt: textValue(root.updatedAt) || null,
+    seasonName:
+      cleanText(
+        textValue(root.seasonName)
+      ) || null,
+    updatedAt:
+      textValue(root.updatedAt) ||
+      null,
   };
 }
 
-function displayNumber(value: number | null): string {
-  return value === null ? '—' : String(value);
+function displayNumber(
+  value: number | null
+): string {
+  return value === null
+    ? '—'
+    : String(value);
 }
 
-function displayDifference(value: number | null): string {
-  if (value === null) return '—';
-  if (value > 0) return `+${value}`;
+function displayDifference(
+  value: number | null
+): string {
+  if (value === null) {
+    return '—';
+  }
+
+  if (value > 0) {
+    return `+${value}`;
+  }
+
   return String(value);
 }
 
@@ -418,15 +511,26 @@ export default function LeagueDashboard({
   isDark = true,
 }: LeagueDashboardProps) {
   const [result, setResult] =
-    useState<StandingsResult | null>(null);
+    useState<StandingsResult | null>(
+      null
+    );
 
   const [selectedGroup, setSelectedGroup] =
-    useState<string>('');
+    useState('');
 
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
+  const [loading, setLoading] =
+    useState(true);
+
+  const [refreshing, setRefreshing] =
+    useState(false);
+
+  const [error, setError] =
+    useState<string | null>(null);
+
+  const [reloadKey, setReloadKey] =
+    useState(0);
+
+  const activeRequest = useRef(0);
 
   const displayLeagueName =
     leagueName ||
@@ -434,14 +538,27 @@ export default function LeagueDashboard({
     leagueCode;
 
   const loadStandings = useCallback(
-    async (signal: AbortSignal) => {
+    async (
+      signal: AbortSignal,
+      requestId: number,
+      manualRefresh: boolean
+    ) => {
+      if (manualRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+        setResult(null);
+        setSelectedGroup('');
+      }
+
       setError(null);
 
       try {
-        const params = new URLSearchParams({
-          league: leagueCode,
-          season,
-        });
+        const params =
+          new URLSearchParams({
+            league: leagueCode,
+            season,
+          });
 
         const response = await fetch(
           `/api/standings?${params.toString()}`,
@@ -450,53 +567,96 @@ export default function LeagueDashboard({
             cache: 'no-store',
             signal,
             headers: {
-              Accept: 'application/json',
+              Accept:
+                'application/json',
             },
           }
         );
 
-        const text = await response.text();
+        const rawText =
+          await response.text();
 
         let payload: unknown;
 
         try {
-          payload = text ? JSON.parse(text) : null;
+          payload = rawText
+            ? JSON.parse(rawText)
+            : null;
         } catch {
           throw new Error(
-            'استجابة خادم الترتيب غير صالحة.'
+            'استجابة خادم الترتيب ليست JSON صحيحة.'
           );
         }
 
         if (!response.ok) {
-          const details = asRecord(payload);
+          const details =
+            asRecord(payload);
 
           throw new Error(
-            textValue(details?.error) ||
+            textValue(
+              details?.error
+            ) ||
             `تعذر جلب الترتيب (HTTP ${response.status}).`
           );
         }
 
-        const normalized = normalizeResponse(payload);
+        const normalized =
+          normalizeResponse(
+            payload
+          );
 
-        if (signal.aborted) return;
+        if (
+          signal.aborted ||
+          requestId !==
+            activeRequest.current
+        ) {
+          return;
+        }
+
+        if (
+          normalized.groups.length === 0
+        ) {
+          throw new Error(
+            'لا توجد بيانات ترتيب مؤكدة لهذه البطولة.'
+          );
+        }
 
         setResult(normalized);
 
         setSelectedGroup(
-          normalized.groups[0]?.id || ''
+          (current) =>
+            normalized.groups.some(
+              (group) =>
+                group.id === current
+            )
+              ? current
+              : normalized.groups[0].id
         );
       } catch (err) {
-        if (signal.aborted) return;
+        if (
+          signal.aborted ||
+          requestId !==
+            activeRequest.current
+        ) {
+          return;
+        }
 
-        console.error('[AiFBall Standings]', err);
+        console.error(
+          '[AiFBall Standings]',
+          err
+        );
 
         setError(
           err instanceof Error
             ? err.message
-            : 'تعذر تحميل ترتيب الدوري.'
+            : 'تعذر تحميل جدول الترتيب.'
         );
       } finally {
-        if (!signal.aborted) {
+        if (
+          !signal.aborted &&
+          requestId ===
+            activeRequest.current
+        ) {
           setLoading(false);
           setRefreshing(false);
         }
@@ -506,54 +666,94 @@ export default function LeagueDashboard({
   );
 
   useEffect(() => {
-    const controller = new AbortController();
+    const controller =
+      new AbortController();
 
-    setLoading(true);
-    setRefreshing(false);
-    setResult(null);
-    setSelectedGroup('');
+    const requestId =
+      ++activeRequest.current;
 
-    loadStandings(controller.signal);
+    loadStandings(
+      controller.signal,
+      requestId,
+      false
+    );
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+    };
   }, [loadStandings]);
 
   useEffect(() => {
-    if (reloadKey === 0) return;
+    if (reloadKey === 0) {
+      return;
+    }
 
-    const controller = new AbortController();
+    const controller =
+      new AbortController();
 
-    setRefreshing(true);
-    loadStandings(controller.signal);
+    const requestId =
+      ++activeRequest.current;
 
-    return () => controller.abort();
+    loadStandings(
+      controller.signal,
+      requestId,
+      true
+    );
+
+    return () => {
+      controller.abort();
+    };
   }, [reloadKey, loadStandings]);
 
   const refresh = () => {
-    if (loading || refreshing) return;
+    if (
+      loading ||
+      refreshing
+    ) {
+      return;
+    }
 
-    setReloadKey((value) => value + 1);
+    setReloadKey(
+      (value) => value + 1
+    );
   };
 
-  const groups = result?.groups || [];
+  const groups =
+    result?.groups || [];
 
   const activeGroup =
-    groups.find((group) => group.id === selectedGroup) ||
-    groups[0];
+    groups.find(
+      (group) =>
+        group.id === selectedGroup
+    ) || groups[0];
 
-  const teams = activeGroup?.rows || [];
+  const teams =
+    activeGroup?.rows || [];
 
   const formattedUpdatedAt = (() => {
-    if (!result?.updatedAt) return null;
+    if (!result?.updatedAt) {
+      return null;
+    }
 
-    const date = new Date(result.updatedAt);
+    const date = new Date(
+      result.updatedAt
+    );
 
-    if (Number.isNaN(date.getTime())) return null;
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+      return null;
+    }
 
-    return date.toLocaleTimeString('ar-SA', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return date.toLocaleTimeString(
+      'ar-SA',
+      {
+        hour: '2-digit',
+        minute: '2-digit',
+      }
+    );
   })();
 
   return (
@@ -568,7 +768,9 @@ export default function LeagueDashboard({
       {/* Header */}
       <div
         className={`p-5 sm:p-6 border-b ${
-          isDark ? 'border-gray-800' : 'border-gray-200'
+          isDark
+            ? 'border-gray-800'
+            : 'border-gray-200'
         }`}
       >
         <div className="flex items-center justify-between gap-3">
@@ -600,7 +802,10 @@ export default function LeagueDashboard({
           <button
             type="button"
             onClick={refresh}
-            disabled={loading || refreshing}
+            disabled={
+              loading ||
+              refreshing
+            }
             title="تحديث جدول الترتيب"
             className={`flex-shrink-0 px-3 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 transition disabled:opacity-50 ${
               isDark
@@ -610,59 +815,79 @@ export default function LeagueDashboard({
           >
             <span
               className={
-                refreshing ? 'inline-block animate-spin' : ''
+                refreshing
+                  ? 'inline-block animate-spin'
+                  : ''
               }
             >
               ↻
             </span>
+
             <span className="hidden sm:inline">
-              {refreshing ? 'جارٍ التحديث' : 'تحديث'}
+              {refreshing
+                ? 'جارٍ التحديث'
+                : 'تحديث'}
             </span>
           </button>
         </div>
 
         <div className="flex items-center justify-between gap-2 mt-4 text-[11px] text-gray-500">
           <span>
-            المصدر: {result?.source || 'ESPN'}
+            المصدر:{' '}
+            {result?.source ||
+              'جارٍ التحقق'}
           </span>
 
           {formattedUpdatedAt && (
             <span>
-              آخر جلب: {formattedUpdatedAt}
+              آخر جلب:{' '}
+              {formattedUpdatedAt}
             </span>
           )}
         </div>
       </div>
 
       {/* Groups */}
-      {!loading && !error && groups.length > 1 && (
-        <div
-          className={`px-4 py-3 border-b ${
-            isDark
-              ? 'border-gray-800'
-              : 'border-gray-200'
-          }`}
-        >
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {groups.map((group) => (
-              <button
-                type="button"
-                key={group.id}
-                onClick={() => setSelectedGroup(group.id)}
-                className={`flex-shrink-0 rounded-xl px-4 py-2 text-xs font-bold transition ${
-                  activeGroup?.id === group.id
-                    ? 'bg-[#1D6B35] text-white'
-                    : isDark
-                    ? 'bg-white/5 text-gray-300 hover:bg-white/10'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {group.name}
-              </button>
-            ))}
+      {!loading &&
+        groups.length > 1 && (
+          <div
+            className={`px-4 py-3 border-b ${
+              isDark
+                ? 'border-gray-800'
+                : 'border-gray-200'
+            }`}
+          >
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {groups.map(
+                (group) => (
+                  <button
+                    type="button"
+                    key={group.id}
+                    onClick={() =>
+                      setSelectedGroup(
+                        group.id
+                      )
+                    }
+                    aria-pressed={
+                      activeGroup?.id ===
+                      group.id
+                    }
+                    className={`flex-shrink-0 rounded-xl px-4 py-2 text-xs font-bold transition ${
+                      activeGroup?.id ===
+                      group.id
+                        ? 'bg-[#1D6B35] text-white'
+                        : isDark
+                        ? 'bg-white/5 text-gray-300 hover:bg-white/10'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {group.name}
+                  </button>
+                )
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Content */}
       {loading ? (
@@ -673,9 +898,11 @@ export default function LeagueDashboard({
             جارٍ جلب ترتيب الدوري...
           </p>
         </div>
-      ) : error ? (
+      ) : !result && error ? (
         <div className="p-8 text-center">
-          <div className="text-3xl mb-3">⚠️</div>
+          <div className="text-3xl mb-3">
+            ⚠️
+          </div>
 
           <p className="text-red-500 font-bold text-sm mb-2">
             تعذر تحميل جدول الترتيب
@@ -688,14 +915,17 @@ export default function LeagueDashboard({
           <button
             type="button"
             onClick={refresh}
-            className="px-5 py-2.5 rounded-xl bg-[#1D6B35] hover:bg-emerald-700 text-white text-xs font-bold transition"
+            disabled={refreshing}
+            className="px-5 py-2.5 rounded-xl bg-[#1D6B35] hover:bg-emerald-700 text-white text-xs font-bold transition disabled:opacity-50"
           >
             إعادة المحاولة
           </button>
         </div>
       ) : teams.length === 0 ? (
         <div className="p-10 text-center">
-          <div className="text-3xl mb-3">📊</div>
+          <div className="text-3xl mb-3">
+            📊
+          </div>
 
           <p className="font-bold text-sm">
             لا توجد بيانات ترتيب مؤكدة لهذه البطولة حاليًا.
@@ -708,13 +938,28 @@ export default function LeagueDashboard({
           <button
             type="button"
             onClick={refresh}
-            className="mt-5 px-5 py-2.5 rounded-xl bg-[#1D6B35] text-white text-xs font-bold"
+            disabled={refreshing}
+            className="mt-5 px-5 py-2.5 rounded-xl bg-[#1D6B35] text-white text-xs font-bold disabled:opacity-50"
           >
             إعادة المحاولة
           </button>
         </div>
       ) : (
         <>
+          {error && (
+            <div
+              role="alert"
+              className={`px-5 py-3 text-xs border-b ${
+                isDark
+                  ? 'bg-amber-900/20 text-amber-300 border-amber-900/30'
+                  : 'bg-amber-50 text-amber-800 border-amber-200'
+              }`}
+            >
+              تعذر تحديث البيانات: {error}.
+              يتم عرض آخر بيانات تم جلبها بنجاح.
+            </div>
+          )}
+
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full min-w-[650px] text-center text-xs sm:text-sm whitespace-nowrap">
               <thead
@@ -725,16 +970,36 @@ export default function LeagueDashboard({
                 }`}
               >
                 <tr>
-                  <th className="py-3 px-2">#</th>
-                  <th className="py-3 px-4 text-right">الفريق</th>
-                  <th className="py-3 px-2">لعب</th>
-                  <th className="py-3 px-2 text-emerald-500">فاز</th>
-                  <th className="py-3 px-2 text-yellow-500">تعادل</th>
-                  <th className="py-3 px-2 text-red-500">خسر</th>
-                  <th className="py-3 px-2">له</th>
-                  <th className="py-3 px-2">عليه</th>
-                  <th className="py-3 px-2">+/-</th>
-                  <th className="py-3 px-2">نقاط</th>
+                  <th className="py-3 px-2">
+                    #
+                  </th>
+                  <th className="py-3 px-4 text-right">
+                    الفريق
+                  </th>
+                  <th className="py-3 px-2">
+                    لعب
+                  </th>
+                  <th className="py-3 px-2 text-emerald-500">
+                    فاز
+                  </th>
+                  <th className="py-3 px-2 text-yellow-500">
+                    تعادل
+                  </th>
+                  <th className="py-3 px-2 text-red-500">
+                    خسر
+                  </th>
+                  <th className="py-3 px-2">
+                    له
+                  </th>
+                  <th className="py-3 px-2">
+                    عليه
+                  </th>
+                  <th className="py-3 px-2">
+                    +/-
+                  </th>
+                  <th className="py-3 px-2">
+                    نقاط
+                  </th>
                 </tr>
               </thead>
 
@@ -745,95 +1010,122 @@ export default function LeagueDashboard({
                     : 'divide-gray-200'
                 }`}
               >
-                {teams.map((team) => (
-                  <tr
-                    key={team.id}
-                    className={`transition-colors ${
-                      isDark
-                        ? 'hover:bg-white/5'
-                        : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <td className="py-3 px-2 font-bold text-gray-500">
-                      {displayNumber(team.position)}
-                    </td>
-
-                    <td className="py-3 px-4 text-right font-bold">
-                      <div className="flex items-center gap-2.5">
-                        {team.logo ? (
-                          <img
-                            src={team.logo}
-                            alt=""
-                            className="w-7 h-7 object-contain flex-shrink-0"
-                            onError={(event) => {
-                              event.currentTarget.style.display =
-                                'none';
-                            }}
-                          />
-                        ) : (
-                          <div className="w-7 h-7 rounded-full bg-emerald-600/15 border border-emerald-500/20 flex items-center justify-center text-[11px] text-emerald-400 flex-shrink-0">
-                            {team.name.charAt(0)}
-                          </div>
-                        )}
-
-                        <span className="truncate max-w-[180px]">
-                          {team.name}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="py-3 px-2 text-gray-400">
-                      {displayNumber(team.played)}
-                    </td>
-
-                    <td className="py-3 px-2 font-bold text-emerald-500">
-                      {displayNumber(team.won)}
-                    </td>
-
-                    <td className="py-3 px-2 font-bold text-yellow-500">
-                      {displayNumber(team.draw)}
-                    </td>
-
-                    <td className="py-3 px-2 font-bold text-red-500">
-                      {displayNumber(team.lost)}
-                    </td>
-
-                    <td className="py-3 px-2 text-gray-400">
-                      {displayNumber(team.goalsFor)}
-                    </td>
-
-                    <td className="py-3 px-2 text-gray-400">
-                      {displayNumber(team.goalsAgainst)}
-                    </td>
-
-                    <td
-                      dir="ltr"
-                      className={`py-3 px-2 font-bold ${
-                        team.goalDifference === null
-                          ? 'text-gray-500'
-                          : team.goalDifference > 0
-                          ? 'text-emerald-500'
-                          : team.goalDifference < 0
-                          ? 'text-red-500'
-                          : 'text-gray-400'
+                {teams.map(
+                  (team) => (
+                    <tr
+                      key={team.id}
+                      className={`transition-colors ${
+                        isDark
+                          ? 'hover:bg-white/5'
+                          : 'hover:bg-gray-50'
                       }`}
                     >
-                      {displayDifference(team.goalDifference)}
-                    </td>
+                      <td className="py-3 px-2 font-bold text-gray-500">
+                        {displayNumber(
+                          team.position
+                        )}
+                      </td>
 
-                    <td className="py-3 px-2">
-                      <span
-                        className={`inline-flex items-center justify-center min-w-9 px-2 py-1 rounded-lg font-extrabold ${
-                          isDark
-                            ? 'bg-emerald-900/40 text-emerald-400'
-                            : 'bg-emerald-100 text-emerald-700'
+                      <td className="py-3 px-4 text-right font-bold">
+                        <div className="flex items-center gap-2.5">
+                          {team.logo ? (
+                            <img
+                              src={team.logo}
+                              alt=""
+                              className="w-7 h-7 object-contain flex-shrink-0"
+                              onError={(
+                                event
+                              ) => {
+                                event.currentTarget.style.display =
+                                  'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-emerald-600/15 border border-emerald-500/20 flex items-center justify-center text-[11px] text-emerald-400 flex-shrink-0">
+                              {team.name.charAt(
+                                0
+                              )}
+                            </div>
+                          )}
+
+                          <span className="truncate max-w-[180px]">
+                            {team.name}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-2 text-gray-400">
+                        {displayNumber(
+                          team.played
+                        )}
+                      </td>
+
+                      <td className="py-3 px-2 font-bold text-emerald-500">
+                        {displayNumber(
+                          team.won
+                        )}
+                      </td>
+
+                      <td className="py-3 px-2 font-bold text-yellow-500">
+                        {displayNumber(
+                          team.draw
+                        )}
+                      </td>
+
+                      <td className="py-3 px-2 font-bold text-red-500">
+                        {displayNumber(
+                          team.lost
+                        )}
+                      </td>
+
+                      <td className="py-3 px-2 text-gray-400">
+                        {displayNumber(
+                          team.goalsFor
+                        )}
+                      </td>
+
+                      <td className="py-3 px-2 text-gray-400">
+                        {displayNumber(
+                          team.goalsAgainst
+                        )}
+                      </td>
+
+                      <td
+                        dir="ltr"
+                        className={`py-3 px-2 font-bold ${
+                          team.goalDifference ===
+                          null
+                            ? 'text-gray-500'
+                            : team.goalDifference >
+                              0
+                            ? 'text-emerald-500'
+                            : team.goalDifference <
+                              0
+                            ? 'text-red-500'
+                            : 'text-gray-400'
                         }`}
                       >
-                        {displayNumber(team.points)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                        {displayDifference(
+                          team.goalDifference
+                        )}
+                      </td>
+
+                      <td className="py-3 px-2">
+                        <span
+                          className={`inline-flex items-center justify-center min-w-9 px-2 py-1 rounded-lg font-extrabold ${
+                            isDark
+                              ? 'bg-emerald-900/40 text-emerald-400'
+                              : 'bg-emerald-100 text-emerald-700'
+                          }`}
+                        >
+                          {displayNumber(
+                            team.points
+                          )}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
           </div>
