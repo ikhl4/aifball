@@ -76,6 +76,103 @@ const SAUDI_TEAMS: Record<string, string> = {
   '21833': 'أبها',
 };
 
+// Names are presentation-only: ESPN identifiers and statistics remain unchanged.
+const TEAM_NAMES_AR: Record<string, string> = {
+  'PSG': 'باريس سان جيرمان',
+  'Paris Saint-Germain': 'باريس سان جيرمان',
+  'Aston Villa': 'أستون فيلا',
+  'Liverpool': 'ليفربول',
+  'Real Madrid': 'ريال مدريد',
+  'Betis': 'ريال بيتيس',
+  'Real Betis': 'ريال بيتيس',
+  'Stuttgart': 'شتوتغارت',
+  'Arsenal': 'أرسنال',
+  'Barcelona': 'برشلونة',
+  'Como': 'كومو',
+  'Man City': 'مانشستر سيتي',
+  'Manchester City': 'مانشستر سيتي',
+  'Club Brugge': 'كلوب بروج',
+  'Sporting': 'سبورتينغ لشبونة',
+  'Dortmund': 'بوروسيا دورتموند',
+  'Bayern': 'بايرن ميونخ',
+  'Bayern Munich': 'بايرن ميونخ',
+  'Atlético': 'أتلتيكو مدريد',
+  'Atletico Madrid': 'أتلتيكو مدريد',
+  'Real Sociedad': 'ريال سوسيداد',
+  'Sevilla': 'إشبيلية',
+  'Athletic': 'أتلتيك بلباو',
+  'Villarreal': 'فياريال',
+  'Celta Vigo': 'سيلتا فيغو',
+  'Alavés': 'ألافيس',
+  'Rayo': 'رايو فاييكانو',
+  'Getafe': 'خيتافي',
+  'Deportivo': 'ديبورتيفو لاكورونيا',
+  'Espanyol': 'إسبانيول',
+  'Lazio': 'لاتسيو',
+  'Inter Milan': 'إنتر ميلان',
+  'Inter': 'إنتر ميلان',
+  'AS Roma': 'روما',
+  'Milan': 'ميلان',
+  'Frosinone': 'فروزينوني',
+  'Juventus': 'يوفنتوس',
+  'Napoli': 'نابولي',
+  'Bologna': 'بولونيا',
+  'Torino': 'تورينو',
+  'Genoa': 'جنوى',
+  'Cagliari': 'كالياري',
+  'Atalanta': 'أتالانتا',
+  'Lecce': 'ليتشي',
+  'Freiburg': 'فرايبورغ',
+  'Leipzig': 'لايبزيغ',
+  'Bremen': 'فيردر بريمن',
+  'Leverkusen': 'باير ليفركوزن',
+  'Elversberg': 'إلفيرسبيرغ',
+  'Frankfurt': 'آينتراخت فرانكفورت',
+  'Mainz': 'ماينتس',
+  'Augsburg': 'أوغسبورغ',
+  'Hoffenheim': 'هوفنهايم',
+  'Cologne': 'كولن',
+  'Paderborn': 'بادربورن',
+  'Lille': 'ليل',
+  'Lyon': 'ليون',
+  'Paris FC': 'باريس إف سي',
+  'Rennes': 'رين',
+  'Marseille': 'مارسيليا',
+  'Monaco': 'موناكو',
+  'Nice': 'نيس',
+  'Lens': 'لانس',
+  'Lorient': 'لوريان',
+  'Toulouse': 'تولوز',
+  'Strasbourg': 'ستراسبورغ',
+  'Auxerre': 'أوكسير',
+  'Brest': 'بريست',
+  'Nashville': 'ناشفيل',
+  'New England': 'نيو إنجلاند',
+  'Miami': 'إنتر ميامي',
+  'Chicago': 'شيكاغو فاير',
+  'Charlotte': 'شارلوت',
+  'Philadelphia': 'فيلادلفيا يونيون',
+  'Cincinnati': 'سينسيناتي',
+  'Columbus': 'كولومبوس كرو',
+  'Orlando': 'أورلاندو سيتي',
+  'Red Bull NY': 'نيويورك ريد بولز',
+  'NYCFC': 'نيويورك سيتي',
+  'Toronto': 'تورونتو',
+  'D.C. United': 'دي سي يونايتد',
+  'Atlanta': 'أتلانتا يونايتد',
+};
+
+const GROUP_NAMES_AR: Record<string, string> = {
+  'Eastern Conference': 'القسم الشرقي',
+  'Western Conference': 'القسم الغربي',
+  'League Phase': 'مرحلة الدوري',
+  'Overall': 'الترتيب العام',
+};
+
+function displayGroupName(name: string): string {
+  return GROUP_NAMES_AR[name.trim()] || name;
+}
+
 function asRecord(value: unknown): DataRecord | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
     ? value as DataRecord
@@ -134,8 +231,8 @@ function cleanText(value: string): string {
 }
 
 /**
- * Only accepts explicit semantic values from the API.
- * A rank or color never implies qualification/relegation.
+ * Only accepts explicit, documented semantic values from the API.
+ * A rank, color, or arbitrary description never implies qualification/relegation.
  */
 function normalizeZone(item: DataRecord): {
   zone: StandingZone;
@@ -236,7 +333,11 @@ function displayDifference(value: number | null): string {
   return value > 0 ? `+${value}` : String(value);
 }
 
-function formatSeason(season: string | null, fallback: string): string {
+function formatSeason(season: string | null, fallback: string, leagueCode: string): string {
+  if (leagueCode === 'usa.1') {
+    const year = (season || fallback).match(/\b(\d{4})\b/);
+    return year ? year[1] : (season || fallback);
+  }
   const input = season || fallback;
   const match = input.match(/^(\d{4})(?:[-/](\d{2,4}))?$/);
   if (!match) return input;
@@ -249,7 +350,8 @@ function formatSeason(season: string | null, fallback: string): string {
 }
 
 function displayTeamName(team: StandingTeam, leagueCode: string): string {
-  return leagueCode === 'ksa.1' ? SAUDI_TEAMS[team.id] || team.name : team.name;
+  if (leagueCode === 'ksa.1' && SAUDI_TEAMS[team.id]) return SAUDI_TEAMS[team.id];
+  return TEAM_NAMES_AR[team.name] || team.name;
 }
 
 export default function LeagueDashboard({
@@ -342,7 +444,7 @@ export default function LeagueDashboard({
     if (Number.isNaN(date.getTime())) return null;
     return date.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
   })();
-  const displayedSeason = formatSeason(result?.season || null, season);
+  const displayedSeason = formatSeason(result?.season || null, season, leagueCode);
   const hasZones = teams.some((team) => team.zone !== null);
   const cellBorder = isDark ? 'border-gray-800/50' : 'border-gray-200';
   const stickyBg = isDark ? 'bg-[#1a1c1e]' : 'bg-white';
@@ -392,7 +494,7 @@ export default function LeagueDashboard({
                   activeGroup?.id === group.id
                     ? 'bg-[#1D6B35] text-white'
                     : isDark ? 'bg-white/5 text-gray-300 hover:bg-white/10' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}>{group.name}</button>
+                }`}>{displayGroupName(group.name)}</button>
             ))}
           </div>
         </div>
@@ -433,8 +535,9 @@ export default function LeagueDashboard({
             </div>
           )}
           {refreshing && <p role="status" className="px-5 py-2 text-xs text-emerald-500">جارٍ تحديث الترتيب...</p>}
+          <p className="px-4 pt-2 text-[10px] text-gray-500 sm:hidden">مرّر الجدول أفقيًا لعرض جميع الإحصائيات ←</p>
           <div className="w-full overflow-x-auto custom-scrollbar" role="region" aria-label={`جدول ترتيب ${displayLeagueName}`} tabIndex={0}>
-            <table className="w-full min-w-[650px] border-separate border-spacing-0 text-center text-xs sm:text-sm whitespace-nowrap">
+            <table className="w-full min-w-[690px] border-separate border-spacing-0 text-center text-xs sm:text-sm whitespace-nowrap">
               <thead className={isDark ? 'bg-[#15171a] text-gray-400' : 'bg-gray-100 text-gray-600'}>
                 <tr>
                   <th scope="col" className={`sticky right-0 z-20 py-3 px-2 w-9 border-b ${headerBg} ${cellBorder}`}>#</th>
@@ -474,7 +577,7 @@ export default function LeagueDashboard({
                               {teamName.charAt(0)}
                             </div>
                           )}
-                          <span className="truncate max-w-[115px] sm:max-w-[180px]" title={teamName}>{teamName}</span>
+                          <span className="truncate max-w-[135px] sm:max-w-[200px]" title={teamName}>{teamName}</span>
                         </div>
                       </td>
                       <td className={`py-3 px-2 text-gray-400 border-b ${cellBorder}`}>{displayNumber(team.played)}</td>
@@ -510,7 +613,7 @@ export default function LeagueDashboard({
             isDark ? 'bg-[#15171a] border-gray-800 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-500'
           }`}>
             <span>عدد الفرق المعروضة: <strong className="text-emerald-500">{teams.length}</strong></span>
-            {groups.length > 1 && <span>{activeGroup?.name}</span>}
+            {groups.length > 1 && <span>{activeGroup ? displayGroupName(activeGroup.name) : ''}</span>}
           </div>
         </>
       )}
