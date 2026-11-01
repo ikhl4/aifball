@@ -53,10 +53,12 @@ interface StandingsData {
   updatedAt: string;
 }
 
-const LEAGUES: Record<
-  string,
-  { name: string; fotmobId?: number }
-> = {
+interface LeagueConfig {
+  name: string;
+  fotmobId?: number;
+}
+
+const LEAGUES: Record<string, LeagueConfig> = {
   'ksa.1': {
     name: 'دوري روشن السعودي',
     fotmobId: 536,
@@ -134,11 +136,8 @@ function number(value: unknown): number | null {
     const clean = value.trim().replace(/,/g, '');
 
     if (/^-?\d+(?:\.\d+)?$/.test(clean)) {
-      const result = Number(clean);
-
-      return Number.isFinite(result)
-        ? result
-        : null;
+      const parsed = Number(clean);
+      return Number.isFinite(parsed) ? parsed : null;
     }
   }
 
@@ -182,10 +181,6 @@ function safeLogo(value: unknown): string | null {
   }
 }
 
-// ==========================================
-// UTF-8 JSON responses
-// ==========================================
-
 function jsonResponse(
   data: unknown,
   status = 200
@@ -195,7 +190,8 @@ function jsonResponse(
     headers: {
       'Content-Type':
         'application/json; charset=utf-8',
-      'Cache-Control': 'no-store',
+      'Cache-Control':
+        'no-store, no-cache, must-revalidate',
     },
   });
 }
@@ -244,18 +240,42 @@ function seasonsMatch(
   requested: string,
   returned: string
 ): boolean {
-  const a = seasonStart(requested);
-  const b = seasonStart(returned);
+  const requestedYear = seasonStart(requested);
+  const returnedYear = seasonStart(returned);
 
   return (
-    a !== null &&
-    b !== null &&
-    a === b
+    requestedYear !== null &&
+    returnedYear !== null &&
+    requestedYear === returnedYear
   );
 }
 
 // ==========================================
-// Standings validation
+// Diagnostic logging
+// ==========================================
+
+function diagnostic(
+  source: string,
+  league: string,
+  message: string,
+  details?: RecordData
+) {
+  console.info(
+    `[AiFBall Standings] ${source} | ${league} | ${message}`,
+    details || {}
+  );
+}
+
+function errorDetails(error: unknown): string {
+  if (error instanceof Error) {
+    return `${error.name}: ${error.message}`;
+  }
+
+  return String(error);
+}
+
+// ==========================================
+// Row validation
 // ==========================================
 
 function isNonNegativeInteger(
@@ -263,43 +283,31 @@ function isNonNegativeInteger(
 ): boolean {
   return (
     value === null ||
-    (
-      Number.isInteger(value) &&
-      value >= 0
-    )
+    (Number.isInteger(value) && value >= 0)
   );
 }
 
-function isValidRow(
-  row: StandingRow
-): boolean {
+function isValidRow(row: StandingRow): boolean {
   if (!row.id || !row.name) {
     return false;
   }
 
   if (
     row.pos !== null &&
-    (
-      !Number.isInteger(row.pos) ||
-      row.pos < 1
-    )
+    (!Number.isInteger(row.pos) || row.pos < 1)
   ) {
     return false;
   }
 
-  const nonNegativeValues = [
-    row.played,
-    row.won,
-    row.draw,
-    row.lost,
-    row.gf,
-    row.ga,
-  ];
-
   if (
-    !nonNegativeValues.every(
-      isNonNegativeInteger
-    )
+    ![
+      row.played,
+      row.won,
+      row.draw,
+      row.lost,
+      row.gf,
+      row.ga,
+    ].every(isNonNegativeInteger)
   ) {
     return false;
   }
@@ -322,14 +330,10 @@ function isValidRow(
     row.played !== null &&
     row.won !== null &&
     row.draw !== null &&
-    row.lost !== null
+    row.lost !== null &&
+    row.won + row.draw + row.lost !== row.played
   ) {
-    const total =
-      row.won + row.draw + row.lost;
-
-    if (total !== row.played) {
-      return false;
-    }
+    return false;
   }
 
   if (
@@ -344,47 +348,65 @@ function isValidRow(
   return true;
 }
 
-function isValidGroup(
-  group: StandingGroup
-): boolean {
-  if (!group.rows.length) {
-    return false;
-  }
-
+function validateRows(
+  rows: StandingRow[],
+  source: string,
+  league: string
+): StandingRow[] {
   const ids = new Set<string>();
   const positions = new Set<number>();
 
-  for (const row of group.rows) {
+  const validRows: StandingRow[] = [];
+
+  for (const row of rows) {
     if (!isValidRow(row)) {
-      return false;
+      diagnostic(source, league, 'INVALID_ROW', {
+        team: row.name,
+        id: row.id,
+      });
+      continue;
     }
 
     if (ids.has(row.id)) {
-      return false;
+      diagnostic(source, league, 'DUPLICATE_TEAM', {
+        id: row.id,
+      });
+      continue;
+    }
+
+    if (
+      row.pos !== null &&
+      positions.has(row.pos)
+    ) {
+      diagnostic(
+        source,
+        league,
+        'DUPLICATE_POSITION',
+        {
+          team: row.name,
+          position: row.pos,
+        }
+      );
+      continue;
     }
 
     ids.add(row.id);
 
     if (row.pos !== null) {
-      if (positions.has(row.pos)) {
-        return false;
-      }
-
       positions.add(row.pos);
     }
+
+    validRows.push(row);
   }
 
-  return true;
+  return validRows;
 }
 
 function sortRows(
   rows: StandingRow[]
 ): StandingRow[] {
   return rows
-    .map((row, index) => ({
-      row,
-      index,
-    }))
+    .map((row, index) => ({ row, index }))
     .sort((a, b) => {
       if (
         a.row.pos === null &&
@@ -428,12 +450,12 @@ function espnStat(
         continue;
       }
 
-      const result =
+      const value =
         number(stat.value) ??
         number(stat.displayValue);
 
-      if (result !== null) {
-        return result;
+      if (value !== null) {
+        return value;
       }
     }
   }
@@ -451,9 +473,7 @@ function normalizeESPNRow(
   const entry = record(raw);
   const team = record(entry?.team);
 
-  if (!entry || !team) {
-    return null;
-  }
+  if (!entry || !team) return null;
 
   const name = text(
     first(team, [
@@ -463,9 +483,7 @@ function normalizeESPNRow(
     ])
   );
 
-  if (!name) {
-    return null;
-  }
+  if (!name) return null;
 
   const logos = array(team.logos);
   const firstLogo = record(logos[0]);
@@ -485,27 +503,23 @@ function normalizeESPNRow(
       'pointDifferential',
       'goalDifference',
     ]) ??
-    (
-      gf !== null &&
-      ga !== null
-        ? gf - ga
-        : null
-    );
+    (gf !== null && ga !== null
+      ? gf - ga
+      : null);
 
   return {
     id: text(team.id) || name,
 
     pos:
       espnStat(entry, ['rank']) ??
-      number(entry.rank),
+      number(entry.rank) ??
+      number(team.rank),
 
     name,
 
     logo: safeLogo(
-      first(firstLogo, [
-        'href',
-        'url',
-      ]) ?? team.logo
+      first(firstLogo, ['href', 'url']) ??
+        team.logo
     ),
 
     played: espnStat(entry, [
@@ -513,26 +527,20 @@ function normalizeESPNRow(
       'matchesPlayed',
     ]),
 
-    won: espnStat(entry, [
-      'wins',
-    ]),
+    won: espnStat(entry, ['wins']),
 
     draw: espnStat(entry, [
       'ties',
       'draws',
     ]),
 
-    lost: espnStat(entry, [
-      'losses',
-    ]),
+    lost: espnStat(entry, ['losses']),
 
     gf,
     ga,
     gd,
 
-    pts: espnStat(entry, [
-      'points',
-    ]),
+    pts: espnStat(entry, ['points']),
   };
 }
 
@@ -542,35 +550,44 @@ function normalizeESPNRow(
 
 function normalizeESPNGroup(
   raw: unknown,
-  index: number
+  index: number,
+  league: string
 ): StandingGroup | null {
   const group = record(raw);
 
-  if (!group) {
-    return null;
-  }
+  if (!group) return null;
 
-  const standings = record(
-    group.standings
-  );
+  const standings = record(group.standings);
 
   const entries = array(
-    standings?.entries ??
-    group.entries
+    standings?.entries ?? group.entries
   );
 
-  const rows = entries
+  const parsedRows = entries
     .map(normalizeESPNRow)
     .filter(
       (row): row is StandingRow =>
         row !== null
     );
 
+  const rows = sortRows(
+    validateRows(parsedRows, 'ESPN', league)
+  );
+
   if (!rows.length) {
+    diagnostic(
+      'ESPN',
+      league,
+      'EMPTY_OR_INVALID_GROUP',
+      {
+        group: text(group.id),
+        entries: entries.length,
+      }
+    );
     return null;
   }
 
-  const result: StandingGroup = {
+  return {
     id:
       text(group.id) ||
       `group-${index + 1}`,
@@ -584,38 +601,30 @@ function normalizeESPNGroup(
         ])
       ) || 'الترتيب العام',
 
-    rows: sortRows(rows),
+    rows,
   };
-
-  if (!isValidGroup(result)) {
-    console.warn(
-      '[AiFBall] Invalid ESPN group:',
-      result.id
-    );
-
-    return null;
-  }
-
-  return result;
 }
 
 function collectESPNGroups(
-  payload: RecordData
+  payload: RecordData,
+  league: string
 ): StandingGroup[] {
-  const children = array(
-    payload.children
-  );
+  const children = array(payload.children);
 
   const groups = children
-    .map(normalizeESPNGroup)
+    .map((child, index) =>
+      normalizeESPNGroup(
+        child,
+        index,
+        league
+      )
+    )
     .filter(
       (group): group is StandingGroup =>
         group !== null
     );
 
-  if (groups.length) {
-    return groups;
-  }
+  if (groups.length) return groups;
 
   const direct = normalizeESPNGroup(
     {
@@ -624,10 +633,58 @@ function collectESPNGroups(
       standings: payload.standings,
       entries: payload.entries,
     },
-    0
+    0,
+    league
   );
 
   return direct ? [direct] : [];
+}
+
+// ==========================================
+// ESPN season extraction
+// ==========================================
+
+function extractESPNSeason(
+  payload: RecordData
+): {
+  season: string | null;
+  seasonName: string | null;
+} {
+  const rootSeason = record(payload.season);
+
+  const children = array(payload.children);
+
+  const firstChild = children
+    .map(record)
+    .find((child) => child !== null);
+
+  const childSeason = record(
+    firstChild?.season
+  );
+
+  const season =
+    text(rootSeason?.year) ||
+    text(rootSeason?.startYear) ||
+    text(payload.season) ||
+    text(childSeason?.year) ||
+    text(childSeason?.startYear) ||
+    text(firstChild?.season) ||
+    null;
+
+  const seasonName =
+    text(rootSeason?.displayName) ||
+    text(rootSeason?.name) ||
+    text(payload.seasonDisplayName) ||
+    text(childSeason?.displayName) ||
+    text(childSeason?.name) ||
+    text(firstChild?.seasonDisplayName) ||
+    text(firstChild?.name) ||
+    season;
+
+  return {
+    season,
+    seasonName,
+  };
 }
 
 // ==========================================
@@ -639,28 +696,18 @@ function normalizeFotMobRow(
 ): StandingRow | null {
   const item = record(raw);
 
-  if (!item) {
-    return null;
-  }
+  if (!item) return null;
 
   const name = text(item.name);
 
-  if (!name) {
-    return null;
-  }
+  if (!name) return null;
 
   const gf = number(
-    first(item, [
-      'gf',
-      'goalsFor',
-    ])
+    first(item, ['gf', 'goalsFor'])
   );
 
   const ga = number(
-    first(item, [
-      'ga',
-      'goalsAgainst',
-    ])
+    first(item, ['ga', 'goalsAgainst'])
   );
 
   return {
@@ -679,11 +726,8 @@ function normalizeFotMobRow(
     logo: safeLogo(item.logo),
 
     played: number(item.played),
-
     won: number(item.won),
-
     draw: number(item.draw),
-
     lost: number(item.lost),
 
     gf,
@@ -691,24 +735,18 @@ function normalizeFotMobRow(
 
     gd:
       number(item.gd) ??
-      (
-        gf !== null &&
-        ga !== null
-          ? gf - ga
-          : null
-      ),
+      (gf !== null && ga !== null
+        ? gf - ga
+        : null),
 
     pts: number(
-      first(item, [
-        'pts',
-        'points',
-      ])
+      first(item, ['pts', 'points'])
     ),
   };
 }
 
 // ==========================================
-// FotMob response normalization
+// FotMob normalization
 // ==========================================
 
 function normalizeFotMob(
@@ -718,13 +756,9 @@ function normalizeFotMob(
 ): StandingsData | null {
   const payload = record(raw);
 
-  if (!payload) {
-    return null;
-  }
+  if (!payload) return null;
 
-  const returnedSeason = text(
-    payload.season
-  );
+  const returnedSeason = text(payload.season);
 
   if (requestedSeason) {
     if (
@@ -734,6 +768,15 @@ function normalizeFotMob(
         returnedSeason
       )
     ) {
+      diagnostic(
+        'FotMob',
+        league,
+        'SEASON_MISMATCH',
+        {
+          requestedSeason,
+          returnedSeason,
+        }
+      );
       return null;
     }
   }
@@ -742,22 +785,26 @@ function normalizeFotMob(
     .map((rawGroup, index) => {
       const group = record(rawGroup);
 
-      if (!group) {
-        return null;
-      }
+      if (!group) return null;
 
-      const rows = array(group.rows)
+      const parsedRows = array(group.rows)
         .map(normalizeFotMobRow)
         .filter(
           (row): row is StandingRow =>
             row !== null
         );
 
-      if (!rows.length) {
-        return null;
-      }
+      const rows = sortRows(
+        validateRows(
+          parsedRows,
+          'FotMob',
+          league
+        )
+      );
 
-      const result: StandingGroup = {
+      if (!rows.length) return null;
+
+      return {
         id:
           text(group.id) ||
           `group-${index + 1}`,
@@ -766,19 +813,8 @@ function normalizeFotMob(
           text(group.name) ||
           `المجموعة ${index + 1}`,
 
-        rows: sortRows(rows),
+        rows,
       };
-
-      if (!isValidGroup(result)) {
-        console.warn(
-          '[AiFBall] Invalid FotMob group:',
-          result.id
-        );
-
-        return null;
-      }
-
-      return result;
     })
     .filter(
       (group): group is StandingGroup =>
@@ -786,12 +822,16 @@ function normalizeFotMob(
     );
 
   if (!groups.length) {
+    diagnostic(
+      'FotMob',
+      league,
+      'NO_VALID_GROUPS'
+    );
     return null;
   }
 
   return {
     source: 'FotMob',
-
     league,
 
     leagueName:
@@ -809,19 +849,14 @@ function normalizeFotMob(
       null,
 
     groups,
-
-    // للتوافق مع الواجهة القديمة.
     rows: groups[0].rows,
-
     groupCount: groups.length,
-
-    updatedAt:
-      new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 }
 
 // ==========================================
-// HTTP request helper
+// HTTP helper
 // ==========================================
 
 async function fetchJSON(
@@ -829,8 +864,7 @@ async function fetchJSON(
   timeoutMs: number,
   headers?: Record<string, string>
 ): Promise<unknown> {
-  const controller =
-    new AbortController();
+  const controller = new AbortController();
 
   const timer = setTimeout(
     () => controller.abort(),
@@ -842,7 +876,6 @@ async function fetchJSON(
       method: 'GET',
       cache: 'no-store',
       signal: controller.signal,
-
       headers: {
         Accept: 'application/json',
         ...headers,
@@ -855,7 +888,27 @@ async function fetchJSON(
       );
     }
 
-    return await response.json();
+    const contentType =
+      response.headers.get('content-type') ||
+      '';
+
+    if (
+      !contentType.toLowerCase().includes(
+        'json'
+      )
+    ) {
+      throw new Error(
+        'UPSTREAM_INVALID_CONTENT_TYPE'
+      );
+    }
+
+    try {
+      return await response.json();
+    } catch {
+      throw new Error(
+        'UPSTREAM_INVALID_JSON'
+      );
+    }
   } finally {
     clearTimeout(timer);
   }
@@ -876,13 +929,26 @@ async function getESPN(
   );
 
   if (requestedSeason) {
-    url.searchParams.set(
-      'season',
-      String(
-        seasonStart(requestedSeason)
-      )
+    const year = seasonStart(
+      requestedSeason
     );
+
+    if (year !== null) {
+      url.searchParams.set(
+        'season',
+        String(year)
+      );
+    }
   }
+
+  diagnostic(
+    'ESPN',
+    league,
+    'REQUEST_STARTED',
+    {
+      requestedSeason,
+    }
+  );
 
   const raw = await fetchJSON(
     url.toString(),
@@ -892,69 +958,110 @@ async function getESPN(
   const payload = record(raw);
 
   if (!payload) {
+    diagnostic(
+      'ESPN',
+      league,
+      'INVALID_RESPONSE'
+    );
     return null;
   }
 
-  const seasonInfo = record(
-    payload.season
-  );
+  const seasonInfo =
+    extractESPNSeason(payload);
 
-  const returnedSeason = text(
-    seasonInfo?.year
+  diagnostic(
+    'ESPN',
+    league,
+    'RESPONSE_RECEIVED',
+    {
+      returnedSeason: seasonInfo.season,
+      seasonName: seasonInfo.seasonName,
+      childCount: array(
+        payload.children
+      ).length,
+    }
   );
 
   if (requestedSeason) {
     if (
-      !returnedSeason ||
+      !seasonInfo.season ||
       !seasonsMatch(
         requestedSeason,
-        returnedSeason
+        seasonInfo.season
       )
     ) {
+      diagnostic(
+        'ESPN',
+        league,
+        'SEASON_MISMATCH',
+        {
+          requestedSeason,
+          returnedSeason:
+            seasonInfo.season,
+        }
+      );
       return null;
     }
   }
 
   const groups = collectESPNGroups(
-    payload
+    payload,
+    league
   );
 
   if (!groups.length) {
+    diagnostic(
+      'ESPN',
+      league,
+      'NO_VALID_GROUPS',
+      {
+        childCount: array(
+          payload.children
+        ).length,
+      }
+    );
     return null;
   }
 
+  diagnostic(
+    'ESPN',
+    league,
+    'SUCCESS',
+    {
+      groups: groups.length,
+      rows: groups.reduce(
+        (total, group) =>
+          total + group.rows.length,
+        0
+      ),
+    }
+  );
+
   return {
     source: 'ESPN',
-
     league,
 
     leagueName:
       LEAGUES[league]?.name ||
       null,
 
-    season:
-      returnedSeason ||
-      null,
+    season: seasonInfo.season,
 
-    seasonName:
-      text(seasonInfo?.displayName) ||
-      returnedSeason ||
-      null,
+    seasonName: seasonInfo.seasonName,
 
     groups,
 
-    // يبقى للتوافق مع LeagueDashboard.
+    // Compatibility with existing LeagueDashboard.
     rows: groups[0].rows,
 
     groupCount: groups.length,
 
-    updatedAt:
-      new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 }
 
 // ==========================================
-// FotMob fallback source
+// FotMob fallback
 // ==========================================
 
 async function getFotMob(
@@ -963,8 +1070,12 @@ async function getFotMob(
 ): Promise<StandingsData | null> {
   const config = LEAGUES[league];
 
-  // لا نستخدم معرفات غير موثقة.
   if (!config?.fotmobId) {
+    diagnostic(
+      'FotMob',
+      league,
+      'NOT_CONFIGURED'
+    );
     return null;
   }
 
@@ -980,21 +1091,24 @@ async function getFotMob(
   if (requestedSeason) {
     url.searchParams.set(
       'season',
-      requestedSeason.replace(
-        '-',
-        '/'
-      )
+      requestedSeason.replace('-', '/')
     );
   }
+
+  diagnostic(
+    'FotMob',
+    league,
+    'REQUEST_STARTED',
+    {
+      requestedSeason,
+    }
+  );
 
   const raw = await fetchJSON(
     url.toString(),
     FOTMOB_TIMEOUT,
-
     API_SECRET
-      ? {
-          'x-api-key': API_SECRET,
-        }
+      ? { 'x-api-key': API_SECRET }
       : undefined
   );
 
@@ -1006,7 +1120,7 @@ async function getFotMob(
 }
 
 // ==========================================
-// Error responses
+// Error response
 // ==========================================
 
 function errorResponse(
@@ -1029,9 +1143,7 @@ function errorResponse(
 // GET /api/standings
 // ==========================================
 
-export async function GET(
-  request: Request
-) {
+export async function GET(request: Request) {
   const { searchParams } = new URL(
     request.url
   );
@@ -1043,7 +1155,6 @@ export async function GET(
     .trim()
     .toLowerCase();
 
-  // التحقق من دعم البطولة.
   if (
     !Object.prototype.hasOwnProperty.call(
       LEAGUES,
@@ -1071,10 +1182,16 @@ export async function GET(
     );
   }
 
-  // ========================================
-  // المصدر الأساسي: ESPN
-  // ========================================
+  diagnostic(
+    'API',
+    league,
+    'STANDINGS_REQUEST',
+    {
+      season,
+    }
+  );
 
+  // Primary source: ESPN
   try {
     const data = await getESPN(
       league,
@@ -1086,16 +1203,16 @@ export async function GET(
     }
   } catch (error) {
     console.warn(
-      '[AiFBall] ESPN standings failed:',
-      league,
-      error
+      '[AiFBall Standings] ESPN_FAILED',
+      {
+        league,
+        season,
+        error: errorDetails(error),
+      }
     );
   }
 
-  // ========================================
-  // المصدر الاحتياطي: FotMob
-  // ========================================
-
+  // Fallback source: FotMob
   try {
     const data = await getFotMob(
       league,
@@ -1107,15 +1224,23 @@ export async function GET(
     }
   } catch (error) {
     console.warn(
-      '[AiFBall] FotMob standings failed:',
-      league,
-      error
+      '[AiFBall Standings] FOTMOB_FAILED',
+      {
+        league,
+        season,
+        error: errorDetails(error),
+      }
     );
   }
 
-  // ========================================
-  // لا توجد بيانات مؤكدة
-  // ========================================
+  diagnostic(
+    'API',
+    league,
+    'ALL_SOURCES_UNAVAILABLE',
+    {
+      season,
+    }
+  );
 
   return errorResponse(
     'لم تتوفر بيانات ترتيب مؤكدة لهذه البطولة والموسم من المصادر المتاحة.',
