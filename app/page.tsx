@@ -145,105 +145,11 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
   processedText = finalText.replace(/\]\s*\n\s*\(/g, '](');
   const lines = processedText.split('\n');
   const elements: React.ReactNode[] = [];
-  let tableRows: string[][] = [];
-  let inTable = false;
-  const renderedTables = new Set<string>();
-  let expectedCols = 0;
-  let tempRow: string[] = [];
-
-  const cleanCell = (str: string) => str.replace(/\*\*/g, '').trim();
+  const suggestedQuestionsList: string[] = [];
 
   const extractAttr = (line: string, attr: string) => {
     const match = line.match(new RegExp(`${attr}="([^"]+)"`));
     return match ? match[1] : '';
-  };
-
-  const flushTable = (keyIndex: number) => {
-    if (tableRows.length === 0) return;
-    const tableSignature = JSON.stringify(tableRows.map(r => r.map(cleanCell)));
-    if (renderedTables.has(tableSignature)) { tableRows = []; inTable = false; tempRow = []; expectedCols = 0; return; }
-    renderedTables.add(tableSignature);
-
-    const headers = tableRows[0];
-    const body = tableRows.slice(1);
-    const isComparisonTable = headers.length === 3 && body.length > 0 && 
-                              body.filter(r => r.length >= 3 && parseStatNumber(r[1]) !== null && parseStatNumber(r[2]) !== null).length >= Math.ceil(body.length * 0.5);
-
-    if (isComparisonTable) {
-      const p1Title = cleanCell(headers[1]) || 'الطرف الأول';
-      const p2Title = cleanCell(headers[2]) || 'الطرف الثاني';
-      elements.push(
-        <div key={`datamb-${keyIndex}`} className={`my-5 p-4 md:p-5 rounded-3xl backdrop-blur-md border shadow-2xl w-full ${isDark ? 'bg-black/40 border-emerald-900/40' : 'bg-white border-gray-200'}`}>
-          <div className={`flex items-center justify-between pb-3 mb-4 border-b ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
-            <span className={`text-sm font-bold flex items-center gap-2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}><span>📊</span><span>مقارنة الأداء الإحصائي</span></span>
-            <span className={`text-[10px] px-2.5 py-1 rounded-full border ${isDark ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>AiFBall Pro</span>
-          </div>
-          <div className="grid grid-cols-2 gap-3 mb-5 text-center">
-            <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-black/30 border-emerald-900/30' : 'bg-gray-50 border-gray-200'}`}><span className={`text-sm font-bold block truncate ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{p1Title}</span></div>
-            <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-black/30 border-sky-900/30' : 'bg-gray-50 border-gray-200'}`}><span className={`text-sm font-bold block truncate ${isDark ? 'text-sky-400' : 'text-sky-600'}`}>{p2Title}</span></div>
-          </div>
-          <div className="space-y-4">
-            {body.map((row, rIdx) => {
-              const metric = cleanCell(row[0]);
-              const val1Str = cleanCell(row[1]) || '-';
-              const val2Str = cleanCell(row[2]) || '-';
-              const n1 = parseStatNumber(val1Str);
-              const n2 = parseStatNumber(val2Str);
-              if (n1 !== null && n2 !== null && n1 + n2 > 0) {
-                const total = Math.abs(n1) + Math.abs(n2);
-                const p1 = Math.round((Math.abs(n1) / total) * 100);
-                const p2 = 100 - p1;
-                const p1Wins = n1 >= n2;
-                return (
-                  <div key={rIdx} className="space-y-2">
-                    <div className="flex items-center justify-between text-sm px-1">
-                      <span className={`font-bold ${p1Wins ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-gray-400' : 'text-gray-500')}`}>{val1Str}</span>
-                      <span className={`font-medium text-center text-xs ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{metric}</span>
-                      <span className={`font-bold ${!p1Wins ? (isDark ? 'text-sky-400' : 'text-sky-600') : (isDark ? 'text-gray-400' : 'text-gray-500')}`}>{val2Str}</span>
-                    </div>
-                    <div className={`w-full h-3 rounded-full overflow-hidden flex gap-1 p-0.5 ${isDark ? 'bg-black/40' : 'bg-gray-200'}`}>
-                      <div style={{ width: `${p1}%` }} className={`h-full rounded-full transition-all duration-700 ${p1Wins ? 'bg-gradient-to-l from-emerald-400 to-emerald-600' : (isDark ? 'bg-emerald-900/40' : 'bg-emerald-200')}`} />
-                      <div style={{ width: `${p2}%` }} className={`h-full rounded-full transition-all duration-700 ${!p1Wins ? 'bg-gradient-to-r from-sky-400 to-sky-600' : (isDark ? 'bg-sky-900/40' : 'bg-sky-200')}`} />
-                    </div>
-                  </div>
-                );
-              }
-              return (
-                <div key={rIdx} className={`flex items-center justify-between py-2 px-3 rounded-xl text-sm ${isDark ? 'bg-black/30' : 'bg-gray-50'}`}>
-                  <span className={`font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{val1Str}</span>
-                  <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{metric}</span>
-                  <span className={`font-bold ${isDark ? 'text-sky-400' : 'text-sky-600'}`}>{val2Str}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-    } else {
-      elements.push(
-        <div key={`table-${keyIndex}`} className={`my-5 w-full overflow-x-auto custom-scrollbar rounded-2xl border shadow-xl backdrop-blur-md ${isDark ? 'border-white/10 bg-black/40' : 'border-gray-200 bg-white'}`}>
-          <table className="w-full text-right border-collapse text-sm min-w-max">
-            <thead className={`${isDark ? 'bg-emerald-950/60 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
-              <tr>
-                {headers.map((h, idx) => (
-                  <th key={idx} className={`py-3 px-4 font-bold border-b whitespace-nowrap ${isDark ? 'border-white/10' : 'border-gray-200'}`}>{cleanCell(h)}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${isDark ? 'divide-white/5 bg-black/20' : 'divide-gray-200 bg-white'}`}>
-              {body.map((row, rIdx) => (
-                <tr key={rIdx} className={`transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-                  {row.map((cell, cIdx) => (
-                    <td key={cIdx} className={`py-3 px-4 whitespace-nowrap ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{cleanCell(cell)}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    }
-    tableRows = []; inTable = false; tempRow = []; expectedCols = 0;
   };
 
   lines.forEach((line, index) => {
@@ -251,34 +157,39 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
     if (trimmed.startsWith('```')) return;
 
     if (trimmed.includes('<aifball-')) {
-      if (inTable) flushTable(index);
-      
       // 1. Live Scores
       if (trimmed.includes('<aifball-livescores')) {
         const leagueName = extractAttr(trimmed, 'league') || 'ksa.1'; 
         const matchDate = extractAttr(trimmed, 'date') || 'today'; 
         elements.push(
           <div key={`livescores-${index}`} className="my-5 w-full">
-            <LiveSportsWidget date={matchDate} isDark={isDark} league={leagueName} />
+            <LiveSportsWidget date="{matchDate}" isDark="{isDark}" league="{leagueName}"/>
           </div>
         );
         return;
       }
 
-      // 2. Standings
+      // 2. Standings (الاعتماد الكلي على الودجت التفاعلي وسيرفر Render)
       if (trimmed.includes('<aifball-standings')) {
         if (!trimmed.includes('>')) return;
         const leagueCode = extractAttr(trimmed, 'league') || 'ksa.1';
+        
+        let leagueName = 'دوري روشن السعودي';
+        if (leagueCode === 'eng.1') leagueName = 'الدوري الإنجليزي الممتاز';
+        else if (leagueCode === 'esp.1') leagueName = 'الدوري الإسباني';
+        else if (leagueCode === 'ita.1') leagueName = 'الدوري الإيطالي';
+        else if (leagueCode === 'ger.1') leagueName = 'الدوري الألماني';
+        else if (leagueCode === 'fra.1') leagueName = 'الدوري الفرنسي';
+
         elements.push(
           <div key={`standings-${index}`} className="my-5 w-full">
-            <LeagueDashboard leagueCode={leagueCode} isDark={isDark} />
+            <LeagueDashboard isDark="{isDark}" leagueCode="{leagueCode}" leagueName="{leagueName}" season="2026"/>
           </div>
         );
         return;
       }
 
-      // 3. المكونات الحقيقية
-      // تجاهل الوسم إن لم يكتمل بعد أثناء البث (لا يوجد '>')
+      // 3. المكونات الحقيقية الأخرى
       if (!trimmed.includes('>')) return;
 
       const tagMatch = extractAttr(trimmed, 'match') || extractAttr(trimmed, 'name');
@@ -288,7 +199,7 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
         if (!tagMatch) return;
         elements.push(
           <div key={`report-${index}`} className="my-5 w-full">
-            <MatchReport matchName={tagMatch} autoMatchUrl={tagUrl || undefined} isDark={isDark} />
+            <MatchReport autoMatchUrl="{tagUrl" isDark="{isDark}" matchName="{tagMatch}" undefined} ||/>
           </div>
         );
         return;
@@ -300,7 +211,7 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
         if (!p1 || !p2) return;
         elements.push(
           <div key={`compare-${index}`} className="my-5 w-full">
-            <PlayerComparison player1={p1} player2={p2} isDark={isDark} />
+            <PlayerComparison isDark="{isDark}" player1="{p1}" player2="{p2}"/>
           </div>
         );
         return;
@@ -311,13 +222,12 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
         if (!playerName) return;
         elements.push(
           <div key={`player-${index}`} className="my-5 w-full">
-            <PlayerProfile playerName={playerName} isDark={isDark} />
+            <PlayerProfile isDark="{isDark}" playerName="{playerName}"/>
           </div>
         );
         return;
       }
 
-      // 4. بطاقات بسيطة للوسوم التي ما زالت بدون مكوّن حقيقي
       const parseCustomTag = (tagName: string, icon: string, titlePrefix: string) => {
         if (trimmed.includes(`<${tagName}`)) {
           const matchName = extractAttr(trimmed, 'match') || extractAttr(trimmed, 'name') || extractAttr(trimmed, 'player1');
@@ -352,37 +262,15 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
 
     const isSuggestion = trimmed.startsWith('❓') || trimmed.includes('هل تريد') || trimmed.includes('هل ترغب') || trimmed.includes('هل تود');
     if (isSuggestion) {
-      if (inTable) flushTable(index);
       const questionText = trimmed.replace(/^[-*•❓\s]+/, '').trim();
       if (questionText) suggestedQuestions.push(questionText);
       return;
     }
 
+    // إيقاف وتجاوز جداول Markdown النصية نهائياً لمنع أي تداخل أو تشويه بصري
     if (trimmed.startsWith('|')) {
-      if (/^\|[\s\-:|]+\|?$/.test(trimmed)) { inTable = true; return; }
-      inTable = true;
-      let cells = trimmed.split('|').map((c) => c.trim());
-      if (cells[0] === '') cells.shift();
-      if (cells[cells.length - 1] === '') cells.pop();
-      
-      if (tableRows.length === 0 && tempRow.length === 0) {
-        expectedCols = cells.length;
-        tableRows.push(cells);
-      } else {
-        tempRow.push(...cells);
-        if (tempRow.length >= expectedCols) {
-          tableRows.push(tempRow.slice(0, expectedCols));
-          tempRow = [];
-        }
-      }
       return;
     }
-    if (inTable && tempRow.length > 0) {
-      while (tempRow.length < expectedCols) tempRow.push('-');
-      tableRows.push(tempRow.slice(0, expectedCols));
-      tempRow = [];
-    }
-    if (inTable) flushTable(index);
 
     if (!trimmed) {
       elements.push(<div key={index} className="h-1.5" />);
@@ -417,8 +305,6 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
     }
   });
 
-  if (inTable) flushTable(lines.length);
-
   if (youtubeIds.length > 0) {
     elements.push(
       <div key="youtube-embeds" className={`mt-6 pt-4 border-t ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
@@ -429,12 +315,12 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
           <div key={vid} className={`rounded-2xl overflow-hidden border shadow-xl mb-6 ${isDark ? 'border-emerald-500/30 bg-black/40' : 'border-emerald-200 bg-white'}`}>
             <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-emerald-950/50 border-white/10' : 'bg-emerald-50 border-gray-200'}`}>
               <span className={`text-xs sm:text-sm font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>الملخص الرسمي</span>
-              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white`}>
+              <a href={`[https://www.youtube.com/watch?v=$](https://www.youtube.com/watch?v=$){vid}`} target="_blank" rel="noopener noreferrer" className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white`}>
                 مشاهدة على يوتيوب ↗
               </a>
             </div>
             <div className="relative w-full aspect-video bg-black">
-              <iframe src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0&modestbranding=1`} title="AiFBall Live Video Match" className="absolute top-0 left-0 w-full h-full border-0 object-cover" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+              <iframe src={`[https://www.youtube-nocookie.com/embed/$](https://www.youtube-nocookie.com/embed/$){vid}?rel=0&modestbranding=1`} title="AiFBall Live Video Match" className="absolute top-0 left-0 w-full h-full border-0 object-cover" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
             </div>
             <div className={`px-4 py-2 text-center text-[10px] sm:text-xs ${isDark ? 'bg-black/60 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
               إذا لم يعمل المشغل هنا، يمكنك الضغط على زر <strong className="text-red-500">"مشاهدة على يوتيوب"</strong> في الأعلى للمشاهدة مباشرة.
@@ -786,7 +672,7 @@ export default function FootPlayChat() {
       </div>
 
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+        @import url('[https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap)');
         .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
@@ -830,13 +716,7 @@ export default function FootPlayChat() {
           <SignedIn>
             <div className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
               <div className="flex items-center gap-3 w-full">
-                <UserButton
-                  appearance={{
-                    elements: {
-                      userButtonAvatarBox: "w-9 h-9 rounded-full border-2 border-emerald-500/30 flex-shrink-0",
-                    },
-                  }}
-                />
+                <UserButton "w-9 appearance="{{" border-2 border-emerald-500/30 elements: flex-shrink-0", h-9 rounded-full userButtonAvatarBox: { }, }}/>
                 <div className="flex flex-col flex-1 min-w-0">
                   <div className="flex items-center justify-between w-full">
                     <span className={`text-xs font-bold truncate pr-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
@@ -1006,7 +886,7 @@ export default function FootPlayChat() {
                    <div className={`rounded-2xl px-4 py-3 border shadow-sm max-w-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 border-white/5 text-gray-300' : 'bg-white border-gray-200 text-gray-600'}`}>
                       <div className="flex flex-col gap-3">
                         <div className="flex items-center gap-3">
-                           <svg className="animate-spin w-4 h-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                           <svg className="animate-spin w-4 h-4 text-emerald-500" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                            </svg>
@@ -1041,7 +921,7 @@ export default function FootPlayChat() {
         <div className="max-w-4xl mx-auto">
           {attachedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2 px-2">
-              {attachedFiles.map((f, idx) => (
+              {attachedFiles.label ? null : attachedFiles.map((f, idx) => (
                 <div key={idx} className={`flex items-center gap-2 p-1.5 pr-3 rounded-lg shadow-sm backdrop-blur-md border ${isDarkMode ? 'bg-black/40 border-emerald-500/50' : 'bg-gray-50 border-emerald-300'}`}>
                   <img src={f.url} alt="مرفق" className={`w-8 h-8 object-cover rounded-md border ${isDarkMode ? 'border-white/10' : 'border-gray-300'}`} />
                   <span className={`text-xs max-w-[120px] truncate ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`} dir="ltr">{f.file.name}</span>
@@ -1066,11 +946,12 @@ export default function FootPlayChat() {
 
             <input
               type="text"
+              inputMode="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
               placeholder={isListening ? 'جاري الاستماع لصوتك...' : 'اسأل عن أي مباراة، تحليل، أو إحصائية...'}
-              className={`flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none ${isDarkMode ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
+              className={`flex-1 bg-rendering-auto bg-transparent px-3 py-2 text-sm focus:outline-none ${isDarkMode ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
             />
 
             <button onClick={() => sendMessage()} disabled={loading || (!input.trim() && attachedFiles.length === 0)} className="w-10 h-10 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:bg-gray-300 disabled:text-gray-500 flex items-center justify-center text-white flex-shrink-0 transition shadow-md">
@@ -1081,17 +962,18 @@ export default function FootPlayChat() {
         </div>
       </footer>
 
+      {showLiveScores}
       {showLiveScores && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl shadow-2xl ${isDarkMode ? 'bg-[#131314] border border-white/10' : 'bg-white border border-gray-200'}`}>
             <div className={`sticky top-0 z-10 flex items-center justify-between p-4 border-b backdrop-blur-md ${isDarkMode ? 'bg-[#131314]/90 border-white/10' : 'bg-white/90 border-gray-200'}`}>
               <h2 className={`font-bold text-lg flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                <span>⚽</span> مركز النتائج المباشرة
+                <span>⚽</span><span>مركز النتائج المباشرة</span>
               </h2>
               <button onClick={() => setShowLiveScores(false)} className={`w-8 h-8 rounded-full flex items-center justify-center transition ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>✕</button>
             </div>
             <div className="p-2 sm:p-4">
-              <LiveMatchCenter isDark={isDarkMode} />
+              <LiveMatchCenter isDark="{isDarkMode}"/>
             </div>
           </div>
         </div>
