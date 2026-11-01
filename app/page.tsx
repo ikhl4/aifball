@@ -155,6 +155,11 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
     const trimmed = line.trim();
     if (trimmed.startsWith('```')) return;
 
+    // 🛡️ تصفية سريعة لتجاهل أي رموز نصية مشوهة أو أعمدة مكسورة
+    if (/^\|[\s\-:|0-9]+(\|[\s\-:|0-9]*)+$/.test(trimmed) || trimmed.includes('| - |')) {
+      return;
+    }
+
     if (trimmed.includes('<aifball-')) {
       // 1. Live Scores
       if (trimmed.includes('<aifball-livescores')) {
