@@ -45,6 +45,12 @@ type AttachedFile = {
   url: string;
 };
 
+type SuggestionCard = {
+  question: string;
+  tag: string;
+  icon: string;
+};
+
 const STORAGE_KEY = 'aifball_chat_history_v12';
 const THEME_KEY = 'aifball_theme';
 
@@ -53,12 +59,169 @@ const GREETING =
 
 const LEAGUES: Record<string, string> = {
   'ksa.1': 'دوري روشن السعودي',
+  'ksa.2': 'دوري يلو السعودي',
   'eng.1': 'الدوري الإنجليزي الممتاز',
   'esp.1': 'الدوري الإسباني',
   'ita.1': 'الدوري الإيطالي',
   'ger.1': 'الدوري الألماني',
   'fra.1': 'الدوري الفرنسي',
+  'por.1': 'الدوري البرتغالي',
+  'ned.1': 'الدوري الهولندي',
+  'tur.1': 'الدوري التركي',
+  'egy.1': 'الدوري المصري الممتاز',
+  'uae.1': 'الدوري الإماراتي',
+  'qat.1': 'الدوري القطري',
+  'kuw.1': 'الدوري الكويتي',
+  'bhr.1': 'الدوري البحريني',
+  'oma.1': 'الدوري العُماني',
+  'irq.1': 'الدوري العراقي',
+  'bra.1': 'الدوري البرازيلي',
+  'arg.1': 'الدوري الأرجنتيني',
+  'usa.1': 'الدوري الأمريكي',
+  'mex.1': 'الدوري المكسيكي',
+  'jpn.1': 'الدوري الياباني',
+  'kor.1': 'الدوري الكوري',
+  'uefa.champions': 'دوري أبطال أوروبا',
 };
+
+const DISCOVERY_QUESTIONS: SuggestionCard[] = [
+  {
+    question:
+      'حلّل آليات البناء من الخلف أمام الضغط العالي وطرق تجاوزه.',
+    tag: 'تحليل تكتيكي',
+    icon: '🧠',
+  },
+  {
+    question:
+      'كيف نقيس جودة صناعة الفرص باستخدام xG وxA والتمريرات التقدمية؟',
+    tag: 'إحصاء متقدم',
+    icon: '📊',
+  },
+  {
+    question:
+      'كيف تطورت الأدوار التكتيكية للاعبي الوسط عبر تاريخ كرة القدم؟',
+    tag: 'تاريخ كروي',
+    icon: '🏛️',
+  },
+  {
+    question:
+      'كيف تبني الأندية استراتيجية انتقالات مستدامة فنيًا وماليًا؟',
+    tag: 'إدارة رياضية',
+    icon: '💼',
+  },
+  {
+    question:
+      'ما الفروق بين الضغط العالي والضغط المتوسط والضغط العكسي؟',
+    tag: 'المدارس التكتيكية',
+    icon: '⚽',
+  },
+  {
+    question:
+      'كيف يُبنى نموذج احترافي لاكتشاف المواهب باستخدام البيانات؟',
+    tag: 'الكشافون والمواهب',
+    icon: '🔎',
+  },
+  {
+    question:
+      'كيف يؤثر ازدحام المباريات على الأحمال البدنية واحتمالات الإصابة؟',
+    tag: 'علوم الأداء',
+    icon: '🏃',
+  },
+  {
+    question:
+      'ما المؤشرات التي تساعد على تقييم المدرب بعيدًا عن النتائج؟',
+    tag: 'تقييم المدربين',
+    icon: '📋',
+  },
+  {
+    question:
+      'كيف تختلف نماذج ملكية الأندية والحوكمة الرياضية حول العالم؟',
+    tag: 'حوكمة الأندية',
+    icon: '🏟️',
+  },
+  {
+    question:
+      'كيف تؤثر قوانين اللعب وقرارات VAR على إدارة المباريات؟',
+    tag: 'التحكيم',
+    icon: '⚖️',
+  },
+  {
+    question:
+      'كيف نقارن بين لاعبين في دورين مختلفين باستخدام إحصائيات لكل 90 دقيقة؟',
+    tag: 'مقارنات اللاعبين',
+    icon: '⚔️',
+  },
+  {
+    question:
+      'كيف تطورت المدارس التكتيكية في الكرة السعودية والخليجية؟',
+    tag: 'الكرة العربية',
+    icon: '🌍',
+  },
+  {
+    question:
+      'ما الفرق بين الاستحواذ الفعّال والاستحواذ السلبي؟',
+    tag: 'تحليل الأداء',
+    icon: '📈',
+  },
+  {
+    question:
+      'كيف يُدار مشروع تطوير أكاديمية كرة قدم من الناحية الفنية والإدارية؟',
+    tag: 'تطوير الأكاديميات',
+    icon: '🎓',
+  },
+  {
+    question:
+      'كيف يمكن تقييم القيمة السوقية للاعب مقارنة بقيمته الفنية؟',
+    tag: 'اقتصاد كرة القدم',
+    icon: '💰',
+  },
+  {
+    question:
+      'ما أثر تغيير الرسم التكتيكي أثناء المباراة على توزيع المساحات؟',
+    tag: 'المرونة التكتيكية',
+    icon: '🗺️',
+  },
+  {
+    question:
+      'كيف تصمم إدارة رياضية هيكلًا متكاملًا بين المدير الرياضي والمدرب والكشافين؟',
+    tag: 'الهياكل الرياضية',
+    icon: '🏢',
+  },
+  {
+    question:
+      'ما المعايير الفنية التي تُستخدم لتقييم حراس المرمى الحديثة؟',
+    tag: 'تحليل المراكز',
+    icon: '🧤',
+  },
+  {
+    question:
+      'كيف نحلل الركلات الثابتة ونقيس تأثيرها على إنتاج الفرص؟',
+    tag: 'الكرات الثابتة',
+    icon: '🎯',
+  },
+  {
+    question:
+      'كيف تبني الأندية نموذجًا لاتخاذ قرارات التعاقد بناءً على المخاطر؟',
+    tag: 'صناعة القرار',
+    icon: '📑',
+  },
+];
+
+const CARDS_PER_PAGE = 4;
+const DISCOVERY_INTERVAL = 15000;
+
+function getDiscoveryQuestions(page: number): SuggestionCard[] {
+  const start =
+    (page * CARDS_PER_PAGE) % DISCOVERY_QUESTIONS.length;
+
+  return Array.from(
+    { length: CARDS_PER_PAGE },
+    (_, index) =>
+      DISCOVERY_QUESTIONS[
+        (start + index) % DISCOVERY_QUESTIONS.length
+      ]
+  );
+}
 
 function formatSeconds(sec: number) {
   if (sec === 0) return '0 ثانية';
@@ -374,6 +537,11 @@ function renderFormattedText(
   const isDivider = (line: string) =>
     /^\s*\|(?:\s*:?-{3,}:?\s*\|)+\s*$/.test(line);
 
+  const isSuggestion = (line: string) =>
+    /^(?:❓\s*|هل تريد|هل ترغب|هل تود|هل يمكن|ماذا لو|كيف يمكن|ما الفرق|ما رأيك|اقترح|استكشف)/.test(
+      line
+    );
+
   let codeFence = false;
 
   for (let i = 0; i < lines.length; i++) {
@@ -404,7 +572,6 @@ function renderFormattedText(
       continue;
     }
 
-    // Markdown tables
     if (tableLine(line)) {
       const group = [line];
 
@@ -440,7 +607,6 @@ function renderFormattedText(
       continue;
     }
 
-    // AiFBall custom tags
     const tag = trimmed.match(
       /^<(aifball-[\w-]+)\b[^>]*\/?>(?:<\/\1>)?$/i
     );
@@ -450,9 +616,7 @@ function renderFormattedText(
       const attrs = attrsOf(trimmed);
 
       const league =
-        LEAGUES[attrs.league]
-          ? attrs.league
-          : 'ksa.1';
+        attrs.league?.trim() || 'ksa.1';
 
       if (name === 'aifball-livescores') {
         const date = [
@@ -489,6 +653,7 @@ function renderFormattedText(
               isDark={isDark}
               leagueCode={league}
               leagueName={LEAGUES[league]}
+              season={attrs.season || '2026'}
             />
           </div>
         );
@@ -529,8 +694,6 @@ function renderFormattedText(
           continue;
         }
 
-        // مؤقتًا يستخدم الوسمان MatchReport.
-        // سيتم فصل ShotMap بعد إصلاح API الخاص به.
         elements.push(
           <div
             key={i}
@@ -538,7 +701,7 @@ function renderFormattedText(
           >
             <MatchReport
               matchName={matchName}
-              autoMatchUrl={matchUrl!}
+              autoMatchUrl={matchUrl}
               isDark={isDark}
             />
           </div>
@@ -648,7 +811,6 @@ function renderFormattedText(
       continue;
     }
 
-    // Hide incomplete streaming tags.
     if (trimmed.startsWith('<aifball-')) {
       continue;
     }
@@ -751,9 +913,7 @@ function renderFormattedText(
     }
 
     if (
-      /^(❓\s*|هل تريد|هل ترغب|هل تود)/.test(
-        trimmed
-      ) &&
+      isSuggestion(trimmed) &&
       onSuggestionClick
     ) {
       const question = trimmed.replace(
@@ -764,10 +924,17 @@ function renderFormattedText(
       elements.push(
         <button
           key={i}
+          type="button"
           onClick={() =>
             onSuggestionClick(question)
           }
-          className="my-2 px-3 py-2 rounded-xl border border-emerald-500/30 text-emerald-500 text-xs font-bold hover:bg-emerald-500/10"
+          className={`my-2 ml-2 px-4 py-2.5 rounded-xl border
+            border-emerald-500/30 text-xs font-bold
+            transition hover:border-emerald-500/70 ${
+              isDark
+                ? 'bg-emerald-950/30 text-emerald-400 hover:bg-emerald-900/30'
+                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+            }`}
         >
           {question}
         </button>
@@ -793,7 +960,6 @@ function renderFormattedText(
     );
   }
 
-  // YouTube embeds
   if (youtubeIds.size) {
     elements.push(
       <div
@@ -924,6 +1090,11 @@ export default function FootPlayChat() {
     setShowLiveScores,
   ] = useState(false);
 
+  const [
+    discoveryPage,
+    setDiscoveryPage,
+  ] = useState(0);
+
   const fileInputRef =
     useRef<HTMLInputElement>(null);
 
@@ -939,32 +1110,31 @@ export default function FootPlayChat() {
   const activeRequestSession =
     useRef<string | null>(null);
 
-  const suggestionCards = [
-    {
-      question:
-        'داشبورد لأسلوب لعب الاتحاد',
-      tag: 'تحليل تكتيكي',
-      icon: '📋',
-    },
-    {
-      question:
-        'ما هو جدول ترتيب دوري روشن السعودي؟',
-      tag: 'ترتيب وإحصائيات',
-      icon: '📊',
-    },
-    {
-      question:
-        'أهداف وملخصات أبرز مباريات اليوم',
-      tag: 'أهداف وملخصات',
-      icon: '🎬',
-    },
-    {
-      question:
-        'قارن بين رونالدو وميسي',
-      tag: 'مقارنة لاعبين',
-      icon: '⚔️',
-    },
-  ];
+  const suggestionCards =
+    getDiscoveryQuestions(discoveryPage);
+
+  const exploreMore = useCallback(() => {
+    setDiscoveryPage((previous) =>
+      (previous + 1) %
+      Math.ceil(
+        DISCOVERY_QUESTIONS.length /
+        CARDS_PER_PAGE
+      )
+    );
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 0) return;
+
+    const interval = window.setInterval(
+      exploreMore,
+      DISCOVERY_INTERVAL
+    );
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [messages.length, exploreMore]);
 
   useEffect(() => {
     const savedTheme =
@@ -1087,6 +1257,7 @@ export default function FootPlayChat() {
     setConversationId('');
     setCurrentSessionId('');
     setInput('');
+    setDiscoveryPage(0);
 
     setAttachedFiles((prev) => {
       prev.forEach((x) =>
@@ -1620,127 +1791,48 @@ export default function FootPlayChat() {
     >
       {/* Background */}
       <div
-        className={`absolute inset-0 pointer-events-none z-0 transition-colors duration-300 overflow-hidden ${
-          isDarkMode
-            ? 'bg-[#0a0f0d]'
-            : 'bg-gray-50'
-        }`}
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#1D6B35]/15 rounded-full blur-[120px]" />
-
-        <svg
-          viewBox="0 0 1200 800"
-          className="absolute inset-0 w-full h-full opacity-30"
-          preserveAspectRatio="xMidYMid slice"
-        >
-          <g
-            stroke="#10b981"
-            strokeWidth="2.5"
-            fill="none"
-            opacity="0.4"
-          >
-            <rect
-              x="100"
-              y="100"
-              width="1000"
-              height="600"
-              rx="10"
-            />
-
-            <line
-              x1="600"
-              y1="100"
-              x2="600"
-              y2="700"
-            />
-
-            <circle
-              cx="600"
-              cy="400"
-              r="100"
-            />
-
-            <circle
-              cx="600"
-              cy="400"
-              r="5"
-              fill="#10b981"
-            />
-
-            <rect
-              x="950"
-              y="200"
-              width="150"
-              height="400"
-            />
-
-            <rect
-              x="1100"
-              y="300"
-              width="50"
-              height="200"
-            />
-
-            <circle
-              cx="1050"
-              cy="400"
-              r="5"
-              fill="#10b981"
-            />
-
-            <path d="M 950 300 A 80 80 0 0 1 950 500" />
-
-            <rect
-              x="100"
-              y="200"
-              width="150"
-              height="400"
-            />
-
-            <rect
-              x="100"
-              y="300"
-              width="50"
-              height="200"
-            />
-
-            <circle
-              cx="150"
-              cy="400"
-              r="5"
-              fill="#10b981"
-            />
-
-            <path d="M 250 300 A 80 80 0 0 0 250 500" />
-          </g>
-        </svg>
+        <div
+          className={`absolute inset-0 bg-center bg-no-repeat
+            transition-all duration-700 ease-in-out ${
+              messages.length === 0
+                ? 'opacity-100 scale-100'
+                : 'opacity-30 scale-[1.04]'
+            }`}
+          style={{
+            backgroundImage: "url('/IMG_0091.jpeg')",
+            backgroundSize: 'cover',
+          }}
+        />
 
         <div
-          className={`absolute inset-0 ${
+          className={`absolute inset-0 transition-all duration-700 ${
             isDarkMode
-              ? 'bg-gradient-to-b from-[#131314]/40 to-[#131314]/90'
-              : 'bg-white/80'
+              ? messages.length === 0
+                ? 'bg-[#07110b]/65'
+                : 'bg-[#101312]/90'
+              : messages.length === 0
+                ? 'bg-white/75'
+                : 'bg-white/95'
+          }`}
+        />
+
+        <div
+          className={`absolute inset-0 bg-gradient-to-b transition-opacity duration-700 ${
+            messages.length === 0
+              ? 'opacity-80'
+              : 'opacity-100'
+          } ${
+            isDarkMode
+              ? 'from-[#07110b]/10 via-transparent to-[#101312]/90'
+              : 'from-white/10 via-transparent to-white/95'
           }`}
         />
       </div>
 
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
-
-        .font-saudi,
-        body,
-        input,
-        button,
-        textarea,
-        h1,
-        h2,
-        h3,
-        p,
-        span {
-          font-family: 'Cairo', sans-serif !important;
-          font-feature-settings: 'calt' 1, 'liga' 1;
-        }
-
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
           height: 6px;
@@ -1981,45 +2073,67 @@ export default function FootPlayChat() {
                     : 'text-gray-600'
                 }`}
               >
-                تحليل تكتيكي، تشكيلات مباريات،
-                مقارنات إحصائية متقدمة،
-                وأهداف وملخصات المباريات..
+                منصتك للمعرفة الرياضية والتحليل
+                المتقدم. استكشف التكتيك والإحصاء
+                والتاريخ الكروي والإدارة الرياضية
+                والانتقالات وتطوير المواهب.
                 كيف أساعدك اليوم؟
               </p>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
-              {suggestionCards.map(
-                (card, i) => (
+            {/* Discovery cards */}
+            <div className="w-full">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                {suggestionCards.map((card) => (
                   <button
-                    key={i}
+                    key={card.question}
+                    type="button"
                     onClick={() =>
-                      sendMessage(
-                        card.question
-                      )
+                      sendMessage(card.question)
                     }
-                    className={`flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl backdrop-blur-sm border shadow-lg min-h-[115px] select-none transition hover:border-emerald-500/50 ${
-                      isDarkMode
-                        ? 'bg-black/20 border-white/10'
-                        : 'bg-white border-gray-200'
-                    }`}
+                    className={`group flex flex-col justify-between text-right
+                      p-4 sm:p-5 rounded-2xl border min-h-[145px]
+                      transition-all duration-300
+                      hover:-translate-y-1 hover:border-emerald-500/60
+                      hover:shadow-lg ${
+                        isDarkMode
+                          ? 'bg-[#101a14]/85 border-emerald-500/15 backdrop-blur-md'
+                          : 'bg-white/90 border-gray-200 backdrop-blur-md shadow-sm'
+                      }`}
                   >
-                    <p className="text-sm font-bold leading-relaxed line-clamp-2">
+                    <div className="text-2xl mb-3">
+                      {card.icon}
+                    </div>
+
+                    <p className="text-sm font-bold leading-relaxed flex-1">
                       {card.question}
                     </p>
 
-                    <div className="flex items-center justify-between w-full mt-3 pt-1">
-                      <span className="text-[10px] sm:text-xs font-bold text-[#22C55E] truncate pl-1">
+                    <div className="mt-4 pt-3 border-t border-emerald-500/10">
+                      <span className="text-[11px] font-bold text-emerald-500">
                         {card.tag}
-                      </span>
-
-                      <span className="text-lg">
-                        {card.icon}
                       </span>
                     </div>
                   </button>
-                )
-              )}
+                ))}
+              </div>
+
+              <div className="flex justify-center mt-5">
+                <button
+                  type="button"
+                  onClick={exploreMore}
+                  className={`flex items-center gap-2 rounded-full
+                    px-5 py-2.5 border text-xs font-bold
+                    transition hover:border-emerald-500/60 ${
+                      isDarkMode
+                        ? 'bg-white/5 border-white/10 text-emerald-400 hover:bg-white/10'
+                        : 'bg-white border-gray-200 text-emerald-700 hover:bg-emerald-50'
+                    }`}
+                >
+                  <span>↻</span>
+                  استكشف المزيد
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -2060,12 +2174,8 @@ export default function FootPlayChat() {
                                   idx
                                 ) => (
                                   <img
-                                    key={
-                                      idx
-                                    }
-                                    src={
-                                      url
-                                    }
+                                    key={idx}
+                                    src={url}
                                     alt="مرفق"
                                     className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border border-white/20"
                                   />
@@ -2368,9 +2478,7 @@ export default function FootPlayChat() {
                             prev
                           ) => {
                             URL.revokeObjectURL(
-                              prev[
-                                idx
-                              ].url
+                              prev[idx].url
                             );
 
                             return prev.filter(
