@@ -24,8 +24,7 @@ export async function GET(request: Request) {
       e.stats?.find((s: any) => s.name === name)?.value ?? 0;
 
     const rows = entries
-      .map((e: any, i: number) => ({
-        pos: stat(e, 'rank') || i + 1,
+      .map((e: any) => ({
         name: e.team?.shortDisplayName || e.team?.displayName || '-',
         logo: e.team?.logos?.[0]?.href || null,
         played: stat(e, 'gamesPlayed'),
@@ -37,10 +36,11 @@ export async function GET(request: Request) {
         gd: stat(e, 'pointDifferential'),
         pts: stat(e, 'points'),
       }))
-      .sort((a: any, b: any) => a.pos - b.pos);
+      .sort((a: any, b: any) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf)
+      .map((r: any, i: number) => ({ ...r, pos: i + 1 }));
 
     return NextResponse.json({
-      season: group?.standings?.seasonDisplayName || '',
+      season: group?.abbreviation || '',
       rows,
     });
   } catch (e) {
