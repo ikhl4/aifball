@@ -40,16 +40,18 @@ interface ChatSession {
   updatedAt: string;
 }
 
-type AttachedFile = {
+interface AttachedFile {
   file: File;
   url: string;
-};
+}
 
-type SuggestionCard = {
+interface SuggestionCard {
   question: string;
   tag: string;
   icon: string;
-};
+}
+
+type DataRecord = Record<string, unknown>;
 
 const STORAGE_KEY = 'aifball_chat_history_v12';
 const THEME_KEY = 'aifball_theme';
@@ -87,30 +89,6 @@ const LEAGUES: Record<string, string> = {
 const DISCOVERY_QUESTIONS: SuggestionCard[] = [
   {
     question:
-      'حلّل آليات البناء من الخلف أمام الضغط العالي وطرق تجاوزه.',
-    tag: 'تحليل تكتيكي',
-    icon: '🧠',
-  },
-  {
-    question:
-      'كيف نقيس جودة صناعة الفرص باستخدام xG وxA والتمريرات التقدمية؟',
-    tag: 'إحصاء متقدم',
-    icon: '📊',
-  },
-  {
-    question:
-      'كيف تطورت الأدوار التكتيكية للاعبي الوسط عبر تاريخ كرة القدم؟',
-    tag: 'تاريخ كروي',
-    icon: '🏛️',
-  },
-  {
-    question:
-      'كيف تبني الأندية استراتيجية انتقالات مستدامة فنيًا وماليًا؟',
-    tag: 'إدارة رياضية',
-    icon: '💼',
-  },
-  {
-    question:
       'ما الفروق بين الضغط العالي والضغط المتوسط والضغط العكسي؟',
     tag: 'المدارس التكتيكية',
     icon: '⚽',
@@ -135,20 +113,38 @@ const DISCOVERY_QUESTIONS: SuggestionCard[] = [
   },
   {
     question:
+      'كيف نقيس جودة صناعة الفرص باستخدام xG وxA والتمريرات التقدمية؟',
+    tag: 'الإحصاء المتقدم',
+    icon: '📊',
+  },
+  {
+    question:
+      'كيف تبني الأندية استراتيجية انتقالات مستدامة فنيًا وماليًا؟',
+    tag: 'الإدارة الرياضية',
+    icon: '💼',
+  },
+  {
+    question:
+      'كيف تطورت الأدوار التكتيكية للاعبي الوسط عبر تاريخ كرة القدم؟',
+    tag: 'التاريخ الكروي',
+    icon: '🏛️',
+  },
+  {
+    question:
+      'كيف نحلل البناء من الخلف أمام الضغط العالي؟',
+    tag: 'التحليل التكتيكي',
+    icon: '🧠',
+  },
+  {
+    question:
       'كيف تختلف نماذج ملكية الأندية والحوكمة الرياضية حول العالم؟',
     tag: 'حوكمة الأندية',
     icon: '🏟️',
   },
   {
     question:
-      'كيف تؤثر قوانين اللعب وقرارات VAR على إدارة المباريات؟',
-    tag: 'التحكيم',
-    icon: '⚖️',
-  },
-  {
-    question:
-      'كيف نقارن بين لاعبين في دورين مختلفين باستخدام إحصائيات لكل 90 دقيقة؟',
-    tag: 'مقارنات اللاعبين',
+      'كيف نقارن بين لاعبين في أدوار مختلفة باستخدام إحصائيات لكل 90 دقيقة؟',
+    tag: 'مقارنة اللاعبين',
     icon: '⚔️',
   },
   {
@@ -165,31 +161,31 @@ const DISCOVERY_QUESTIONS: SuggestionCard[] = [
   },
   {
     question:
-      'كيف يُدار مشروع تطوير أكاديمية كرة قدم من الناحية الفنية والإدارية؟',
+      'كيف تُدار أكاديمية كرة قدم من الناحية الفنية والإدارية؟',
     tag: 'تطوير الأكاديميات',
     icon: '🎓',
   },
   {
     question:
-      'كيف يمكن تقييم القيمة السوقية للاعب مقارنة بقيمته الفنية؟',
+      'كيف نقارن القيمة السوقية للاعب بقيمته الفنية؟',
     tag: 'اقتصاد كرة القدم',
     icon: '💰',
   },
   {
     question:
-      'ما أثر تغيير الرسم التكتيكي أثناء المباراة على توزيع المساحات؟',
+      'كيف يؤثر تغيير الرسم التكتيكي أثناء المباراة على توزيع المساحات؟',
     tag: 'المرونة التكتيكية',
     icon: '🗺️',
   },
   {
     question:
-      'كيف تصمم إدارة رياضية هيكلًا متكاملًا بين المدير الرياضي والمدرب والكشافين؟',
+      'كيف تصمم هيكلًا يجمع المدير الرياضي والمدرب والكشافين؟',
     tag: 'الهياكل الرياضية',
     icon: '🏢',
   },
   {
     question:
-      'ما المعايير الفنية التي تُستخدم لتقييم حراس المرمى الحديثة؟',
+      'ما المعايير الفنية لتقييم حراس المرمى الحديثة؟',
     tag: 'تحليل المراكز',
     icon: '🧤',
   },
@@ -205,30 +201,58 @@ const DISCOVERY_QUESTIONS: SuggestionCard[] = [
     tag: 'صناعة القرار',
     icon: '📑',
   },
+  {
+    question:
+      'كيف يمكن استخدام الذكاء الاصطناعي لتطوير التدريب الرياضي؟',
+    tag: 'التقنيات الرياضية',
+    icon: '🤖',
+  },
 ];
 
 const CARDS_PER_PAGE = 4;
 const DISCOVERY_INTERVAL = 15000;
 
-function getDiscoveryQuestions(page: number): SuggestionCard[] {
+function getDiscoveryQuestions(
+  page: number
+): SuggestionCard[] {
   const start =
-    (page * CARDS_PER_PAGE) % DISCOVERY_QUESTIONS.length;
+    (page * CARDS_PER_PAGE) %
+    DISCOVERY_QUESTIONS.length;
 
   return Array.from(
     { length: CARDS_PER_PAGE },
     (_, index) =>
       DISCOVERY_QUESTIONS[
-        (start + index) % DISCOVERY_QUESTIONS.length
+        (start + index) %
+          DISCOVERY_QUESTIONS.length
       ]
   );
 }
 
-function formatSeconds(sec: number) {
+function formatSeconds(sec: number): string {
   if (sec === 0) return '0 ثانية';
   if (sec === 1) return 'ثانية واحدة';
   if (sec === 2) return 'ثانيتان';
-  if (sec >= 3 && sec <= 10) return `${sec} ثوانٍ`;
+
+  if (sec >= 3 && sec <= 10) {
+    return `${sec} ثوانٍ`;
+  }
+
   return `${sec} ثانية`;
+}
+
+function asRecord(
+  value: unknown
+): DataRecord | null {
+  if (
+    value === null ||
+    typeof value !== 'object' ||
+    Array.isArray(value)
+  ) {
+    return null;
+  }
+
+  return value as DataRecord;
 }
 
 function AiFBallLogo({
@@ -247,8 +271,17 @@ function AiFBallLogo({
     <div
       className={`${dimensions} bg-[#1D6B35] flex items-center justify-center shadow-md flex-shrink-0 select-none overflow-hidden`}
     >
-      <svg viewBox="0 0 200 200" className="w-full h-full">
-        <rect width="200" height="200" rx="42" fill="#1D6B35" />
+      <svg
+        viewBox="0 0 200 200"
+        className="w-full h-full"
+        aria-hidden="true"
+      >
+        <rect
+          width="200"
+          height="200"
+          rx="42"
+          fill="#1D6B35"
+        />
 
         <g transform="translate(100, 74)">
           <circle r="48" fill="#FFFFFF" />
@@ -318,7 +351,9 @@ function safeUrl(value: string): string | null {
   }
 }
 
-function attrsOf(tag: string): Record<string, string> {
+function attrsOf(
+  tag: string
+): Record<string, string> {
   const attrs: Record<string, string> = {};
 
   const regex =
@@ -344,7 +379,7 @@ function InlineText({
 
   return (
     <>
-      {pieces.map((part, i) => {
+      {pieces.map((part, index) => {
         const mdLink = part.match(
           /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/
         );
@@ -354,7 +389,7 @@ function InlineText({
 
           return href ? (
             <a
-              key={i}
+              key={index}
               href={href}
               target="_blank"
               rel="noopener noreferrer"
@@ -363,7 +398,7 @@ function InlineText({
               {mdLink[1]}
             </a>
           ) : (
-            <span key={i}>{part}</span>
+            <span key={index}>{part}</span>
           );
         }
 
@@ -372,7 +407,7 @@ function InlineText({
 
           return href ? (
             <a
-              key={i}
+              key={index}
               href={href}
               target="_blank"
               rel="noopener noreferrer"
@@ -381,7 +416,7 @@ function InlineText({
               {part}
             </a>
           ) : (
-            <span key={i}>{part}</span>
+            <span key={index}>{part}</span>
           );
         }
 
@@ -391,7 +426,7 @@ function InlineText({
         ) {
           return (
             <strong
-              key={i}
+              key={index}
               className={
                 isDark
                   ? 'text-emerald-400'
@@ -404,7 +439,7 @@ function InlineText({
         }
 
         return (
-          <React.Fragment key={i}>
+          <React.Fragment key={index}>
             {part}
           </React.Fragment>
         );
@@ -426,15 +461,15 @@ function MarkdownTable({
       .replace(/^\|/, '')
       .replace(/\|$/, '')
       .split(/(?<!\\)\|/)
-      .map((x) =>
-        x.trim().replace(/\\\|/g, '|')
+      .map((value) =>
+        value.trim().replace(/\\\|/g, '|')
       );
 
   const rows = lines.map(cells);
 
   const divider = (row: string[]) =>
-    row.every((c) =>
-      /^:?-{3,}:?$/.test(c)
+    row.every((cell) =>
+      /^:?-{3,}:?$/.test(cell)
     );
 
   const header = rows[0] || [];
@@ -464,9 +499,9 @@ function MarkdownTable({
                 : 'bg-emerald-50'
             }
           >
-            {header.map((cell, i) => (
+            {header.map((cell, index) => (
               <th
-                key={i}
+                key={index}
                 className="px-3 py-3 font-bold border-b border-emerald-500/20"
               >
                 <InlineText
@@ -479,22 +514,24 @@ function MarkdownTable({
         </thead>
 
         <tbody>
-          {data.map((row, i) => (
+          {data.map((row, index) => (
             <tr
-              key={i}
+              key={index}
               className={
                 isDark
                   ? 'odd:bg-white/[0.025] border-b border-white/5'
                   : 'odd:bg-gray-50 border-b border-gray-100'
               }
             >
-              {header.map((_, j) => (
+              {header.map((_, cellIndex) => (
                 <td
-                  key={j}
+                  key={cellIndex}
                   className="px-3 py-2.5"
                 >
                   <InlineText
-                    value={row[j] || '—'}
+                    value={
+                      row[cellIndex] || '—'
+                    }
                     isDark={isDark}
                   />
                 </td>
@@ -510,8 +547,8 @@ function MarkdownTable({
 function renderFormattedText(
   text: string,
   isDark: boolean,
-  onSuggestionClick?: (q: string) => void
-) {
+  onSuggestionClick?: (query: string) => void
+): React.ReactNode[] {
   const youtubeIds = new Set<string>();
 
   const youtubeRegex =
@@ -536,11 +573,6 @@ function renderFormattedText(
 
   const isDivider = (line: string) =>
     /^\s*\|(?:\s*:?-{3,}:?\s*\|)+\s*$/.test(line);
-
-  const isSuggestion = (line: string) =>
-    /^(?:❓\s*|هل تريد|هل ترغب|هل تود|هل يمكن|ماذا لو|كيف يمكن|ما الفرق|ما رأيك|اقترح|استكشف)/.test(
-      line
-    );
 
   let codeFence = false;
 
@@ -913,7 +945,9 @@ function renderFormattedText(
     }
 
     if (
-      isSuggestion(trimmed) &&
+      /^(❓\s*|هل تريد|هل ترغب|هل تود)/.test(
+        trimmed
+      ) &&
       onSuggestionClick
     ) {
       const question = trimmed.replace(
@@ -928,13 +962,7 @@ function renderFormattedText(
           onClick={() =>
             onSuggestionClick(question)
           }
-          className={`my-2 ml-2 px-4 py-2.5 rounded-xl border
-            border-emerald-500/30 text-xs font-bold
-            transition hover:border-emerald-500/70 ${
-              isDark
-                ? 'bg-emerald-950/30 text-emerald-400 hover:bg-emerald-900/30'
-                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-            }`}
+          className="my-2 px-3 py-2 rounded-xl border border-emerald-500/30 text-emerald-500 text-xs font-bold hover:bg-emerald-500/10"
         >
           {question}
         </button>
@@ -1007,7 +1035,7 @@ function renderFormattedText(
 
 function parseSSEFrame(
   frame: string
-): Record<string, unknown> | null {
+): DataRecord | null {
   const data = frame
     .split(/\r?\n/)
     .filter((line) =>
@@ -1026,10 +1054,7 @@ function parseSSEFrame(
   }
 
   try {
-    return JSON.parse(data) as Record<
-      string,
-      unknown
-    >;
+    return asRecord(JSON.parse(data));
   } catch {
     return null;
   }
@@ -1080,6 +1105,7 @@ export default function FootPlayChat() {
     setAttachedFiles,
   ] = useState<AttachedFile[]>([]);
 
+  // الليلي هو الافتراضي، بغض النظر عن إعدادات الجهاز.
   const [
     isDarkMode,
     setIsDarkMode,
@@ -1124,29 +1150,12 @@ export default function FootPlayChat() {
   }, []);
 
   useEffect(() => {
-    if (messages.length > 0) return;
-
-    const interval = window.setInterval(
-      exploreMore,
-      DISCOVERY_INTERVAL
-    );
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [messages.length, exploreMore]);
-
-  useEffect(() => {
+    // تفضيل الزائر المحفوظ له الأولوية.
+    // في الزيارة الأولى يكون الوضع الليلي.
     const savedTheme =
       localStorage.getItem(THEME_KEY);
 
-    setIsDarkMode(
-      savedTheme
-        ? savedTheme === 'dark'
-        : window.matchMedia(
-            '(prefers-color-scheme: dark)'
-          ).matches
-    );
+    setIsDarkMode(savedTheme !== 'light');
 
     try {
       const raw =
@@ -1163,9 +1172,22 @@ export default function FootPlayChat() {
         }
       }
     } catch {
-      // Invalid old history
+      // تجاهل سجل غير صالح.
     }
   }, []);
+
+  useEffect(() => {
+    if (messages.length > 0) return;
+
+    const interval = window.setInterval(
+      exploreMore,
+      DISCOVERY_INTERVAL
+    );
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [messages.length, exploreMore]);
 
   useEffect(() => {
     if (!loading) return;
@@ -1175,7 +1197,7 @@ export default function FootPlayChat() {
     const id = window.setInterval(
       () =>
         setLoadingSeconds(
-          (n) => n + 1
+          (number) => number + 1
         ),
       1000
     );
@@ -1206,7 +1228,8 @@ export default function FootPlayChat() {
       const title =
         msgs
           .find(
-            (m) => m.role === 'user'
+            (message) =>
+              message.role === 'user'
           )
           ?.content.slice(0, 30) ||
         'محادثة جديدة';
@@ -1227,7 +1250,8 @@ export default function FootPlayChat() {
       const next = [
         entry,
         ...sessionsRef.current.filter(
-          (s) => s.id !== id
+          (session) =>
+            session.id !== id
         ),
       ];
 
@@ -1241,7 +1265,7 @@ export default function FootPlayChat() {
           JSON.stringify(next)
         );
       } catch {
-        // Storage full
+        // امتلاء مساحة التخزين.
       }
     },
     []
@@ -1259,9 +1283,9 @@ export default function FootPlayChat() {
     setInput('');
     setDiscoveryPage(0);
 
-    setAttachedFiles((prev) => {
-      prev.forEach((x) =>
-        URL.revokeObjectURL(x.url)
+    setAttachedFiles((previous) => {
+      previous.forEach((item) =>
+        URL.revokeObjectURL(item.url)
       );
 
       return [];
@@ -1271,14 +1295,14 @@ export default function FootPlayChat() {
   };
 
   const handleVoiceSearch = () => {
-    const w = window as Window & {
+    const browserWindow = window as Window & {
       SpeechRecognition?: new () => any;
       webkitSpeechRecognition?: new () => any;
     };
 
     const Recognition =
-      w.SpeechRecognition ||
-      w.webkitSpeechRecognition;
+      browserWindow.SpeechRecognition ||
+      browserWindow.webkitSpeechRecognition;
 
     if (!Recognition) {
       alert(
@@ -1300,8 +1324,8 @@ export default function FootPlayChat() {
     recognition.onresult = (
       event: any
     ) => {
-      setInput((prev) =>
-        `${prev} ${event.results[0][0].transcript}`.trim()
+      setInput((previous) =>
+        `${previous} ${event.results[0][0].transcript}`.trim()
       );
     };
 
@@ -1319,12 +1343,12 @@ export default function FootPlayChat() {
   ) => {
     const files = Array.from(
       event.target.files || []
-    ).filter((f) =>
-      f.type.startsWith('image/')
+    ).filter((file) =>
+      file.type.startsWith('image/')
     );
 
-    setAttachedFiles((prev) => [
-      ...prev,
+    setAttachedFiles((previous) => [
+      ...previous,
       ...files.map((file) => ({
         file,
         url: URL.createObjectURL(file),
@@ -1364,7 +1388,7 @@ export default function FootPlayChat() {
     ];
 
     const imageUrls = files.map(
-      (f) => f.url
+      (file) => file.url
     );
 
     const userMsg: Message = {
@@ -1756,7 +1780,7 @@ export default function FootPlayChat() {
   };
 
   const openSession = (
-    s: ChatSession
+    session: ChatSession
   ) => {
     activeRequest.current?.abort();
 
@@ -1766,15 +1790,15 @@ export default function FootPlayChat() {
     setLoading(false);
 
     setCurrentSessionId(
-      s.id
+      session.id
     );
 
     setConversationId(
-      s.conversationId || ''
+      session.conversationId || ''
     );
 
     setMessages(
-      s.messages || []
+      session.messages || []
     );
 
     setSidebarOpen(false);
@@ -1783,56 +1807,66 @@ export default function FootPlayChat() {
   return (
     <div
       dir="rtl"
-      className={`flex flex-col h-[100dvh] relative overflow-hidden font-saudi transition-colors duration-300 ${
+      className={`flex flex-col h-[100dvh] relative overflow-hidden font-cairo transition-colors duration-300 ${
         isDarkMode
           ? 'bg-[#131314] text-[#E3E3E3]'
           : 'bg-gray-50 text-gray-900'
       }`}
     >
-      {/* Background */}
+      {/* خلفية الملعب */}
       <div
         aria-hidden="true"
         className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
       >
         <div
-          className={`absolute inset-0 bg-center bg-no-repeat
-            transition-all duration-700 ease-in-out ${
-              messages.length === 0
-                ? 'opacity-100 scale-100'
-                : 'opacity-30 scale-[1.04]'
-            }`}
+          className={`absolute inset-0 bg-center bg-no-repeat transition-all duration-700 ease-in-out ${
+            messages.length === 0
+              ? 'opacity-100 scale-100'
+              : 'opacity-45 scale-[1.03]'
+          }`}
           style={{
-            backgroundImage: "url('/IMG_0091.jpeg')",
+            backgroundImage:
+              "url('/IMG_0091.jpeg')",
             backgroundSize: 'cover',
           }}
         />
 
+        {/*
+          الوضع الليلي: لم نغير إضاءته.
+          الوضع النهاري: خففنا الغطاء الأبيض
+          فقط لإبراز تفاصيل الملعب قليلًا.
+        */}
         <div
           className={`absolute inset-0 transition-all duration-700 ${
             isDarkMode
               ? messages.length === 0
-                ? 'bg-[#07110b]/65'
-                : 'bg-[#101312]/90'
+                ? 'bg-[#07110b]/35'
+                : 'bg-[#101312]/78'
               : messages.length === 0
-                ? 'bg-white/75'
-                : 'bg-white/95'
+                ? 'bg-white/35'
+                : 'bg-white/72'
           }`}
         />
 
         <div
-          className={`absolute inset-0 bg-gradient-to-b transition-opacity duration-700 ${
-            messages.length === 0
-              ? 'opacity-80'
-              : 'opacity-100'
-          } ${
+          className={`absolute inset-0 bg-gradient-to-b ${
             isDarkMode
-              ? 'from-[#07110b]/10 via-transparent to-[#101312]/90'
-              : 'from-white/10 via-transparent to-white/95'
+              ? 'from-[#07110b]/15 via-transparent to-[#101312]/55'
+              : 'from-white/10 via-transparent to-white/50'
           }`}
         />
       </div>
 
+      {/* خط Cairo */}
       <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap');
+
+        .font-cairo,
+        .font-cairo * {
+          font-family: 'Cairo', sans-serif !important;
+          font-feature-settings: 'calt' 1, 'liga' 1;
+        }
+
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
           height: 6px;
@@ -1856,7 +1890,7 @@ export default function FootPlayChat() {
         }
       `}</style>
 
-      {/* Sidebar overlay */}
+      {/* طبقة القائمة الجانبية */}
       {sidebarOpen && (
         <div
           onClick={() =>
@@ -1866,7 +1900,7 @@ export default function FootPlayChat() {
         />
       )}
 
-      {/* Sidebar */}
+      {/* القائمة الجانبية */}
       <aside
         className={`fixed top-0 right-0 h-full w-72 sm:w-80 backdrop-blur-md border-l z-40 transform transition-all duration-300 flex flex-col ${
           isDarkMode
@@ -1894,10 +1928,12 @@ export default function FootPlayChat() {
           </div>
 
           <button
+            type="button"
             onClick={() =>
               setSidebarOpen(false)
             }
             className="w-8 h-8 rounded-lg hover:bg-white/10"
+            aria-label="إغلاق القائمة"
           >
             ✕
           </button>
@@ -1905,6 +1941,7 @@ export default function FootPlayChat() {
 
         <div className="p-3">
           <button
+            type="button"
             onClick={startNewChat}
             className="w-full py-2.5 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow"
           >
@@ -1913,12 +1950,13 @@ export default function FootPlayChat() {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5">
-          {sessions.map((s) => (
+        <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5 custom-scrollbar">
+          {sessions.map((session) => (
             <button
-              key={s.id}
+              type="button"
+              key={session.id}
               onClick={() =>
-                openSession(s)
+                openSession(session)
               }
               className={`w-full text-right p-3 rounded-xl cursor-pointer text-xs truncate transition border ${
                 isDarkMode
@@ -1926,7 +1964,7 @@ export default function FootPlayChat() {
                   : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-100'
               }`}
             >
-              {s.title}
+              {session.title}
             </button>
           ))}
         </div>
@@ -1940,8 +1978,11 @@ export default function FootPlayChat() {
         >
           <SignedOut>
             <SignInButton mode="modal">
-              <button className="w-full py-3 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-600 text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg">
-                <span>تسجيل الدخول</span>
+              <button
+                type="button"
+                className="w-full py-3 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-600 text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg"
+              >
+                تسجيل الدخول
               </button>
             </SignInButton>
           </SignedOut>
@@ -1981,7 +2022,7 @@ export default function FootPlayChat() {
         </div>
       </aside>
 
-      {/* Header */}
+      {/* الشريط العلوي */}
       <header
         className={`flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b sticky top-0 z-20 backdrop-blur-md ${
           isDarkMode
@@ -1991,6 +2032,7 @@ export default function FootPlayChat() {
       >
         <div className="flex items-center gap-2.5">
           <button
+            type="button"
             onClick={() =>
               setSidebarOpen(true)
             }
@@ -1999,6 +2041,7 @@ export default function FootPlayChat() {
                 ? 'bg-white/5 border-white/10'
                 : 'bg-gray-100 border-gray-200'
             }`}
+            aria-label="فتح القائمة"
           >
             ☰
           </button>
@@ -2018,6 +2061,7 @@ export default function FootPlayChat() {
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() =>
               setShowLiveScores(true)
             }
@@ -2028,6 +2072,7 @@ export default function FootPlayChat() {
           </button>
 
           <button
+            type="button"
             onClick={toggleTheme}
             className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
               isDarkMode
@@ -2035,11 +2080,17 @@ export default function FootPlayChat() {
                 : 'bg-gray-100 border-gray-200 text-gray-600'
             }`}
             aria-label="تغيير المظهر"
+            title={
+              isDarkMode
+                ? 'الانتقال للوضع النهاري'
+                : 'الانتقال للوضع الليلي'
+            }
           >
             {isDarkMode ? '☀' : '☾'}
           </button>
 
           <button
+            type="button"
             onClick={startNewChat}
             className={`px-3 py-1.5 rounded-full text-xs font-medium border hidden sm:block ${
               isDarkMode
@@ -2052,103 +2103,122 @@ export default function FootPlayChat() {
         </div>
       </header>
 
-      {/* Main */}
+      {/* المحتوى الرئيسي */}
       <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto flex flex-col relative z-10 custom-scrollbar">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
-            <div className="text-right space-y-3 mb-6 px-1">
+            {/* ترحيب فوتبلاي */}
+            <div className="text-right space-y-3 mb-5 px-1">
               <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 text-emerald-500 border-emerald-500/40">
                 <span>⚽</span>
                 <span>HOME OF FOOTBALL</span>
               </div>
 
-              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight drop-shadow-md">
+              <h2
+                className={`text-3xl sm:text-5xl font-extrabold tracking-tight drop-shadow-md ${
+                  isDarkMode
+                    ? 'text-white'
+                    : 'text-gray-950'
+                }`}
+              >
                 أهلاً بك في فوتبلاي
               </h2>
 
               <p
                 className={`text-sm sm:text-base leading-relaxed max-w-2xl ${
                   isDarkMode
-                    ? 'text-gray-200'
-                    : 'text-gray-600'
+                    ? 'text-gray-100'
+                    : 'text-gray-800'
                 }`}
               >
-                منصتك للمعرفة الرياضية والتحليل
-                المتقدم. استكشف التكتيك والإحصاء
-                والتاريخ الكروي والإدارة الرياضية
-                والانتقالات وتطوير المواهب.
+                منصتك للمعرفة الرياضية والتحليل المتقدم.
+                استكشف التكتيك والإحصاء والتاريخ الكروي
+                والإدارة الرياضية والانتقالات وتطوير المواهب.
                 كيف أساعدك اليوم؟
               </p>
             </div>
 
-            {/* Discovery cards */}
-            <div className="w-full">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                {suggestionCards.map((card) => (
-                  <button
-                    key={card.question}
-                    type="button"
-                    onClick={() =>
-                      sendMessage(card.question)
-                    }
-                    className={`group flex flex-col justify-between text-right
-                      p-4 sm:p-5 rounded-2xl border min-h-[145px]
-                      transition-all duration-300
-                      hover:-translate-y-1 hover:border-emerald-500/60
-                      hover:shadow-lg ${
-                        isDarkMode
-                          ? 'bg-[#101a14]/85 border-emerald-500/15 backdrop-blur-md'
-                          : 'bg-white/90 border-gray-200 backdrop-blur-md shadow-sm'
-                      }`}
+            {/*
+              بطاقات زخرفية:
+              - أربع بطاقات فقط
+              - حجم أصغر
+              - شفافية عالية
+              - ليست أزرارًا
+              - لا تقبل الضغط
+            */}
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full">
+              {suggestionCards.map(
+                (card, index) => (
+                  <div
+                    key={`${discoveryPage}-${index}`}
+                    aria-label={`${card.tag}: ${card.question}`}
+                    className={`pointer-events-none select-none flex flex-col justify-between text-right p-3 sm:p-4 rounded-2xl border backdrop-blur-[6px] min-h-[112px] sm:min-h-[126px] transition-all duration-500 ${
+                      isDarkMode
+                        ? 'bg-[#07180f]/45 border-emerald-400/15 text-white shadow-md'
+                        : 'bg-white/35 border-white/55 text-gray-950 shadow-sm'
+                    }`}
                   >
-                    <div className="text-2xl mb-3">
-                      {card.icon}
-                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-lg sm:text-xl leading-none">
+                        {card.icon}
+                      </span>
 
-                    <p className="text-sm font-bold leading-relaxed flex-1">
-                      {card.question}
-                    </p>
-
-                    <div className="mt-4 pt-3 border-t border-emerald-500/10">
-                      <span className="text-[11px] font-bold text-emerald-500">
+                      <span
+                        className={`text-[9px] sm:text-[10px] font-bold ${
+                          isDarkMode
+                            ? 'text-emerald-400'
+                            : 'text-emerald-800'
+                        }`}
+                      >
                         {card.tag}
                       </span>
                     </div>
-                  </button>
-                ))}
-              </div>
 
-              <div className="flex justify-center mt-5">
-                <button
-                  type="button"
-                  onClick={exploreMore}
-                  className={`flex items-center gap-2 rounded-full
-                    px-5 py-2.5 border text-xs font-bold
-                    transition hover:border-emerald-500/60 ${
-                      isDarkMode
-                        ? 'bg-white/5 border-white/10 text-emerald-400 hover:bg-white/10'
-                        : 'bg-white border-gray-200 text-emerald-700 hover:bg-emerald-50'
-                    }`}
-                >
-                  <span>↻</span>
-                  استكشف المزيد
-                </button>
-              </div>
+                    <p className="mt-3 text-[11px] sm:text-sm font-bold leading-[1.8] line-clamp-3">
+                      {card.question}
+                    </p>
+                  </div>
+                )
+              )}
+            </div>
+
+            {/* التحكم في تبديل الأسئلة */}
+            <div className="flex items-center justify-between gap-3 mt-4 px-1">
+              <span
+                className={`text-[10px] sm:text-xs ${
+                  isDarkMode
+                    ? 'text-gray-300'
+                    : 'text-gray-700'
+                }`}
+              >
+                استكشف مجالات المعرفة الرياضية
+              </span>
+
+              <button
+                type="button"
+                onClick={exploreMore}
+                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-[11px] sm:text-xs font-bold transition ${
+                  isDarkMode
+                    ? 'bg-black/25 border-emerald-400/25 text-emerald-300 hover:bg-emerald-950/60'
+                    : 'bg-white/65 border-emerald-700/20 text-emerald-800 hover:bg-white/90'
+                }`}
+              >
+                <span>↻</span>
+                <span>استكشف المزيد</span>
+              </button>
             </div>
           </div>
         ) : (
           <div className="space-y-6 pb-4">
-            {messages.map((msg, i) =>
+            {messages.map((msg, index) =>
               msg.content.trim() ||
-              (msg.imageUrls?.length ??
-                0) > 0 ? (
+              (msg.imageUrls?.length ?? 0) > 0 ? (
                 <div
-                  key={i}
+                  key={index}
                   className="flex items-start gap-4 w-full"
                 >
                   <div className="flex-shrink-0 mt-1 hidden sm:block">
-                    {msg.role ===
-                    'assistant' ? (
+                    {msg.role === 'assistant' ? (
                       <AiFBallLogo size="sm" />
                     ) : (
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold bg-emerald-700">
@@ -2158,23 +2228,17 @@ export default function FootPlayChat() {
                   </div>
 
                   <div className="flex flex-col w-full min-w-0">
-                    {msg.role ===
-                    'user' ? (
+                    {msg.role === 'user' ? (
                       <div className="text-base sm:text-lg font-bold leading-relaxed break-words">
                         {msg.content}
 
                         {msg.imageUrls &&
-                          msg.imageUrls
-                            .length >
-                            0 && (
+                          msg.imageUrls.length > 0 && (
                             <div className="flex flex-wrap gap-2 mt-3">
                               {msg.imageUrls.map(
-                                (
-                                  url,
-                                  idx
-                                ) => (
+                                (url, imageIndex) => (
                                   <img
-                                    key={idx}
+                                    key={imageIndex}
                                     src={url}
                                     alt="مرفق"
                                     className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border border-white/20"
@@ -2188,8 +2252,7 @@ export default function FootPlayChat() {
                       <div className="w-full">
                         {msg.thinkingTime !==
                           undefined &&
-                          msg.thinkingTime >
-                            0 && (
+                          msg.thinkingTime > 0 && (
                             <div className="mb-3">
                               <span
                                 className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-xs ${
@@ -2214,7 +2277,7 @@ export default function FootPlayChat() {
                           className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-5 shadow-2xl text-sm sm:text-[15px] leading-relaxed break-words ${
                             isDarkMode
                               ? 'bg-[#131814]/85 border-white/10 text-gray-200'
-                              : 'bg-white border-gray-200 text-gray-800'
+                              : 'bg-white/90 border-gray-200 text-gray-800'
                           }`}
                         >
                           {renderFormattedText(
@@ -2224,7 +2287,7 @@ export default function FootPlayChat() {
                           )}
                         </div>
 
-                        {/* Message actions */}
+                        {/* أدوات الرسالة */}
                         <div
                           className={`flex items-center gap-1.5 mt-3 pt-3 border-t ${
                             isDarkMode
@@ -2233,6 +2296,7 @@ export default function FootPlayChat() {
                           }`}
                         >
                           <button
+                            type="button"
                             onClick={() =>
                               navigator.clipboard.writeText(
                                 msg.content
@@ -2245,16 +2309,13 @@ export default function FootPlayChat() {
                           </button>
 
                           <button
+                            type="button"
                             onClick={() =>
                               navigator.share?.({
-                                title:
-                                  'فوتبلاي',
-                                text:
-                                  msg.content,
+                                title: 'فوتبلاي',
+                                text: msg.content,
                                 url:
-                                  window
-                                    .location
-                                    .href,
+                                  window.location.href,
                               })
                             }
                             className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-gray-400"
@@ -2264,19 +2325,16 @@ export default function FootPlayChat() {
                           </button>
 
                           <button
+                            type="button"
                             onClick={() => {
-                              const q =
+                              const query =
                                 msg.userQuery;
 
-                              if (q) {
-                                sendMessage(
-                                  q
-                                );
+                              if (query) {
+                                sendMessage(query);
                               }
                             }}
-                            disabled={
-                              loading
-                            }
+                            disabled={loading}
                             className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-gray-400 disabled:opacity-40"
                             title="إعادة التوليد"
                           >
@@ -2284,43 +2342,35 @@ export default function FootPlayChat() {
                           </button>
 
                           <button
+                            type="button"
                             onClick={() =>
-                              setMessages(
-                                (
-                                  prev
-                                ) => {
-                                  const next =
-                                    prev.map(
-                                      (
-                                        m,
-                                        j
-                                      ) =>
-                                        j ===
-                                        i
-                                          ? {
-                                              ...m,
-                                              feedback:
-                                                m.feedback ===
-                                                'like'
-                                                  ? null
-                                                  : ('like' as const),
-                                            }
-                                          : m
-                                    );
-
-                                  saveSession(
-                                    currentSessionId,
-                                    conversationId,
-                                    next
+                              setMessages((previous) => {
+                                const next =
+                                  previous.map(
+                                    (message, messageIndex) =>
+                                      messageIndex === index
+                                        ? {
+                                            ...message,
+                                            feedback:
+                                              message.feedback ===
+                                              'like'
+                                                ? null
+                                                : ('like' as const),
+                                          }
+                                        : message
                                   );
 
-                                  return next;
-                                }
-                              )
+                                saveSession(
+                                  currentSessionId,
+                                  conversationId,
+                                  next
+                                );
+
+                                return next;
+                              })
                             }
                             className={`p-1.5 rounded-lg ${
-                              msg.feedback ===
-                              'like'
+                              msg.feedback === 'like'
                                 ? 'text-emerald-500'
                                 : 'text-gray-400'
                             }`}
@@ -2330,43 +2380,35 @@ export default function FootPlayChat() {
                           </button>
 
                           <button
+                            type="button"
                             onClick={() =>
-                              setMessages(
-                                (
-                                  prev
-                                ) => {
-                                  const next =
-                                    prev.map(
-                                      (
-                                        m,
-                                        j
-                                      ) =>
-                                        j ===
-                                        i
-                                          ? {
-                                              ...m,
-                                              feedback:
-                                                m.feedback ===
-                                                'dislike'
-                                                  ? null
-                                                  : ('dislike' as const),
-                                            }
-                                          : m
-                                    );
-
-                                  saveSession(
-                                    currentSessionId,
-                                    conversationId,
-                                    next
+                              setMessages((previous) => {
+                                const next =
+                                  previous.map(
+                                    (message, messageIndex) =>
+                                      messageIndex === index
+                                        ? {
+                                            ...message,
+                                            feedback:
+                                              message.feedback ===
+                                              'dislike'
+                                                ? null
+                                                : ('dislike' as const),
+                                          }
+                                        : message
                                   );
 
-                                  return next;
-                                }
-                              )
+                                saveSession(
+                                  currentSessionId,
+                                  conversationId,
+                                  next
+                                );
+
+                                return next;
+                              })
                             }
                             className={`p-1.5 rounded-lg ${
-                              msg.feedback ===
-                              'dislike'
+                              msg.feedback === 'dislike'
                                 ? 'text-red-500'
                                 : 'text-gray-400'
                             }`}
@@ -2382,7 +2424,7 @@ export default function FootPlayChat() {
               ) : null
             )}
 
-            {/* Loading */}
+            {/* مؤشر انتظار الإجابة */}
             {loading && (
               <div className="flex items-start gap-4 w-full mt-4">
                 <div className="flex-shrink-0 mt-1 hidden sm:block">
@@ -2440,7 +2482,7 @@ export default function FootPlayChat() {
         )}
       </main>
 
-      {/* Footer */}
+      {/* شريط المحادثة السفلي */}
       <footer
         className={`p-3 backdrop-blur-md border-t relative z-20 ${
           isDarkMode
@@ -2449,17 +2491,16 @@ export default function FootPlayChat() {
         }`}
       >
         <div className="max-w-4xl mx-auto">
-          {attachedFiles.length >
-            0 && (
+          {attachedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2 px-2">
               {attachedFiles.map(
-                (f, idx) => (
+                (item, index) => (
                   <div
-                    key={idx}
+                    key={index}
                     className="flex items-center gap-2 p-1.5 pr-3 rounded-lg border border-emerald-500/40"
                   >
                     <img
-                      src={f.url}
+                      src={item.url}
                       alt="مرفق"
                       className="w-8 h-8 object-cover rounded-md"
                     />
@@ -2468,26 +2509,21 @@ export default function FootPlayChat() {
                       className="text-xs max-w-[120px] truncate"
                       dir="ltr"
                     >
-                      {f.file.name}
+                      {item.file.name}
                     </span>
 
                     <button
+                      type="button"
                       onClick={() =>
                         setAttachedFiles(
-                          (
-                            prev
-                          ) => {
+                          (previous) => {
                             URL.revokeObjectURL(
-                              prev[idx].url
+                              previous[index].url
                             );
 
-                            return prev.filter(
-                              (
-                                _,
-                                j
-                              ) =>
-                                j !==
-                                idx
+                            return previous.filter(
+                              (_, itemIndex) =>
+                                itemIndex !== index
                             );
                           }
                         )
@@ -2513,15 +2549,14 @@ export default function FootPlayChat() {
             <input
               type="file"
               ref={fileInputRef}
-              onChange={
-                handleFileSelect
-              }
+              onChange={handleFileSelect}
               multiple
               accept="image/*"
               className="hidden"
             />
 
             <button
+              type="button"
               onClick={() =>
                 fileInputRef.current?.click()
               }
@@ -2532,9 +2567,8 @@ export default function FootPlayChat() {
             </button>
 
             <button
-              onClick={
-                handleVoiceSearch
-              }
+              type="button"
+              onClick={handleVoiceSearch}
               title="بحث صوتي"
               className={`w-10 h-10 rounded-full flex items-center justify-center ${
                 isListening
@@ -2560,17 +2594,13 @@ export default function FootPlayChat() {
             <input
               type="text"
               value={input}
-              onChange={(e) =>
-                setInput(
-                  e.target.value
-                )
+              onChange={(event) =>
+                setInput(event.target.value)
               }
-              onKeyDown={(e) => {
+              onKeyDown={(event) => {
                 if (
-                  e.key ===
-                    'Enter' &&
-                  !e.nativeEvent
-                    .isComposing
+                  event.key === 'Enter' &&
+                  !event.nativeEvent.isComposing
                 ) {
                   sendMessage();
                 }
@@ -2588,6 +2618,7 @@ export default function FootPlayChat() {
             />
 
             <button
+              type="button"
               onClick={() =>
                 sendMessage()
               }
@@ -2597,6 +2628,7 @@ export default function FootPlayChat() {
                   !attachedFiles.length)
               }
               className="w-10 h-10 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:bg-gray-500 flex items-center justify-center text-white flex-shrink-0"
+              aria-label="إرسال الرسالة"
             >
               ➤
             </button>
@@ -2614,7 +2646,7 @@ export default function FootPlayChat() {
         </div>
       </footer>
 
-      {/* Live scores modal */}
+      {/* نافذة النتائج المباشرة */}
       {showLiveScores && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
@@ -2623,8 +2655,8 @@ export default function FootPlayChat() {
           }
         >
           <div
-            onClick={(e) =>
-              e.stopPropagation()
+            onClick={(event) =>
+              event.stopPropagation()
             }
             className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl shadow-2xl ${
               isDarkMode
@@ -2644,6 +2676,7 @@ export default function FootPlayChat() {
               </h2>
 
               <button
+                type="button"
                 onClick={() =>
                   setShowLiveScores(false)
                 }
