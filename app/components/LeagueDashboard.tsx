@@ -1,49 +1,79 @@
 'use client';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
-interface LeagueDashboardProps {
-  leagueName?: string;
+const LEAGUE_NAMES: Record<string, string> = {
+  'ksa.1': 'دوري روشن السعودي',
+  'eng.1': 'الدوري الإنجليزي',
+  'esp.1': 'الدوري الإسباني',
+  'ita.1': 'الدوري الإيطالي',
+  'ger.1': 'الدوري الألماني',
+  'fra.1': 'الدوري الفرنسي',
+  'egy.1': 'الدوري المصري',
+  'uae.1': 'الدوري الإماراتي',
+  'qat.1': 'دوري نجوم قطر',
+  'usa.1': 'الدوري الأمريكي',
+};
+
+interface Props {
   leagueCode?: string;
   isDark?: boolean;
 }
 
-export default function LeagueDashboard({ 
-  leagueName = 'دوري روشن السعودي', 
-  leagueCode = 'ksa.1',
-  isDark = true 
-}: LeagueDashboardProps) {
-  
-  // بيانات تجريبية (سيتم استبدالها بالـ API لاحقاً)
-  const teams = [
-    { pos: 1, name: 'القادسية', played: 12, won: 9, draw: 1, lost: 2, gf: 32, ga: 12, gd: '+20', pts: 28, color: 'bg-red-600' },
-    { pos: 2, name: 'النصر', played: 11, won: 9, draw: 1, lost: 1, gf: 28, ga: 11, gd: '+17', pts: 28, color: 'bg-yellow-500' },
-    { pos: 3, name: 'الهلال', played: 10, won: 9, draw: 0, lost: 1, gf: 30, ga: 9, gd: '+21', pts: 27, color: 'bg-blue-600' },
-    { pos: 4, name: 'الاتحاد', played: 11, won: 7, draw: 3, lost: 1, gf: 21, ga: 11, gd: '+10', pts: 24, color: 'bg-yellow-400' },
-    { pos: 5, name: 'نيوم', played: 12, won: 7, draw: 1, lost: 4, gf: 18, ga: 10, gd: '+8', pts: 22, color: 'bg-green-500' },
-    { pos: 6, name: 'الأهلي', played: 11, won: 7, draw: 0, lost: 4, gf: 28, ga: 19, gd: '+9', pts: 21, color: 'bg-green-600' },
-    { pos: 7, name: 'الاتفاق', played: 11, won: 5, draw: 3, lost: 3, gf: 17, ga: 16, gd: '+1', pts: 18, color: 'bg-emerald-500' },
-  ];
+export default function LeagueDashboard({ leagueCode = 'ksa.1', isDark = true }: Props) {
+  const [rows, setRows] = useState<any[]>([]);
+  const [season, setSeason] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/standings?league=${encodeURIComponent(leagueCode)}`);
+        const json = await res.json();
+        if (!res.ok || json.error) throw new Error(json.error || 'فشل جلب الترتيب');
+        if (!cancelled) {
+          setRows(json.rows || []);
+          setSeason(json.season || '');
+        }
+      } catch (e: any) {
+        if (!cancelled) setError(e.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [leagueCode]);
+
+  const box = `w-full rounded-3xl border shadow-xl overflow-hidden ${isDark ? 'bg-[#1a1c1e] border-gray-800 text-white' : 'bg-white border-gray-200 text-gray-900'}`;
+  const muted = isDark ? 'text-gray-400' : 'text-gray-600';
+
+  if (loading) {
+    return (
+      <div className={`${box} p-8 flex flex-col items-center`}>
+        <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p className="text-emerald-500 font-bold text-sm">جاري جلب الترتيب...</p>
+      </div>
+    );
+  }
+
+  if (error || rows.length === 0) {
+    return (
+      <div className={`${box} p-6 text-center`}>
+        <p className="text-red-500 font-bold text-sm">⚠️ {error || 'لا توجد بيانات ترتيب لهذا الدوري حالياً.'}</p>
+      </div>
+    );
+  }
 
   return (
-    <div dir="rtl" className={`w-full rounded-3xl border shadow-xl overflow-hidden font-saudi ${isDark ? 'bg-[#1a1c1e] border-gray-800 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
-      
-      {/* الترويسة العلوية */}
-      <div className={`p-6 text-center border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
-        <h2 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2">
-          <span>🏆</span> {leagueName}
-        </h2>
-        <p className="text-xs text-gray-500">موسم 2026/2027 - الجدول التفاعلي</p>
+    <div dir="rtl" className={box}>
+      <div className={`p-5 text-center border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
+        <h2 className="text-xl font-bold mb-1">🏆 {LEAGUE_NAMES[leagueCode] || leagueCode}</h2>
+        {season && <p className="text-xs text-gray-500">موسم {season}</p>}
       </div>
 
-      {/* التبويبات */}
-      <div className={`flex justify-center gap-4 py-3 text-xs sm:text-sm font-bold border-b overflow-x-auto custom-scrollbar ${isDark ? 'bg-[#0f1115] border-gray-800 text-gray-400' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
-        <button className={`pb-1 border-b-2 ${isDark ? 'text-emerald-400 border-emerald-400' : 'text-emerald-600 border-emerald-600'}`}>جدول الترتيب</button>
-        <button className="hover:text-gray-300">الهدافون</button>
-        <button className="hover:text-gray-300">البطاقات</button>
-        <button className="hover:text-gray-300">إحصائيات الفرق</button>
-      </div>
-
-      {/* الجدول */}
       <div className="overflow-x-auto custom-scrollbar">
         <table className="w-full text-center text-xs sm:text-sm whitespace-nowrap">
           <thead className={`${isDark ? 'bg-[#15171a] text-gray-400' : 'bg-gray-100 text-gray-600'} border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
@@ -61,23 +91,29 @@ export default function LeagueDashboard({
             </tr>
           </thead>
           <tbody className={`divide-y ${isDark ? 'divide-gray-800/50' : 'divide-gray-200'}`}>
-            {teams.map((team) => (
-              <tr key={team.pos} className={`transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-                <td className={`py-3 px-2 font-bold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{team.pos}</td>
-                <td className="py-3 px-4 text-right font-bold flex items-center gap-2">
-                  <div className={`w-6 h-6 rounded-full ${team.color} border border-white/20 shadow-sm`}></div>
-                  {team.name}
+            {rows.map((t) => (
+              <tr key={`${t.pos}-${t.name}`} className={isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}>
+                <td className={`py-3 px-2 font-bold ${muted}`}>{t.pos}</td>
+                <td className="py-3 px-4 text-right font-bold">
+                  <div className="flex items-center gap-2">
+                    {t.logo ? (
+                      <img src={t.logo} alt={t.name} className="w-6 h-6 object-contain flex-shrink-0" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-gray-600 flex-shrink-0"></div>
+                    )}
+                    <span>{t.name}</span>
+                  </div>
                 </td>
-                <td className={`py-3 px-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{team.played}</td>
-                <td className="py-3 px-2 font-bold text-emerald-500">{team.won}</td>
-                <td className={`py-3 px-2 font-bold ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>{team.draw}</td>
-                <td className="py-3 px-2 font-bold text-red-500">{team.lost}</td>
-                <td className={`py-3 px-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{team.gf}</td>
-                <td className={`py-3 px-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{team.ga}</td>
-                <td className={`py-3 px-2 font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`} dir="ltr">{team.gd}</td>
+                <td className={`py-3 px-2 ${muted}`}>{t.played}</td>
+                <td className="py-3 px-2 font-bold text-emerald-500">{t.won}</td>
+                <td className="py-3 px-2 font-bold text-yellow-500">{t.draw}</td>
+                <td className="py-3 px-2 font-bold text-red-500">{t.lost}</td>
+                <td className={`py-3 px-2 ${muted}`}>{t.gf}</td>
+                <td className={`py-3 px-2 ${muted}`}>{t.ga}</td>
+                <td className="py-3 px-2 font-bold" dir="ltr">{t.gd > 0 ? `+${t.gd}` : t.gd}</td>
                 <td className="py-3 px-2">
-                  <span className={`inline-block w-8 py-1 rounded-md font-bold ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
-                    {team.pts}
+                  <span className={`inline-block min-w-[2rem] py-1 rounded-md font-bold ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {t.pts}
                   </span>
                 </td>
               </tr>
