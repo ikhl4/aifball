@@ -1,6 +1,21 @@
+
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
-import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
+
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
+import {
+  SignInButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+  useUser,
+} from '@clerk/nextjs';
+
 import LiveSportsWidget from './components/LiveSportsWidget';
 import LiveMatchCenter from './components/LiveMatchCenter';
 import LeagueDashboard from './components/LeagueDashboard';
@@ -12,7 +27,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   userQuery?: string;
-  imageUrls?: string[]; 
+  imageUrls?: string[];
   feedback?: 'like' | 'dislike' | null;
   thinkingTime?: number;
 }
@@ -25,323 +40,798 @@ interface ChatSession {
   updatedAt: string;
 }
 
-const formatSeconds = (sec: number) => {
+type AttachedFile = {
+  file: File;
+  url: string;
+};
+
+const STORAGE_KEY = 'aifball_chat_history_v12';
+const THEME_KEY = 'aifball_theme';
+
+const GREETING =
+  'مرحبا، الله حيه، أنا فوتبلاي مساعدك الرياضي. ماذا تريد أن تعرف؟';
+
+const LEAGUES: Record<string, string> = {
+  'ksa.1': 'دوري روشن السعودي',
+  'eng.1': 'الدوري الإنجليزي الممتاز',
+  'esp.1': 'الدوري الإسباني',
+  'ita.1': 'الدوري الإيطالي',
+  'ger.1': 'الدوري الألماني',
+  'fra.1': 'الدوري الفرنسي',
+};
+
+function formatSeconds(sec: number) {
   if (sec === 0) return '0 ثانية';
   if (sec === 1) return 'ثانية واحدة';
   if (sec === 2) return 'ثانيتان';
   if (sec >= 3 && sec <= 10) return `${sec} ثوانٍ`;
   return `${sec} ثانية`;
-};
+}
 
-function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  const dimensions = size === 'sm' ? 'w-8 h-8 rounded-[9px]' : size === 'lg' ? 'w-14 h-14 rounded-[16px]' : 'w-10 h-10 rounded-[11px]';
+function AiFBallLogo({
+  size = 'md',
+}: {
+  size?: 'sm' | 'md' | 'lg';
+}) {
+  const dimensions =
+    size === 'sm'
+      ? 'w-8 h-8 rounded-[9px]'
+      : size === 'lg'
+        ? 'w-14 h-14 rounded-[16px]'
+        : 'w-10 h-10 rounded-[11px]';
 
   return (
-    <div className={`${dimensions} bg-[#1D6B35] flex items-center justify-center shadow-md flex-shrink-0 select-none overflow-hidden`}>
+    <div
+      className={`${dimensions} bg-[#1D6B35] flex items-center justify-center shadow-md flex-shrink-0 select-none overflow-hidden`}
+    >
       <svg viewBox="0 0 200 200" className="w-full h-full">
         <rect width="200" height="200" rx="42" fill="#1D6B35" />
+
         <g transform="translate(100, 74)">
           <circle r="48" fill="#FFFFFF" />
-          <polygon points="0,-19 18,-6 11,15 -11,15 -18,-6" fill="#FFFFFF" stroke="#1D6B35" strokeWidth="5.5" strokeLinejoin="round" />
-          <path d="M0,-19 L0,-37 M18,-6 L35,-12 M11,15 L22,31 M-11,15 L-22,31 M-18,-6 L-35,-12" stroke="#1D6B35" strokeWidth="5.5" strokeLinecap="round" />
-          <path d="M-19,-35 L0,-37 L19,-35 M19,-35 L35,-12 L37,8 M37,8 L22,31 L0,38 M0,38 L-22,31 L-37,8 M0,38 L-22,31 L-37,8 L-35,-12 L-19,-35" fill="none" stroke="#1D6B35" strokeWidth="5" strokeLinejoin="round" />
-          <path d="M-19,-35 L-26,-43 M19,-35 L26,-43 M35,-12 L46,-16 M37,8 L47,15 M22,31 L29,40 M0,38 L0,48 M-22,31 L-29,40 M-37,8 L-47,15 M-35,-12 L-46,-16" stroke="#1D6B35" strokeWidth="5" strokeLinecap="round" />
-          <circle r="47" fill="none" stroke="#1D6B35" strokeWidth="4" />
+
+          <polygon
+            points="0,-19 18,-6 11,15 -11,15 -18,-6"
+            fill="#FFFFFF"
+            stroke="#1D6B35"
+            strokeWidth="5.5"
+            strokeLinejoin="round"
+          />
+
+          <path
+            d="M0,-19 L0,-37 M18,-6 L35,-12 M11,15 L22,31 M-11,15 L-22,31 M-18,-6 L-35,-12"
+            stroke="#1D6B35"
+            strokeWidth="5.5"
+            strokeLinecap="round"
+          />
+
+          <path
+            d="M-19,-35 L0,-37 L19,-35 M19,-35 L35,-12 L37,8 M37,8 L22,31 L0,38 M0,38 L-22,31 L-37,8 M-37,8 L-35,-12 L-19,-35"
+            fill="none"
+            stroke="#1D6B35"
+            strokeWidth="5"
+            strokeLinejoin="round"
+          />
+
+          <circle
+            r="47"
+            fill="none"
+            stroke="#1D6B35"
+            strokeWidth="4"
+          />
         </g>
-        <text x="100" y="168" textAnchor="middle" fill="#FFFFFF" fontSize="43" fontWeight="900" fontStyle="italic" fontFamily="system-ui, -apple-system, sans-serif" letterSpacing="-1">AiFBall</text>
+
+        <text
+          x="100"
+          y="168"
+          textAnchor="middle"
+          fill="#FFFFFF"
+          fontSize="43"
+          fontWeight="900"
+          fontStyle="italic"
+          fontFamily="system-ui, sans-serif"
+        >
+          AiFBall
+        </text>
       </svg>
     </div>
   );
 }
 
-function parseStatNumber(val: string): number | null {
-  const cleaned = val.replace(/,/g, '').match(/-?\d+(\.\d+)?/);
-  return cleaned ? parseFloat(cleaned[0]) : null;
-}
+function safeUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
 
-function deduplicateText(rawText: string): string {
-  if (!rawText) return '';
-  let text = rawText;
-  text = text.replace(/(\|\s*\d+\s*\|[^\n]+\|)\s*([^\n|]+)/g, '$1\n\n$2');
-  const trimmed = text.trim();
-  const half = Math.floor(trimmed.length / 2);
-  if (half > 12) {
-    const firstHalf = trimmed.slice(0, half).trim();
-    const secondHalf = trimmed.slice(half).trim();
-    if (firstHalf === secondHalf) { text = firstHalf; }
+    if (
+      url.protocol === 'https:' ||
+      url.protocol === 'http:'
+    ) {
+      return url.href;
+    }
+
+    return null;
+  } catch {
+    return null;
   }
-  text = text.split('\n').map(line => {
-    const tLine = line.trim();
-    if (tLine.length > 15 && !tLine.startsWith('|')) {
-      const h = Math.floor(tLine.length / 2);
-      const p1 = tLine.slice(0, h).trim();
-      const p2 = tLine.slice(h).trim();
-      if (p1 === p2) return p1;
-    }
-    return line.replace(/([^.\n]{10,}\.)\s*\1+/g, '$1');
-  }).join('\n');
-  return text;
 }
 
-function renderInlineText(text: string, isDark: boolean) {
-  const linkParts = text.split(/(\[.*?\]\(.*?\))/g);
-  return linkParts.map((part, pIdx) => {
-    if (part.startsWith('[') && part.endsWith(')')) {
-      const match = part.match(/\[(.*?)\]\((.*?)\)/);
-      if (match) {
-        return (
-          <a key={pIdx} href={match[2]} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-1.5 my-1 mx-1 px-3 py-1.5 rounded-xl border text-sm font-bold transition shadow-sm ${isDark ? 'bg-blue-900/25 hover:bg-blue-900/40 border-blue-500/30 text-blue-400 hover:text-blue-300' : 'bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-600'}`}>
-            <span>🔗</span><span>{match[1]}</span><span className="text-[10px] opacity-70">↗</span>
-          </a>
+function attrsOf(tag: string): Record<string, string> {
+  const attrs: Record<string, string> = {};
+
+  const regex =
+    /([a-zA-Z_][\w-]*)\s*=\s*(["'])(.*?)\2/g;
+
+  for (const match of tag.matchAll(regex)) {
+    attrs[match[1]] = match[3];
+  }
+
+  return attrs;
+}
+
+function InlineText({
+  value,
+  isDark,
+}: {
+  value: string;
+  isDark: boolean;
+}) {
+  const pieces = value.split(
+    /(\[[^\]]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s<>]+|\*\*[^*]+\*\*)/g
+  );
+
+  return (
+    <>
+      {pieces.map((part, i) => {
+        const mdLink = part.match(
+          /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/
         );
-      }
-    }
-    const urlParts = part.split(/(https?:\/\/[^\s]+)/g);
-    return urlParts.map((urlPart, uIdx) => {
-      if (urlPart.match(/^https?:\/\//)) {
-        return (
-          <a key={`${pIdx}-${uIdx}`} href={urlPart} target="_blank" rel="noopener noreferrer" className={`underline font-medium break-all transition ${isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'}`}>
-            {urlPart}
-          </a>
-        );
-      }
-      const boldParts = urlPart.split(/(\*\*.*?\*\*)/g);
-      return boldParts.map((bPart, bIdx) => {
-        if (bPart.startsWith('**') && bPart.endsWith('**')) {
-           return <strong key={`${pIdx}-${uIdx}-${bIdx}`} className={`font-extrabold mx-0.5 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{bPart.slice(2, -2)}</strong>;
+
+        if (mdLink) {
+          const href = safeUrl(mdLink[2]);
+
+          return href ? (
+            <a
+              key={i}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-500 underline break-all"
+            >
+              {mdLink[1]}
+            </a>
+          ) : (
+            <span key={i}>{part}</span>
+          );
         }
-        return <span key={`${pIdx}-${uIdx}-${bIdx}`}>{bPart}</span>;
-      });
-    });
-  });
+
+        if (/^https?:\/\//.test(part)) {
+          const href = safeUrl(part);
+
+          return href ? (
+            <a
+              key={i}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-500 underline break-all"
+            >
+              {part}
+            </a>
+          ) : (
+            <span key={i}>{part}</span>
+          );
+        }
+
+        if (
+          part.startsWith('**') &&
+          part.endsWith('**')
+        ) {
+          return (
+            <strong
+              key={i}
+              className={
+                isDark
+                  ? 'text-emerald-400'
+                  : 'text-emerald-700'
+              }
+            >
+              {part.slice(2, -2)}
+            </strong>
+          );
+        }
+
+        return (
+          <React.Fragment key={i}>
+            {part}
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
 }
 
-function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: (q: string) => void) {
-  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
-  const youtubeIds: string[] = [];
-  const suggestedQuestions: string[] = [];
-  
-  let processedText = text.replace(youtubeRegex, (url, id) => {
-    if (id && id.length === 11 && !youtubeIds.includes(id)) { youtubeIds.push(id); }
-    return ''; 
-  });
+function MarkdownTable({
+  lines,
+  isDark,
+}: {
+  lines: string[];
+  isDark: boolean;
+}) {
+  const cells = (line: string) =>
+    line
+      .trim()
+      .replace(/^\|/, '')
+      .replace(/\|$/, '')
+      .split(/(?<!\\)\|/)
+      .map((x) =>
+        x.trim().replace(/\\\|/g, '|')
+      );
 
-  processedText = processedText.replace(/<a\s+href=.*?<\/a>/gi, '');
-  processedText = processedText.replace(/a\s*href=[^\s>]+/gi, '');
-  processedText = deduplicateText(processedText);
+  const rows = lines.map(cells);
 
-  const paragraphs = processedText.split(/\n\s*\n/);
-  const uniqueParagraphs = new Set();
-  let finalText = '';
+  const divider = (row: string[]) =>
+    row.every((c) =>
+      /^:?-{3,}:?$/.test(c)
+    );
 
-  for (const para of paragraphs) {
-    const trimmedPara = para.trim();
-    if (trimmedPara !== '' && !uniqueParagraphs.has(trimmedPara)) {
-      uniqueParagraphs.add(trimmedPara);
-      finalText += trimmedPara + '\n\n';
+  const header = rows[0] || [];
+
+  const hasSeparator =
+    rows.length > 1 &&
+    divider(rows[1]);
+
+  const data = rows.slice(
+    hasSeparator ? 2 : 1
+  );
+
+  return (
+    <div
+      className={`my-4 w-full overflow-x-auto rounded-xl border custom-scrollbar ${
+        isDark
+          ? 'border-white/10'
+          : 'border-gray-200'
+      }`}
+    >
+      <table className="w-full min-w-max text-right text-xs sm:text-sm border-collapse">
+        <thead>
+          <tr
+            className={
+              isDark
+                ? 'bg-emerald-950/50'
+                : 'bg-emerald-50'
+            }
+          >
+            {header.map((cell, i) => (
+              <th
+                key={i}
+                className="px-3 py-3 font-bold border-b border-emerald-500/20"
+              >
+                <InlineText
+                  value={cell}
+                  isDark={isDark}
+                />
+              </th>
+            ))}
+          </tr>
+        </thead>
+
+        <tbody>
+          {data.map((row, i) => (
+            <tr
+              key={i}
+              className={
+                isDark
+                  ? 'odd:bg-white/[0.025] border-b border-white/5'
+                  : 'odd:bg-gray-50 border-b border-gray-100'
+              }
+            >
+              {header.map((_, j) => (
+                <td
+                  key={j}
+                  className="px-3 py-2.5"
+                >
+                  <InlineText
+                    value={row[j] || '—'}
+                    isDark={isDark}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function renderFormattedText(
+  text: string,
+  isDark: boolean,
+  onSuggestionClick?: (q: string) => void
+) {
+  const youtubeIds = new Set<string>();
+
+  const youtubeRegex =
+    /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/g;
+
+  const withoutVideos = text.replace(
+    youtubeRegex,
+    (_full, id: string) => {
+      youtubeIds.add(id);
+      return '';
     }
-  }
-  
-  processedText = finalText.replace(/\]\s*\n\s*\(/g, '](');
-  const lines = processedText.split('\n');
+  );
+
   const elements: React.ReactNode[] = [];
 
-  const extractAttr = (line: string, attr: string) => {
-    const match = line.match(new RegExp(`${attr}="([^"]+)"`));
-    return match ? match[1] : '';
-  };
+  const lines = withoutVideos
+    .replace(/\r\n/g, '\n')
+    .split('\n');
 
-  lines.forEach((line, index) => {
+  const tableLine = (line: string) =>
+    /^\s*\|.+\|\s*$/.test(line);
+
+  const isDivider = (line: string) =>
+    /^\s*\|(?:\s*:?-{3,}:?\s*\|)+\s*$/.test(line);
+
+  let codeFence = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const trimmed = line.trim();
-    if (trimmed.startsWith('```')) return;
 
-    // 🛡️ تصفية سريعة لتجاهل أي رموز نصية مشوهة أو أعمدة مكسورة
-    if (/^\|[\s\-:|0-9]+(\|[\s\-:|0-9]*)+$/.test(trimmed) || trimmed.includes('| - |')) {
-      return;
+    if (trimmed.startsWith('```')) {
+      codeFence = !codeFence;
+      continue;
     }
 
-    if (trimmed.includes('<aifball-')) {
-      // 1. Live Scores
-      if (trimmed.includes('<aifball-livescores')) {
-        const leagueName = extractAttr(trimmed, 'league') || 'ksa.1'; 
-        const matchDate = extractAttr(trimmed, 'date') || 'today'; 
-        elements.push(
-          <div key={`livescores-${index}`} className="my-5 w-full">
-            <LiveSportsWidget date={matchDate} isDark={isDark} league={leagueName} />
-          </div>
-        );
-        return;
-      }
-
-      // 2. Standings
-      if (trimmed.includes('<aifball-standings')) {
-        if (!trimmed.includes('>')) return;
-        const leagueCode = extractAttr(trimmed, 'league') || 'ksa.1';
-        
-        let leagueName = 'دوري روشن السعودي';
-        if (leagueCode === 'eng.1') leagueName = 'الدوري الإنجليزي الممتاز';
-        else if (leagueCode === 'esp.1') leagueName = 'الدوري الإسباني';
-        else if (leagueCode === 'ita.1') leagueName = 'الدوري الإيطالي';
-        else if (leagueCode === 'ger.1') leagueName = 'الدوري الألماني';
-        else if (leagueCode === 'fra.1') leagueName = 'الدوري الفرنسي';
-
-        elements.push(
-          <div key={`standings-${index}`} className="my-5 w-full">
-            <LeagueDashboard isDark={isDark} leagueCode={leagueCode} leagueName={leagueName} season="2026" />
-          </div>
-        );
-        return;
-      }
-
-      // 3. المكونات الحقيقية الأخرى
-      if (!trimmed.includes('>')) return;
-
-      const tagMatch = extractAttr(trimmed, 'match') || extractAttr(trimmed, 'name');
-      const tagUrl = extractAttr(trimmed, 'match_url');
-
-      if (trimmed.includes('<aifball-match-report') || trimmed.includes('<aifball-shotmap')) {
-        if (!tagMatch) return;
-        elements.push(
-          <div key={`report-${index}`} className="my-5 w-full">
-            <MatchReport autoMatchUrl={tagUrl} isDark={isDark} matchName={tagMatch} />
-          </div>
-        );
-        return;
-      }
-
-      if (trimmed.includes('<aifball-compare')) {
-        const p1 = extractAttr(trimmed, 'player1');
-        const p2 = extractAttr(trimmed, 'player2');
-        if (!p1 || !p2) return;
-        elements.push(
-          <div key={`compare-${index}`} className="my-5 w-full">
-            <PlayerComparison isDark={isDark} player1={p1} player2={p2} />
-          </div>
-        );
-        return;
-      }
-
-      if (trimmed.includes('<aifball-player')) {
-        const playerName = extractAttr(trimmed, 'name') || extractAttr(trimmed, 'player');
-        if (!playerName) return;
-        elements.push(
-          <div key={`player-${index}`} className="my-5 w-full">
-            <PlayerProfile isDark={isDark} playerName={playerName} />
-          </div>
-        );
-        return;
-      }
-
-      const parseCustomTag = (tagName: string, icon: string, titlePrefix: string) => {
-        if (trimmed.includes(`<${tagName}`)) {
-          const matchName = extractAttr(trimmed, 'match') || extractAttr(trimmed, 'name') || extractAttr(trimmed, 'player1');
-          const p2 = extractAttr(trimmed, 'player2');
-          const url = extractAttr(trimmed, 'match_url');
-          const displayTitle = p2 ? `${matchName} ضد ${p2}` : matchName;
-
-          elements.push(
-            <div key={`${tagName}-${index}`} className={`my-4 p-4 rounded-2xl border flex items-center justify-between shadow-md transition-all ${isDark ? 'bg-gradient-to-r from-emerald-950/40 to-black/40 border-emerald-800/40' : 'bg-gradient-to-r from-emerald-50 to-white border-emerald-200'}`}>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{icon}</span>
-                <div>
-                  <h4 className={`text-xs font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-emerald-500' : 'text-emerald-700'}`}>{titlePrefix}</h4>
-                  <p className={`text-sm sm:text-base font-bold ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{displayTitle}</p>
-                </div>
-              </div>
-              {url && (
-                <a href={url} target="_blank" rel="noopener noreferrer" className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ${isDark ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}>
-                  عرض التفاصيل ↗
-                </a>
-              )}
-            </div>
-          );
-          return true;
-        }
-        return false;
-      };
-
-      if (parseCustomTag('aifball-summary', '📺', 'ملخص المباراة')) return;
-      if (parseCustomTag('aifball-training', '🏃‍♂️', 'تمرين تكتيكي')) return;
-    }
-
-    const isSuggestion = trimmed.startsWith('❓') || trimmed.includes('هل تريد') || trimmed.includes('هل ترغب') || trimmed.includes('هل تود');
-    if (isSuggestion) {
-      const questionText = trimmed.replace(/^[-*•❓\s]+/, '').trim();
-      if (questionText) suggestedQuestions.push(questionText);
-      return;
-    }
-
-    if (trimmed.startsWith('|')) {
-      return;
+    if (codeFence) {
+      elements.push(
+        <pre
+          key={i}
+          className="whitespace-pre-wrap text-xs"
+        >
+          {line}
+        </pre>
+      );
+      continue;
     }
 
     if (!trimmed) {
-      elements.push(<div key={index} className="h-1.5" />);
-    } else if (trimmed.startsWith('### ')) {
-      elements.push(<h3 key={index} className={`text-base sm:text-lg font-bold mt-4 mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{renderInlineText(trimmed.replace(/^###\s+/, ''), isDark)}</h3>);
-    } else if (trimmed.startsWith('## ')) {
-      elements.push(<h2 key={index} className={`text-lg sm:text-xl font-bold mt-5 mb-2 pb-2 border-b ${isDark ? 'text-emerald-400 border-emerald-500/20' : 'text-emerald-700 border-emerald-200'}`}>{renderInlineText(trimmed.replace(/^##\s+/, ''), isDark)}</h2>);
-    } else if (trimmed.startsWith('# ')) {
-      elements.push(<h1 key={index} className={`text-xl sm:text-2xl font-bold mt-5 mb-3 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{renderInlineText(trimmed.replace(/^#\s+/, ''), isDark)}</h1>);
-    } else if (/^[-*+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
-      const isNumbered = /^\d+\.\s+/.test(trimmed);
-      const textPart = trimmed.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '');
-      const bullet = isNumbered ? trimmed.match(/^\d+\./)![0] : '•';
       elements.push(
-        <div key={index} className={`flex items-start gap-2.5 my-1.5 pr-2 border-r-2 ${isDark ? 'border-emerald-500/40' : 'border-emerald-400'}`}>
-          <span className={`mt-0.5 font-bold whitespace-nowrap text-xs sm:text-sm ${isDark ? 'text-emerald-500' : 'text-emerald-600'}`}>{bullet}</span>
-          <span className={`flex-1 leading-relaxed text-sm sm:text-[15px] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{renderInlineText(textPart, isDark)}</span>
-        </div>
+        <div key={i} className="h-2" />
       );
-    } else if (trimmed.startsWith('![') && trimmed.includes('](') && trimmed.endsWith(')')) {
-      const altMatch = trimmed.match(/!\[(.*?)\]/);
-      const urlMatch = trimmed.match(/\((.*?)\)/);
-      if (urlMatch && urlMatch[1]) {
+      continue;
+    }
+
+    // Markdown tables
+    if (tableLine(line)) {
+      const group = [line];
+
+      while (
+        i + 1 < lines.length &&
+        tableLine(lines[i + 1])
+      ) {
+        group.push(lines[++i]);
+      }
+
+      if (
+        group.length >= 2 &&
+        isDivider(group[1])
+      ) {
         elements.push(
-          <div key={index} className={`my-4 rounded-2xl overflow-hidden border shadow-lg p-2 relative group w-full ${isDark ? 'border-white/10 bg-black/40' : 'border-gray-200 bg-white'}`}>
-            <img src={urlMatch[1]} alt={altMatch ? altMatch[1] : 'صورة رياضية'} onError={(e) => { e.currentTarget.src = '/logo.png'; }} className={`w-full h-auto rounded-xl object-contain max-h-[28rem] ${isDark ? 'bg-black/30' : 'bg-gray-50'}`} />
+          <MarkdownTable
+            key={`table-${i}`}
+            lines={group}
+            isDark={isDark}
+          />
+        );
+      } else {
+        elements.push(
+          <pre
+            key={`raw-table-${i}`}
+            className="overflow-x-auto whitespace-pre-wrap text-xs"
+          >
+            {group.join('\n')}
+          </pre>
+        );
+      }
+
+      continue;
+    }
+
+    // AiFBall custom tags
+    const tag = trimmed.match(
+      /^<(aifball-[\w-]+)\b[^>]*\/?>(?:<\/\1>)?$/i
+    );
+
+    if (tag) {
+      const name = tag[1].toLowerCase();
+      const attrs = attrsOf(trimmed);
+
+      const league =
+        LEAGUES[attrs.league]
+          ? attrs.league
+          : 'ksa.1';
+
+      if (name === 'aifball-livescores') {
+        const date = [
+          'today',
+          'yesterday',
+          'tomorrow',
+        ].includes(attrs.date)
+          ? attrs.date
+          : 'today';
+
+        elements.push(
+          <div
+            key={i}
+            className="my-5 w-full"
+          >
+            <LiveSportsWidget
+              date={date}
+              isDark={isDark}
+              league={league}
+            />
+          </div>
+        );
+
+        continue;
+      }
+
+      if (name === 'aifball-standings') {
+        elements.push(
+          <div
+            key={i}
+            className="my-5 w-full"
+          >
+            <LeagueDashboard
+              isDark={isDark}
+              leagueCode={league}
+              leagueName={LEAGUES[league]}
+            />
+          </div>
+        );
+
+        continue;
+      }
+
+      if (
+        name === 'aifball-match-report' ||
+        name === 'aifball-shotmap'
+      ) {
+        const matchName = attrs.match;
+
+        const matchUrl = safeUrl(
+          attrs.match_url || ''
+        );
+
+        const is365 =
+          matchUrl &&
+          /^([\w-]+\.)*365scores\.com$/i.test(
+            new URL(matchUrl).hostname
+          );
+
+        if (!matchName || !is365) {
+          elements.push(
+            <p
+              key={i}
+              className="my-2 text-amber-500"
+            >
+              تعذر عرض{' '}
+              {name === 'aifball-shotmap'
+                ? 'خريطة التسديدات'
+                : 'تقرير المباراة'}
+              : رابط المباراة غير متوفر أو غير صالح.
+            </p>
+          );
+
+          continue;
+        }
+
+        // مؤقتًا يستخدم الوسمان MatchReport.
+        // سيتم فصل ShotMap بعد إصلاح API الخاص به.
+        elements.push(
+          <div
+            key={i}
+            className="my-5 w-full"
+          >
+            <MatchReport
+              matchName={matchName}
+              autoMatchUrl={matchUrl!}
+              isDark={isDark}
+            />
+          </div>
+        );
+
+        continue;
+      }
+
+      if (name === 'aifball-player') {
+        const playerName =
+          attrs.name || attrs.player;
+
+        if (playerName) {
+          elements.push(
+            <div
+              key={i}
+              className="my-5"
+            >
+              <PlayerProfile
+                playerName={playerName}
+                isDark={isDark}
+              />
+            </div>
+          );
+        }
+
+        continue;
+      }
+
+      if (name === 'aifball-compare') {
+        if (
+          attrs.player1 &&
+          attrs.player2
+        ) {
+          elements.push(
+            <div
+              key={i}
+              className="my-5"
+            >
+              <PlayerComparison
+                player1={attrs.player1}
+                player2={attrs.player2}
+                isDark={isDark}
+              />
+            </div>
+          );
+        }
+
+        continue;
+      }
+
+      if (
+        name === 'aifball-summary' ||
+        name === 'aifball-training'
+      ) {
+        const title =
+          name === 'aifball-summary'
+            ? '📺 ملخص المباراة'
+            : '🏃‍♂️ تمرين تكتيكي';
+
+        const url = safeUrl(
+          attrs.match_url || ''
+        );
+
+        elements.push(
+          <div
+            key={i}
+            className={`my-4 p-4 rounded-2xl border ${
+              isDark
+                ? 'bg-emerald-950/30 border-emerald-800/40'
+                : 'bg-emerald-50 border-emerald-200'
+            }`}
+          >
+            <strong>{title}</strong>
+
+            <p>
+              {attrs.match ||
+                attrs.name ||
+                ''}
+            </p>
+
+            {url && (
+              <a
+                className="text-emerald-500 underline"
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                عرض التفاصيل
+              </a>
+            )}
+          </div>
+        );
+
+        continue;
+      }
+
+      elements.push(
+        <p
+          key={i}
+          className="text-amber-500 text-xs"
+        >
+          هذا المكون غير مدعوم حاليًا: {name}
+        </p>
+      );
+
+      continue;
+    }
+
+    // Hide incomplete streaming tags.
+    if (trimmed.startsWith('<aifball-')) {
+      continue;
+    }
+
+    const image = trimmed.match(
+      /^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/
+    );
+
+    if (image) {
+      const url = safeUrl(image[2]);
+
+      if (url) {
+        elements.push(
+          <div
+            key={i}
+            className={`my-4 rounded-2xl overflow-hidden border p-2 ${
+              isDark
+                ? 'border-white/10'
+                : 'border-gray-200'
+            }`}
+          >
+            <img
+              src={url}
+              alt={
+                image[1] ||
+                'صورة رياضية'
+              }
+              className="w-full h-auto rounded-xl object-contain max-h-[28rem]"
+            />
           </div>
         );
       }
-    } else {
-      elements.push(<p key={index} className={`leading-relaxed my-1.5 text-sm sm:text-[15px] ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{renderInlineText(trimmed, isDark)}</p>);
-    }
-  });
 
-  if (youtubeIds.length > 0) {
+      continue;
+    }
+
+    if (/^#{1,3}\s/.test(trimmed)) {
+      const depth =
+        trimmed.match(/^#+/)![0].length;
+
+      const heading = trimmed.replace(
+        /^#{1,3}\s+/,
+        ''
+      );
+
+      elements.push(
+        <div
+          key={i}
+          className={`${
+            depth === 1
+              ? 'text-xl'
+              : depth === 2
+                ? 'text-lg'
+                : 'text-base'
+          } font-extrabold mt-4 mb-2 ${
+            isDark
+              ? 'text-emerald-400'
+              : 'text-emerald-700'
+          }`}
+        >
+          <InlineText
+            value={heading}
+            isDark={isDark}
+          />
+        </div>
+      );
+
+      continue;
+    }
+
+    if (
+      /^([-*+]\s+|\d+\.\s+)/.test(trimmed)
+    ) {
+      const bullet =
+        trimmed.match(/^\d+\./)?.[0] ||
+        '•';
+
+      elements.push(
+        <div
+          key={i}
+          className="flex items-start gap-2 my-1.5 pr-2 border-r-2 border-emerald-500/40"
+        >
+          <span className="text-emerald-500 font-bold">
+            {bullet}
+          </span>
+
+          <span className="flex-1">
+            <InlineText
+              value={trimmed.replace(
+                /^([-*+]\s+|\d+\.\s+)/,
+                ''
+              )}
+              isDark={isDark}
+            />
+          </span>
+        </div>
+      );
+
+      continue;
+    }
+
+    if (
+      /^(❓\s*|هل تريد|هل ترغب|هل تود)/.test(
+        trimmed
+      ) &&
+      onSuggestionClick
+    ) {
+      const question = trimmed.replace(
+        /^❓\s*/,
+        ''
+      );
+
+      elements.push(
+        <button
+          key={i}
+          onClick={() =>
+            onSuggestionClick(question)
+          }
+          className="my-2 px-3 py-2 rounded-xl border border-emerald-500/30 text-emerald-500 text-xs font-bold hover:bg-emerald-500/10"
+        >
+          {question}
+        </button>
+      );
+
+      continue;
+    }
+
     elements.push(
-      <div key="youtube-embeds" className={`mt-6 pt-4 border-t ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
-        <h4 className={`font-bold mb-3 flex items-center gap-2 text-sm ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-          <span>🎥</span> روابط ملخصات اليوتيوب
-        </h4>
-        {youtubeIds.map((vid) => (
-          <div key={vid} className={`rounded-2xl overflow-hidden border shadow-xl mb-6 ${isDark ? 'border-emerald-500/30 bg-black/40' : 'border-emerald-200 bg-white'}`}>
-            <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-emerald-950/50 border-white/10' : 'bg-emerald-50 border-gray-200'}`}>
-              <span className={`text-xs sm:text-sm font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>الملخص الرسمي</span>
-              <a href={`https://www.youtube.com/watch?v=${vid}`} target="_blank" rel="noopener noreferrer" className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white`}>
-                مشاهدة على يوتيوب ↗
-              </a>
-            </div>
-            <div className="relative w-full aspect-video bg-black">
-              <iframe src={`https://www.youtube-nocookie.com/embed/${vid}?rel=0&modestbranding=1`} title="AiFBall Live Video Match" className="absolute top-0 left-0 w-full h-full border-0 object-cover" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
-            </div>
-            <div className={`px-4 py-2 text-center text-[10px] sm:text-xs ${isDark ? 'bg-black/60 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
-              إذا لم يعمل المشغل هنا، يمكنك الضغط على زر <strong className="text-red-500">"مشاهدة على يوتيوب"</strong> في الأعلى للمشاهدة مباشرة.
-            </div>
-          </div>
-        ))}
-      </div>
+      <p
+        key={i}
+        className={`my-1.5 leading-relaxed text-sm sm:text-[15px] ${
+          isDark
+            ? 'text-gray-300'
+            : 'text-gray-700'
+        }`}
+      >
+        <InlineText
+          value={trimmed}
+          isDark={isDark}
+        />
+      </p>
     );
   }
 
-  if (suggestedQuestions.length > 0) {
+  // YouTube embeds
+  if (youtubeIds.size) {
     elements.push(
-      <div key="suggested-questions" className="mt-4 flex flex-wrap gap-2 w-full">
-        {suggestedQuestions.map((q, idx) => (
-          <button key={`sq-${idx}`} onClick={() => onSuggestionClick && onSuggestionClick(q)} className={`inline-block text-right p-2 px-3 rounded-xl border transition-all duration-200 shadow-sm font-bold text-[11px] sm:text-xs cursor-pointer hover:-translate-y-0.5 active:translate-y-0 ${isDark ? 'bg-emerald-900/40 hover:bg-emerald-800/60 border-emerald-700/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'}`}>
-            {q}
-          </button>
-        ))}
+      <div
+        key="videos"
+        className="mt-6 pt-4 border-t border-emerald-500/20"
+      >
+        <h4 className="font-bold text-emerald-500 mb-3">
+          🎥 روابط ملخصات يوتيوب
+        </h4>
+
+        {Array.from(youtubeIds).map(
+          (id) => (
+            <div
+              key={id}
+              className="rounded-2xl overflow-hidden border border-emerald-500/20 mb-5"
+            >
+              <a
+                className="block p-3 text-xs font-bold text-red-500"
+                href={`https://www.youtube.com/watch?v=${id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                مشاهدة على يوتيوب ↗
+              </a>
+
+              <div className="relative aspect-video bg-black">
+                <iframe
+                  className="absolute inset-0 w-full h-full border-0"
+                  src={`https://www.youtube-nocookie.com/embed/${id}?rel=0`}
+                  title="ملخص مباراة"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          )
+        )}
       </div>
     );
   }
@@ -349,389 +839,1049 @@ function renderFormattedText(text: string, isDark: boolean, onSuggestionClick?: 
   return elements;
 }
 
-const STORAGE_KEY = 'aifball_chat_history_v12';
-const THEME_KEY = 'aifball_theme';
+function parseSSEFrame(
+  frame: string
+): Record<string, unknown> | null {
+  const data = frame
+    .split(/\r?\n/)
+    .filter((line) =>
+      line.startsWith('data:')
+    )
+    .map((line) =>
+      line.slice(5).trimStart()
+    )
+    .join('\n');
+
+  if (
+    !data ||
+    data === '[DONE]'
+  ) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(data) as Record<
+      string,
+      unknown
+    >;
+  } catch {
+    return null;
+  }
+}
 
 export default function FootPlayChat() {
-  const { user } = useUser(); 
+  const { user } = useUser();
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [loadingSeconds, setLoadingSeconds] = useState(0); 
+  const [messages, setMessages] =
+    useState<Message[]>([]);
 
-  const [conversationId, setConversationId] = useState('');
-  const [currentSessionId, setCurrentSessionId] = useState<string>('');
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [attachedFiles, setAttachedFiles] = useState<{file: File, url: string}[]>([]);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [input, setInput] =
+    useState('');
 
-  const [showLiveScores, setShowLiveScores] = useState(false);
+  const [loading, setLoading] =
+    useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [
+    loadingSeconds,
+    setLoadingSeconds,
+  ] = useState(0);
+
+  const [
+    conversationId,
+    setConversationId,
+  ] = useState('');
+
+  const [
+    currentSessionId,
+    setCurrentSessionId,
+  ] = useState('');
+
+  const [sessions, setSessions] =
+    useState<ChatSession[]>([]);
+
+  const [
+    sidebarOpen,
+    setSidebarOpen,
+  ] = useState(false);
+
+  const [
+    isListening,
+    setIsListening,
+  ] = useState(false);
+
+  const [
+    attachedFiles,
+    setAttachedFiles,
+  ] = useState<AttachedFile[]>([]);
+
+  const [
+    isDarkMode,
+    setIsDarkMode,
+  ] = useState(true);
+
+  const [
+    showLiveScores,
+    setShowLiveScores,
+  ] = useState(false);
+
+  const fileInputRef =
+    useRef<HTMLInputElement>(null);
+
+  const messagesEndRef =
+    useRef<HTMLDivElement>(null);
+
+  const sessionsRef =
+    useRef<ChatSession[]>([]);
+
+  const activeRequest =
+    useRef<AbortController | null>(null);
+
+  const activeRequestSession =
+    useRef<string | null>(null);
 
   const suggestionCards = [
-    { question: 'داشبورد لاسلوب لعب الاتحاد', tag: 'تحليل تكتيكي', icon: '📋' },
-    { question: 'ما هو جدول ترتيب دوري روشن السعودي؟', tag: 'ترتيب وإحصائيات', icon: '📊' },
-    { question: 'أهداف وملخصات أبرز مباريات اليوم', tag: 'أهداف وملخصات', icon: '🎬' },
-    { question: 'قارن بين رونالدو وميسي', tag: 'مقارنة لاعبين', icon: '⚔️' },
+    {
+      question:
+        'داشبورد لأسلوب لعب الاتحاد',
+      tag: 'تحليل تكتيكي',
+      icon: '📋',
+    },
+    {
+      question:
+        'ما هو جدول ترتيب دوري روشن السعودي؟',
+      tag: 'ترتيب وإحصائيات',
+      icon: '📊',
+    },
+    {
+      question:
+        'أهداف وملخصات أبرز مباريات اليوم',
+      tag: 'أهداف وملخصات',
+      icon: '🎬',
+    },
+    {
+      question:
+        'قارن بين رونالدو وميسي',
+      tag: 'مقارنة لاعبين',
+      icon: '⚔️',
+    },
   ];
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem(THEME_KEY);
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark');
-    } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setIsDarkMode(prefersDark);
+    const savedTheme =
+      localStorage.getItem(THEME_KEY);
+
+    setIsDarkMode(
+      savedTheme
+        ? savedTheme === 'dark'
+        : window.matchMedia(
+            '(prefers-color-scheme: dark)'
+          ).matches
+    );
+
+    try {
+      const raw =
+        localStorage.getItem(
+          STORAGE_KEY
+        );
+
+      if (raw) {
+        const saved = JSON.parse(raw);
+
+        if (Array.isArray(saved)) {
+          sessionsRef.current = saved;
+          setSessions(saved);
+        }
+      }
+    } catch {
+      // Invalid old history
     }
   }, []);
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    localStorage.setItem(THEME_KEY, newTheme ? 'dark' : 'light');
-  };
-
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (loading) {
-      setLoadingSeconds(0);
-      interval = setInterval(() => {
-        setLoadingSeconds((prev) => prev + 1);
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    if (!loading) return;
+
+    setLoadingSeconds(0);
+
+    const id = window.setInterval(
+      () =>
+        setLoadingSeconds(
+          (n) => n + 1
+        ),
+      1000
+    );
+
+    return () =>
+      window.clearInterval(id);
   }, [loading]);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setSessions(JSON.parse(saved));
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: 'smooth',
+    });
   }, [messages, loading]);
 
+  useEffect(
+    () => () => {
+      activeRequest.current?.abort();
+    },
+    []
+  );
+
+  const saveSession = useCallback(
+    (
+      id: string,
+      conv: string,
+      msgs: Message[]
+    ) => {
+      const title =
+        msgs
+          .find(
+            (m) => m.role === 'user'
+          )
+          ?.content.slice(0, 30) ||
+        'محادثة جديدة';
+
+      const entry: ChatSession = {
+        id,
+        title:
+          title +
+          (title.length >= 30
+            ? '...'
+            : ''),
+        conversationId: conv,
+        messages: msgs,
+        updatedAt:
+          new Date().toISOString(),
+      };
+
+      const next = [
+        entry,
+        ...sessionsRef.current.filter(
+          (s) => s.id !== id
+        ),
+      ];
+
+      sessionsRef.current = next;
+
+      setSessions(next);
+
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify(next)
+        );
+      } catch {
+        // Storage full
+      }
+    },
+    []
+  );
+
+  const startNewChat = () => {
+    activeRequest.current?.abort();
+
+    activeRequestSession.current = null;
+
+    setLoading(false);
+    setMessages([]);
+    setConversationId('');
+    setCurrentSessionId('');
+    setInput('');
+
+    setAttachedFiles((prev) => {
+      prev.forEach((x) =>
+        URL.revokeObjectURL(x.url)
+      );
+
+      return [];
+    });
+
+    setSidebarOpen(false);
+  };
+
   const handleVoiceSearch = () => {
-    if (typeof window === 'undefined') return;
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert('متصفحك لا يدعم البحث الصوتي.');
-      return;
-    }
-    if (isListening) {
-      setIsListening(false);
-      return;
-    }
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ar-SA';
-    recognition.onstart = () => setIsListening(true);
-    recognition.onresult = (event: any) => {
-      setInput((prev) => (prev ? `${prev} ${event.results[0][0].transcript}` : event.results[0][0].transcript));
-      setIsListening(false);
+    const w = window as Window & {
+      SpeechRecognition?: new () => any;
+      webkitSpeechRecognition?: new () => any;
     };
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
+
+    const Recognition =
+      w.SpeechRecognition ||
+      w.webkitSpeechRecognition;
+
+    if (!Recognition) {
+      alert(
+        'متصفحك لا يدعم البحث الصوتي.'
+      );
+      return;
+    }
+
+    if (isListening) return;
+
+    const recognition =
+      new Recognition();
+
+    recognition.lang = 'ar-SA';
+
+    recognition.onstart = () =>
+      setIsListening(true);
+
+    recognition.onresult = (
+      event: any
+    ) => {
+      setInput((prev) =>
+        `${prev} ${event.results[0][0].transcript}`.trim()
+      );
+    };
+
+    recognition.onerror = () =>
+      setIsListening(false);
+
+    recognition.onend = () =>
+      setIsListening(false);
+
     recognition.start();
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files).map(file => ({
+  const handleFileSelect = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = Array.from(
+      event.target.files || []
+    ).filter((f) =>
+      f.type.startsWith('image/')
+    );
+
+    setAttachedFiles((prev) => [
+      ...prev,
+      ...files.map((file) => ({
         file,
-        url: URL.createObjectURL(file) 
-      }));
-      setAttachedFiles((prev) => [...prev, ...newFiles]);
-    }
+        url: URL.createObjectURL(file),
+      })),
+    ]);
+
+    event.target.value = '';
   };
 
-  const sendMessage = async (textToSend?: string) => {
-    const query = (textToSend ?? input).trim();
-    if ((!query && attachedFiles.length === 0) || loading) return;
+  const sendMessage = async (
+    textToSend?: string
+  ) => {
+    const query = (
+      textToSend ?? input
+    ).trim();
 
-    const cleanQuery = query.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?؟]/g, "").trim();
-    const greetings = ['مرحبا', 'هلا', 'السلام عليكم', 'هاي', 'hi', 'hello', 'صباح الخير', 'مساء الخير'];
-    
-    if (greetings.includes(cleanQuery) && attachedFiles.length === 0) {
-      const assistantReply = 'مرحبا، الله حيه، أنا فوتبلاي مساعدك الرياضي. ماذا تريد أن تعرف؟';
-      const newMsgs: Message[] = [
-        ...messages, 
-        { role: 'user', content: query, userQuery: query },
-        { role: 'assistant', content: assistantReply }
-      ];
-      setMessages(newMsgs);
-      setInput('');
-      
-      let activeSessionId = currentSessionId;
-      if (!activeSessionId) {
-        activeSessionId = Date.now().toString();
-        setCurrentSessionId(activeSessionId);
-      }
-
-      setSessions(prevSessions => {
-        const idx = prevSessions.findIndex(s => s.id === activeSessionId);
-        const updatedSession = { id: activeSessionId, title: 'محادثة جديدة', conversationId, messages: newMsgs, updatedAt: new Date().toISOString() };
-        const newSessions = [...prevSessions];
-        if (idx >= 0) newSessions[idx] = updatedSession; else newSessions.unshift(updatedSession);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newSessions));
-        return newSessions;
-      });
-      return; 
+    if (
+      (!query &&
+        attachedFiles.length === 0) ||
+      loading
+    ) {
+      return;
     }
 
-    const imageUrls = attachedFiles.map(f => f.url);
-    const newMessages: Message[] = [...messages, { role: 'user', content: query, userQuery: query, imageUrls }];
-    setMessages([...newMessages, { role: 'assistant', content: '', userQuery: query }]);
+    const id =
+      currentSessionId ||
+      `${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+
+    if (!currentSessionId) {
+      setCurrentSessionId(id);
+    }
+
+    const files = [
+      ...attachedFiles,
+    ];
+
+    const imageUrls = files.map(
+      (f) => f.url
+    );
+
+    const userMsg: Message = {
+      role: 'user',
+      content: query,
+      userQuery: query,
+      imageUrls,
+    };
+
+    const base = [
+      ...messages,
+      userMsg,
+    ];
+
     setInput('');
-    
-    const filesToUpload = [...attachedFiles];
     setAttachedFiles([]);
+
+    const normalized = query
+      .toLowerCase()
+      .replace(
+        /[.,\/#!$%^&*;:{}=_`~()?؟!،]/g,
+        ''
+      )
+      .trim();
+
+    const greetings = [
+      'مرحبا',
+      'هلا',
+      'السلام عليكم',
+      'هاي',
+      'hi',
+      'hello',
+      'صباح الخير',
+      'مساء الخير',
+    ];
+
+    if (
+      greetings.includes(normalized) &&
+      files.length === 0
+    ) {
+      const result: Message[] = [
+        ...base,
+        {
+          role: 'assistant',
+          content: GREETING,
+        },
+      ];
+
+      setMessages(result);
+
+      saveSession(
+        id,
+        conversationId,
+        result
+      );
+
+      return;
+    }
+
+    const initial: Message[] = [
+      ...base,
+      {
+        role: 'assistant',
+        content: '',
+        userQuery: query,
+      },
+    ];
+
+    setMessages(initial);
     setLoading(true);
 
-    let activeSessionId = currentSessionId;
-    if (!activeSessionId) {
-      activeSessionId = Date.now().toString();
-      setCurrentSessionId(activeSessionId);
-    }
-    
-    let finalConvId = conversationId;
-    let finalAnswer = '';
-    const requestStartTime = Date.now();
-    let isThinking = true;
-    let finalThinkingTime = 0;
+    const controller =
+      new AbortController();
 
-    const saveSessionProgress = (msgs: Message[]) => {
-      setSessions(prevSessions => {
-        const idx = prevSessions.findIndex(s => s.id === activeSessionId);
-        const title = msgs.find(m => m.role === 'user')?.content.slice(0, 30) || 'محادثة جديدة';
-        const updatedSession = { id: activeSessionId, title: title + (title.length >= 30 ? '...' : ''), conversationId: finalConvId, messages: msgs, updatedAt: new Date().toISOString() };
-        const newSessions = [...prevSessions];
-        if (idx >= 0) newSessions[idx] = updatedSession; else newSessions.unshift(updatedSession);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newSessions));
-        return newSessions;
-      });
+    activeRequest.current =
+      controller;
+
+    activeRequestSession.current =
+      id;
+
+    const timeoutId =
+      window.setTimeout(
+        () => controller.abort(),
+        90000
+      );
+
+    const started = Date.now();
+
+    let answer = '';
+    let conv = conversationId;
+    let receivedAnswer = false;
+    let latest = initial;
+
+    const update = (
+      content: string,
+      elapsed?: number
+    ) => {
+      latest = [
+        ...latest.slice(0, -1),
+        {
+          ...latest[
+            latest.length - 1
+          ],
+          content,
+          thinkingTime: elapsed,
+        },
+      ];
+
+      if (
+        activeRequestSession.current ===
+        id
+      ) {
+        setMessages(latest);
+      }
+
+      saveSession(
+        id,
+        conv,
+        latest
+      );
     };
 
     try {
-      const uploadedDifyFiles = [];
-      for (const item of filesToUpload) {
-        const formData = new FormData();
-        formData.append('file', item.file);
-        try {
-          const uploadRes = await fetch('/api/files/upload', { method: 'POST', body: formData });
-          if(uploadRes.ok) {
-            const uploadData = await uploadRes.json();
-            if (uploadData && uploadData.id) uploadedDifyFiles.push({ type: 'image', transfer_method: 'local_file', upload_file_id: uploadData.id });
+      const difyFiles: {
+        type: string;
+        transfer_method: string;
+        upload_file_id: string;
+      }[] = [];
+
+      for (const item of files) {
+        const form =
+          new FormData();
+
+        form.append(
+          'file',
+          item.file
+        );
+
+        const upload = await fetch(
+          '/api/files/upload',
+          {
+            method: 'POST',
+            body: form,
+            signal:
+              controller.signal,
           }
-        } catch (e) { console.error("خطأ أثناء رفع الصورة:", e); }
+        );
+
+        if (!upload.ok) {
+          throw new Error(
+            'تعذر رفع الصورة.'
+          );
+        }
+
+        const data =
+          await upload.json();
+
+        if (!data?.id) {
+          throw new Error(
+            'لم يرجع خادم الملفات معرفًا للصورة.'
+          );
+        }
+
+        difyFiles.push({
+          type: 'image',
+          transfer_method:
+            'local_file',
+          upload_file_id:
+            data.id,
+        });
       }
 
-      const requestBody: any = { query: query, conversation_id: conversationId };
-      if (uploadedDifyFiles.length > 0) requestBody.files = uploadedDifyFiles;
+      const res = await fetch(
+        '/api/chat',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':
+              'application/json',
+          },
+          body: JSON.stringify({
+            query,
+            conversation_id:
+              conversationId,
+            ...(difyFiles.length
+              ? {
+                  files: difyFiles,
+                }
+              : {}),
+          }),
+          signal:
+            controller.signal,
+        }
+      );
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90000); 
+      if (!res.ok) {
+        throw new Error(
+          `HTTP ${res.status}`
+        );
+      }
 
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal,
-      });
+      if (!res.body) {
+        throw new Error(
+          'لا يوجد تدفق استجابة من الخادم.'
+        );
+      }
 
-      clearTimeout(timeoutId);
+      const reader =
+        res.body.getReader();
 
-      if (!res.ok) throw new Error('Network response was not ok');
+      const decoder =
+        new TextDecoder();
 
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder('utf-8');
       let buffer = '';
+      let responseDone = false;
 
-      if (reader) {
-        while (true) {
-          let readResult;
-          try {
-             readResult = await reader.read();
-          } catch (streamError) {
-             break; 
+      const handleFrame = (
+        frame: string
+      ) => {
+        const event =
+          parseSSEFrame(frame);
+
+        if (!event) return;
+
+        if (
+          typeof event.conversation_id ===
+          'string'
+        ) {
+          conv =
+            event.conversation_id;
+
+          if (
+            activeRequestSession.current ===
+            id
+          ) {
+            setConversationId(conv);
           }
-          
-          const { done, value } = readResult;
-          if (done) break;
-          
-          if (isThinking) {
-             finalThinkingTime = Math.max(1, Math.floor((Date.now() - requestStartTime) / 1000));
-             isThinking = false;
+        }
+
+        if (
+          event.event === 'error'
+        ) {
+          throw new Error(
+            typeof event.message ===
+              'string'
+              ? event.message
+              : 'Dify stream error'
+          );
+        }
+
+        if (
+          event.event ===
+          'message_end'
+        ) {
+          responseDone = true;
+        }
+
+        if (
+          (event.event ===
+            'message' ||
+            event.event ===
+              'agent_message') &&
+          typeof event.answer ===
+            'string'
+        ) {
+          answer += event.answer;
+
+          receivedAnswer = true;
+
+          update(
+            answer,
+            Math.max(
+              1,
+              Math.floor(
+                (Date.now() -
+                  started) /
+                  1000
+              )
+            )
+          );
+        }
+      };
+
+      while (true) {
+        const {
+          done,
+          value,
+        } = await reader.read();
+
+        if (done) break;
+
+        buffer += decoder.decode(
+          value,
+          {
+            stream: true,
           }
+        );
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+        const frames =
+          buffer.split(
+            /\r?\n\r?\n/
+          );
 
-          for (const line of lines) {
-            const trimmedLine = line.trim();
-            if (trimmedLine.startsWith('data:')) {
-              const dataStr = trimmedLine.replace(/^data:\s*/, '');
-              if (!dataStr || dataStr === '[DONE]') continue;
+        buffer =
+          frames.pop() ?? '';
 
-              try {
-                const parsed = JSON.parse(dataStr);
-                if ((parsed.event === 'message' || parsed.event === 'agent_message') && typeof parsed.answer === 'string') {
-                  
-                  const chunk = parsed.answer;
+        for (
+          const frame of frames
+        ) {
+          handleFrame(frame);
+        }
 
-                  if (chunk.length > 15 && finalAnswer.includes(chunk.trim())) {
-                    continue;
-                  }
-                  if (finalAnswer.length > 15 && chunk.trim().startsWith(finalAnswer.trim())) {
-                    finalAnswer = chunk;
-                  } else {
-                    finalAnswer += chunk;
-                  }
-
-                  finalAnswer = deduplicateText(finalAnswer);
-                  
-                  setMessages(prev => {
-                    const updated = [...prev];
-                    const lastIndex = updated.length - 1;
-                    if (updated[lastIndex].role === 'assistant') {
-                      updated[lastIndex].content = finalAnswer;
-                      updated[lastIndex].thinkingTime = finalThinkingTime;
-                    }
-                    saveSessionProgress(updated);
-                    return updated;
-                  });
-                }
-                if (parsed.conversation_id) {
-                  finalConvId = parsed.conversation_id;
-                  setConversationId(finalConvId);
-                }
-              } catch (e) {}
-            }
-          }
+        if (responseDone) {
+          break;
         }
       }
 
-    } catch (error: any) {
-      setMessages(prev => {
-        const updated = [...prev];
-        const lastIndex = updated.length - 1;
-        if (updated[lastIndex].role === 'assistant') {
-          if (!finalAnswer) {
-            if (error.name === 'AbortError') {
-              updated[lastIndex].content = 'عذراً، استغرق البحث وقتاً طويلاً جداً. حاول تقليل تعقيد السؤال.';
-            } else {
-              updated[lastIndex].content = 'عذراً، تعذر الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت.';
-            }
-          }
-        }
-        return updated;
-      });
+      buffer += decoder.decode();
+
+      if (buffer.trim()) {
+        handleFrame(buffer);
+      }
+
+      if (!receivedAnswer) {
+        update(
+          'عذراً، لم يصل رد من المساعد. حاول مرة أخرى.'
+        );
+      }
+    } catch (error) {
+      const aborted =
+        controller.signal.aborted;
+
+      const message = aborted
+        ? 'عذراً، انتهت مهلة البحث أو تم إيقاف الطلب.'
+        : 'عذراً، تعذر إكمال الاتصال بالخادم. حاول مرة أخرى.';
+
+      update(
+        answer
+          ? `${answer}\n\n⚠️ انقطع الاتصال قبل اكتمال الرد.`
+          : message
+      );
+
+      console.error(
+        'AiFBall chat error:',
+        error
+      );
     } finally {
-      setLoading(false); 
-      setMessages(currentMessages => {
-        saveSessionProgress(currentMessages);
-        return currentMessages;
-      });
+      window.clearTimeout(
+        timeoutId
+      );
+
+      if (
+        activeRequest.current ===
+        controller
+      ) {
+        activeRequest.current =
+          null;
+      }
+
+      if (
+        activeRequestSession.current ===
+        id
+      ) {
+        activeRequestSession.current =
+          null;
+
+        setLoading(false);
+      }
+
+      saveSession(
+        id,
+        conv,
+        latest
+      );
     }
   };
 
-  const startNewChat = () => {
-    setMessages([]); setConversationId(''); setCurrentSessionId(''); setInput(''); setAttachedFiles([]); setSidebarOpen(false);
+  const toggleTheme = () => {
+    const next = !isDarkMode;
+
+    setIsDarkMode(next);
+
+    localStorage.setItem(
+      THEME_KEY,
+      next
+        ? 'dark'
+        : 'light'
+    );
+  };
+
+  const openSession = (
+    s: ChatSession
+  ) => {
+    activeRequest.current?.abort();
+
+    activeRequestSession.current =
+      null;
+
+    setLoading(false);
+
+    setCurrentSessionId(
+      s.id
+    );
+
+    setConversationId(
+      s.conversationId || ''
+    );
+
+    setMessages(
+      s.messages || []
+    );
+
+    setSidebarOpen(false);
   };
 
   return (
-    <div dir="rtl" className={`flex flex-col h-[100dvh] relative overflow-hidden font-saudi transition-colors duration-300 ${isDarkMode ? 'bg-[#131314] text-[#E3E3E3]' : 'bg-gray-50 text-gray-900'}`}>
-      
-      <div className={`absolute inset-0 pointer-events-none z-0 transition-colors duration-300 overflow-hidden ${isDarkMode ? 'bg-[#0a0f0d]' : 'bg-gray-50'}`}>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#1D6B35]/15 rounded-full blur-[120px]"></div>
-        
-        <svg viewBox="0 0 1200 800" className="absolute inset-0 w-full h-full opacity-30" preserveAspectRatio="xMidYMid slice">
-          <g stroke="#10b981" strokeWidth="2.5" fill="none" opacity="0.4">
-            <rect x="100" y="100" width="1000" height="600" rx="10" />
-            <line x1="600" y1="100" x2="600" y2="700" />
-            <circle cx="600" cy="400" r="100" />
-            <circle cx="600" cy="400" r="5" fill="#10b981" />
-            <rect x="950" y="200" width="150" height="400" />
-            <rect x="1100" y="300" width="50" height="200" />
-            <circle cx="1050" cy="400" r="5" fill="#10b981" />
+    <div
+      dir="rtl"
+      className={`flex flex-col h-[100dvh] relative overflow-hidden font-saudi transition-colors duration-300 ${
+        isDarkMode
+          ? 'bg-[#131314] text-[#E3E3E3]'
+          : 'bg-gray-50 text-gray-900'
+      }`}
+    >
+      {/* Background */}
+      <div
+        className={`absolute inset-0 pointer-events-none z-0 transition-colors duration-300 overflow-hidden ${
+          isDarkMode
+            ? 'bg-[#0a0f0d]'
+            : 'bg-gray-50'
+        }`}
+      >
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#1D6B35]/15 rounded-full blur-[120px]" />
+
+        <svg
+          viewBox="0 0 1200 800"
+          className="absolute inset-0 w-full h-full opacity-30"
+          preserveAspectRatio="xMidYMid slice"
+        >
+          <g
+            stroke="#10b981"
+            strokeWidth="2.5"
+            fill="none"
+            opacity="0.4"
+          >
+            <rect
+              x="100"
+              y="100"
+              width="1000"
+              height="600"
+              rx="10"
+            />
+
+            <line
+              x1="600"
+              y1="100"
+              x2="600"
+              y2="700"
+            />
+
+            <circle
+              cx="600"
+              cy="400"
+              r="100"
+            />
+
+            <circle
+              cx="600"
+              cy="400"
+              r="5"
+              fill="#10b981"
+            />
+
+            <rect
+              x="950"
+              y="200"
+              width="150"
+              height="400"
+            />
+
+            <rect
+              x="1100"
+              y="300"
+              width="50"
+              height="200"
+            />
+
+            <circle
+              cx="1050"
+              cy="400"
+              r="5"
+              fill="#10b981"
+            />
+
             <path d="M 950 300 A 80 80 0 0 1 950 500" />
-            <rect x="100" y="200" width="150" height="400" />
-            <rect x="100" y="300" width="50" height="200" />
-            <circle cx="150" cy="400" r="5" fill="#10b981" />
+
+            <rect
+              x="100"
+              y="200"
+              width="150"
+              height="400"
+            />
+
+            <rect
+              x="100"
+              y="300"
+              width="50"
+              height="200"
+            />
+
+            <circle
+              cx="150"
+              cy="400"
+              r="5"
+              fill="#10b981"
+            />
+
             <path d="M 250 300 A 80 80 0 0 0 250 500" />
           </g>
         </svg>
 
-        <div className={`absolute inset-0 ${isDarkMode ? 'bg-gradient-to-b from-[#131314]/40 to-[#131314]/90' : 'bg-white/80'}`}></div>
+        <div
+          className={`absolute inset-0 ${
+            isDarkMode
+              ? 'bg-gradient-to-b from-[#131314]/40 to-[#131314]/90'
+              : 'bg-white/80'
+          }`}
+        />
       </div>
 
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
-        .font-saudi, body, input, button, textarea, h1, h2, h3, p, span { font-family: 'Cairo', sans-serif !important; font-feature-settings: "calt" 1, "liga" 1; }
-        @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .animate-pulse-slow { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        .custom-scrollbar::-webkit-scrollbar { height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: ${isDarkMode ? '#2E3338' : '#D1D5DB'}; border-radius: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #1D6B35; }
+
+        .font-saudi,
+        body,
+        input,
+        button,
+        textarea,
+        h1,
+        h2,
+        h3,
+        p,
+        span {
+          font-family: 'Cairo', sans-serif !important;
+          font-feature-settings: 'calt' 1, 'liga' 1;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: ${
+            isDarkMode
+              ? '#2E3338'
+              : '#D1D5DB'
+          };
+          border-radius: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #1D6B35;
+        }
       `}</style>
 
-      {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/60 z-30 transition-opacity" />}
+      {/* Sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          onClick={() =>
+            setSidebarOpen(false)
+          }
+          className="fixed inset-0 bg-black/60 z-30"
+        />
+      )}
 
-      <aside className={`fixed top-0 right-0 h-full w-72 sm:w-80 backdrop-blur-md border-l z-40 transform transition-all duration-300 flex flex-col ${isDarkMode ? 'bg-[#18191A]/95 border-white/10' : 'bg-white/95 border-gray-200'} ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className={`flex items-center justify-between p-4 border-b ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
+      {/* Sidebar */}
+      <aside
+        className={`fixed top-0 right-0 h-full w-72 sm:w-80 backdrop-blur-md border-l z-40 transform transition-all duration-300 flex flex-col ${
+          isDarkMode
+            ? 'bg-[#18191A]/95 border-white/10'
+            : 'bg-white/95 border-gray-200'
+        } ${
+          sidebarOpen
+            ? 'translate-x-0'
+            : 'translate-x-full'
+        }`}
+      >
+        <div
+          className={`flex items-center justify-between p-4 border-b ${
+            isDarkMode
+              ? 'border-white/10'
+              : 'border-gray-200'
+          }`}
+        >
           <div className="flex items-center gap-2.5">
-            <AiFBallLogo size="sm"/>
-            <span className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>سجل البحوث والمحادثات</span>
+            <AiFBallLogo size="sm" />
+
+            <span className="font-bold text-sm">
+              سجل البحوث والمحادثات
+            </span>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className={`w-8 h-8 rounded-lg transition ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>✕</button>
-        </div>
-        <div className="p-3">
-          <button onClick={startNewChat} className="w-full py-2.5 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow">
-            <span>+</span><span>بدء محادثة جديدة</span>
+
+          <button
+            onClick={() =>
+              setSidebarOpen(false)
+            }
+            className="w-8 h-8 rounded-lg hover:bg-white/10"
+          >
+            ✕
           </button>
         </div>
+
+        <div className="p-3">
+          <button
+            onClick={startNewChat}
+            className="w-full py-2.5 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow"
+          >
+            <span>+</span>
+            <span>بدء محادثة جديدة</span>
+          </button>
+        </div>
+
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5">
           {sessions.map((s) => (
-            <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setConversationId(s.conversationId); setMessages(s.messages); setSidebarOpen(false); }} className={`p-3 rounded-xl cursor-pointer text-xs truncate transition border ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-gray-300 border-transparent hover:border-white/10' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-100 hover:border-gray-300'}`}>
+            <button
+              key={s.id}
+              onClick={() =>
+                openSession(s)
+              }
+              className={`w-full text-right p-3 rounded-xl cursor-pointer text-xs truncate transition border ${
+                isDarkMode
+                  ? 'bg-white/5 hover:bg-white/10 text-gray-300 border-transparent'
+                  : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-100'
+              }`}
+            >
               {s.title}
-            </div>
+            </button>
           ))}
         </div>
-        <div className={`p-4 border-t mt-auto ${isDarkMode ? 'border-white/10 bg-[#131517]' : 'border-gray-200 bg-gray-50'}`}>
+
+        <div
+          className={`p-4 border-t mt-auto ${
+            isDarkMode
+              ? 'border-white/10 bg-[#131517]'
+              : 'border-gray-200 bg-gray-50'
+          }`}
+        >
           <SignedOut>
             <SignInButton mode="modal">
               <button className="w-full py-3 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-600 text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
                 <span>تسجيل الدخول</span>
               </button>
             </SignInButton>
           </SignedOut>
+
           <SignedIn>
-            <div className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
+            <div
+              className={`flex items-center justify-between p-3 rounded-xl border ${
+                isDarkMode
+                  ? 'bg-white/5 border-white/5'
+                  : 'bg-white border-gray-200 shadow-sm'
+              }`}
+            >
               <div className="flex items-center gap-3 w-full">
-                <UserButton afterSignOutUrl="/" appearance={{ elements: { userButtonAvatarBox: "w-9 h-9 rounded-full border-2 border-emerald-500/30 flex-shrink-0" } }} />
+                <UserButton
+                  appearance={{
+                    elements: {
+                      userButtonAvatarBox:
+                        'w-9 h-9 rounded-full border-2 border-emerald-500/30',
+                    },
+                  }}
+                />
+
                 <div className="flex flex-col flex-1 min-w-0">
-                  <div className="flex items-center justify-between w-full">
-                    <span className={`text-xs font-bold truncate pr-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                      {user?.fullName || user?.firstName || 'حسابي'}
-                    </span>
-                    {user?.primaryEmailAddress?.emailAddress === 'khalidassaf44@gmail.com' ? (
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap shadow-sm ${isDarkMode ? 'bg-emerald-900/60 text-emerald-400 border-emerald-500/30' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>المالك</span>
-                    ) : (
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap shadow-sm ${isDarkMode ? 'bg-gray-800 text-gray-400 border-gray-700' : 'bg-gray-100 text-gray-600 border-gray-300'}`}>عضو</span>
-                    )}
-                  </div>
-                  <span className={`text-[10px] text-right mt-0.5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>متصل الآن</span>
+                  <span className="text-xs font-bold truncate">
+                    {user?.fullName ||
+                      user?.firstName ||
+                      'حسابي'}
+                  </span>
+
+                  <span className="text-[10px] text-emerald-500 mt-1">
+                    متصل الآن
+                  </span>
                 </div>
               </div>
             </div>
@@ -739,242 +1889,667 @@ export default function FootPlayChat() {
         </div>
       </aside>
 
-      <header className={`flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b sticky top-0 z-20 backdrop-blur-md transition-colors duration-300 ${isDarkMode ? 'border-white/10 bg-[#131314]/80' : 'border-gray-200 bg-white/80'}`}>
+      {/* Header */}
+      <header
+        className={`flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b sticky top-0 z-20 backdrop-blur-md ${
+          isDarkMode
+            ? 'border-white/10 bg-[#131314]/80'
+            : 'border-gray-200 bg-white/80'
+        }`}
+      >
         <div className="flex items-center gap-2.5">
-          <button onClick={() => setSidebarOpen(true)} className={`w-9 h-9 rounded-xl border flex items-center justify-center transition ${isDarkMode ? 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-600'}`}>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h10" /></svg>
+          <button
+            onClick={() =>
+              setSidebarOpen(true)
+            }
+            className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
+              isDarkMode
+                ? 'bg-white/5 border-white/10'
+                : 'bg-gray-100 border-gray-200'
+            }`}
+          >
+            ☰
           </button>
-          <AiFBallLogo size="md"/>
+
+          <AiFBallLogo size="md" />
+
           <div>
-            <h1 className={`text-base font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>فوتبلاي</h1>
-            <p className={`text-[10px] font-medium ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>صديقك الرياضي</p>
+            <h1 className="text-base font-bold leading-tight">
+              فوتبلاي
+            </h1>
+
+            <p className="text-[10px] font-medium text-emerald-500">
+              صديقك الرياضي
+            </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowLiveScores(true)} className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 transition font-bold text-xs ${isDarkMode ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-600/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'}`}>
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+          <button
+            onClick={() =>
+              setShowLiveScores(true)
+            }
+            className="px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-600/10 text-emerald-500 flex items-center gap-2 font-bold text-xs"
+          >
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             النتائج المباشرة
           </button>
 
-          <button onClick={toggleTheme} className={`w-9 h-9 rounded-xl border flex items-center justify-center transition ${isDarkMode ? 'bg-white/5 hover:bg-white/10 border-white/10 text-yellow-400' : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-600'}`} title="تغيير المظهر">
-            {isDarkMode ? (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
-            )}
+          <button
+            onClick={toggleTheme}
+            className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
+              isDarkMode
+                ? 'bg-white/5 border-white/10 text-yellow-400'
+                : 'bg-gray-100 border-gray-200 text-gray-600'
+            }`}
+            aria-label="تغيير المظهر"
+          >
+            {isDarkMode ? '☀' : '☾'}
           </button>
-          <button onClick={startNewChat} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition hidden sm:block ${isDarkMode ? 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-700'}`}>+ محادثة جديدة</button>
+
+          <button
+            onClick={startNewChat}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium border hidden sm:block ${
+              isDarkMode
+                ? 'bg-white/5 border-white/10'
+                : 'bg-gray-100 border-gray-200'
+            }`}
+          >
+            + محادثة جديدة
+          </button>
         </div>
       </header>
 
+      {/* Main */}
       <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto flex flex-col relative z-10 custom-scrollbar">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
             <div className="text-right space-y-3 mb-6 px-1">
-              <div className={`inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 ${isDarkMode ? 'text-emerald-400 border-emerald-500/40' : 'text-emerald-600 border-emerald-300'}`}>
-                <span>⚽</span><span>HOME OF FOOTBALL</span>
+              <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 text-emerald-500 border-emerald-500/40">
+                <span>⚽</span>
+                <span>HOME OF FOOTBALL</span>
               </div>
-              <h2 className={`text-3xl sm:text-5xl font-extrabold tracking-tight drop-shadow-md ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>أهلاً بك في فوتبلاي</h2>
-              <p className={`text-sm sm:text-base leading-relaxed max-w-2xl font-normal drop-shadow ${isDarkMode ? 'text-gray-200' : 'text-gray-600'}`}>
-                تحليل تكتيكي، تشكيلات مباريات، مقارنات إحصائية متقدمة، وأهداف وملخصات المباريات.. كيف أساعدك اليوم؟
+
+              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight drop-shadow-md">
+                أهلاً بك في فوتبلاي
+              </h2>
+
+              <p
+                className={`text-sm sm:text-base leading-relaxed max-w-2xl ${
+                  isDarkMode
+                    ? 'text-gray-200'
+                    : 'text-gray-600'
+                }`}
+              >
+                تحليل تكتيكي، تشكيلات مباريات،
+                مقارنات إحصائية متقدمة،
+                وأهداف وملخصات المباريات..
+                كيف أساعدك اليوم؟
               </p>
             </div>
+
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
-              {suggestionCards.map((card, i) => (
-                <div key={i} className={`flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl backdrop-blur-sm border shadow-lg min-h-[115px] select-none ${isDarkMode ? 'bg-black/20 border-white/10 opacity-80' : 'bg-white border-gray-200 opacity-90'}`}>
-                  <p className={`text-sm font-bold leading-relaxed line-clamp-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>{card.question}</p>
-                  <div className="flex items-center justify-between w-full mt-3 pt-1">
-                    <span className="text-[10px] sm:text-xs font-bold text-[#22C55E] truncate pl-1">{card.tag}</span>
-                    <span className="text-lg opacity-80">{card.icon}</span>
-                  </div>
-                </div>
-              ))}
+              {suggestionCards.map(
+                (card, i) => (
+                  <button
+                    key={i}
+                    onClick={() =>
+                      sendMessage(
+                        card.question
+                      )
+                    }
+                    className={`flex flex-col justify-between text-right p-4 sm:p-5 rounded-2xl backdrop-blur-sm border shadow-lg min-h-[115px] select-none transition hover:border-emerald-500/50 ${
+                      isDarkMode
+                        ? 'bg-black/20 border-white/10'
+                        : 'bg-white border-gray-200'
+                    }`}
+                  >
+                    <p className="text-sm font-bold leading-relaxed line-clamp-2">
+                      {card.question}
+                    </p>
+
+                    <div className="flex items-center justify-between w-full mt-3 pt-1">
+                      <span className="text-[10px] sm:text-xs font-bold text-[#22C55E] truncate pl-1">
+                        {card.tag}
+                      </span>
+
+                      <span className="text-lg">
+                        {card.icon}
+                      </span>
+                    </div>
+                  </button>
+                )
+              )}
             </div>
           </div>
         ) : (
           <div className="space-y-6 pb-4">
-            {messages.map((msg, i) => (
-              (msg.content && msg.content.trim() !== '') || (msg.imageUrls && msg.imageUrls.length > 0) ? (
-                <div key={i} className="flex items-start gap-4 w-full">
+            {messages.map((msg, i) =>
+              msg.content.trim() ||
+              (msg.imageUrls?.length ??
+                0) > 0 ? (
+                <div
+                  key={i}
+                  className="flex items-start gap-4 w-full"
+                >
                   <div className="flex-shrink-0 mt-1 hidden sm:block">
-                     {msg.role === 'assistant' ? <AiFBallLogo size="sm"/> : <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shadow-sm ${isDarkMode ? 'bg-emerald-700' : 'bg-emerald-600'}`}>أنت</div>}
+                    {msg.role ===
+                    'assistant' ? (
+                      <AiFBallLogo size="sm" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold bg-emerald-700">
+                        أنت
+                      </div>
+                    )}
                   </div>
+
                   <div className="flex flex-col w-full min-w-0">
-                     {msg.role === 'user' ? (
-                        <div className={`text-base sm:text-lg font-bold leading-relaxed break-words ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                           {msg.content}
-                           {msg.imageUrls && msg.imageUrls.length > 0 && (
+                    {msg.role ===
+                    'user' ? (
+                      <div className="text-base sm:text-lg font-bold leading-relaxed break-words">
+                        {msg.content}
+
+                        {msg.imageUrls &&
+                          msg.imageUrls
+                            .length >
+                            0 && (
                             <div className="flex flex-wrap gap-2 mt-3">
-                              {msg.imageUrls.map((url, idx) => (
-                                <img key={idx} src={url} alt="مرفق" className={`w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border shadow-sm ${isDarkMode ? 'border-white/20' : 'border-gray-300'}`} />
-                              ))}
+                              {msg.imageUrls.map(
+                                (
+                                  url,
+                                  idx
+                                ) => (
+                                  <img
+                                    key={
+                                      idx
+                                    }
+                                    src={
+                                      url
+                                    }
+                                    alt="مرفق"
+                                    className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border border-white/20"
+                                  />
+                                )
+                              )}
                             </div>
-                           )}
+                          )}
+                      </div>
+                    ) : (
+                      <div className="w-full">
+                        {msg.thinkingTime !==
+                          undefined &&
+                          msg.thinkingTime >
+                            0 && (
+                            <div className="mb-3">
+                              <span
+                                className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-xs ${
+                                  isDarkMode
+                                    ? 'bg-[#1A1C1E]/80 border-white/5 text-gray-300'
+                                    : 'bg-gray-100 border-gray-200 text-gray-700'
+                                }`}
+                              >
+                                <span className="text-emerald-500">
+                                  ◷
+                                </span>
+
+                                زمن استقبال الإجابة:{' '}
+                                {formatSeconds(
+                                  msg.thinkingTime
+                                )}
+                              </span>
+                            </div>
+                          )}
+
+                        <div
+                          className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-5 shadow-2xl text-sm sm:text-[15px] leading-relaxed break-words ${
+                            isDarkMode
+                              ? 'bg-[#131814]/85 border-white/10 text-gray-200'
+                              : 'bg-white border-gray-200 text-gray-800'
+                          }`}
+                        >
+                          {renderFormattedText(
+                            msg.content,
+                            isDarkMode,
+                            sendMessage
+                          )}
                         </div>
-                     ) : (
-                        <div className="w-full">
-                           {msg.thinkingTime !== undefined && msg.thinkingTime > 0 && (
-                             <div className="mb-3 w-full">
-                               <details className={`text-xs cursor-pointer group select-none transition-all duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                 <summary className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl border transition-colors shadow-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 hover:bg-[#222528] border-white/5' : 'bg-gray-100 hover:bg-gray-200 border-gray-200'}`}>
-                                   <span className={`font-bold ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span>
-                                   <span className={`font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>تم جلب المعلومات في ({formatSeconds(msg.thinkingTime)})</span>
-                                   <span className="opacity-50 group-open:rotate-180 transition-transform text-[8px] mr-auto pl-1">▼</span>
-                                 </summary>
-                                 <div className={`mt-3 mr-4 pr-3 py-1.5 border-r-2 space-y-2 font-medium text-xs ${isDarkMode ? 'border-emerald-500/30 text-gray-400' : 'border-emerald-300 text-gray-500'}`}>
-                                   <p className="flex items-center gap-2"><span className={`text-[10px] ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span> تم التحقق من البيانات الرياضية...</p>
-                                   <p className="flex items-center gap-2"><span className={`text-[10px] ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span> تمت مراجعة الإحصائيات والمصادر...</p>
-                                   <p className="flex items-center gap-2"><span className={`text-[10px] ${isDarkMode ? 'text-emerald-500' : 'text-emerald-600'}`}>✓</span> تم صياغة النتيجة النهائية بنجاح.</p>
-                                 </div>
-                               </details>
-                             </div>
-                           )}
-                           <div className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-5 shadow-2xl text-sm sm:text-[15px] leading-relaxed break-words transition-colors duration-300 ${isDarkMode ? 'bg-[#131814]/85 border-white/10 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}>
-                             {renderFormattedText(msg.content, isDarkMode, sendMessage)}
-                           </div>
-                           
-                           <div className={`flex items-center gap-1.5 mt-3 pt-3 border-t ${isDarkMode ? 'border-white/5' : 'border-gray-100'}`}>
-                             <button 
-                               onClick={() => navigator.clipboard.writeText(msg.content)} 
-                               className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-gray-500 hover:text-gray-300' : 'hover:bg-gray-200 text-gray-400 hover:text-gray-700'}`}
-                               title="نسخ النص"
-                             >
-                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                             </button>
-                             
-                             <button 
-                               onClick={() => {
-                                 if (navigator.share) navigator.share({ title: 'فوتبلاي', text: msg.content, url: window.location.href });
-                               }}
-                               className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-gray-500 hover:text-gray-300' : 'hover:bg-gray-200 text-gray-400 hover:text-gray-700'}`}
-                               title="مشاركة"
-                             >
-                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                             </button>
 
-                             <div className={`flex items-center rounded-lg border ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
-                               <button className={`p-1.5 rounded-l-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-gray-500 hover:text-emerald-400' : 'hover:bg-gray-200 text-gray-400 hover:text-emerald-600'}`}>
-                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" /></svg>
-                               </button>
-                               <div className={`w-px h-4 ${isDarkMode ? 'bg-white/10' : 'bg-gray-300'}`}></div>
-                               <button className={`p-1.5 rounded-r-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-gray-500 hover:text-red-400' : 'hover:bg-gray-200 text-gray-400 hover:text-red-600'}`}>
-                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" /></svg>
-                               </button>
-                             </div>
+                        {/* Message actions */}
+                        <div
+                          className={`flex items-center gap-1.5 mt-3 pt-3 border-t ${
+                            isDarkMode
+                              ? 'border-white/5'
+                              : 'border-gray-100'
+                          }`}
+                        >
+                          <button
+                            onClick={() =>
+                              navigator.clipboard.writeText(
+                                msg.content
+                              )
+                            }
+                            className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-gray-400"
+                            title="نسخ النص"
+                          >
+                            ▣
+                          </button>
 
-                             <button 
-                               onClick={() => {
-                                 const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
-                                 if (lastUserMsg) sendMessage(lastUserMsg.content);
-                               }}
-                               className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-gray-500 hover:text-emerald-400' : 'hover:bg-gray-200 text-gray-400 hover:text-emerald-600'}`}
-                               title="إعادة التوليد"
-                             >
-                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                             </button>
-                           </div>
+                          <button
+                            onClick={() =>
+                              navigator.share?.({
+                                title:
+                                  'فوتبلاي',
+                                text:
+                                  msg.content,
+                                url:
+                                  window
+                                    .location
+                                    .href,
+                              })
+                            }
+                            className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-gray-400"
+                            title="مشاركة"
+                          >
+                            ↗
+                          </button>
 
+                          <button
+                            onClick={() => {
+                              const q =
+                                msg.userQuery;
+
+                              if (q) {
+                                sendMessage(
+                                  q
+                                );
+                              }
+                            }}
+                            disabled={
+                              loading
+                            }
+                            className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-gray-400 disabled:opacity-40"
+                            title="إعادة التوليد"
+                          >
+                            ↻
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              setMessages(
+                                (
+                                  prev
+                                ) => {
+                                  const next =
+                                    prev.map(
+                                      (
+                                        m,
+                                        j
+                                      ) =>
+                                        j ===
+                                        i
+                                          ? {
+                                              ...m,
+                                              feedback:
+                                                m.feedback ===
+                                                'like'
+                                                  ? null
+                                                  : ('like' as const),
+                                            }
+                                          : m
+                                    );
+
+                                  saveSession(
+                                    currentSessionId,
+                                    conversationId,
+                                    next
+                                  );
+
+                                  return next;
+                                }
+                              )
+                            }
+                            className={`p-1.5 rounded-lg ${
+                              msg.feedback ===
+                              'like'
+                                ? 'text-emerald-500'
+                                : 'text-gray-400'
+                            }`}
+                            title="إعجاب"
+                          >
+                            👍
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              setMessages(
+                                (
+                                  prev
+                                ) => {
+                                  const next =
+                                    prev.map(
+                                      (
+                                        m,
+                                        j
+                                      ) =>
+                                        j ===
+                                        i
+                                          ? {
+                                              ...m,
+                                              feedback:
+                                                m.feedback ===
+                                                'dislike'
+                                                  ? null
+                                                  : ('dislike' as const),
+                                            }
+                                          : m
+                                    );
+
+                                  saveSession(
+                                    currentSessionId,
+                                    conversationId,
+                                    next
+                                  );
+
+                                  return next;
+                                }
+                              )
+                            }
+                            className={`p-1.5 rounded-lg ${
+                              msg.feedback ===
+                              'dislike'
+                                ? 'text-red-500'
+                                : 'text-gray-400'
+                            }`}
+                            title="عدم إعجاب"
+                          >
+                            👎
+                          </button>
                         </div>
-                     )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : null
-            ))}
-            
+            )}
+
+            {/* Loading */}
             {loading && (
               <div className="flex items-start gap-4 w-full mt-4">
-                <div className="flex-shrink-0 mt-1 hidden sm:block"><AiFBallLogo size="sm"/></div>
-                <div className="w-full min-w-0 flex items-center">
-                   <div className={`rounded-2xl px-4 py-3 border shadow-sm max-w-sm ${isDarkMode ? 'bg-[#1A1C1E]/80 border-white/5 text-gray-300' : 'bg-white border-gray-200 text-gray-600'}`}>
-                      <div className="flex flex-col gap-3">
-                        <div className="flex items-center gap-3">
-                           <svg className="animate-spin w-4 h-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                           </svg>
-                           <span className={`font-bold text-xs sm:text-sm ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>جاري البحث والتحليل... ({formatSeconds(loadingSeconds)})</span>
-                        </div>
-                        <div className={`pt-3 border-t space-y-2 text-[11px] font-medium ${isDarkMode ? 'border-white/5' : 'border-gray-200'}`}>
-                          <div className="flex items-center gap-2">
-                            <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>✓</span><span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>الاتصال بخوادم فوتبلاي...</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {loadingSeconds >= 2 ? <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>✓</span> : <span className="text-emerald-500 animate-pulse text-[10px]">⬤</span>}
-                            <span className={loadingSeconds >= 2 ? (isDarkMode ? 'text-gray-300' : 'text-gray-600') : (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>أتحقق من الإحصائيات والمعلومات...</span>
-                          </div>
-                          {loadingSeconds >= 3 && (
-                            <div className="flex items-center gap-2">
-                              {loadingSeconds >= 5 ? <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>✓</span> : <span className="text-emerald-500 animate-pulse text-[10px]">⬤</span>}
-                              <span className={loadingSeconds >= 5 ? (isDarkMode ? 'text-gray-300' : 'text-gray-600') : (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>أراجع البيانات والمصادر المتاحة...</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                   </div>
+                <div className="flex-shrink-0 mt-1 hidden sm:block">
+                  <AiFBallLogo size="sm" />
+                </div>
+
+                <div
+                  className={`rounded-2xl px-4 py-3 border shadow-sm ${
+                    isDarkMode
+                      ? 'bg-[#1A1C1E]/80 border-white/5 text-gray-300'
+                      : 'bg-white border-gray-200 text-gray-600'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <svg
+                      className="animate-spin w-4 h-4 text-emerald-500"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        opacity=".25"
+                      />
+
+                      <path
+                        d="M4 12a8 8 0 018-8"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+
+                    <span className="font-bold text-xs sm:text-sm text-emerald-500">
+                      جاري البحث والتحليل... (
+                      {formatSeconds(
+                        loadingSeconds
+                      )}
+                      )
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-gray-500 mt-2">
+                    جاري انتظار البيانات من خادم فوتبلاي
+                  </p>
                 </div>
               </div>
             )}
+
             <div ref={messagesEndRef} />
           </div>
         )}
       </main>
 
-      <footer className={`p-3 backdrop-blur-md border-t relative z-20 transition-colors duration-300 ${isDarkMode ? 'bg-[#131314]/90 border-white/10' : 'bg-white/90 border-gray-200'}`}>
+      {/* Footer */}
+      <footer
+        className={`p-3 backdrop-blur-md border-t relative z-20 ${
+          isDarkMode
+            ? 'bg-[#131314]/90 border-white/10'
+            : 'bg-white/90 border-gray-200'
+        }`}
+      >
         <div className="max-w-4xl mx-auto">
-          {attachedFiles.length > 0 && (
+          {attachedFiles.length >
+            0 && (
             <div className="flex flex-wrap gap-2 mb-2 px-2">
-              {attachedFiles.map((f, idx) => (
-                <div key={idx} className={`flex items-center gap-2 p-1.5 pr-3 rounded-lg shadow-sm backdrop-blur-md border ${isDarkMode ? 'bg-black/40 border-emerald-500/50' : 'bg-gray-50 border-emerald-300'}`}>
-                  <img src={f.url} alt="مرفق" className={`w-8 h-8 object-cover rounded-md border ${isDarkMode ? 'border-white/10' : 'border-gray-300'}`} />
-                  <span className={`text-xs max-w-[120px] truncate ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`} dir="ltr">{f.file.name}</span>
-                  <button onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))} className={`font-bold ml-1 mr-1 transition ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-600'}`}>✕</button>
-                </div>
-              ))}
+              {attachedFiles.map(
+                (f, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2 p-1.5 pr-3 rounded-lg border border-emerald-500/40"
+                  >
+                    <img
+                      src={f.url}
+                      alt="مرفق"
+                      className="w-8 h-8 object-cover rounded-md"
+                    />
+
+                    <span
+                      className="text-xs max-w-[120px] truncate"
+                      dir="ltr"
+                    >
+                      {f.file.name}
+                    </span>
+
+                    <button
+                      onClick={() =>
+                        setAttachedFiles(
+                          (
+                            prev
+                          ) => {
+                            URL.revokeObjectURL(
+                              prev[
+                                idx
+                              ].url
+                            );
+
+                            return prev.filter(
+                              (
+                                _,
+                                j
+                              ) =>
+                                j !==
+                                idx
+                            );
+                          }
+                        )
+                      }
+                      className="text-red-500"
+                      aria-label="إزالة المرفق"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )
+              )}
             </div>
           )}
 
-          <div className={`flex items-center gap-2 border rounded-full px-3 py-2 shadow-xl transition-colors duration-300 ${isDarkMode ? 'bg-[#1A1C1E] border-white/10 focus-within:border-emerald-500/40' : 'bg-gray-50 border-gray-300 focus-within:border-emerald-500'}`}>
-            <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*" className="hidden" />
-            <button onClick={() => fileInputRef.current?.click()} title="إرفاق ملف" className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl flex-shrink-0 transition ${isDarkMode ? 'hover:bg-white/10 text-gray-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500 hover:text-gray-800'}`}>
+          <div
+            className={`flex items-center gap-2 border rounded-full px-3 py-2 shadow-xl ${
+              isDarkMode
+                ? 'bg-[#1A1C1E] border-white/10 focus-within:border-emerald-500/40'
+                : 'bg-gray-50 border-gray-300 focus-within:border-emerald-500'
+            }`}
+          >
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={
+                handleFileSelect
+              }
+              multiple
+              accept="image/*"
+              className="hidden"
+            />
+
+            <button
+              onClick={() =>
+                fileInputRef.current?.click()
+              }
+              title="إرفاق ملف"
+              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl text-gray-400 hover:text-emerald-500"
+            >
               +
             </button>
 
-            <button onClick={handleVoiceSearch} title="بحث صوتي" className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition shadow-sm ${isListening ? 'bg-emerald-600 text-white animate-pulse' : (isDarkMode ? 'hover:bg-white/10 text-gray-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500 hover:text-gray-800')}`}>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 01-14 0v-1M12 18.5V22M8 22h8" />
+            <button
+              onClick={
+                handleVoiceSearch
+              }
+              title="بحث صوتي"
+              className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                isListening
+                  ? 'bg-emerald-600 text-white animate-pulse'
+                  : 'text-gray-400 hover:text-emerald-500'
+              }`}
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3zM19 10v1a7 7 0 01-14 0v-1M12 18.5V22M8 22h8"
+                />
               </svg>
             </button>
 
             <input
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder={isListening ? 'جاري الاستماع لصوتك...' : 'اسأل عن أي مباراة، تحليل، أو إحصائية...'}
-              className={`flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none ${isDarkMode ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
+              onChange={(e) =>
+                setInput(
+                  e.target.value
+                )
+              }
+              onKeyDown={(e) => {
+                if (
+                  e.key ===
+                    'Enter' &&
+                  !e.nativeEvent
+                    .isComposing
+                ) {
+                  sendMessage();
+                }
+              }}
+              placeholder={
+                isListening
+                  ? 'جاري الاستماع لصوتك...'
+                  : 'اسأل عن أي مباراة، تحليل، أو إحصائية...'
+              }
+              className={`flex-1 min-w-0 bg-transparent px-3 py-2 text-sm focus:outline-none ${
+                isDarkMode
+                  ? 'text-white placeholder-gray-500'
+                  : 'text-gray-900 placeholder-gray-400'
+              }`}
             />
 
-            <button onClick={() => sendMessage()} disabled={loading || (!input.trim() && attachedFiles.length === 0)} className="w-10 h-10 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:bg-gray-300 disabled:text-gray-500 flex items-center justify-center text-white flex-shrink-0 transition shadow-md">
+            <button
+              onClick={() =>
+                sendMessage()
+              }
+              disabled={
+                loading ||
+                (!input.trim() &&
+                  !attachedFiles.length)
+              }
+              className="w-10 h-10 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:bg-gray-500 flex items-center justify-center text-white flex-shrink-0"
+            >
               ➤
             </button>
           </div>
-          <p className={`text-[11px] text-center mt-2.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>منصة فوتبلاي للذكاء الاصطناعي الرياضي • by خالد العايش</p>
+
+          <p
+            className={`text-[11px] text-center mt-2.5 ${
+              isDarkMode
+                ? 'text-gray-500'
+                : 'text-gray-400'
+            }`}
+          >
+            منصة فوتبلاي للذكاء الاصطناعي الرياضي • by خالد العايش
+          </p>
         </div>
       </footer>
 
+      {/* Live scores modal */}
       {showLiveScores && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl shadow-2xl ${isDarkMode ? 'bg-[#131314] border border-white/10' : 'bg-white border border-gray-200'}`}>
-            <div className={`sticky top-0 z-10 flex items-center justify-between p-4 border-b backdrop-blur-md ${isDarkMode ? 'bg-[#131314]/90 border-white/10' : 'bg-white/90 border-gray-200'}`}>
-              <h2 className={`font-bold text-lg flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                <span>⚽</span> مركز النتائج المباشرة
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() =>
+            setShowLiveScores(false)
+          }
+        >
+          <div
+            onClick={(e) =>
+              e.stopPropagation()
+            }
+            className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl shadow-2xl ${
+              isDarkMode
+                ? 'bg-[#131314] border border-white/10'
+                : 'bg-white border border-gray-200'
+            }`}
+          >
+            <div
+              className={`sticky top-0 z-10 flex items-center justify-between p-4 border-b ${
+                isDarkMode
+                  ? 'bg-[#131314] border-white/10'
+                  : 'bg-white border-gray-200'
+              }`}
+            >
+              <h2 className="font-bold text-lg">
+                ⚽ مركز النتائج المباشرة
               </h2>
-              <button onClick={() => setShowLiveScores(false)} className={`w-8 h-8 rounded-full flex items-center justify-center transition ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>✕</button>
+
+              <button
+                onClick={() =>
+                  setShowLiveScores(false)
+                }
+                className="w-8 h-8 rounded-full hover:bg-white/10"
+                aria-label="إغلاق النتائج"
+              >
+                ✕
+              </button>
             </div>
+
             <div className="p-2 sm:p-4">
-              <LiveMatchCenter isDark={isDarkMode} />
+              <LiveMatchCenter
+                isDark={isDarkMode}
+              />
             </div>
           </div>
         </div>
