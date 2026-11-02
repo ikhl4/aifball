@@ -1,5 +1,6 @@
+import { groundedMatchStream } from '../../../lib/grounded-match-answer';
 import { NextResponse } from 'next/server';
-import { isDetailedMatchQuery, withMatchReportPresentation } from '../../../lib/match-report-prompt';
+import { isDetailedMatchQuery, withMatchReportPresentation, withMatchConversationContext } from '../../../lib/match-report-prompt';
 import { isAnalysisRequest } from '../../../lib/analysis-story';
 import { withAnalysisPresentation } from '../../../lib/analysis-prompt';
 
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
       signal: req.signal,
       body: JSON.stringify({
         inputs: {},
-        query: detailedMatch ? withMatchReportPresentation(query) : analysis ? withAnalysisPresentation(query) : query,
+        query: detailedMatch ? withMatchReportPresentation(query) : analysis ? withAnalysisPresentation(query) : conversation_id ? withMatchConversationContext(query) : query,
         response_mode: 'streaming',
         conversation_id: conversation_id || undefined,
         user: 'aifball-web-user', 
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
     }
 
     // إرجاع الـ Stream مباشرة للواجهة الأمامية
-    return new Response(apiRes.body, {
+    return new Response(apiRes.body && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
