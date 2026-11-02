@@ -6,4 +6,10 @@ The response explains sourced numbers in Arabic before an embedded report. Exist
 
 Both report renderers include deterministic prose from source metrics before visual comparisons. Zero stays zero; unavailable remains unavailable. The existing date selector is optional and collapsed. Source point density is never advertised as GPS paths.
 
-Validation: 54 existing and new Node tests; targeted strict TypeScript and production build. Render OpenAPI exposes the SofaScore analysis and player-point routes. An analysis request returned HTTP 502 during verification; deployment presence does not guarantee upstream data availability. Clipboard/audio are outside this change. Full player career and autonomous multi-provider event matching are outside this change.
+Validation: 58 existing and new Node tests; targeted strict TypeScript and production build. Render OpenAPI exposes the SofaScore analysis and player-point routes. An analysis request returned HTTP 502 during verification; deployment presence does not guarantee upstream data availability. Clipboard/audio are outside this change. Full player career and autonomous multi-provider event matching are outside this change.
+
+## Verified response stream
+
+For match requests and follow-ups carrying a prior report context, answer deltas are held until Dify finishes. If a supported report tag is present, the server fetches that exact provider event and replaces free-form model statistics with canonical Arabic prose and the verified report tag. Conversation/message identifiers and message_end order are preserved. Failed or future events and ISO date mismatches emit no report. An unknown player never inherits model claims of participation. Responses without supported report tags retain their existing prose flow after completion; they are not independently verified by this adapter. This adds a source fetch and delays first answer text for these requests.
+
+Live QA before grounding found an incorrect model card total and an unconfirmed player participation claim; neither is accepted as verified behavior. The server adapter and tests were added in response.

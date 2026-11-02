@@ -1097,6 +1097,7 @@ export default function FootPlayChat() {
         body: JSON.stringify({
           query,
           conversation_id: conversationId,
+          has_match_context: /<aifball-match-report\b/.test([...messages].reverse().find(m=>m.role==='assistant')?.content||''),
           analysis_mode: analysisModeForQuery(query, messages[messages.length - 1]?.role === 'assistant' ? messages[messages.length - 1].content : ''),
           ...(difyFiles.length ? { files: difyFiles } : {}),
         }),

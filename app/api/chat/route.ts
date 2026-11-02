@@ -1,3 +1,4 @@
+import { groundedMatchStream } from '../../../lib/grounded-match-answer';
 import { NextResponse } from 'next/server';
 import { isDetailedMatchQuery, withMatchReportPresentation, withMatchConversationContext } from '../../../lib/match-report-prompt';
 import { isAnalysisRequest } from '../../../lib/analysis-story';
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
     }
 
     // إرجاع الـ Stream مباشرة للواجهة الأمامية
-    return new Response(apiRes.body, {
+    return new Response(apiRes.body && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
