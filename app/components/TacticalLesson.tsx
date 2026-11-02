@@ -57,7 +57,7 @@ export default function TacticalLesson({ name = '', isDark = true, trainingFirst
     const result = addBoardPlayers(players, addSide, addCount);
     if (result.error) { setEditorMessage(result.error); return; }
     setDrafts(previous => ({...previous, [step]: result.players}));
-    setSelected(result.added[0]); setEditorMessage(`أُضيف ${result.added.length} لاعب لهذه المرحلة.`);
+    setSelected(result.added[0]); setEditorMessage(`عدد اللاعبين المضافين لهذه المرحلة: ${result.added.length}`);
   };
   const restoreFrame = () => { setDrafts(previous => { const next = {...previous}; delete next[step]; return next; }); setSelected(null); setEditorMessage('استُعيدت المرحلة الأصلية.'); };
 
@@ -124,7 +124,7 @@ export default function TacticalLesson({ name = '', isDark = true, trainingFirst
           {isCustomized && <p className="mt-2 text-xs text-amber-600">مشهد معدّل بواسطتك؛ الشرح التدريبي الأصلي لا يتغير تلقائياً مع تعديل اللاعبين.</p>}
           {editing && <div className="mt-3 p-3 border border-amber-500/40 rounded-xl text-xs space-y-3" aria-label="محرر اللاعبين">
             <p className="text-amber-600">أضف عدة لاعبين ثم اسحبهم أو عدّل مواضعهم من أدوات التحكم. التعديلات تخص المرحلة المعروضة وتبقى عند التنقل داخل الدرس؛ اختيار درس آخر يصفرها.</p>
-            <p className="font-bold" aria-live="polite">الفريق: {players.filter(p => p.side === 'team').length} / 11 · المنافس: {players.filter(p => p.side === 'opponent').length} / 11</p>
+            <p className="font-bold" aria-live="polite">الفريق: <bdi dir="ltr">{players.filter(p => p.side === 'team').length} / 11</bdi> · المنافس: <bdi dir="ltr">{players.filter(p => p.side === 'opponent').length} / 11</bdi></p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 items-end">
               <label>إضافة إلى<select value={addSide} onChange={e => setAddSide(e.target.value as BoardPlayer['side'])} className={`block w-full p-2 mt-1 rounded-lg border ${surface}`}><option value="team">الفريق الأخضر</option><option value="opponent">المنافس البرتقالي</option></select></label>
               <label>عدد اللاعبين<input type="number" min="1" max="11" value={addCount} onChange={e => setAddCount(Number(e.target.value))} className={`block w-full p-2 mt-1 rounded-lg border ${surface}`} /></label>
