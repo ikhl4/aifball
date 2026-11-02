@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import AnalysisStory from '../../components/AnalysisStory';
 import { validateAnalysisStory } from '../../../lib/analysis-story';
-import example from '../../../tests/fixtures/analysis-teaching.json';
+import example from '../../../tests/fixtures/analysis-motion.json';
 export const dynamic = 'force-dynamic';
 export default function TacticalAnalysisPreview() {
   if (process.env.VERCEL_ENV === 'production') notFound();
