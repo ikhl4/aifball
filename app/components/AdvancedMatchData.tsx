@@ -1,4 +1,5 @@
 'use client';
+import {footballNameInArabic} from '../../lib/football-names-ar';
 import {matchNarrative,uniquePlayer} from '../../lib/match-narrative';
 import React,{useEffect,useRef,useState} from 'react';
 import {normalizeSpatialReport,sofaMatchId,spatialPoints,type Point} from '../../lib/spatial-report';
@@ -9,7 +10,7 @@ export default function AdvancedMatchData({autoMatchUrl,playerName}:{autoMatchUr
  const req=useRef<AbortController|null>(null),heatReq=useRef<AbortController|null>(null);
  useEffect(()=>()=>{req.current?.abort();heatReq.current?.abort();},[]);
  const connect=async(targetUrl=url)=>{const id=sofaMatchId(targetUrl);if(!id){setError('ألصق رابط المباراة من SofaScore متضمناً #id: ومعرّفها.');return;}req.current?.abort();heatReq.current?.abort();const c=new AbortController();req.current=c;setBusy(true);setError('');setData(null);setSelected('');setPoints(null);
- try{const r=await fetch('/api/advanced?'+new URLSearchParams({source:'sofascore',action:'analysis',matchUrl:targetUrl}),{signal:c.signal});const d=await r.json();if(!r.ok)throw Error(d.error||'مصدر البيانات غير متاح');if(c.signal.aborted)return;setData(normalizeSpatialReport(d,id));setBound(targetUrl);}catch(e){if(!c.signal.aborted)setError(e instanceof Error?e.message:'تعذر الربط');}finally{if(!c.signal.aborted)setBusy(false);}};
+ try{const r=await fetch('/api/advanced?'+new URLSearchParams({source:'sofascore',action:'analysis',matchUrl:targetUrl}),{signal:c.signal});const d=await r.json();if(!r.ok)throw Error(d.error||'مصدر البيانات غير متاح');if(c.signal.aborted)return;const report=normalizeSpatialReport(d,id);setData({...report,home:footballNameInArabic(report.home)||report.home,away:footballNameInArabic(report.away)||report.away});setBound(targetUrl);}catch(e){if(!c.signal.aborted)setError(e instanceof Error?e.message:'تعذر الربط');}finally{if(!c.signal.aborted)setBusy(false);}};
  const select=async(id:string)=>{heatReq.current?.abort();const c=new AbortController();heatReq.current=c;setSelected(id);setPoints(null);setHeatError('');if(!id||!data)return;
  try{const r=await fetch('/api/advanced?'+new URLSearchParams({source:'sofascore',action:'player-points',matchUrl:bound,playerId:id}),{signal:c.signal});const d=await r.json();if(!r.ok)throw Error(d.error||'الخريطة غير متاحة');if(d.source!=='SofaScore'||String(d.eventId)!==data.eventId||String(d.playerId)!==id||d.coordinates!=='percent-100')throw Error('لم يؤكد المصدر هوية اللاعب والخريطة');if(!c.signal.aborted)setPoints(spatialPoints(d.points));}catch(e){if(!c.signal.aborted)setHeatError(e instanceof Error?e.message:'الخريطة غير متاحة');}};
  useEffect(()=>{if(autoMatchUrl){setUrl(autoMatchUrl);void connect(autoMatchUrl);}return()=>{req.current?.abort();heatReq.current?.abort();};},[autoMatchUrl]);
