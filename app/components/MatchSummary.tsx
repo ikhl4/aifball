@@ -38,6 +38,7 @@ export default function MatchSummary({ eventId, league, isDark = true }: { event
     {data && <div role="tabpanel">
       {tab === 'events' && (data.events.length ? <ol className="space-y-3">{data.events.map(e => <li key={e.id} className="border-b border-gray-500/20 pb-2">
         <div className="flex justify-between gap-2"><span>{e.label}{e.shootout ? ' · الترجيح' : ''}</span><bdi dir="ltr">{e.minute || '—'}</bdi></div>
+        <p className="text-xs text-gray-500 mt-1">اللاعبون المرتبطون بالحدث:</p>
         <p className="font-bold break-words">{e.players.join(' / ') || 'اسم اللاعب غير متاح'}</p>
         <p className="text-xs text-emerald-600">{arabicTeamName(e.teamId === data.home.id ? data.home.name : e.teamId === data.away.id ? data.away.name : 'الفريق غير متاح')}</p>
       </li>)}</ol> : <p>{data.state === 'pre' ? 'المباراة لم تبدأ بعد.' : `تفاصيل الأحداث ${empty}`}</p>)}
