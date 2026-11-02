@@ -24,8 +24,10 @@ Raw JSON is hidden during streaming. Completed narrative fields and fully valida
 
 ## Verification
 
-Run `node --test tests/*.cjs` (38 tests). Production build: `npm run build` with the existing Clerk configuration. Tests include the actual generic teaching response, rendering order, source/scene rejection, streaming boundaries, follow-ups and request forwarding.
+Run `node --test tests/*.cjs` (39 tests). Production build: `npm run build` with the existing Clerk configuration. Tests include the actual generic teaching response, rendering order, source/scene rejection, streaming boundaries, follow-ups and request forwarding.
 
 ## Interrupted named-coach response
 
 Reproducing the exact Enrique/Paris question returned 13,621 characters but disconnected after 68.2 seconds without a `message_end` event. The route had an explicit 60-second maximum. The route now requests 300 seconds and the client allows 240 seconds. Actual hosting limits still depend on the Vercel project configuration. Presentation instructions put sources before sections and request a focused 2–4 section answer. `lib/analysis-partial.ts` extracts only completed JSON fields/sections; the interrupted real response is a regression fixture. Silent EOF is reported as an interruption as well as network failures.
+
+The post-timeout-fix Enrique response completed after 68 seconds but put `Marquinhos` in a player-number field. Short names/labels are now accepted up to 40 characters, with compact two-character pitch tokens and full labels in tooltips/role details. The actual response was checked locally and renders three independent pitches. A minimal synthetic regression test covers the name-label case without publishing that complete response. Bounds, endpoints, source requirements and team limits remain enforced.

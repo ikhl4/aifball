@@ -21,7 +21,7 @@ export function validateAnalysisStory(v: unknown): AnalysisStoryData | null {
         if (!record(f) || !text(f.title,140) || !text(f.note,700) || !Array.isArray(f.players) || f.players.length<1 || f.players.length>22 || !Array.isArray(f.ball) || f.ball.length!==2 || !coordinate(f.ball[0],105) || !coordinate(f.ball[1],68) || !Array.isArray(f.arrows) || f.arrows.length>24) return null;
         const ids=new Set<string>(); const sides={team:0,opponent:0};
         for (const p of f.players) {
-          if (!record(p) || !text(p.id,40) || ids.has(p.id) || !text(p.number,3) || !text(p.role,80) || !['team','opponent'].includes(p.side) || !coordinate(p.x,105) || !coordinate(p.y,68)) return null;
+          if (!record(p) || !text(p.id,40) || ids.has(p.id) || !text(p.number,40) || !text(p.role,80) || !['team','opponent'].includes(p.side) || !coordinate(p.x,105) || !coordinate(p.y,68)) return null;
           ids.add(p.id); sides[p.side as 'team'|'opponent']++;
         }
         if (sides.team>11 || sides.opponent>11) return null;

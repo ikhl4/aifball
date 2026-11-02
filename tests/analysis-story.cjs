@@ -59,3 +59,9 @@ test('truncated structured answers preserve completed prose and complete section
 test('actual interrupted Enrique response retains explanation without fabricating missing sources',()=>{
  const raw=fs.readFileSync('tests/fixtures/analysis-interrupted.txt','utf8');const parts=api.splitAnalysisStory(raw);const part=parts.find(p=>p.kind==='pending');assert.ok(part);assert.ok(part.text.includes('لويس إنريكي'));assert.ok(part.text.length>1000);assert.equal(part.data,undefined);assert.doesNotMatch(part.text,/\"players\"|aifball-analysis/);
 });
+
+test('bounded player names render compact tokens while retaining full accessible labels',()=>{
+ const raw=fixture();raw.sections[0].board.frames[0].players[0].number=' PlayerName';const original=JSON.stringify(raw);const valid=api.validateAnalysisStory(raw);assert.ok(valid);assert.equal(JSON.stringify(raw),original);
+ const Component=load('app/components/AnalysisStory.tsx').default;const html=renderToStaticMarkup(React.createElement(Component,{data:valid}));assert.equal((html.match(/<figure/g)||[]).length,1);assert.match(html,/PlayerName/);assert.match(html,/>Pl<\/text>/);
+ const bad=fixture();bad.sections[0].board.frames[0].players[0].number='x'.repeat(41);assert.equal(api.validateAnalysisStory(bad),null);
+});
