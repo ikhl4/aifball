@@ -2,6 +2,7 @@
 'use client';
 
 import { COMPETITIONS } from '../../lib/competitions';
+import { footballNameInArabic, footballGroupInArabic } from '../../lib/football-names-ar';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -659,7 +660,7 @@ function displayTeamName(
     return SAUDI_TEAMS[team.id];
   }
 
-  return TEAM_NAMES_AR[team.name] || team.name;
+  return footballNameInArabic(team.name) || TEAM_NAMES_AR[team.name] || team.name;
 }
 
 function displayGroupName(
@@ -669,9 +670,7 @@ function displayGroupName(
   const trimmed = name.trim();
 
   if (lang === 'ar') {
-    const group = trimmed.match(/^Group ([A-Z]\d*)$/i);
-    if (group) return `المجموعة ${group[1]}`;
-    return GROUP_NAMES_AR[trimmed] || trimmed;
+    return GROUP_NAMES_AR[trimmed] || footballGroupInArabic(trimmed);
   }
 
   return GROUP_NAMES_EN[trimmed] || trimmed;
