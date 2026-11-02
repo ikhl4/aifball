@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { isAnalysisRequest } from '../../../lib/analysis-story';
+import { withAnalysisPresentation } from '../../../lib/analysis-prompt';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -6,7 +8,8 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const query = body?.query?.trim() || 'مرحبا';
+    const query = typeof body?.query === 'string' ? body.query.trim() : '';
+    const analysis = body?.analysis_mode === true || isAnalysisRequest(query);
     const conversation_id = body?.conversation_id || '';
     
     // 🌟 إضافة: استقبال الملفات المرفقة من الواجهة
@@ -33,9 +36,10 @@ export async function POST(req: Request) {
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream',
       },
+      signal: req.signal,
       body: JSON.stringify({
         inputs: {},
-        query: query,
+        query: analysis ? withAnalysisPresentation(query) : query,
         response_mode: 'streaming',
         conversation_id: conversation_id || undefined,
         user: 'aifball-web-user', 
@@ -59,6 +63,7 @@ export async function POST(req: Request) {
         'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
         'X-Accel-Buffering': 'no',
+        'X-AiFBall-Presentation': analysis ? 'analysis-story' : 'standard',
       },
     });
 
