@@ -243,6 +243,13 @@ function buildRoute(
         },
       };
 
+    case 'sofascore:analysis':
+      return {path:'/sofascore/match-analysis',params:{match_url:requireMatchUrl(params,'sofascore')}};
+    case 'sofascore:player-points': {
+      const playerId=requireParam(params,'playerId');
+      if(!/^\d{1,12}$/.test(playerId))throw new Error('INVALID_MATCH_URL');
+      return {path:'/sofascore/player-points',params:{match_url:requireMatchUrl(params,'sofascore'),player_id:playerId}};
+    }
     case 'sofascore:shotmap':
       return {
         path: '/sofascore/shotmap',

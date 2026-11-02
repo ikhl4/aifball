@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isDetailedMatchQuery, withMatchReportPresentation } from '../../../lib/match-report-prompt';
 import { isAnalysisRequest } from '../../../lib/analysis-story';
 import { withAnalysisPresentation } from '../../../lib/analysis-prompt';
 
@@ -9,6 +10,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const query = typeof body?.query === 'string' ? body.query.trim() : '';
+    const detailedMatch=isDetailedMatchQuery(query);
     const analysis = body?.analysis_mode === true || isAnalysisRequest(query);
     const conversation_id = body?.conversation_id || '';
     
@@ -39,7 +41,7 @@ export async function POST(req: Request) {
       signal: req.signal,
       body: JSON.stringify({
         inputs: {},
-        query: analysis ? withAnalysisPresentation(query) : query,
+        query: detailedMatch ? withMatchReportPresentation(query) : analysis ? withAnalysisPresentation(query) : query,
         response_mode: 'streaming',
         conversation_id: conversation_id || undefined,
         user: 'aifball-web-user', 
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
         'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
         'X-Accel-Buffering': 'no',
-        'X-AiFBall-Presentation': analysis ? 'analysis-story' : 'standard',
+        'X-AiFBall-Presentation': detailedMatch ? 'match-report' : analysis ? 'analysis-story' : 'standard',
       },
     });
 
