@@ -13,6 +13,8 @@ import {
 import LiveSportsWidget from './components/LiveSportsWidget';
 import LiveMatchCenter from './components/LiveMatchCenter';
 import LeagueDashboard from './components/LeagueDashboard';
+import StandingsExplorer from './components/StandingsExplorer';
+import { COMPETITIONS, resolveStandingsRequest } from '../lib/competitions';
 import MatchReport from './components/MatchReport';
 import PlayerComparison from './components/PlayerComparison';
 import PlayerProfile from './components/PlayerProfile';
@@ -54,59 +56,8 @@ const THEME_KEY = 'aifball_theme';
 const GREETING =
   'مرحبا، الله حيه، أنا فوتبلاي مساعدك الرياضي. ماذا تريد أن تعرف؟';
 
-const LEAGUES: Record<string, string> = {
-  'ksa.1': 'دوري روشن السعودي',
-  'ksa.2': 'دوري يلو السعودي',
-  'eng.1': 'الدوري الإنجليزي الممتاز',
-  'esp.1': 'الدوري الإسباني',
-  'ita.1': 'الدوري الإيطالي',
-  'ger.1': 'الدوري الألماني',
-  'fra.1': 'الدوري الفرنسي',
-  'por.1': 'الدوري البرتغالي',
-  'ned.1': 'الدوري الهولندي',
-  'tur.1': 'الدوري التركي',
-  'egy.1': 'الدوري المصري الممتاز',
-  'uae.1': 'الدوري الإماراتي',
-  'qat.1': 'الدوري القطري',
-  'kuw.1': 'الدوري الكويتي',
-  'bhr.1': 'الدوري البحريني',
-  'oma.1': 'الدوري العُماني',
-  'irq.1': 'الدوري العراقي',
-  'bra.1': 'الدوري البرازيلي',
-  'arg.1': 'الدوري الأرجنتيني',
-  'usa.1': 'الدوري الأمريكي',
-  'mex.1': 'الدوري المكسيكي',
-  'jpn.1': 'الدوري الياباني',
-  'kor.1': 'الدوري الكوري',
-  'uefa.champions': 'دوري أبطال أوروبا',
-};
-
-const LEAGUES_EN: Record<string, string> = {
-  'ksa.1': 'Saudi Pro League',
-  'ksa.2': 'Saudi First Division League',
-  'eng.1': 'Premier League',
-  'esp.1': 'LaLiga',
-  'ita.1': 'Serie A',
-  'ger.1': 'Bundesliga',
-  'fra.1': 'Ligue 1',
-  'por.1': 'Primeira Liga',
-  'ned.1': 'Eredivisie',
-  'tur.1': 'Turkish Super Lig',
-  'egy.1': 'Egyptian Premier League',
-  'uae.1': 'UAE Pro League',
-  'qat.1': 'Qatar Stars League',
-  'kuw.1': 'Kuwait Premier League',
-  'bhr.1': 'Bahraini Premier League',
-  'oma.1': 'Oman Professional League',
-  'irq.1': 'Iraq Stars League',
-  'bra.1': 'Brazilian Serie A',
-  'arg.1': 'Argentine Primera Division',
-  'usa.1': 'Major League Soccer',
-  'mex.1': 'Liga MX',
-  'jpn.1': 'J1 League',
-  'kor.1': 'K League 1',
-  'uefa.champions': 'UEFA Champions League',
-};
+const LEAGUES: Record<string, string> = Object.fromEntries(Object.entries(COMPETITIONS).map(([code, item]) => [code, item.ar]));
+const LEAGUES_EN: Record<string, string> = Object.fromEntries(Object.entries(COMPETITIONS).map(([code, item]) => [code, item.en]));
 
 const DISCOVERY_QUESTIONS: SuggestionCard[] = [
   { question: 'ما الفروق بين الضغط العالي والضغط المتوسط والضغط العكسي؟', tag: 'المدارس التكتيكية', icon: '⚽' },
@@ -505,7 +456,7 @@ function renderFormattedText(
       }
 
       if (name === 'aifball-standings') {
-        const season = normalizeSeason(attrs.season);
+        const season = attrs.season?.trim() ? normalizeSeason(attrs.season) : '';
         const leagueName =
           lang === 'en'
             ? LEAGUES_EN[league] || league
@@ -807,6 +758,7 @@ export default function FootPlayChat() {
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showLiveScores, setShowLiveScores] = useState(false);
+  const [showStandings, setShowStandings] = useState(false);
   const [discoveryPage, setDiscoveryPage] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1016,6 +968,17 @@ export default function FootPlayChat() {
         { role: 'assistant', content: GREETING },
       ];
 
+      setMessages(result);
+      saveSession(id, conversationId, result);
+      return;
+    }
+
+    const standingsRequest = files.length === 0 ? resolveStandingsRequest(query) : null;
+    if (standingsRequest) {
+      const language = detectLanguage(query);
+      const seasonAttribute = standingsRequest.season ? ` season="${standingsRequest.season}"` : '';
+      const content = `<aifball-standings league="${standingsRequest.league}"${seasonAttribute} lang="${language}" />`;
+      const result: Message[] = [...base, { role: 'assistant', content, userQuery: query }];
       setMessages(result);
       saveSession(id, conversationId, result);
       return;
@@ -1337,6 +1300,10 @@ export default function FootPlayChat() {
             <span>+</span>
             <span>بدء محادثة جديدة</span>
           </button>
+          <button type="button" onClick={() => { setSidebarOpen(false); setShowStandings(true); }}
+            className="mt-2 w-full py-2.5 px-4 rounded-xl border border-emerald-500/30 bg-emerald-600/10 text-emerald-500 font-bold text-xs">
+            جداول الترتيب
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5 custom-scrollbar">
@@ -1439,6 +1406,10 @@ export default function FootPlayChat() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setShowStandings(true)} aria-label="جداول الترتيب" title="جداول الترتيب"
+            className="hidden sm:flex h-9 px-3 rounded-xl border border-emerald-500/30 bg-emerald-600/10 text-emerald-500 items-center justify-center gap-2 font-bold text-xs">
+            <span aria-hidden="true">▤</span><span className="hidden sm:inline">جداول الترتيب</span>
+          </button>
           <button
             type="button"
             onClick={() => setShowLiveScores(true)}
@@ -1954,6 +1925,19 @@ export default function FootPlayChat() {
           </p>
         </div>
       </footer>
+
+      {showStandings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowStandings(false)}>
+          <div role="dialog" aria-modal="true" aria-label="جداول الترتيب العالمية" onClick={event => event.stopPropagation()}
+            className={`w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl ${isDarkMode ? 'bg-[#131314] border border-white/10' : 'bg-white border border-gray-200'}`}>
+            <div className={`sticky top-0 z-30 flex justify-between items-center p-4 border-b ${isDarkMode ? 'bg-[#131314] border-white/10' : 'bg-white border-gray-200'}`}>
+              <h2 className="font-bold">جداول الترتيب العالمية</h2>
+              <button type="button" aria-label="إغلاق جداول الترتيب" onClick={() => setShowStandings(false)} className="w-8 h-8 rounded-full">✕</button>
+            </div>
+            <StandingsExplorer isDark={isDarkMode} />
+          </div>
+        </div>
+      )}
 
       {/* نافذة النتائج المباشرة */}
       {showLiveScores && (

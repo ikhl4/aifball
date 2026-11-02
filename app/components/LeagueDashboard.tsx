@@ -1,6 +1,9 @@
 
 'use client';
 
+import { COMPETITIONS } from '../../lib/competitions';
+import { footballNameInArabic, footballGroupInArabic } from '../../lib/football-names-ar';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 type ChatLanguage = 'ar' | 'en';
@@ -46,40 +49,7 @@ interface StandingsResult {
   updatedAt: string | null;
 }
 
-const LEAGUE_NAMES: Record<string, { ar: string; en: string }> = {
-  'ksa.1': {
-    ar: 'دوري روشن السعودي',
-    en: 'Saudi Pro League',
-  },
-  'eng.1': {
-    ar: 'الدوري الإنجليزي الممتاز',
-    en: 'Premier League',
-  },
-  'esp.1': {
-    ar: 'الدوري الإسباني',
-    en: 'LaLiga',
-  },
-  'ita.1': {
-    ar: 'الدوري الإيطالي',
-    en: 'Serie A',
-  },
-  'ger.1': {
-    ar: 'الدوري الألماني',
-    en: 'Bundesliga',
-  },
-  'fra.1': {
-    ar: 'الدوري الفرنسي',
-    en: 'Ligue 1',
-  },
-  'usa.1': {
-    ar: 'الدوري الأمريكي MLS',
-    en: 'Major League Soccer',
-  },
-  'uefa.champions': {
-    ar: 'دوري أبطال أوروبا',
-    en: 'UEFA Champions League',
-  },
-};
+const LEAGUE_NAMES = COMPETITIONS;
 
 const SAUDI_TEAMS: Record<string, string> = {
   '929': 'الهلال',
@@ -212,6 +182,8 @@ const TEAM_NAMES_AR: Record<string, string> = {
 };
 
 const GROUP_NAMES_AR: Record<string, string> = {
+  'East Region': 'منطقة الشرق',
+  'West Region': 'منطقة الغرب',
   'Eastern Conference': 'القسم الشرقي',
   'Western Conference': 'القسم الغربي',
   'League Phase': 'مرحلة الدوري',
@@ -646,12 +618,13 @@ function formatSeason(
   fallback: string,
   leagueCode: string
 ): string {
-  if (leagueCode === 'usa.1') {
+  if (COMPETITIONS[leagueCode]?.seasonFormat === 'calendar') {
     const year = (season || fallback).match(/\b(\d{4})\b/);
     return year ? year[1] : season || fallback;
   }
 
   const input = season || fallback;
+  if (!input) return '—';
   const match = input.match(
     /^(\d{4})(?:[-/](\d{2,4}))?$/
   );
@@ -687,7 +660,7 @@ function displayTeamName(
     return SAUDI_TEAMS[team.id];
   }
 
-  return TEAM_NAMES_AR[team.name] || team.name;
+  return footballNameInArabic(team.name) || TEAM_NAMES_AR[team.name] || team.name;
 }
 
 function displayGroupName(
@@ -697,7 +670,7 @@ function displayGroupName(
   const trimmed = name.trim();
 
   if (lang === 'ar') {
-    return GROUP_NAMES_AR[trimmed] || trimmed;
+    return GROUP_NAMES_AR[trimmed] || footballGroupInArabic(trimmed);
   }
 
   return GROUP_NAMES_EN[trimmed] || trimmed;
@@ -706,7 +679,7 @@ function displayGroupName(
 export default function LeagueDashboard({
   leagueName,
   leagueCode = 'ksa.1',
-  season = '2026',
+  season = '',
   isDark = true,
   lang = 'ar',
 }: LeagueDashboardProps) {
@@ -886,8 +859,9 @@ export default function LeagueDashboard({
     );
   })();
 
+  const sourceSeason = result?.seasonName?.match(/\b(\d{4}(?:[-/](?:\d{4}|\d{2}))?)\b/)?.[1];
   const displayedSeason = formatSeason(
-    result?.season || null,
+    sourceSeason || result?.season || null,
     season,
     leagueCode
   );

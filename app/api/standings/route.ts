@@ -1,3 +1,4 @@
+import { COMPETITIONS } from '../../../lib/competitions';
 
 import { NextResponse } from 'next/server';
 
@@ -53,44 +54,7 @@ interface StandingsData {
   updatedAt: string;
 }
 
-interface LeagueConfig {
-  name: string;
-  fotmobId?: number;
-}
-
-const LEAGUES: Record<string, LeagueConfig> = {
-  'ksa.1': {
-    name: 'دوري روشن السعودي',
-    fotmobId: 536,
-  },
-  'eng.1': {
-    name: 'الدوري الإنجليزي الممتاز',
-    fotmobId: 47,
-  },
-  'esp.1': {
-    name: 'الدوري الإسباني',
-    fotmobId: 87,
-  },
-  'ita.1': {
-    name: 'الدوري الإيطالي',
-    fotmobId: 55,
-  },
-  'ger.1': {
-    name: 'الدوري الألماني',
-    fotmobId: 54,
-  },
-  'fra.1': {
-    name: 'الدوري الفرنسي',
-    fotmobId: 53,
-  },
-  'uefa.champions': {
-    name: 'دوري أبطال أوروبا',
-    fotmobId: 42,
-  },
-  'usa.1': {
-    name: 'الدوري الأمريكي MLS',
-  },
-};
+const LEAGUES = Object.fromEntries(Object.entries(COMPETITIONS).map(([code, item]) => [code, { name: item.ar, fotmobId: item.fotmobId }]));
 
 // ==========================================
 // General helpers
@@ -609,35 +573,23 @@ function collectESPNGroups(
   payload: RecordData,
   league: string
 ): StandingGroup[] {
-  const children = array(payload.children);
-
-  const groups = children
-    .map((child, index) =>
-      normalizeESPNGroup(
-        child,
-        index,
-        league
-      )
-    )
-    .filter(
-      (group): group is StandingGroup =>
-        group !== null
-    );
-
-  if (groups.length) return groups;
-
-  const direct = normalizeESPNGroup(
-    {
-      id: 'main',
-      name: 'الترتيب العام',
-      standings: payload.standings,
-      entries: payload.entries,
-    },
-    0,
-    league
-  );
-
-  return direct ? [direct] : [];
+  const groups: StandingGroup[] = [];
+  const visit = (node: RecordData, ancestors: string[]) => {
+    const label = text(first(node, ['name', 'displayName', 'abbreviation']));
+    const children = array(node.children).map(record).filter((child): child is RecordData => child !== null);
+    if (children.length) {
+      for (const child of children) visit(child, label ? [...ancestors, label] : ancestors);
+      return;
+    }
+    const group = normalizeESPNGroup(node, groups.length, league);
+    if (!group) return;
+    // Stable unique paths retain independent regions / groups in nested payloads.
+    group.id = [...ancestors, label || group.id].join(' / ');
+    group.name = ancestors.length > 1 ? [...ancestors.slice(1), group.name].join(' / ') : group.name;
+    groups.push(group);
+  };
+  visit(payload, []);
+  return groups;
 }
 
 // ==========================================
@@ -918,9 +870,17 @@ async function fetchJSON(
 // ESPN primary source
 // ==========================================
 
+function matchesESPNSeason(league: string, requested: string, actual: { season: string | null; seasonName: string | null }): boolean {
+  if (COMPETITIONS[league]?.kind === 'national' && /^\d{4}$/.test(requested) && actual.seasonName) {
+    return new RegExp(`\\b${requested}\\b`).test(actual.seasonName);
+  }
+  return Boolean(actual.season && seasonsMatch(requested, actual.season));
+}
+
 async function getESPN(
   league: string,
-  requestedSeason: string | null
+  requestedSeason: string | null,
+  useCurrentSeason = false
 ): Promise<StandingsData | null> {
   const url = new URL(
     `${ESPN_BASE}/${encodeURIComponent(
@@ -928,7 +888,7 @@ async function getESPN(
     )}/standings`
   );
 
-  if (requestedSeason) {
+  if (requestedSeason && !useCurrentSeason) {
     const year = seasonStart(
       requestedSeason
     );
@@ -984,11 +944,7 @@ async function getESPN(
 
   if (requestedSeason) {
     if (
-      !seasonInfo.season ||
-      !seasonsMatch(
-        requestedSeason,
-        seasonInfo.season
-      )
+      !matchesESPNSeason(league, requestedSeason, seasonInfo)
     ) {
       diagnostic(
         'ESPN',
@@ -1210,6 +1166,15 @@ export async function GET(request: Request) {
         error: errorDetails(error),
       }
     );
+  }
+
+  if (season && COMPETITIONS[league]?.kind === 'national') {
+    try {
+      const data = await getESPN(league, season, true);
+      if (data) return jsonResponse(data);
+    } catch (error) {
+      console.warn('[AiFBall Standings] ESPN_EDITION_LOOKUP_FAILED', errorDetails(error));
+    }
   }
 
   // Fallback source: FotMob
