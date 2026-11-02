@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isDetailedMatchQuery, withMatchReportPresentation } from '../../../lib/match-report-prompt';
+import { isDetailedMatchQuery, withMatchReportPresentation, withMatchConversationContext } from '../../../lib/match-report-prompt';
 import { isAnalysisRequest } from '../../../lib/analysis-story';
 import { withAnalysisPresentation } from '../../../lib/analysis-prompt';
 
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       signal: req.signal,
       body: JSON.stringify({
         inputs: {},
-        query: detailedMatch ? withMatchReportPresentation(query) : analysis ? withAnalysisPresentation(query) : query,
+        query: detailedMatch ? withMatchReportPresentation(query) : analysis ? withAnalysisPresentation(query) : conversation_id ? withMatchConversationContext(query) : query,
         response_mode: 'streaming',
         conversation_id: conversation_id || undefined,
         user: 'aifball-web-user', 

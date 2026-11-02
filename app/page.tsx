@@ -499,7 +499,7 @@ function renderFormattedText(
         const matchUrl = safeUrl(attrs.match_url || '');
         const is365 =
           matchUrl &&
-          /^([\w-]+\.)*(365scores\.com|espn\.com)$/i.test(
+          /^([\w-]+\.)*(espn\.com|sofascore\.com)$/i.test(
             new URL(matchUrl).hostname
           );
 
@@ -523,6 +523,7 @@ function renderFormattedText(
             <MatchReport
               matchName={matchName}
               autoMatchUrl={matchUrl}
+              playerName={attrs.player_name}
               eventId={attrs.event}
               leagueCode={attrs.league}
               isDark={isDark}
