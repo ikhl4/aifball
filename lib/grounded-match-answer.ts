@@ -9,7 +9,7 @@ const esc=(s:string)=>s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</
 const number=(v:unknown)=>typeof v==='number'||typeof v==='string'?String(v):'غير متاح';
 const failure='تعذر جلب بيانات مؤكدة من المصدر لهذه المباراة. لن أعرض أرقاماً أو مشاركة لاعب غير متحقق منها. يمكنك إعادة المحاولة داخل الشات.';
 /** Replace model statistics with verified source values; keep provider identities scoped. */
-export async function groundedMatchAnswer(answer:string,query:string,signal?:AbortSignal,fetcher:typeof fetch=fetch):Promise<string>{
+export async function groundedMatchAnswer(answer:string,_query:string,signal?:AbortSignal,fetcher:typeof fetch=fetch):Promise<string>{
  const tag=answer.match(/<aifball-match-report\b([^>]*?)\/?\s*>/i);
  if(!tag)return answer;
  const attrs:Record<string,string>={};for(const m of tag[1].matchAll(/([a-z_]+)\s*=\s*"([^"]*)"/g))attrs[m[1]]=m[2].replace(/&amp;/g,'&');
@@ -34,7 +34,7 @@ export async function groundedMatchAnswer(answer:string,query:string,signal?:Abo
    home=ar(d.home.name);away=ar(d.away.name);date=d.date||'';title=COMPETITIONS[attrs.league].ar;state=d.state==='post'?'انتهت':d.state==='in'?'جارية':'لم تبدأ';score=`${number(d.home.score)} — ${number(d.away.score)}`;source=d.sourceUrl;metrics=d.statistics;players=[...d.home.players,...d.away.players];outputTag=`event="${d.eventId}" league="${esc(d.league)}"`;
   }else return failure;
   const timestamp=Date.parse(date);if(!Number.isFinite(timestamp)||timestamp>Date.now()||state==='لم تبدأ')return 'المصدر لم يؤكد مباراة بدأت بالفعل بهذا المعرّف؛ لن أقدّمها على أنها آخر مواجهة.';
-  const explicit=query.match(/\b(20\d{2}-\d{2}-\d{2})\b/)?.[1];if(explicit&&date.slice(0,10)!==explicit)return 'تاريخ المباراة المسترجعة لا يطابق التاريخ المطلوب. لن أعرض مباراة بديلة؛ أعد تحديد المواجهة داخل الشات.';
+  if(state!=='انتهت')return 'لم أتمكن من تأكيد مباراة مكتملة بهذا المعرّف.';
   const heading=`**${home} ضد ${away} — ${date.slice(0,10)} — ${title} — ${state}**\n\nالنتيجة (${home} ثم ${away}): **${score}**.`;
   let prose='';let playerAttr='';
   if(attrs.player_name){const p=uniquePlayer(players,attrs.player_name);if(p){prose=`\n\n**أداء ${p.name} في هذه المباراة:**\n\n`+(p.statistics.length?p.statistics.map(s=>`- ${s.label}: ${number(s.value)}.`).join('\n'):'الأرقام الفردية غير متاحة في استجابة المصدر.');playerAttr=` player_name="${esc(p.name)}"`;}else prose=`\n\nلم أتمكن من تأكيد ${attrs.player_name.replace(/[<>]/g,'')} في قائمة هذه المباراة بالاسم المسترجع. لن أنسب له مشاركة أو أرقاماً؛ يمكنك تحديد الاسم داخل الشات.`;}
