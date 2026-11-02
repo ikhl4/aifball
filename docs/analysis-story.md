@@ -20,8 +20,12 @@ The first Preview request returned HTTP 500 because Dify was not configured. Aft
 
 The presentation instructions require tool-backed sources for named coaches, teams and matches. The validator requires at least one HTTPS reference when mode is `sourced`, and checks shape, length, coordinate bounds, duplicate IDs, arrow endpoints and team sizes. It cannot determine whether a cited webpage proves an assertion; factual grounding still depends on the existing Dify tools and accuracy instructions. Diagrams are always labelled interpretive.
 
-Partial structured data is hidden during streaming. An incomplete final document displays an error. A complete document with invalid board data can retain bounded written explanation while omitting the pitch. Regular non-analysis answers retain their existing Markdown/widgets.
+Raw JSON is hidden during streaming. Completed narrative fields and fully validated sections are shown progressively; unfinished strings or scenes are never repaired or guessed. An interrupted response retains its completed explanation and shows an interruption notice. Source-backed partial diagrams require completed references; otherwise only prose is retained. A complete document with invalid board data can retain bounded written explanation while omitting the pitch. Regular non-analysis answers retain their existing Markdown/widgets.
 
 ## Verification
 
-Run `node --test tests/*.cjs` (36 tests). Production build: `npm run build` with the existing Clerk configuration. Tests include the actual generic teaching response, rendering order, source/scene rejection, streaming boundaries, follow-ups and request forwarding.
+Run `node --test tests/*.cjs` (38 tests). Production build: `npm run build` with the existing Clerk configuration. Tests include the actual generic teaching response, rendering order, source/scene rejection, streaming boundaries, follow-ups and request forwarding.
+
+## Interrupted named-coach response
+
+Reproducing the exact Enrique/Paris question returned 13,621 characters but disconnected after 68.2 seconds without a `message_end` event. The route had an explicit 60-second maximum. The route now requests 300 seconds and the client allows 240 seconds. Actual hosting limits still depend on the Vercel project configuration. Presentation instructions put sources before sections and request a focused 2–4 section answer. `lib/analysis-partial.ts` extracts only completed JSON fields/sections; the interrupted real response is a regression fixture. Silent EOF is reported as an interruption as well as network failures.

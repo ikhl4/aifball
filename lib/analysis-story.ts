@@ -1,3 +1,4 @@
+import { completedAnalysisFields } from './analysis-partial';
 export type StoryPlayer = { id: string; number: string; side: 'team' | 'opponent'; x: number; y: number; role: string };
 export type StoryFrame = { title: string; note: string; players: StoryPlayer[]; ball: [number, number]; arrows: { from: string; to: string | [number, number]; kind: 'pass' | 'run' | 'shot' }[] };
 export type AnalysisStoryData = { title: string; scope: string; mode: 'sourced' | 'illustrative'; intro: string; sections: { title: string; explanation: string; after: string; board?: { caption: string; frames: StoryFrame[] } }[]; sources: { title: string; url: string }[] };
@@ -38,14 +39,24 @@ export function validateAnalysisStory(v: unknown): AnalysisStoryData | null {
   }
   return v as AnalysisStoryData;
 }
-export type StoryPart = { kind:'text'; text:string } | {kind:'story'; data:AnalysisStoryData} | {kind:'pending'} | {kind:'invalid'; text?:string};
+export type StoryPart = { kind:'text'; text:string } | {kind:'story'; data:AnalysisStoryData} | {kind:'pending'; data?:AnalysisStoryData; text?:string} | {kind:'invalid'; text?:string};
 export function splitAnalysisStory(answer: string): StoryPart[] {
   const parts: StoryPart[]=[]; const opening=/(?:^|\n)```aifball-analysis[ \t]*\r?\n/g;
   let cursor=0, match:RegExpExecArray|null;
   while ((match=opening.exec(answer))) {
     if (match.index>cursor) parts.push({kind:'text',text:answer.slice(cursor,match.index)});
     const start=opening.lastIndex; const ending=/\r?\n```[ \t]*(?=\r?\n|$)/g; ending.lastIndex=start; const close=ending.exec(answer);
-    if (!close) { parts.push({kind:'pending'}); return parts; }
+    if (!close) {
+      const raw=answer.slice(start);const fields=raw.length<=100000?completedAnalysisFields(raw):{};
+      let full:AnalysisStoryData|null=null;
+      try { full=validateAnalysisStory(JSON.parse(raw)); } catch {}
+      if(full){parts.push({kind:'story',data:full});return parts;}
+      const partial=validateAnalysisStory(fields);
+      const prose:string[]=[];
+      for(const key of ['title','scope','intro'])if(text(fields[key],4000))prose.push(fields[key] as string);
+      if(Array.isArray(fields.sections))for(const section of fields.sections)if(record(section))for(const key of ['title','explanation','after'])if(text(section[key],4000))prose.push(section[key]);
+      parts.push({kind:'pending',...(partial?{data:partial}:{text:prose.join('\n\n')})});return parts;
+    }
     const raw=answer.slice(start,close.index);
     let data:AnalysisStoryData|null=null; let fallback='';
     if(raw.length<=100000) { try {
