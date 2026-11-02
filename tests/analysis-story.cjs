@@ -34,3 +34,9 @@ test('follow-up tactical questions retain story mode while standings/stats/drill
  for(const q of ['اعطني جدول الدوري','كم احصائياته','ابي تمرين','مرحبا'])assert.equal(api.analysisModeForQuery(q,previous),false,q);
  assert.equal(api.analysisModeForQuery('حلل اسلوب المدرب'),true);
 });
+test('actual Dify teaching response validates and renders two different contextual pitches',()=>{
+ const raw=JSON.parse(fs.readFileSync('tests/fixtures/analysis-teaching.json','utf8'));
+ const valid=api.validateAnalysisStory(raw);assert.ok(valid);assert.equal(valid.mode,'illustrative');assert.equal(valid.sections.length,2);
+ assert.notEqual(JSON.stringify(valid.sections[0].board),JSON.stringify(valid.sections[1].board));
+ const Component=load('app/components/AnalysisStory.tsx').default;const html=renderToStaticMarkup(React.createElement(Component,{data:valid}));assert.equal((html.match(/<figure/g)||[]).length,2);assert.doesNotMatch(html,/مكتبة التمارين/);
+});
