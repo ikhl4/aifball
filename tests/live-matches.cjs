@@ -26,7 +26,7 @@ function mount(path, fetcher) {
   };
   const module = { exports: {} };
   const code = ts.transpileModule(fs.readFileSync(path, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
-  vm.runInNewContext(code, { module, exports: module.exports, require: () => React, fetch: (...args) => fetcher(...args), AbortController, Intl, Date,
+  vm.runInNewContext(code, { module, exports: module.exports, require: name => name.includes('football-names-ar') ? { footballNameInArabic: () => null } : React, fetch: (...args) => fetcher(...args), AbortController, Intl, Date,
     setInterval: fn => { interval = fn; return 1; }, clearInterval() {}, console });
   function render(nextProps = props) { props = nextProps; index = 0; effectIndex = 0; tree = module.exports.default(props);
     effects.forEach(effect => { if (effect.fn) { const fn = effect.fn; effect.fn = null; effect.cleanup = fn(); } }); return tree; }
@@ -87,4 +87,20 @@ test('route distinguishes invalid requests and upstream failures from no games',
   assert.equal((await route(async () => { throw Error('offline'); })('today')).status, 502);
   assert.equal((await route(async () => ({ ok: true, json: async () => ({}) }))('today')).status, 502);
   assert.equal((await route(() => { throw Error('must not fetch'); })('invalid')).status, 400);
+});
+
+
+test('match details retain the last success on refresh failure and abort on close', async () => {
+  let fail = false, signal;
+  const app = mount('app/components/MatchSummary.tsx', async (url, options) => {
+    signal = options.signal;
+    if (fail) throw new Error('offline');
+    return { ok: true, json: async () => ({ eventId: '123', league: 'ksa.1', home: {id:'1'}, away: {id:'2'}, state:'post', events: [{id:'e',label:'هدف موثّق',players:['Player'],teamId:'1'}], fetchedAt: '2026-11-02T10:00:00Z' }) };
+  });
+  app.render({eventId:'123',league:'ksa.1'}); await settle();
+  assert.match(app.text(), /هدف موثّق/);
+  fail = true; await app.refresh();
+  assert.match(app.text(), /هدف موثّق/);
+  assert.match(app.text(), /آخر جلب ناجح/);
+  app.unmount(); assert.equal(signal.aborted, true);
 });
