@@ -1,5 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import MatchSummary from './MatchSummary';
+import { footballNameInArabic } from '../../lib/football-names-ar';
 
 const LEAGUES = [
   { id: 'ksa.1', name: 'دوري روشن السعودي', flag: '🇸🇦' },
@@ -149,8 +151,6 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
                     const isFinished = status?.state === 'post';
                     const isScheduled = !isLive && !isFinished;
 
-                    const details = Array.isArray(comp.details) ? comp.details : [];
-                    const goals = details.filter((d: any) => d.scoringPlay === true);
                     const matchKey = `${league.id}:${event.id}`;
                     const isExpanded = expandedMatchId === matchKey;
 
@@ -183,7 +183,7 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
                           </div>
 
                           <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
-                            <span className={`font-bold text-sm truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{home.team.shortDisplayName}</span>
+                            <span className={`font-bold text-sm truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{footballNameInArabic(home.team.displayName || home.team.shortDisplayName) || home.team.shortDisplayName}</span>
                             <img src={home.team.logo} alt={home.team.name} className="w-6 h-6 object-contain flex-shrink-0" />
                           </div>
 
@@ -193,64 +193,11 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
 
                           <div className="flex-1 flex items-center justify-start gap-2 min-w-0">
                             <img src={away.team.logo} alt={away.team.name} className="w-6 h-6 object-contain flex-shrink-0" />
-                            <span className={`font-bold text-sm truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{away.team.shortDisplayName}</span>
+                            <span className={`font-bold text-sm truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{footballNameInArabic(away.team.displayName || away.team.shortDisplayName) || away.team.shortDisplayName}</span>
                           </div>
                         </div>
 
-                        {/* 🌟 قائمة الأهداف (محدثة لاستخراج الاسم بدقة) 🌟 */}
-                        {isExpanded && (
-                          <div className={`p-3 text-sm ${isDark ? 'bg-[#0a0e17] text-gray-300' : 'bg-white text-gray-700'}`}>
-                            {goals.length > 0 ? (
-                              <div className="space-y-2">
-                                <p className={`font-bold text-xs mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>⚽ سجل الأهداف:</p>
-                                {goals.map((goal: any, idx: number) => {
-                                  let scorer = 'لاعب غير معروف';
-
-                                  // 1. محاولة استخراج الاسم من المسار القياسي
-                                  if (goal.athletesInvolved && goal.athletesInvolved.length > 0) {
-                                    scorer = goal.athletesInvolved[0].displayName;
-                                  }
-                                  // 2. محاولة استخراج الاسم من مسار آخر
-                                  else if (goal.participants && goal.participants.length > 0 && goal.participants[0].athlete) {
-                                    scorer = goal.participants[0].athlete.displayName;
-                                  }
-                                  // 3. خوارزمية ذكية: استخراج الاسم من نص الهدف (Text)
-                                  else if (goal.text) {
-                                    // النص غالباً يكون: "Goal! Al Nassr 1, Al Khaleej 0. Cristiano Ronaldo (Al Nassr) right footed..."
-                                    const match = goal.text.match(/\.\s([^(]+)\(/);
-                                    if (match && match[1]) {
-                                      scorer = match[1].trim();
-                                    } else {
-                                      // محاولة أخرى إذا كانت الصيغة مختلفة
-                                      const match2 = goal.text.match(/Goal!\s(.*?)\s\(/);
-                                      if (match2 && match2[1]) scorer = match2[1].trim();
-                                    }
-                                  }
-
-                                  const minute = goal.clock?.displayValue || '';
-                                  const isHomeGoal = String(goal.team?.id) === String(home.team.id);
-                                  const isAwayGoal = String(goal.team?.id) === String(away.team.id);
-
-                                  return (
-                                    <div key={idx} className="flex items-center justify-between border-b border-gray-700/30 pb-1 last:border-0">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-500 w-8 text-center">{minute}</span>
-                                        <span className={`font-bold ${isDark ? 'text-white' : 'text-black'}`}>{scorer}</span>
-                                      </div>
-                                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${isHomeGoal ? 'bg-emerald-900/30 text-emerald-400' : 'bg-sky-900/30 text-sky-400'}`}>
-                                        {isHomeGoal ? home.team.shortDisplayName : isAwayGoal ? away.team.shortDisplayName : 'الفريق غير متاح'}
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <p className="text-center text-xs text-gray-500 py-2">
-                                {isScheduled ? 'المباراة لم تبدأ بعد.' : 'تفاصيل الأهداف غير متاحة من المصدر حالياً.'}
-                              </p>
-                            )}
-                          </div>
-                        )}
+                        {isExpanded && <MatchSummary eventId={String(event.id)} league={league.id} isDark={isDark} />}
                       </div>
                     );
                   })}

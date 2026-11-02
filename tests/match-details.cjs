@@ -1,0 +1,10 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const ts=require('typescript'),fs=require('node:fs'),vm=require('node:vm');
+const moduleRef={exports:{}};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/match-details.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{module:moduleRef,exports:moduleRef.exports});
+const normalize=moduleRef.exports.normalizeMatchDetails;
+const fixture=()=>({header:{id:'123',league:{slug:'ksa.1'},competitions:[{id:'123',competitors:[{homeAway:'away',team:{id:'2',displayName:'Away'}},{homeAway:'home',team:{id:'1',displayName:'Home'},score:'0'}]}]},boxscore:{teams:[{team:{id:'1'},statistics:[{name:'totalShots',displayValue:'0'}]}]},rosters:[{team:{id:'1'},roster:[{athlete:{displayName:'Unknown starter'}},{starter:false,athlete:{displayName:'Bench'}}]}],keyEvents:[{type:{text:'Substitution'},team:{id:'99'},participants:[{athlete:{displayName:'A'}},{athlete:{displayName:'B'}}]}]});
+test('rejects a different event or league rather than showing unrelated data',()=>{assert.throws(()=>normalize(fixture(),'124','ksa.1'));assert.throws(()=>normalize(fixture(),'123','eng.1'));});
+test('home and away use explicit identifiers; zero is preserved and missing remains null',()=>{const d=normalize(fixture(),'123','ksa.1');assert.equal(d.home.id,'1');assert.equal(d.home.score,'0');assert.equal(d.away.score,null);assert.equal(d.statistics[0].home,'0');assert.equal(d.statistics[0].away,null);});
+test('does not infer starters, substitution directions or unknown team attribution',()=>{const d=normalize(fixture(),'123','ksa.1');assert.equal(d.home.players[0].starter,null);assert.equal(d.home.players[1].starter,false);assert.equal(d.events[0].teamId,'99');assert.equal(d.events[0].players.join('/'),'A/B');assert.equal(d.home.players[0].rating,undefined);});
