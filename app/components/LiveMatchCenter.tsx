@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import MatchSummary from './MatchSummary';
+import { filterLiveMatches, MATCH_FILTERS, type MatchFilter } from '../../lib/live-match-filters';
 import { footballNameInArabic } from '../../lib/football-names-ar';
 
 const LEAGUES = [
@@ -36,6 +37,13 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
   const [failedLeagues, setFailedLeagues] = useState<string[]>([]);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+
+  const [search, setSearch] = useState('');
+  const [selectedLeague, setSelectedLeague] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<MatchFilter>('all');
+  const filtered = filterLiveMatches(matchesByLeague, selectedLeague, search, statusFilter);
+  const hasFilters = Boolean(search.trim() || selectedLeague !== 'all' || statusFilter !== 'all');
+  const clearFilters = () => { setSearch(''); setSelectedLeague('all'); setStatusFilter('all'); setExpandedMatchId(null); };
 
   const formatMatchTime = (dateStr: string) => {
     try {
@@ -110,6 +118,31 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
         <button onClick={() => setDateMode('tomorrow')} className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${dateMode === 'tomorrow' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}>مباريات غداً</button>
       </div>
 
+      <div dir="rtl" className="mb-5 space-y-3" role="search" aria-label="بحث وتصفية المباريات">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="text-xs font-bold space-y-1">
+            <span>ابحث عن فريق</span>
+            <input type="search" value={search} onChange={e => { setSearch(e.target.value); setExpandedMatchId(null); }} placeholder="اسم الفريق بالعربية أو الإنجليزية" className={`w-full p-3 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-[#1A1C1E] border-gray-700 text-white placeholder:text-gray-400' : 'bg-white border-gray-300 text-gray-900'}`} />
+          </label>
+          <label className="text-xs font-bold space-y-1">
+            <span>البطولة</span>
+            <select value={selectedLeague} onChange={e => { setSelectedLeague(e.target.value); setExpandedMatchId(null); }} className={`w-full p-3 rounded-xl border text-sm focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-[#1A1C1E] border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+              <option value="all">كل البطولات</option>
+              {LEAGUES.map(league => <option key={league.id} value={league.id}>{league.name}</option>)}
+            </select>
+          </label>
+        </div>
+        <div role="group" aria-label="حالة المباراة" className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {MATCH_FILTERS.map(filter => <button key={filter.id} aria-pressed={statusFilter === filter.id} onClick={() => { setStatusFilter(filter.id); setExpandedMatchId(null); }} className={`py-2 px-1 rounded-lg text-xs font-bold focus-visible:ring-2 focus-visible:ring-emerald-500 ${statusFilter === filter.id ? 'bg-emerald-600 text-white' : isDark ? 'bg-gray-800 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
+            {filter.label} <span className="inline-block mx-1" aria-label="عدد المباريات">({loading ? '—' : filtered.counts[filter.id]})</span>
+          </button>)}
+        </div>
+        <div className="flex justify-between items-center gap-2 text-xs">
+          <p aria-live="polite" aria-atomic="true">{loading ? 'جارٍ تحميل المباريات…' : `المباريات المعروضة: ${filtered.total} · الأعداد بحسب البيانات المحمّلة`}</p>
+          {hasFilters && <button className="text-emerald-600 font-bold underline shrink-0" onClick={clearFilters}>مسح التصفية</button>}
+        </div>
+      </div>
+
       <p className="text-xs text-gray-500 text-center mb-3" aria-live="polite">
         ESPN · المواعيد بتوقيت الرياض · تحديث تلقائي كل دقيقة{updatedAt ? ` · آخر تحديث ناجح: ${updatedAt}` : ''}
       </p>
@@ -126,7 +159,7 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
       ) : (
         <div className="space-y-6">
           {LEAGUES.map((league) => {
-            const leagueMatches = matchesByLeague[league.id] || [];
+            const leagueMatches = filtered.visible[league.id] || [];
             if (leagueMatches.length === 0) return null;
 
             return (
@@ -206,9 +239,9 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
             );
           })}
 
-          {failedLeagues.length === 0 && Object.values(matchesByLeague).every(arr => arr.length === 0) && (
+          {filtered.total === 0 && (
             <div className={`text-center py-20 rounded-2xl border ${isDark ? 'bg-[#131a2a] border-gray-800' : 'bg-white border-gray-200'}`}>
-              <p className="text-gray-500 font-bold">لا توجد مباريات في هذه الدوريات {dateMode === 'today' ? 'اليوم' : dateMode === 'yesterday' ? 'بالأمس' : 'غداً'}.</p>
+              <p className="text-gray-500 font-bold">{failedLeagues.length ? 'لا توجد نتائج مطابقة ضمن البيانات المحمّلة؛ بعض البطولات لم تُحدّث.' : hasFilters ? 'لا توجد مباريات تطابق البحث والتصفية.' : `لا توجد مباريات في هذه البطولات ${dateMode === 'today' ? 'اليوم' : dateMode === 'yesterday' ? 'بالأمس' : 'غداً'}.`}</p>
             </div>
           )}
         </div>

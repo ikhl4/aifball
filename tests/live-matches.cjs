@@ -3,6 +3,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+function support(path) {
+  const module = {exports:{}};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText, {module,exports:module.exports,require:()=>support('lib/football-names-ar.ts')});
+  return module.exports;
+}
 const settle = () => new Promise(resolve => setImmediate(resolve));
 const sample = (id = 'match', state = 'pre') => ({ id, date: '2026-11-02T18:00:00Z', status: { type: { state } }, competitions: [{ competitors: [
   { homeAway: 'home', team: { id: '1', shortDisplayName: 'Home' } },
@@ -26,7 +31,7 @@ function mount(path, fetcher) {
   };
   const module = { exports: {} };
   const code = ts.transpileModule(fs.readFileSync(path, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
-  vm.runInNewContext(code, { module, exports: module.exports, require: name => name.includes('football-names-ar') ? { footballNameInArabic: () => null } : React, fetch: (...args) => fetcher(...args), AbortController, Intl, Date,
+  vm.runInNewContext(code, { module, exports: module.exports, require: name => name.includes('live-match-filters') ? support('lib/live-match-filters.ts') : name.includes('football-names-ar') ? support('lib/football-names-ar.ts') : React, fetch: (...args) => fetcher(...args), AbortController, Intl, Date,
     setInterval: fn => { interval = fn; return 1; }, clearInterval() {}, console });
   function render(nextProps = props) { props = nextProps; index = 0; effectIndex = 0; tree = module.exports.default(props);
     effects.forEach(effect => { if (effect.fn) { const fn = effect.fn; effect.fn = null; effect.cleanup = fn(); } }); return tree; }
@@ -95,7 +100,7 @@ test('match details retain the last success on refresh failure and abort on clos
   const app = mount('app/components/MatchSummary.tsx', async (url, options) => {
     signal = options.signal;
     if (fail) throw new Error('offline');
-    return { ok: true, json: async () => ({ eventId: '123', league: 'ksa.1', home: {id:'1'}, away: {id:'2'}, state:'post', events: [{id:'e',label:'هدف موثّق',players:['Player'],teamId:'1'}], fetchedAt: '2026-11-02T10:00:00Z' }) };
+    return { ok: true, json: async () => ({ eventId: '123', league: 'ksa.1', home: {id:'1',name:'Al Hilal'}, away: {id:'2',name:'Al Nassr'}, state:'post', events: [{id:'e',label:'هدف موثّق',players:['Player'],teamId:'1'}], fetchedAt: '2026-11-02T10:00:00Z' }) };
   });
   app.render({eventId:'123',league:'ksa.1'}); await settle();
   assert.match(app.text(), /هدف موثّق/);
