@@ -1,3 +1,4 @@
+import {scores365Identity,normalize365Report} from './scores365-report';
 import { COMPETITIONS } from './competitions';
 import { normalizeReport } from './match-report';
 import { normalizeSpatialReport,sofaMatchId } from './spatial-report';
@@ -18,7 +19,13 @@ export async function groundedMatchAnswer(answer:string,query:string,signal?:Abo
   let title='',source='',date='',state='',score='',outputTag='',metrics:{label:string;home:unknown;away:unknown;percent?:boolean}[]=[],players:{name:string;statistics:{label:string;value:unknown}[]}[]=[];
   let home='',away='';
   const sofa=attrs.match_url&&sofaMatchId(attrs.match_url);
-  if(sofa){
+  const scores=attrs.match_url&&scores365Identity(attrs.match_url);
+  if(attrs.match_url&&/^https:\/\/(?:www\.)?365scores\.com\//i.test(attrs.match_url)&&!scores)return failure;
+  if(scores){
+   const backend=new URL('/365scores/match-analysis',process.env.LANUS_API_URL||'https://aifball-python-api.onrender.com');backend.searchParams.set('match_url',attrs.match_url);
+   const d=normalize365Report(await get(backend.toString(),process.env.LANUS_API_SECRET?{'x-api-key':process.env.LANUS_API_SECRET}:undefined),attrs.match_url);
+   home=ar(d.home.name);away=ar(d.away.name);date=d.date;title=d.competition||'البطولة غير متاحة';state=d.state==='post'?'انتهت':d.state==='in'?'جارية':d.state==='pre'?'لم تبدأ':'الحالة غير مؤكدة';score=`${number(d.home.score)} — ${number(d.away.score)}`;source=d.sourceUrl;metrics=d.statistics;players=[...d.home.players,...d.away.players];outputTag=`match_url="${esc(source)}"`;
+  }else if(sofa){
    const backend=new URL('/sofascore/match-analysis',process.env.LANUS_API_URL||'https://aifball-python-api.onrender.com');backend.searchParams.set('match_url',attrs.match_url);
    const d=normalizeSpatialReport(await get(backend.toString(),process.env.LANUS_API_SECRET?{'x-api-key':process.env.LANUS_API_SECRET}:undefined),sofa);
    home=ar(d.home);away=ar(d.away);date=d.date||'';title=d.competition||'البطولة غير متاحة';state=d.status==='finished'?'انتهت':d.status==='inprogress'?'جارية':'الحالة غير مؤكدة';score=`${number(d.homeScore)} — ${number(d.awayScore)}`;source=attrs.match_url;metrics=d.statistics;players=d.players.map(p=>({name:p.name,statistics:p.stats}));outputTag=`match_url="${esc(source)}"`;

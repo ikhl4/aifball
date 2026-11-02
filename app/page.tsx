@@ -499,7 +499,7 @@ function renderFormattedText(
         const matchUrl = safeUrl(attrs.match_url || '');
         const is365 =
           matchUrl &&
-          /^([\w-]+\.)*(espn\.com|sofascore\.com)$/i.test(
+          /^([\w-]+\.)*(espn\.com|sofascore\.com|365scores\.com)$/i.test(
             new URL(matchUrl).hostname
           );
 
