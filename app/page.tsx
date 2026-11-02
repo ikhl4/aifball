@@ -1504,8 +1504,9 @@ export default function FootPlayChat() {
             <section aria-label="ابدأ درساً تفاعلياً" className="mb-5">
               <h3 className="text-sm font-bold text-emerald-500 mb-2">التكتيك والتدريب · جرّب داخل المحادثة</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {LESSON_CHOICES.map(lesson => <button key={lesson.id} onClick={() => { void sendMessage(lesson.query); }} className={`p-3 rounded-xl border text-right text-xs font-bold leading-6 transition hover:border-emerald-500 ${isDarkMode ? 'bg-emerald-950/50 border-emerald-800/60 text-white' : 'bg-white/80 border-emerald-200 text-emerald-950'}`}>{lesson.title} <span className="text-emerald-500">← افتح اللوحة</span></button>)}
+                {LESSON_CHOICES.slice(0, 3).map(lesson => <button key={lesson.id} onClick={() => { void sendMessage(lesson.query); }} className={`p-3 rounded-xl border text-right text-xs font-bold leading-6 transition hover:border-emerald-500 ${isDarkMode ? 'bg-emerald-950/50 border-emerald-800/60 text-white' : 'bg-white/80 border-emerald-200 text-emerald-950'}`}>{lesson.title} <span className="text-emerald-500">← افتح اللوحة</span></button>)}
               </div>
+              <button onClick={() => { void sendMessage('اعرض مكتبة التمارين'); }} className="mt-2 text-xs font-bold text-emerald-500 underline">تصفح مكتبة التمارين كاملة ({LESSON_CHOICES.length})</button>
             </section>
 
             {/* بطاقات الاستكشاف الزخرفية */}
