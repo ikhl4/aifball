@@ -1,6 +1,7 @@
 
 'use client';
 
+import AppIcon from './AppIcon';
 import { COMPETITIONS } from '../../lib/competitions';
 import { footballNameInArabic, footballGroupInArabic } from '../../lib/football-names-ar';
 
@@ -942,7 +943,7 @@ export default function LeagueDashboard({
                   : 'bg-emerald-50'
               }`}
             >
-              🏆
+              <AppIcon name="trophy" size={24}/>
             </div>
 
             <div className="min-w-0">

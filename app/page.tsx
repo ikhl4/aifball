@@ -1,6 +1,8 @@
 
 'use client';
 
+import AppIcon, { SportIconText } from './components/AppIcon';
+import ReadAloudButton from './components/ReadAloudButton';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   SignInButton,
@@ -65,26 +67,26 @@ const LEAGUES: Record<string, string> = Object.fromEntries(Object.entries(COMPET
 const LEAGUES_EN: Record<string, string> = Object.fromEntries(Object.entries(COMPETITIONS).map(([code, item]) => [code, item.en]));
 
 const DISCOVERY_QUESTIONS: SuggestionCard[] = [
-  { question: 'ما الفروق بين الضغط العالي والضغط المتوسط والضغط العكسي؟', tag: 'المدارس التكتيكية', icon: '⚽' },
-  { question: 'كيف يُبنى نموذج احترافي لاكتشاف المواهب باستخدام البيانات؟', tag: 'الكشافون والمواهب', icon: '🔎' },
-  { question: 'كيف يؤثر ازدحام المباريات على الأحمال البدنية واحتمالات الإصابة؟', tag: 'علوم الأداء', icon: '🏃' },
-  { question: 'ما المؤشرات التي تساعد على تقييم المدرب بعيدًا عن النتائج؟', tag: 'تقييم المدربين', icon: '📋' },
-  { question: 'كيف نقيس جودة صناعة الفرص باستخدام xG وxA والتمريرات التقدمية؟', tag: 'الإحصاء المتقدم', icon: '📊' },
-  { question: 'كيف تبني الأندية استراتيجية انتقالات مستدامة فنيًا وماليًا؟', tag: 'الإدارة الرياضية', icon: '💼' },
-  { question: 'كيف تطورت الأدوار التكتيكية للاعبي الوسط عبر تاريخ كرة القدم؟', tag: 'التاريخ الكروي', icon: '🏛️' },
-  { question: 'كيف نحلل البناء من الخلف أمام الضغط العالي؟', tag: 'التحليل التكتيكي', icon: '🧠' },
-  { question: 'كيف تختلف نماذج ملكية الأندية والحوكمة الرياضية حول العالم؟', tag: 'حوكمة الأندية', icon: '🏟️' },
-  { question: 'كيف نقارن بين لاعبين في أدوار مختلفة باستخدام إحصائيات لكل 90 دقيقة؟', tag: 'مقارنة اللاعبين', icon: '⚔️' },
-  { question: 'كيف تطورت المدارس التكتيكية في الكرة السعودية والخليجية؟', tag: 'الكرة العربية', icon: '🌍' },
-  { question: 'ما الفرق بين الاستحواذ الفعّال والاستحواذ السلبي؟', tag: 'تحليل الأداء', icon: '📈' },
-  { question: 'كيف تُدار أكاديمية كرة قدم من الناحية الفنية والإدارية؟', tag: 'تطوير الأكاديميات', icon: '🎓' },
-  { question: 'كيف نقارن القيمة السوقية للاعب بقيمته الفنية؟', tag: 'اقتصاد كرة القدم', icon: '💰' },
-  { question: 'كيف يؤثر تغيير الرسم التكتيكي أثناء المباراة على توزيع المساحات؟', tag: 'المرونة التكتيكية', icon: '🗺️' },
-  { question: 'كيف تصمم هيكلًا يجمع المدير الرياضي والمدرب والكشافين؟', tag: 'الهياكل الرياضية', icon: '🏢' },
-  { question: 'ما المعايير الفنية لتقييم حراس المرمى الحديثة؟', tag: 'تحليل المراكز', icon: '🧤' },
-  { question: 'كيف نحلل الركلات الثابتة ونقيس تأثيرها على إنتاج الفرص؟', tag: 'الكرات الثابتة', icon: '🎯' },
-  { question: 'كيف تبني الأندية نموذجًا لاتخاذ قرارات التعاقد بناءً على المخاطر؟', tag: 'صناعة القرار', icon: '📑' },
-  { question: 'كيف يمكن استخدام الذكاء الاصطناعي لتطوير التدريب الرياضي؟', tag: 'التقنيات الرياضية', icon: '🤖' },
+  { question: 'ما الفروق بين الضغط العالي والضغط المتوسط والضغط العكسي؟', tag: 'المدارس التكتيكية', icon: 'pitch' },
+  { question: 'كيف يُبنى نموذج احترافي لاكتشاف المواهب باستخدام البيانات؟', tag: 'الكشافون والمواهب', icon: 'search' },
+  { question: 'كيف يؤثر ازدحام المباريات على الأحمال البدنية واحتمالات الإصابة؟', tag: 'علوم الأداء', icon: 'activity' },
+  { question: 'ما المؤشرات التي تساعد على تقييم المدرب بعيدًا عن النتائج؟', tag: 'تقييم المدربين', icon: 'clipboard' },
+  { question: 'كيف نقيس جودة صناعة الفرص باستخدام xG وxA والتمريرات التقدمية؟', tag: 'الإحصاء المتقدم', icon: 'chart' },
+  { question: 'كيف تبني الأندية استراتيجية انتقالات مستدامة فنيًا وماليًا؟', tag: 'الإدارة الرياضية', icon: 'briefcase' },
+  { question: 'كيف تطورت الأدوار التكتيكية للاعبي الوسط عبر تاريخ كرة القدم؟', tag: 'التاريخ الكروي', icon: 'history' },
+  { question: 'كيف نحلل البناء من الخلف أمام الضغط العالي؟', tag: 'التحليل التكتيكي', icon: 'network' },
+  { question: 'كيف تختلف نماذج ملكية الأندية والحوكمة الرياضية حول العالم؟', tag: 'حوكمة الأندية', icon: 'pitch' },
+  { question: 'كيف نقارن بين لاعبين في أدوار مختلفة باستخدام إحصائيات لكل 90 دقيقة؟', tag: 'مقارنة اللاعبين', icon: 'chart' },
+  { question: 'كيف تطورت المدارس التكتيكية في الكرة السعودية والخليجية؟', tag: 'الكرة العربية', icon: 'globe' },
+  { question: 'ما الفرق بين الاستحواذ الفعّال والاستحواذ السلبي؟', tag: 'تحليل الأداء', icon: 'chart' },
+  { question: 'كيف تُدار أكاديمية كرة قدم من الناحية الفنية والإدارية؟', tag: 'تطوير الأكاديميات', icon: 'cap' },
+  { question: 'كيف نقارن القيمة السوقية للاعب بقيمته الفنية؟', tag: 'اقتصاد كرة القدم', icon: 'chart' },
+  { question: 'كيف يؤثر تغيير الرسم التكتيكي أثناء المباراة على توزيع المساحات؟', tag: 'المرونة التكتيكية', icon: 'pitch' },
+  { question: 'كيف تصمم هيكلًا يجمع المدير الرياضي والمدرب والكشافين؟', tag: 'الهياكل الرياضية', icon: 'network' },
+  { question: 'ما المعايير الفنية لتقييم حراس المرمى الحديثة؟', tag: 'تحليل المراكز', icon: 'shield' },
+  { question: 'كيف نحلل الركلات الثابتة ونقيس تأثيرها على إنتاج الفرص؟', tag: 'الكرات الثابتة', icon: 'target' },
+  { question: 'كيف تبني الأندية نموذجًا لاتخاذ قرارات التعاقد بناءً على المخاطر؟', tag: 'صناعة القرار', icon: 'clipboard' },
+  { question: 'كيف يمكن استخدام الذكاء الاصطناعي لتطوير التدريب الرياضي؟', tag: 'التقنيات الرياضية', icon: 'network' },
 ];
 
 const CARDS_PER_PAGE = 4;
@@ -267,12 +269,12 @@ function InlineText({ value, isDark }: { value: string; isDark: boolean }) {
               key={index}
               className={isDark ? 'text-emerald-400' : 'text-emerald-700'}
             >
-              {part.slice(2, -2)}
+              <SportIconText text={part.slice(2, -2)}/>
             </strong>
           );
         }
 
-        return <React.Fragment key={index}>{part}</React.Fragment>;
+        return <React.Fragment key={index}><SportIconText text={part}/></React.Fragment>;
       })}
     </>
   );
@@ -569,7 +571,7 @@ function renderFormattedText(
         const title =
           name === 'aifball-summary'
             ? lang === 'en' ? '📺 Match highlights' : '📺 ملخص المباراة'
-            : lang === 'en' ? '🏃‍♂️ Tactical training' : '🏃‍♂️ تمرين تكتيكي';
+            : lang === 'en' ? 'Tactical training' : 'تمرين تكتيكي';
 
         const url = safeUrl(attrs.match_url || '');
 
@@ -1327,7 +1329,7 @@ export default function FootPlayChat() {
             className="w-8 h-8 rounded-lg hover:bg-white/10"
             aria-label="إغلاق القائمة"
           >
-            ✕
+            <AppIcon name="close" size={18}/>
           </button>
         </div>
 
@@ -1432,7 +1434,7 @@ export default function FootPlayChat() {
             }`}
             aria-label="فتح القائمة"
           >
-            ☰
+            <AppIcon name="menu"/>
           </button>
 
           <AiFBallLogo size="md" />
@@ -1474,7 +1476,7 @@ export default function FootPlayChat() {
                 : 'الانتقال للوضع الليلي'
             }
           >
-            {isDarkMode ? '☀' : '☾'}
+            <AppIcon name={isDarkMode ? 'sun' : 'moon'}/>
           </button>
 
           <button
@@ -1497,7 +1499,7 @@ export default function FootPlayChat() {
           <div className="flex-1 flex flex-col justify-center my-auto py-2">
             <div className="text-right space-y-3 mb-5 px-1">
               <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 text-emerald-500 border-emerald-500/40">
-                <span>⚽</span>
+                <AppIcon name="pitch"/>
                 <span>HOME OF FOOTBALL</span>
               </div>
 
@@ -1543,7 +1545,7 @@ export default function FootPlayChat() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-lg sm:text-xl leading-none">
-                      {card.icon}
+                      <AppIcon name={card.icon} size={22}/>
                     </span>
                     <span
                       className={`text-[9px] sm:text-[10px] font-bold ${
@@ -1579,7 +1581,7 @@ export default function FootPlayChat() {
                     : 'bg-white/65 border-emerald-700/20 text-emerald-800 hover:bg-white/90'
                 }`}
               >
-                <span>↻</span>
+                <AppIcon name="refresh" size={16}/>
                 <span>استكشف المزيد</span>
               </button>
             </div>
@@ -1632,7 +1634,7 @@ export default function FootPlayChat() {
                                     : 'bg-gray-100 border-gray-200 text-gray-700'
                                 }`}
                               >
-                                <span className="text-emerald-500">◷</span>
+                                <AppIcon name="clock" size={14} className="text-emerald-500"/>
                                 زمن استقبال الإجابة:{' '}
                                 {formatSeconds(msg.thinkingTime)}
                               </span>
@@ -1672,9 +1674,9 @@ export default function FootPlayChat() {
                               navigator.clipboard.writeText(msg.content)
                             }
                             className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-gray-400"
-                            title="نسخ النص"
+                            aria-label="نسخ النص" title="نسخ النص"
                           >
-                            ▣
+                            <AppIcon name="copy"/>
                           </button>
 
                           <button
@@ -1687,11 +1689,13 @@ export default function FootPlayChat() {
                               })
                             }
                             className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-gray-400"
-                            title="مشاركة"
+                            aria-label="مشاركة" title="مشاركة"
                           >
-                            ↗
+                            <AppIcon name="share"/>
                           </button>
 
+                          <ReadAloudButton content={msg.content}/>
+                          <details className="relative"><summary aria-label="خيارات الرد الأخرى" title="خيارات الرد الأخرى" className="list-none cursor-pointer p-2 rounded-lg text-gray-400 hover:bg-emerald-500/10 [&::-webkit-details-marker]:hidden"><AppIcon name="more"/></summary><div className={`absolute z-30 bottom-full mb-2 start-0 rounded-xl border shadow-lg p-2 whitespace-nowrap ${isDarkMode?'bg-[#17201b] border-white/10':'bg-white border-gray-200'}`}>
                           <button
                             type="button"
                             onClick={() => {
@@ -1700,10 +1704,10 @@ export default function FootPlayChat() {
                             }}
                             disabled={loading}
                             className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-gray-400 disabled:opacity-40"
-                            title="إعادة التوليد"
+                            aria-label="إعادة التوليد" title="إعادة التوليد"
                           >
-                            ↻
-                          </button>
+                            <AppIcon name="refresh"/><span className="text-xs ms-2">إعادة التوليد</span>
+                          </button></div></details>
 
                           <button
                             type="button"
@@ -1735,9 +1739,9 @@ export default function FootPlayChat() {
                                 ? 'text-emerald-500'
                                 : 'text-gray-400'
                             }`}
-                            title="إعجاب"
+                            aria-pressed={msg.feedback === 'like'} aria-label="إعجاب" title="إعجاب"
                           >
-                            👍
+                            <AppIcon name="like"/>
                           </button>
 
                           <button
@@ -1770,9 +1774,9 @@ export default function FootPlayChat() {
                                 ? 'text-red-500'
                                 : 'text-gray-400'
                             }`}
-                            title="عدم إعجاب"
+                            aria-pressed={msg.feedback === 'dislike'} aria-label="عدم إعجاب" title="عدم إعجاب"
                           >
-                            👎
+                            <AppIcon name="dislike"/>
                           </button>
                         </div>
                       </div>
@@ -1873,7 +1877,7 @@ export default function FootPlayChat() {
                     className="text-red-500"
                     aria-label="إزالة المرفق"
                   >
-                    ✕
+                    <AppIcon name="close" size={18}/>
                   </button>
                 </div>
               ))}
@@ -1981,7 +1985,7 @@ export default function FootPlayChat() {
             className={`w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl ${isDarkMode ? 'bg-[#131314] border border-white/10' : 'bg-white border border-gray-200'}`}>
             <div className={`sticky top-0 z-30 flex justify-between items-center p-4 border-b ${isDarkMode ? 'bg-[#131314] border-white/10' : 'bg-white border-gray-200'}`}>
               <h2 className="font-bold">جداول الترتيب العالمية</h2>
-              <button type="button" aria-label="إغلاق جداول الترتيب" onClick={() => setShowStandings(false)} className="w-8 h-8 rounded-full">✕</button>
+              <button type="button" aria-label="إغلاق جداول الترتيب" onClick={() => setShowStandings(false)} className="w-8 h-8 rounded-full"><AppIcon name="close" size={18}/></button>
             </div>
             <StandingsExplorer isDark={isDarkMode} />
           </div>
@@ -2010,7 +2014,7 @@ export default function FootPlayChat() {
               }`}
             >
               <h2 className="font-bold text-lg">
-                ⚽ مركز النتائج المباشرة
+                <AppIcon name="pitch"/> مركز النتائج المباشرة
               </h2>
 
               <button
@@ -2019,7 +2023,7 @@ export default function FootPlayChat() {
                 className="w-8 h-8 rounded-full hover:bg-white/10"
                 aria-label="إغلاق النتائج"
               >
-                ✕
+                <AppIcon name="close" size={18}/>
               </button>
             </div>
 

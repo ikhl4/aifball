@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import AppIcon from './AppIcon';
 import MatchSummary from './MatchSummary';
 import { filterLiveMatches, MATCH_FILTERS, type MatchFilter } from '../../lib/live-match-filters';
 import { footballNameInArabic } from '../../lib/football-names-ar';
@@ -165,7 +166,7 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
             return (
               <div key={league.id} className={`rounded-2xl border overflow-hidden shadow-lg ${isDark ? 'border-gray-800 bg-[#131a2a]' : 'border-gray-200 bg-white'}`}>
                 <div className={`px-4 py-3 border-b flex items-center gap-2 ${isDark ? 'bg-[#0f1420] border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
-                  <span className="text-xl">{league.flag}</span>
+                  <span className="text-xl">{league.flag==='🏆'?<AppIcon name="trophy" size={22}/>:['🌍','🌏','🌎','🌐'].includes(league.flag)?<AppIcon name="globe" size={22}/>:league.flag}</span>
                   <h2 className="font-bold text-md">{league.name}</h2>
                 </div>
 
