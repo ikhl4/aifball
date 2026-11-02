@@ -2,17 +2,29 @@
 import React, { useState, useEffect } from 'react';
 
 const LEAGUES = [
+  { id: 'ksa.1', name: 'دوري روشن السعودي', flag: '🇸🇦' },
   { id: 'eng.1', name: 'الدوري الإنجليزي', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
   { id: 'esp.1', name: 'الدوري الإسباني', flag: '🇪🇸' },
   { id: 'ita.1', name: 'الدوري الإيطالي', flag: '🇮🇹' },
   { id: 'ger.1', name: 'الدوري الألماني', flag: '🇩🇪' },
   { id: 'fra.1', name: 'الدوري الفرنسي', flag: '🇫🇷' },
-  { id: 'ksa.1', name: 'دوري روشن السعودي', flag: '🇸🇦' },
-  { id: 'egy.1', name: 'الدوري المصري', flag: '🇪🇬' },
-  { id: 'uae.1', name: 'الدوري الإماراتي', flag: '🇦🇪' },
-  { id: 'qat.1', name: 'دوري نجوم قطر', flag: '🇶🇦' },
-  { id: 'usa.1', name: 'الدوري الأمريكي (MLS)', flag: '🇺🇸' },
   { id: 'uefa.champions', name: 'دوري أبطال أوروبا', flag: '🏆' },
+  { id: 'afc.champions', name: 'دوري أبطال آسيا للنخبة', flag: '🏆' },
+  { id: 'fifa.world', name: 'كأس العالم', flag: '🌍' },
+  { id: 'fifa.worldq.afc', name: 'تصفيات كأس العالم — آسيا', flag: '🌏' },
+  { id: 'fifa.worldq.uefa', name: 'تصفيات كأس العالم — أوروبا', flag: '🌍' },
+  { id: 'fifa.worldq.caf', name: 'تصفيات كأس العالم — أفريقيا', flag: '🌍' },
+  { id: 'fifa.worldq.conmebol', name: 'تصفيات كأس العالم — أمريكا الجنوبية', flag: '🌎' },
+  { id: 'fifa.worldq.concacaf', name: 'تصفيات كأس العالم — كونكاكاف', flag: '🌎' },
+  { id: 'fifa.worldq.ofc', name: 'تصفيات كأس العالم — أوقيانوسيا', flag: '🌏' },
+  { id: 'afc.asian.cup', name: 'كأس آسيا للمنتخبات', flag: '🌏' },
+  { id: 'uefa.euro', name: 'كأس أمم أوروبا', flag: '🌍' },
+  { id: 'uefa.euroq', name: 'تصفيات كأس أمم أوروبا', flag: '🌍' },
+  { id: 'uefa.nations', name: 'دوري الأمم الأوروبية', flag: '🌍' },
+  { id: 'caf.nations', name: 'كأس أمم أفريقيا', flag: '🌍' },
+  { id: 'conmebol.america', name: 'كوبا أمريكا', flag: '🌎' },
+  { id: 'concacaf.gold', name: 'الكأس الذهبية', flag: '🌎' },
+  { id: 'fifa.friendly', name: 'مباريات المنتخبات الودية', flag: '🌐' },
 ];
 
 export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean }) {

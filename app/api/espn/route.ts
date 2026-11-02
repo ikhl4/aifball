@@ -5,7 +5,7 @@ export async function GET(request: Request) {
   const league = searchParams.get('league') || 'ksa.1';
   const dateQuery = searchParams.get('date') || 'today';
 
-  if (!/^[a-z]+\.[a-z0-9]+$/i.test(league) || !['today', 'yesterday', 'tomorrow'].includes(dateQuery)) {
+  if ((league.length > 100 || !/^[a-z]+(?:\.[a-z0-9]+)+$/i.test(league)) || !['today', 'yesterday', 'tomorrow'].includes(dateQuery)) {
     return NextResponse.json({ error: 'الدوري أو التاريخ غير صالح' }, { status: 400 });
   }
 
