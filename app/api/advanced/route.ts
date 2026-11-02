@@ -1,4 +1,5 @@
 
+import {scores365Identity} from '../../../lib/scores365-report';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -202,6 +203,11 @@ function buildRoute(
   const key = `${source}:${action}`;
 
   switch (key) {
+    case '365:analysis': {
+      const matchUrl=requireMatchUrl(params,'365');
+      if(!scores365Identity(matchUrl))throw new Error('INVALID_MATCH_URL');
+      return {path:'/365scores/match-analysis',params:{match_url:matchUrl}};
+    }
     case '365:shotmap':
       return {
         path: '/365scores/shotmap',

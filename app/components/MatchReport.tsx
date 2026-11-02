@@ -2,12 +2,16 @@
 import {footballNameInArabic} from '../../lib/football-names-ar';
 import { matchNarrative,uniquePlayer } from '../../lib/match-narrative';
 import { sofaMatchId } from '../../lib/spatial-report';
+import Scores365Report from './Scores365Report';
+import {scores365Identity} from '../../lib/scores365-report';
 import AdvancedMatchData from './AdvancedMatchData';
 import React,{useEffect,useRef,useState} from 'react';
 import { COMPETITIONS } from '../../lib/competitions';
 import { reportIdentity,type DetailedMatchReport } from '../../lib/match-report';
 const leagues=Object.entries(COMPETITIONS).map(([id,c])=>[id,c.ar]);
 export default function MatchReport(props:{matchName:string;isDark?:boolean;autoMatchUrl?:string;eventId?:string;leagueCode?:string;playerName?:string}){
+ if(props.autoMatchUrl&&scores365Identity(props.autoMatchUrl))return <Scores365Report matchUrl={props.autoMatchUrl} playerName={props.playerName} isDark={props.isDark}/>;
+ if(props.autoMatchUrl&&/^https:\/\/(?:www\.)?365scores\.com\//i.test(props.autoMatchUrl))return <p className="my-4 text-amber-500">يلزم رابط مباراة 365Scores محددة يتضمن معرّفها؛ لم نعرض مواجهة بديلة.</p>;
  if(props.autoMatchUrl&&sofaMatchId(props.autoMatchUrl))return <AdvancedMatchData autoMatchUrl={props.autoMatchUrl} playerName={props.playerName}/>;
  return <EspnMatchReport {...props}/>;
 }
