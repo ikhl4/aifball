@@ -134,7 +134,7 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
         </div>
         <div role="group" aria-label="حالة المباراة" className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {MATCH_FILTERS.map(filter => <button key={filter.id} aria-pressed={statusFilter === filter.id} onClick={() => { setStatusFilter(filter.id); setExpandedMatchId(null); }} className={`py-2 px-1 rounded-lg text-xs font-bold focus-visible:ring-2 focus-visible:ring-emerald-500 ${statusFilter === filter.id ? 'bg-emerald-600 text-white' : isDark ? 'bg-gray-800 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
-            {filter.label} <span className="inline-block mx-1" aria-label="عدد المباريات">({loading ? '—' : filtered.counts[filter.id]})</span>
+            {filter.label} <span className="inline-block mx-1">({loading ? '—' : filtered.counts[filter.id]})</span>
           </button>)}
         </div>
         <div className="flex justify-between items-center gap-2 text-xs">
