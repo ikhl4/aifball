@@ -12,7 +12,7 @@ Analysis answers use a fenced `aifball-analysis` JSON document, rendered as narr
 
 The Dify app key must be available as `DIFY_API_KEY` in the deployment environment. Production and Preview environment scopes are separate on Vercel. After changing a scope, redeploy. Never add the key to Git or a `NEXT_PUBLIC_` variable.
 
-The Preview tested during development built successfully but `/api/chat` returned HTTP 500: Dify key not configured. The existing Production Dify connection accepted the analysis instructions and returned the teaching example saved in `tests/fixtures/analysis-teaching.json`. That generic example validates and renders two independent pitches; it is not a factual analysis of a named coach or club.
+The first Preview request returned HTTP 500 because Dify was not configured. After enabling the Preview key scope, live chat successfully streamed an analysis response. That response used coordinate destinations for movement arrows, which are now explicitly validated alongside player-ID destinations. The existing Production Dify connection accepted the analysis instructions and returned the teaching example saved in `tests/fixtures/analysis-teaching.json`. That generic example validates and renders two independent pitches; it is not a factual analysis of a named coach or club.
 
 `/preview/tactical-analysis` renders that example for visual review. It calls `notFound()` when `VERCEL_ENV=production`. This review page does not call Dify and is not linked into the normal chat flow.
 
@@ -24,4 +24,4 @@ Partial structured data is hidden during streaming. An incomplete final document
 
 ## Verification
 
-Run `node --test tests/*.cjs` (35 tests). Production build: `npm run build` with the existing Clerk configuration. Tests include the actual generic teaching response, rendering order, source/scene rejection, streaming boundaries, follow-ups and request forwarding.
+Run `node --test tests/*.cjs` (36 tests). Production build: `npm run build` with the existing Clerk configuration. Tests include the actual generic teaching response, rendering order, source/scene rejection, streaming boundaries, follow-ups and request forwarding.

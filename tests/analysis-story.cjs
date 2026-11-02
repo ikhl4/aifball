@@ -40,3 +40,10 @@ test('actual Dify teaching response validates and renders two different contextu
  assert.notEqual(JSON.stringify(valid.sections[0].board),JSON.stringify(valid.sections[1].board));
  const Component=load('app/components/AnalysisStory.tsx').default;const html=renderToStaticMarkup(React.createElement(Component,{data:valid}));assert.equal((html.match(/<figure/g)||[]).length,2);assert.doesNotMatch(html,/مكتبة التمارين/);
 });
+
+test('actual live Preview response supports movement into space without inventing player endpoints',()=>{
+ const raw=JSON.parse(fs.readFileSync('tests/fixtures/analysis-live.json','utf8'));const original=JSON.stringify(raw);const valid=api.validateAnalysisStory(raw);assert.ok(valid);assert.equal(JSON.stringify(raw),original);
+ assert.ok(valid.sections.some(s=>s.board.frames.some(f=>f.arrows.some(a=>Array.isArray(a.to)))));
+ const bad=fixture();bad.sections[0].board.frames[0].arrows[0].to='55,900';assert.equal(api.validateAnalysisStory(bad),null);
+ const Component=load('app/components/AnalysisStory.tsx').default;const html=renderToStaticMarkup(React.createElement(Component,{data:valid}));assert.equal((html.match(/<figure/g)||[]).length,2);
+});

@@ -1,5 +1,5 @@
 export type StoryPlayer = { id: string; number: string; side: 'team' | 'opponent'; x: number; y: number; role: string };
-export type StoryFrame = { title: string; note: string; players: StoryPlayer[]; ball: [number, number]; arrows: { from: string; to: string; kind: 'pass' | 'run' | 'shot' }[] };
+export type StoryFrame = { title: string; note: string; players: StoryPlayer[]; ball: [number, number]; arrows: { from: string; to: string | [number, number]; kind: 'pass' | 'run' | 'shot' }[] };
 export type AnalysisStoryData = { title: string; scope: string; mode: 'sourced' | 'illustrative'; intro: string; sections: { title: string; explanation: string; after: string; board?: { caption: string; frames: StoryFrame[] } }[]; sources: { title: string; url: string }[] };
 const record = (v: unknown): v is Record<string, any> => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 const text = (v: unknown, max: number) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
@@ -9,6 +9,7 @@ function source(v: unknown): v is {title:string;url:string} {
   try { const u=new URL(v.url); return u.protocol==='https:' && !u.username && !u.password && u.hostname.includes('.') && !/^(localhost|127\.|0\.|10\.|192\.168\.|169\.254\.)/.test(u.hostname); } catch { return false; }
 }
 export function validateAnalysisStory(v: unknown): AnalysisStoryData | null {
+  try { const encoded=JSON.stringify(v); if(!encoded || encoded.length>100000) return null; v=JSON.parse(encoded); } catch { return null; }
   if (!record(v) || !text(v.title,160) || !text(v.scope,400) || !['sourced','illustrative'].includes(v.mode) || !text(v.intro,3000) || !Array.isArray(v.sections) || v.sections.length<1 || v.sections.length>6 || !Array.isArray(v.sources) || v.sources.length>10 || !v.sources.every(source) || (v.mode==='sourced' && !v.sources.length)) return null;
   for (const s of v.sections) {
     if (!record(s) || !text(s.title,160) || !text(s.explanation,4000) || !text(s.after,3000)) return null;
@@ -23,7 +24,15 @@ export function validateAnalysisStory(v: unknown): AnalysisStoryData | null {
           ids.add(p.id); sides[p.side as 'team'|'opponent']++;
         }
         if (sides.team>11 || sides.opponent>11) return null;
-        for (const a of f.arrows) if (!record(a) || !ids.has(a.from) || !ids.has(a.to) || !['pass','run','shot'].includes(a.kind)) return null;
+        for (const a of f.arrows) {
+          if (!record(a) || !ids.has(a.from) || !['pass','run','shot'].includes(a.kind)) return null;
+          if (typeof a.to === 'string' && !ids.has(a.to)) {
+            const point=a.to.match(/^(\d{1,3}(?:\.\d+)?)\s*,\s*(\d{1,3}(?:\.\d+)?)$/);
+            if (point) a.to=[Number(point[1]),Number(point[2])];
+          }
+          if (Array.isArray(a.to)) { if(a.to.length!==2 || !coordinate(a.to[0],105) || !coordinate(a.to[1],68)) return null; }
+          else if(!ids.has(a.to)) return null;
+        }
       }
     }
   }
