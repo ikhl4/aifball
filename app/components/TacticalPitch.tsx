@@ -1,4 +1,5 @@
 'use client';
+import AppIcon from './AppIcon';
 import React, { useEffect, useState } from 'react';
 
 interface TacticalPitchProps {
@@ -42,7 +43,7 @@ export default function TacticalPitch({ team = 'الفريق التكتيكي', 
 
       {/* ترويسة اسم الفريق والخطة التكتيكية */}
       <div className="absolute top-3 w-full text-center text-white font-black text-base tracking-wide drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)] px-4 truncate">
-        ⚽ {team}
+        <AppIcon name="pitch" size={18}/> {team}
       </div>
       <div className="absolute bottom-3 right-3 bg-black/70 border border-gray-800 text-emerald-400 px-2.5 py-1 rounded-lg text-xs font-mono font-bold shadow-md">
         FORMATION: {formation}
