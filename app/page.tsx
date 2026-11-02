@@ -497,11 +497,11 @@ function renderFormattedText(
         const matchUrl = safeUrl(attrs.match_url || '');
         const is365 =
           matchUrl &&
-          /^([\w-]+\.)*365scores\.com$/i.test(
+          /^([\w-]+\.)*(365scores\.com|espn\.com)$/i.test(
             new URL(matchUrl).hostname
           );
 
-        if (!matchName || !is365) {
+        if (!matchName || (matchUrl && !is365 && !(attrs.event && attrs.league))) {
           elements.push(
             <p key={i} className="my-2 text-amber-500">
               {lang === 'en'
@@ -521,6 +521,8 @@ function renderFormattedText(
             <MatchReport
               matchName={matchName}
               autoMatchUrl={matchUrl}
+              eventId={attrs.event}
+              leagueCode={attrs.league}
               isDark={isDark}
             />
           </div>
