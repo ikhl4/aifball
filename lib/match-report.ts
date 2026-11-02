@@ -11,7 +11,8 @@ export function normalizeReport(raw:any,event:string,league:string){
  const base=normalizeMatchDetails(raw,event,league);
  const team=(side:typeof base.home)=>{
  const roster=list(raw.rosters).find(r=>String(r.team?.id)===side.id);
- return {...side,players:side.players.map(p=>{const original=list(roster?.roster).find(x=>String(x.athlete?.id)===p.id);return {...p,statistics:list(original?.stats).filter(s=>REPORT_STATS[s.name]&&val(s.displayValue)!==null).map(s=>({key:s.name,label:REPORT_STATS[s.name],value:val(s.displayValue)!}))};})};};
+ const positions:Record<string,string>={CB:'قلب دفاع',LCB:'قلب دفاع أيسر',RCB:'قلب دفاع أيمن',LB:'ظهير أيسر',RB:'ظهير أيمن',LWB:'ظهير جناح أيسر',RWB:'ظهير جناح أيمن',CM:'وسط',LCM:'وسط أيسر',RCM:'وسط أيمن',DM:'محور',CDM:'محور',AM:'وسط هجومي',CAM:'وسط هجومي',LM:'وسط أيسر',RM:'وسط أيمن',LW:'جناح أيسر',RW:'جناح أيمن',ST:'مهاجم',CF:'مهاجم',SS:'مهاجم ثانٍ'};
+ return {...side,players:side.players.map(p=>{const original=list(roster?.roster).find(x=>String(x.athlete?.id)===p.id);return {...p,position:p.position||positions[original?.position?.abbreviation]||val(original?.position?.displayName)||'',statistics:list(original?.stats).filter(s=>REPORT_STATS[s.name]&&val(s.displayValue)!==null&&(!['saves','goalsConceded','shotsFaced'].includes(s.name)||original?.position?.abbreviation==='G')).sort((a,b)=>Object.keys(REPORT_STATS).indexOf(a.name)-Object.keys(REPORT_STATS).indexOf(b.name)).map(s=>({key:s.name,label:REPORT_STATS[s.name],value:val(s.displayValue)!}))};})};};
  const home=team(base.home),away=team(base.away);
  const extras=Object.entries(REPORT_STATS).filter(([key])=>!base.statistics.some(s=>s.key===key)&&(home.statistics[key]!=null||away.statistics[key]!=null)).map(([key,label])=>({key,label,home:home.statistics[key]??null,away:away.statistics[key]??null,percent:false}));
  const competition=raw.header.competitions.find((c:any)=>String(c.id)===event);
