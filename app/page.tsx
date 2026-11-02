@@ -18,6 +18,9 @@ import { COMPETITIONS, resolveStandingsRequest } from '../lib/competitions';
 import MatchReport from './components/MatchReport';
 import PlayerComparison from './components/PlayerComparison';
 import PlayerProfile from './components/PlayerProfile';
+import TacticalLesson from './components/TacticalLesson';
+import TrainingDrillWidget from './components/TrainingDrillWidget';
+import { LESSON_CHOICES, resolveTacticalRequest } from '../lib/tactical-lessons';
 
 type Language = 'ar' | 'en';
 type DataRecord = Record<string, unknown>;
@@ -539,7 +542,15 @@ function renderFormattedText(
         continue;
       }
 
-      if (name === 'aifball-summary' || name === 'aifball-training') {
+      if (name === 'aifball-tactics' || name === 'aifball-training') {
+        const lessonName = attrs.lesson || attrs.name || attrs.drill || '';
+        elements.push(name === 'aifball-training'
+          ? <TrainingDrillWidget key={i} drillName={lessonName} isDark={isDark} />
+          : <TacticalLesson key={i} name={lessonName} isDark={isDark} />);
+        continue;
+      }
+
+      if (name === 'aifball-summary') {
         const title =
           name === 'aifball-summary'
             ? lang === 'en' ? '📺 Match highlights' : '📺 ملخص المباراة'
@@ -978,6 +989,15 @@ export default function FootPlayChat() {
       const language = detectLanguage(query);
       const seasonAttribute = standingsRequest.season ? ` season="${standingsRequest.season}"` : '';
       const content = `<aifball-standings league="${standingsRequest.league}"${seasonAttribute} lang="${language}" />`;
+      const result: Message[] = [...base, { role: 'assistant', content, userQuery: query }];
+      setMessages(result);
+      saveSession(id, conversationId, result);
+      return;
+    }
+
+    const tacticalRequest = files.length === 0 ? resolveTacticalRequest(query) : null;
+    if (tacticalRequest) {
+      const content = `<aifball-tactics lesson="${tacticalRequest}" />`;
       const result: Message[] = [...base, { role: 'assistant', content, userQuery: query }];
       setMessages(result);
       saveSession(id, conversationId, result);
@@ -1480,6 +1500,14 @@ export default function FootPlayChat() {
                 كيف أساعدك اليوم؟
               </p>
             </div>
+
+            <section aria-label="ابدأ درساً تفاعلياً" className="mb-5">
+              <h3 className="text-sm font-bold text-emerald-500 mb-2">التكتيك والتدريب · جرّب داخل المحادثة</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {LESSON_CHOICES.slice(0, 3).map(lesson => <button key={lesson.id} onClick={() => { void sendMessage(lesson.query); }} className={`p-3 rounded-xl border text-right text-xs font-bold leading-6 transition hover:border-emerald-500 ${isDarkMode ? 'bg-emerald-950/50 border-emerald-800/60 text-white' : 'bg-white/80 border-emerald-200 text-emerald-950'}`}>{lesson.title} <span className="text-emerald-500">← افتح اللوحة</span></button>)}
+              </div>
+              <button onClick={() => { void sendMessage('اعرض مكتبة التمارين'); }} className="mt-2 text-xs font-bold text-emerald-500 underline">تصفح مكتبة التمارين كاملة ({LESSON_CHOICES.length})</button>
+            </section>
 
             {/* بطاقات الاستكشاف الزخرفية */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full">
