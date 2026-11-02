@@ -20,6 +20,8 @@ import PlayerComparison from './components/PlayerComparison';
 import PlayerProfile from './components/PlayerProfile';
 import TacticalLesson from './components/TacticalLesson';
 import TrainingDrillWidget from './components/TrainingDrillWidget';
+import AnalysisStory from './components/AnalysisStory';
+import { analysisModeForQuery, splitAnalysisStory } from '../lib/analysis-story';
 import { LESSON_CHOICES, resolveTacticalRequest } from '../lib/tactical-lessons';
 
 type Language = 'ar' | 'en';
@@ -351,8 +353,19 @@ function renderFormattedText(
   text: string,
   isDark: boolean,
   onSuggestionClick?: (query: string) => void,
-  userQuery?: string
+  userQuery?: string,
+  isStreaming = false
 ): React.ReactNode[] {
+  const storyParts = splitAnalysisStory(text);
+  if (storyParts.some(part => part.kind !== 'text')) {
+    return storyParts.flatMap((part, index): React.ReactNode[] => {
+      if (part.kind === 'text') return [<React.Fragment key={`analysis-text-${index}`}>{renderFormattedText(part.text, isDark, onSuggestionClick, userQuery, isStreaming)}</React.Fragment>];
+      if (part.kind === 'story') return [<AnalysisStory key={`analysis-${index}`} data={part.data} isDark={isDark} />];
+      if (part.kind === 'pending' && (part.data || part.text)) return [<div key={`analysis-partial-${index}`}>{part.data ? <AnalysisStory data={part.data} isDark={isDark} /> : renderFormattedText(part.text || '', isDark, undefined, userQuery, false)}<p role={isStreaming ? 'status' : 'alert'} className="text-xs text-amber-600 my-3 leading-7">{isStreaming ? 'يستمر إعداد بقية التحليل…' : 'انقطع الرد قبل اكتماله؛ عُرض الجزء الذي وصل دون استكمال أو تخمين.'}</p></div>];
+      if (part.kind === 'invalid' && part.text) return [<div key={`analysis-fallback-${index}`}><p className="text-xs text-amber-600 mb-3">تعذّر عرض الملاعب؛ يظهر الشرح المكتوب المتاح دون الرسم.</p>{renderFormattedText(part.text, isDark, undefined, userQuery, false)}</div>];
+      return [<p key={`analysis-status-${index}`} role={isStreaming ? 'status' : 'alert'} className="my-3 text-sm text-emerald-500 leading-7">{part.kind === 'pending' && isStreaming ? 'يجري إعداد الشرح والملاعب التوضيحية…' : 'لم يكتمل تنسيق هذا التحليل أو لم تصل بيانات صالحة للملاعب. أعد طلب التحليل؛ لن تُعرض بيانات ناقصة.'}</p>];
+    });
+  }
   const defaultLanguage = detectLanguage(userQuery);
   const youtubeIds = new Set<string>();
 
@@ -1016,7 +1029,7 @@ export default function FootPlayChat() {
     activeRequest.current = controller;
     activeRequestSession.current = id;
 
-    const timeoutId = window.setTimeout(() => controller.abort(), 90000);
+    const timeoutId = window.setTimeout(() => controller.abort(), 240000);
     const started = Date.now();
 
     let answer = '';
@@ -1079,6 +1092,7 @@ export default function FootPlayChat() {
         body: JSON.stringify({
           query,
           conversation_id: conversationId,
+          analysis_mode: analysisModeForQuery(query, messages[messages.length - 1]?.role === 'assistant' ? messages[messages.length - 1].content : ''),
           ...(difyFiles.length ? { files: difyFiles } : {}),
         }),
         signal: controller.signal,
@@ -1146,6 +1160,10 @@ export default function FootPlayChat() {
       buffer += decoder.decode();
 
       if (buffer.trim()) handleFrame(buffer);
+
+      if (receivedAnswer && !responseDone) {
+        update(`${answer}\n\n⚠️ انقطع الاتصال قبل اكتمال الرد.`);
+      }
 
       if (!receivedAnswer) {
         update('عذراً، لم يصل رد من المساعد. حاول مرة أخرى.');
@@ -1635,7 +1653,8 @@ export default function FootPlayChat() {
                             msg.content,
                             isDarkMode,
                             sendMessage,
-                            msg.userQuery
+                            msg.userQuery,
+                            loading && index === messages.length - 1
                           )}
                         </div>
 
