@@ -1,0 +1,90 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const ts = require('typescript');
+const settle = () => new Promise(resolve => setImmediate(resolve));
+const sample = (id = 'match', state = 'pre') => ({ id, date: '2026-11-02T18:00:00Z', status: { type: { state } }, competitions: [{ competitors: [
+  { homeAway: 'home', team: { id: '1', shortDisplayName: 'Home' } },
+  { homeAway: 'away', team: { id: '2', shortDisplayName: 'Away' } },
+] }] });
+const response = events => ({ ok: true, json: async () => ({ events }) });
+
+// Minimal hook runner to exercise the components' actual request lifecycle.
+function mount(path, fetcher) {
+  const states = [], effects = [];
+  let index = 0, tree, effectIndex = 0, props = {}, interval;
+  const React = {
+    createElement(type, props, ...children) { return { type, props: props || {}, children }; },
+    useState(initial) { const slot = index++; if (!(slot in states)) states[slot] = initial;
+      return [states[slot], value => { states[slot] = typeof value === 'function' ? value(states[slot]) : value; }]; },
+    useEffect(fn, deps) { const slot = effectIndex++, previous = effects[slot];
+      if (!previous || deps.some((value, i) => value !== previous.deps[i])) {
+        previous?.cleanup?.(); effects[slot] = { deps, fn };
+      }
+    },
+  };
+  const module = { exports: {} };
+  const code = ts.transpileModule(fs.readFileSync(path, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
+  vm.runInNewContext(code, { module, exports: module.exports, require: () => React, fetch: (...args) => fetcher(...args), AbortController, Intl, Date,
+    setInterval: fn => { interval = fn; return 1; }, clearInterval() {}, console });
+  function render(nextProps = props) { props = nextProps; index = 0; effectIndex = 0; tree = module.exports.default(props);
+    effects.forEach(effect => { if (effect.fn) { const fn = effect.fn; effect.fn = null; effect.cleanup = fn(); } }); return tree; }
+  return { render, refresh: () => interval(), unmount: () => effects.forEach(e => e.cleanup?.()), text: () => JSON.stringify(render()) };
+}
+
+test('center isolates league failures and retains results during refresh', async () => {
+  let fail = false;
+  const app = mount('app/components/LiveMatchCenter.tsx', async url => {
+    if (url.includes('esp.1') || fail) throw new Error('offline');
+    return response([sample()]);
+  });
+  app.render(); await settle();
+  assert.match(app.text(), /Home/); assert.match(app.text(), /تعذّر تحديث/);
+  fail = true; app.refresh();
+  assert.match(app.text(), /Home/); assert.doesNotMatch(app.text(), /جاري جلب المباريات/);
+  await settle(); assert.match(app.text(), /Home/); app.unmount();
+});
+
+test('widget shows VS for scheduled games and labels tomorrow', async () => {
+  const app = mount('app/components/LiveSportsWidget.tsx', async () => response([sample()]));
+  app.render({ date: 'tomorrow' }); await settle();
+  assert.match(app.text(), /VS/); assert.match(app.text(), /غداً/); assert.doesNotMatch(app.text(), /0 - 0/); app.unmount();
+});
+
+test('old date response cannot replace newly selected day', async () => {
+  let finish;
+  const app = mount('app/components/LiveSportsWidget.tsx', url => url.includes('yesterday') ? Promise.resolve(response([sample('new')])) : new Promise(resolve => { finish = resolve; }));
+  app.render({ date: 'today' }); app.render({ date: 'yesterday' }); await settle();
+  finish(response([sample('old')])); await settle();
+  assert.match(app.text(), /new/); assert.doesNotMatch(app.text(), /"old"/); app.unmount();
+});
+
+test('missing competitors do not crash either component', async () => {
+  for (const path of ['LiveSportsWidget', 'LiveMatchCenter']) {
+    const app = mount(`app/components/${path}.tsx`, async () => response([{ id: 'incomplete' }]));
+    app.render(); await settle(); assert.doesNotThrow(() => app.render()); app.unmount();
+  }
+});
+
+function route(fetcher, now = '2026-12-31T22:30:00Z') {
+  const module = { exports: {} };
+  class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } }
+  const code = ts.transpileModule(fs.readFileSync('app/api/espn/route.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+  vm.runInNewContext(code, { module, exports: module.exports, require: () => ({ NextResponse: { json: (data, options) => ({ data, status: options?.status || 200 }) } }),
+    fetch: fetcher, Date: Clock, Intl, URL, AbortController, setTimeout, clearTimeout, console: { error() {} } });
+  return date => module.exports.GET(new Request(`https://example.test/api/espn?league=ksa.1&date=${date}`));
+}
+
+test('Riyadh date handles midnight, month and year rollover', async () => {
+  const urls = [];
+  const get = route(async url => { urls.push(url); return response([]); });
+  for (const day of ['yesterday', 'today', 'tomorrow']) assert.equal((await get(day)).status, 200);
+  assert.ok(urls[0].endsWith('dates=20261231')); assert.ok(urls[1].endsWith('dates=20270101')); assert.ok(urls[2].endsWith('dates=20270102'));
+});
+
+test('route distinguishes invalid requests and upstream failures from no games', async () => {
+  assert.equal((await route(async () => { throw Error('offline'); })('today')).status, 502);
+  assert.equal((await route(async () => ({ ok: true, json: async () => ({}) }))('today')).status, 502);
+  assert.equal((await route(() => { throw Error('must not fetch'); })('invalid')).status, 400);
+});
