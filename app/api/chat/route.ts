@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { isDetailedMatchQuery, withMatchReportPresentation, withMatchConversationContext } from '../../../lib/match-report-prompt';
 import { isAnalysisRequest } from '../../../lib/analysis-story';
 import { withAnalysisPresentation } from '../../../lib/analysis-prompt';
+import { isMatchSummaryRequest, isJawwyLeagueRequest, MATCH_SUMMARY_RULES, JAWY_LEAGUE_RULES } from '../../../lib/match-summary-prompt';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -39,6 +40,8 @@ export async function POST(req: Request) {
     const detailedMatch=isDetailedMatchQuery(query);
     const analysis = body?.analysis_mode === true || isAnalysisRequest(query);
     const conversation_id = body?.conversation_id || '';
+    const matchSummary = isMatchSummaryRequest(query);
+    const jawwyLeague = isJawwyLeagueRequest(query);
     
     // 🌟 إضافة: استقبال الملفات المرفقة من الواجهة
     const files = body?.files || []; 
@@ -57,6 +60,16 @@ export async function POST(req: Request) {
 
     console.log('Sending to Dify:', { query, conversation_id, hasFiles: files.length > 0 });
 
+    const playerCareer = /(?:مسير|لاعب|بطاق|راتب|عقد|سوقي|career|player|profile|salary|contract/i.test(query) || /^(?:[\p{L}\p{M}]+[ \t]+){1,4}[\p{L}\p{M}]+[؟?]?$/u.test(query.trim()));
+    const baseQuery = /انتقالات|ميركاتو|سوق الانتقال|صفقات|transfers|transfer window/i.test(query)
+      ? query + TRANSFER_REPORT_RULES
+      : detailedMatch
+        ? withMatchReportPresentation(query)
+        : analysis
+          ? withAnalysisPresentation(query)
+          : (conversation_id ? withMatchConversationContext(query) : query) + (playerCareer ? PLAYER_CAREER_RULES : '');
+    const guidedQuery = baseQuery + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '');
+
     const apiRes = await fetch(url, {
       method: 'POST',
       headers: {
@@ -67,7 +80,7 @@ export async function POST(req: Request) {
       signal: req.signal,
       body: JSON.stringify({
         inputs: {},
-        query: /انتقالات|ميركاتو|سوق الانتقال|صفقات|transfers|transfer window/i.test(query) ? query + TRANSFER_REPORT_RULES : detailedMatch ? withMatchReportPresentation(query) : analysis ? withAnalysisPresentation(query) : (conversation_id ? withMatchConversationContext(query) : query) + ((/مسير|لاعب|بطاق|راتب|عقد|سوقي|career|player|profile|salary|contract/i.test(query) || /^(?:[\p{L}\p{M}]+[ \t]+){1,4}[\p{L}\p{M}]+[؟?]?$/u.test(query.trim())) ? PLAYER_CAREER_RULES : ''),
+        query: guidedQuery,
         response_mode: 'streaming',
         conversation_id: conversation_id || undefined,
         user: 'aifball-web-user', 
