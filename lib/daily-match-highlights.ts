@@ -40,6 +40,7 @@ const COMPETITIONS = [
 const TRUSTED_CHANNEL_HINTS = [
   'bein', 'be in', 'thmanyah', 'ثمانية', 'tod', 'serie a', 'laliga',
   'la liga', 'mls', 'abu dhabi', 'أبوظبي', 'alkass', 'الكأس', 'stc',
+  'premier league', 'bundesliga', 'ligue 1', 'uefa', 'afc', 'saudi pro league',
 ];
 
 function normalize(value: string): string {
@@ -117,7 +118,7 @@ async function getEventSummary(slug: string, id: string): Promise<any> {
 async function findVideo(match: Match): Promise<string> {
   const key = process.env.YOUTUBE_API_KEY;
   if (!key) return '';
-  const q = `${match.home} ${match.away} ${match.leagueName} highlights ${match.date}`;
+  const q = `${match.home} vs ${match.away} highlights`;
   try {
     const data = await fetchJson(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&safeSearch=strict&maxResults=10&q=${encodeURIComponent(q)}&key=${encodeURIComponent(key)}`, 8000);
     const homeTokens = normalize(match.home).split(' ').filter(token => token.length > 3);
