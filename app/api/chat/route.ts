@@ -45,9 +45,8 @@ export async function POST(req: Request) {
 
     // Daily highlights use confirmed scoreboard data first, then match-scoped videos.
     // A request for one named match continues through the existing narrative-first Dify flow.
-    if (matchSummary) {
-      const dailyReport = await buildDailyHighlights(query);
-      if (dailyReport) {
+    const dailyReport = matchSummary ? await buildDailyHighlights(query, { includeVideos: false }) : null;
+    if (dailyReport && !process.env.DIFY_API_KEY) {
         const events = [
           { event: 'message', answer: dailyReport, conversation_id },
           { event: 'message_end', conversation_id },
@@ -62,7 +61,6 @@ export async function POST(req: Request) {
             'X-AiFBall-Presentation': 'daily-highlights',
           },
         });
-      }
     }
     const jawwyLeague = isJawwyLeagueRequest(query);
     
@@ -91,7 +89,8 @@ export async function POST(req: Request) {
         : analysis
           ? withAnalysisPresentation(query)
           : (conversation_id ? withMatchConversationContext(query) : query) + (playerCareer ? PLAYER_CAREER_RULES : '');
-    const guidedQuery = baseQuery + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '');
+    const dailyContext = dailyReport ? `\nهذه نتائج المباريات المسترجعة من سجل النتائج. حافظ على تغطيتها، وابحث عن كل مقطع عبر DuckDuckGo وفق قواعد القنوات أدناه:\n${dailyReport}` : '';
+    const guidedQuery = baseQuery + dailyContext + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '');
 
     const apiRes = await fetch(url, {
       method: 'POST',
