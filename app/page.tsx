@@ -597,6 +597,43 @@ function renderFormattedText(
         continue;
       }
 
+      if (name === 'aifball-match-design') {
+        const rows = (attrs.rows || '').split(';').slice(0, 60).flatMap((row) => {
+          const [group, home, away, value, detail] = row.split('|').map(part => part.trim());
+          return home && away ? [{ group, home, away, value, detail }] : [];
+        });
+        if (!rows.length) continue;
+        const groups = new Map<string, typeof rows>();
+        for (const row of rows) groups.set(row.group, [...(groups.get(row.group) || []), row]);
+        const heading = attrs.kind === 'results' ? 'نتائج المباريات' : attrs.kind === 'draw' ? 'قرعة البطولة' : attrs.kind === 'match' ? 'يوم المباراة' : 'جدول المباريات';
+        elements.push(
+          <section key={i} dir="rtl" aria-label={heading} className="my-4 overflow-hidden rounded-3xl border border-emerald-700 bg-gradient-to-br from-[#08140f] via-[#123b2c] to-black p-5 text-white sm:p-8">
+            <p className="text-sm font-bold text-emerald-300">{attrs.competition}</p>
+            <h3 className="my-3 text-3xl font-black sm:text-5xl">{heading}</h3>
+            {attrs.subtitle && <p className="mb-4 text-sm text-amber-200">{attrs.subtitle}</p>}
+            {[...groups.entries()].map(([group, matches]) => (
+              <div key={group} className="mt-4">
+                {group && <h4 className="mb-2 text-sm font-bold text-amber-200">{group}</h4>}
+                <div className="grid gap-2">
+                  {matches.map((row, index) => (
+                    <div key={index} className="rounded-xl border border-white/10 bg-black/55 p-3">
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center font-bold">
+                        <span>{row.home}</span>
+                        <bdi className="rounded bg-emerald-950 px-2 py-1 text-emerald-200">{row.value || 'ضد'}</bdi>
+                        <span>{row.away}</span>
+                      </div>
+                      {row.detail && <p className="mt-2 text-center text-xs text-gray-200">{row.detail}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <p className="mt-5 border-t border-amber-300/50 pt-3 text-xs font-bold text-emerald-200">فوتبلاي</p>
+          </section>
+        );
+        continue;
+      }
+
       if (name === 'aifball-summary') {
         const order = attrs.order === 'video-first' ? 'video-first' : 'video-last';
         const title = lang === 'en' ? '📺 Match highlights' : '📺 ملخص المباراة';
