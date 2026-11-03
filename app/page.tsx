@@ -951,6 +951,7 @@ export default function FootPlayChat() {
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showLiveScores, setShowLiveScores] = useState(false);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [intro, setIntro] = useState(false);
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || sessionStorage.getItem('aifball-intro')) return;
@@ -1414,7 +1415,8 @@ export default function FootPlayChat() {
               : 'opacity-45 scale-[1.03]'
           }`}
           style={{
-            backgroundImage: "url('/IMG_0091.jpeg')",
+            backgroundImage: isDarkMode ? "url('/IMG_0091.jpeg')" : messages.length === 0 ? "linear-gradient(90deg, transparent 49.8%, #e2e8f0 50%, transparent 50.2%), radial-gradient(circle at center, transparent 13%, #e2e8f0 13.2%, transparent 13.5%)" : 'none',
+            backgroundColor: isDarkMode ? undefined : '#fff',
             backgroundSize: 'cover',
           }}
         />
@@ -1427,7 +1429,7 @@ export default function FootPlayChat() {
                 : 'bg-[#101312]/78'
               : messages.length === 0
                 ? 'bg-white/20'
-                : 'bg-white/72'
+                : 'bg-white'
           }`}
         />
 
@@ -1715,8 +1717,8 @@ export default function FootPlayChat() {
               return <img key={index} src={src} alt="" style={{filter, opacity: .14 + (index % 4) * .04}} className="h-9 w-full max-w-20 object-contain sm:h-14" onError={event => { event.currentTarget.hidden = true; }} />;
             })}
           </span>
-          <span className="relative grid h-28 w-28 place-items-center rounded-3xl bg-[#08251a] ring-1 ring-emerald-200/40 shadow-[0_0_70px_rgba(52,211,153,0.32)]"><AiFBallLogo size="lg" /></span>
-          <span className="absolute top-[65%] text-3xl font-black text-emerald-300 [animation:glass-title_3.1s_ease-in-out_both]">من الرياضة للعالم</span>
+          <span className="relative grid h-36 w-36 place-items-center sm:h-48 sm:w-48 rounded-3xl bg-[#08251a] ring-1 ring-emerald-200/40 shadow-[0_0_70px_rgba(52,211,153,0.32)]"><span className="scale-125 sm:scale-150"><AiFBallLogo size="lg" /></span></span>
+          <span className="absolute top-[65%] text-3xl font-black text-emerald-300 [animation:glass-title_3.1s_ease-in-out_both]">من الرياض إلى العالم</span>
         </button>
       )}
 
@@ -1725,31 +1727,23 @@ export default function FootPlayChat() {
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2" style={{ fontFamily: "Cairo, sans-serif" }}>
             <div className="text-right space-y-3 mb-5 px-1">
-              <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 text-emerald-700 dark:text-emerald-300 border-emerald-500/40">
+              <div className={`inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 border-emerald-500/40 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-900'}`}>
                 <AppIcon name="pitch"/>
                 <span>HOME OF FOOTBALL</span>
               </div>
-
-              <h2
-                className={`text-3xl sm:text-5xl font-extrabold tracking-tight drop-shadow-md ${
-                  isDarkMode ? 'text-white' : 'text-gray-950'
-                }`}
-              >
-                اكتشف عالم كرة القدم
-              </h2>
 
               <p
                 className={`text-sm sm:text-base leading-relaxed max-w-2xl ${
                   isDarkMode ? 'text-gray-100' : 'text-gray-800'
                 }`}
               >
-                من الرياضة للعالم
+                <span dir="ltr">From Riyadh to The World</span>
               </p>
             </div>
 
             <nav aria-label="اختصارات فوتبلاي" className="mb-6 grid grid-cols-4 gap-2">
               {[
-                { title: 'التكتيك والتدريب', icon: 'clipboard', query: LESSON_CHOICES[0]?.query },
+                { title: 'إضافة التطبيق للرئيسية', icon: 'plus', install: true },
                 { title: 'نماذج تمرين', icon: 'activity', query: 'اعرض مكتبة التمارين' },
                 { title: 'FC 27', icon: 'pitch', href: 'https://www.futbin.com/' },
                 { title: 'الفانتازي', icon: 'chart', query: 'اعرض خيارات فانتازي دوري روشن والدوري الإنجليزي وروابط اللعب' },
@@ -1757,9 +1751,16 @@ export default function FootPlayChat() {
                 const style = 'flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-emerald-300/35 bg-emerald-950/25 p-2 text-center text-[10px] font-bold text-white backdrop-blur-md transition hover:bg-emerald-900/45 focus-visible:outline focus-visible:outline-emerald-300 sm:text-sm';
                 const label = <>{item.href ? <svg aria-hidden="true" width="27" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-emerald-300"><path d="M7 7h10a4 4 0 0 1 4 3l1 5a2 2 0 0 1-3 2l-3-3H8l-3 3a2 2 0 0 1-3-2l1-5a4 4 0 0 1 4-3Z"/><path d="M7 9v4m-2-2h4m7-1h.01m3 2h.01"/></svg> : <AppIcon name={item.icon} size={23} className="text-emerald-300"/>}<span>{item.title}</span></>;
                 return item.href ? <a key={item.title} href={item.href} className={style}>{label}</a> :
-                  <button key={item.title} type="button" className={style} onClick={() => { if (item.query) void sendMessage(item.query); }}>{label}</button>;
+                  <button key={item.title} type="button" className={style} onClick={() => { if (item.install) setShowInstallHelp(open => !open); else if (item.query) void sendMessage(item.query); }}>{label}</button>;
               })}
             </nav>
+            {showInstallHelp && (
+              <section className={`mb-4 rounded-xl border border-emerald-500/30 p-3 text-sm leading-7 ${isDarkMode ? 'bg-emerald-950 text-white' : 'bg-white text-gray-900'}`}>
+                <p>آيفون: من سفاري اضغط مشاركة، ثم إضافة إلى الشاشة الرئيسية.</p>
+                <p>أندرويد: من قائمة المتصفح اختر تثبيت التطبيق أو إضافة إلى الشاشة الرئيسية.</p>
+                <button type="button" onClick={() => setShowInstallHelp(false)} className="underline">إغلاق</button>
+              </section>
+            )}
 
             {/* بطاقات الاستكشاف الزخرفية */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full">
