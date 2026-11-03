@@ -538,7 +538,7 @@ function renderFormattedText(
         if (playerName) {
           elements.push(
             <div key={i} className="my-5">
-              <PlayerProfile playerName={playerName} seasons={attrs.seasons} isDark={isDark} />
+              <PlayerProfile playerName={playerName} seasons={attrs.seasons} selectedSeason={attrs.selected_season} details={attrs} isDark={isDark} />
             </div>
           );
         }
@@ -1663,6 +1663,36 @@ export default function FootPlayChat() {
                             loading && index === messages.length - 1
                           )}
                         </div>
+
+                        {!loading && index === messages.length - 1 && msg.content.trim() && (
+                          <section dir="rtl" aria-label="أسئلة مقترحة" className="mt-3">
+                            <p className="mb-2 text-sm font-bold text-emerald-500">أسئلة مقترحة</p>
+                            <div className="flex flex-wrap gap-2">
+                              {(msg.content.includes('<aifball-player') ? [
+                                'ما أرقام هذا اللاعب في الموسم الحالي؟',
+                                'ما أبرز بطولاته ومحطات مسيرته؟',
+                                'متى ينتهي عقده وكم راتبه وقيمته السوقية؟',
+                               ] : /مبار|إحصا|احصا|نتائج|تشكيل|match|stats/i.test(msg.userQuery ?? '') ? [
+                                'أعطني ملخص المباريات المذكورة في الرد.',
+                                'ما المباريات القادمة للفرق المذكورة؟',
+                                'من أبرز لاعب في المباراة؟ اعرض أداءه بالأرقام.',
+                                'ما آخر تغريدة من الحساب الرسمي للنادي عن المباراة؟',
+                              ] : /نادي|فريق|club|team/i.test(msg.userQuery ?? '') ? [
+                                'ما مباريات الفريق القادمة؟',
+                                'لخّص آخر مباراة للفريق.',
+                                'ما آخر تغريدة في حساب النادي الرسمي؟',
+                              ] : [
+                                'ما أهم التفاصيل الإضافية عن هذا الموضوع؟',
+                                'هل فيه أرقام أو أمثلة موثقة توضح الإجابة؟',
+                              ]).map(question => (
+                                <button key={question} type="button" onClick={() => void sendMessage(question)}
+                                  className="rounded-full border border-emerald-500/40 px-3 py-1.5 text-sm hover:border-emerald-500">
+                                  {question}
+                                </button>
+                              ))}
+                            </div>
+                          </section>
+                        )}
 
                         {/* أدوات الرسالة */}
                         <div
