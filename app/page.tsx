@@ -949,6 +949,14 @@ export default function FootPlayChat() {
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showLiveScores, setShowLiveScores] = useState(false);
+  const [intro, setIntro] = useState(false);
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || sessionStorage.getItem('aifball-intro')) return;
+    sessionStorage.setItem('aifball-intro', '1');
+    setIntro(true);
+    const timer = window.setTimeout(() => setIntro(false), 3100);
+    return () => window.clearTimeout(timer);
+  }, []);
   const [showStandings, setShowStandings] = useState(false);
   const [discoveryPage, setDiscoveryPage] = useState(0);
 
@@ -1692,6 +1700,18 @@ export default function FootPlayChat() {
         </div>
       </header>
 
+      {intro && (
+        <button type="button" aria-label="تخطي المقدمة" onClick={() => setIntro(false)} className="fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-[#061611]/95 text-white backdrop-blur-xl">
+          <style>{`@keyframes glass-orbit{0%{transform:translateX(-22%);opacity:0}25%{opacity:.65}75%{opacity:.65}100%{transform:translateX(22%);opacity:0}}@keyframes glass-title{0%,52%,100%{opacity:0}68%,88%{opacity:1}}`}</style>
+          <span aria-hidden="true" className="absolute flex w-max items-center gap-5 [animation:glass-orbit_2.4s_ease-in-out_both]">
+            {[536,47,87,55,54,53,42].map((id) => <img key={id} alt="" className="h-16 w-16 rounded-2xl border border-white/30 bg-white/25 p-2 backdrop-blur" src={`https://images.fotmob.com/image_resources/logo/leaguelogo/${id}.png`} />)}
+            {['آسيا','FIFA','FC 27','فانتازي SPL','Fantasy PL'].map(label => <span key={label} className="rounded-2xl border border-white/30 bg-white/15 p-4 font-bold">{label}</span>)}
+          </span>
+          <img src="/app-icon.svg" alt="فوتبلاي" className="relative h-24 w-24 rounded-3xl shadow-2xl" />
+          <span className="absolute top-[65%] text-3xl font-black text-emerald-300 [animation:glass-title_3.1s_ease-in-out_both]">من الرياض للعالم</span>
+        </button>
+      )}
+
       {/* المحتوى الرئيسي */}
       <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto flex flex-col relative z-10 custom-scrollbar">
         {messages.length === 0 ? (
@@ -1707,7 +1727,7 @@ export default function FootPlayChat() {
                   isDarkMode ? 'text-white' : 'text-gray-950'
                 }`}
               >
-                أهلاً بك في فوتبلاي
+                اكتشف عالم كرة القدم
               </h2>
 
               <p
@@ -1715,20 +1735,23 @@ export default function FootPlayChat() {
                   isDarkMode ? 'text-gray-100' : 'text-gray-800'
                 }`}
               >
-                منصتك للمعرفة الرياضية والتحليل المتقدم.
-                استكشف التكتيك والإحصاء والتاريخ الكروي
-                والإدارة الرياضية والانتقالات وتطوير المواهب.
-                كيف أساعدك اليوم؟
+                كل ما يتعلق بكرة القدم من السعودية إلى العالم
               </p>
             </div>
 
-            <section aria-label="ابدأ درساً تفاعلياً" className="mb-5">
-              <h3 className="text-sm font-bold text-emerald-500 mb-2">التكتيك والتدريب · جرّب داخل المحادثة</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {LESSON_CHOICES.slice(0, 3).map(lesson => <button key={lesson.id} onClick={() => { void sendMessage(lesson.query); }} className={`p-3 rounded-xl border text-right text-xs font-bold leading-6 transition hover:border-emerald-500 ${isDarkMode ? 'bg-emerald-950/50 border-emerald-800/60 text-white' : 'bg-white/80 border-emerald-200 text-emerald-950'}`}>{lesson.title} <span className="text-emerald-500">← افتح اللوحة</span></button>)}
-              </div>
-              <button onClick={() => { void sendMessage('اعرض مكتبة التمارين'); }} className="mt-2 text-xs font-bold text-emerald-500 underline">تصفح مكتبة التمارين كاملة ({LESSON_CHOICES.length})</button>
-            </section>
+            <nav aria-label="اختصارات فوتبلاي" className="mb-6 grid grid-cols-4 gap-2">
+              {[
+                { title: 'التكتيك والتدريب', icon: 'clipboard', query: LESSON_CHOICES[0]?.query },
+                { title: 'نماذج تمرين', icon: 'activity', query: 'اعرض مكتبة التمارين' },
+                { title: 'FC 27', icon: 'pitch', href: 'https://www.futbin.com/' },
+                { title: 'الفانتازي', icon: 'chart', query: 'اعرض خيارات فانتازي دوري روشن والدوري الإنجليزي وروابط اللعب' },
+              ].map(item => {
+                const style = 'flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-emerald-300/35 bg-emerald-950/55 p-2 text-center text-[10px] font-bold text-white backdrop-blur-md transition hover:bg-emerald-900/80 focus-visible:outline focus-visible:outline-emerald-300 sm:text-sm';
+                const label = <><AppIcon name={item.icon} size={23} className="text-emerald-300"/><span>{item.title}</span></>;
+                return item.href ? <a key={item.title} href={item.href} className={style}>{label}</a> :
+                  <button key={item.title} type="button" className={style} onClick={() => { if (item.query) void sendMessage(item.query); }}>{label}</button>;
+              })}
+            </nav>
 
             {/* بطاقات الاستكشاف الزخرفية */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full">
