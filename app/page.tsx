@@ -597,6 +597,25 @@ function renderFormattedText(
         continue;
       }
 
+      if (name === 'aifball-photo') {
+        const photo = safeUrl(attrs.image);
+        const source = safeUrl(attrs.source);
+        if (!photo?.startsWith('https://') || !source?.startsWith('https://')) continue;
+        elements.push(
+          <figure key={i} dir="rtl" className="my-4 overflow-hidden rounded-2xl border border-emerald-700/50">
+            <img src={photo} alt={attrs.caption || 'صورة كروية'} loading="lazy" referrerPolicy="no-referrer"
+              className="max-h-[36rem] w-full bg-black object-contain"
+              onError={(event) => { event.currentTarget.hidden = true; }} />
+            <figcaption className="space-y-2 p-4 text-sm">
+              {attrs.caption && <p>{attrs.caption}</p>}
+              {attrs.date && <p>{attrs.date}</p>}
+              <a href={source} target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-500 underline">افتح الصورة في المصدر</a>
+            </figcaption>
+          </figure>
+        );
+        continue;
+      }
+
       if (name === 'aifball-match-design') {
         const rows = (attrs.rows || '').split(';').slice(0, 60).flatMap((row) => {
           const [group, home, away, value, detail] = row.split('|').map(part => part.trim());
