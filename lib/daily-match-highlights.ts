@@ -21,6 +21,7 @@ type Match = {
   eventId: string;
   slug: string;
   goals: string[];
+  details?: any[];
 };
 
 const COMPETITIONS = [
@@ -73,8 +74,8 @@ function parseGoals(payload: any, event: EspnEvent): string[] {
     const scoring = item?.scoringPlay === true || /goal/i.test(text) || (item?.scoreValue > 0 && /penalty/i.test(text));
     if (!scoring) return [];
     const minute = String(item?.clock?.displayValue || item?.clock?.value || item?.time || '').trim();
-    const scorer = item?.participants?.map((p: any) =>
-      p?.athlete?.displayName || p?.athlete?.fullName || p?.name
+    const scorer = (item?.participants || item?.athletesInvolved || []).map((p: any) =>
+      p?.athlete?.displayName || p?.athlete?.fullName || p?.displayName || p?.fullName || p?.name
     ).filter(Boolean).join(', ') || '';
     const team = item?.team?.displayName || '';
     const line = [scorer, team, minute ? `(${minute})` : ''].filter(Boolean).join(' — ');
@@ -152,7 +153,8 @@ export async function buildDailyHighlights(query: string): Promise<string | null
     if (result.status !== 'fulfilled') return;
     const competition = COMPETITIONS[index];
     for (const event of result.value) {
-      if (!event?.id || !event.status?.type?.completed || (event.date && dateInRiyadh(event.date) !== date)) continue;
+      const eventStatus = event?.status?.type || event?.competitions?.[0]?.status?.type;
+      if (!event?.id || !eventStatus?.completed || (event.date && dateInRiyadh(event.date) !== date)) continue;
       const { home, away } = eventTeams(event);
       const homeName = home?.team?.displayName || home?.team?.name;
       const awayName = away?.team?.displayName || away?.team?.name;
@@ -160,7 +162,7 @@ export async function buildDailyHighlights(query: string): Promise<string | null
       matches.push({
         league: competition.slug, leagueName: competition.name, date,
         home: homeName, away: awayName, homeScore: String(home.score), awayScore: String(away.score),
-        eventId: String(event.id), slug: competition.slug, goals: [],
+        eventId: String(event.id), slug: competition.slug, goals: [], details: event.competitions?.[0]?.details || [],
       });
     }
   });
@@ -172,7 +174,7 @@ export async function buildDailyHighlights(query: string): Promise<string | null
       getEventSummary(match.slug, match.eventId),
       findVideo(match),
     ]);
-    match.goals = parseGoals(summary, { id: match.eventId });
+    match.goals = parseGoals(summary, { id: match.eventId, competitions: [{ details: match.details || [] }] });
     (match as Match & { videoUrl?: string }).videoUrl = video;
   }));
   const grouped = new Map<string, Match[]>();
