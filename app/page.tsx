@@ -461,6 +461,15 @@ function renderFormattedText(
           ? attrs.date
           : 'today';
 
+        if (COMPETITIONS[league]?.searchOnly) {
+          const sourceUrl = COMPETITIONS[league]?.officialUrl;
+          elements.push(<p key={i} className="my-3 text-sm text-amber-500">
+            بيانات هذه البطولة تُسترجع من مصدرها الرسمي داخل الرد الكتابي، ولا تتوفر لها لوحة نتائج مباشرة موثقة حالياً.
+            {sourceUrl && <> <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="underline">المصدر الرسمي</a></>}
+          </p>);
+          continue;
+        }
+
         elements.push(
           <div key={i} className="my-5 w-full">
             <LiveSportsWidget
@@ -475,6 +484,15 @@ function renderFormattedText(
 
       if (name === 'aifball-standings') {
         const season = attrs.season?.trim() ? normalizeSeason(attrs.season) : '';
+
+        if (COMPETITIONS[league]?.searchOnly) {
+          const sourceUrl = COMPETITIONS[league]?.officialUrl;
+          elements.push(<p key={i} className="my-3 text-sm text-amber-500">
+            جدول هذه البطولة يُعرض كسرد أو جدول مكتوب بعد التحقق من المصدر الرسمي؛ لا تتوفر لها لوحة ترتيب تفاعلية موثقة حالياً.
+            {sourceUrl && <> <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="underline">المصدر الرسمي</a></>}
+          </p>);
+          continue;
+        }
         const leagueName =
           lang === 'en'
             ? LEAGUES_EN[league] || league
