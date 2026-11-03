@@ -63,20 +63,20 @@ function targetDate(query: string, now = new Date()): string {
   return date.toISOString().slice(0, 10);
 }
 function parseGoals(payload: any, event: EspnEvent): string[] {
-  const details = [
-    ...(Array.isArray(payload?.scoringPlays) ? payload.scoringPlays : []),
-    ...(Array.isArray(payload?.header?.competitions?.[0]?.details) ? payload.header.competitions[0].details : []),
-    ...(Array.isArray(event.competitions?.[0]?.details) ? event.competitions[0].details : []),
-  ];
+  const details = Array.isArray(payload?.scoringPlays) && payload.scoringPlays.length
+    ? payload.scoringPlays
+    : Array.isArray(payload?.header?.competitions?.[0]?.details) && payload.header.competitions[0].details.length
+      ? payload.header.competitions[0].details
+      : Array.isArray(event.competitions?.[0]?.details) ? event.competitions[0].details : [];
   const seen = new Set<string>();
   return details.flatMap((item: any) => {
     const text = String(item?.text || item?.type?.text || item?.shortText || '');
     const scoring = item?.scoringPlay === true || /goal/i.test(text) || (item?.scoreValue > 0 && /penalty/i.test(text));
     if (!scoring) return [];
     const minute = String(item?.clock?.displayValue || item?.clock?.value || item?.time || '').trim();
-    const scorer = (item?.participants || item?.athletesInvolved || []).map((p: any) =>
-      p?.athlete?.displayName || p?.athlete?.fullName || p?.displayName || p?.fullName || p?.name
-    ).filter(Boolean).join(', ') || '';
+    const involved = item?.participants || item?.athletesInvolved || [];
+    const scorer = involved[0]?.athlete?.displayName || involved[0]?.athlete?.fullName
+      || involved[0]?.displayName || involved[0]?.fullName || involved[0]?.name || '';
     const team = item?.team?.displayName || '';
     const line = [scorer, team, minute ? `(${minute})` : ''].filter(Boolean).join(' — ');
     if (!line || seen.has(line)) return [];
