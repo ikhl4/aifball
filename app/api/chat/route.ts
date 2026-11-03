@@ -4,6 +4,7 @@ import { isDetailedMatchQuery, withMatchReportPresentation, withMatchConversatio
 import { isAnalysisRequest } from '../../../lib/analysis-story';
 import { withAnalysisPresentation } from '../../../lib/analysis-prompt';
 import { isMatchSummaryRequest, isJawwyLeagueRequest, MATCH_SUMMARY_RULES, JAWY_LEAGUE_RULES } from '../../../lib/match-summary-prompt';
+import { buildDailyHighlights } from '../../../lib/daily-match-highlights';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -41,6 +42,28 @@ export async function POST(req: Request) {
     const analysis = body?.analysis_mode === true || isAnalysisRequest(query);
     const conversation_id = body?.conversation_id || '';
     const matchSummary = isMatchSummaryRequest(query);
+
+    // Daily highlights use confirmed scoreboard data first, then match-scoped videos.
+    // A request for one named match continues through the existing narrative-first Dify flow.
+    if (matchSummary) {
+      const dailyReport = await buildDailyHighlights(query);
+      if (dailyReport) {
+        const events = [
+          { event: 'message', answer: dailyReport, conversation_id },
+          { event: 'message_end', conversation_id },
+        ];
+        const stream = events.map(event => `event: ${event.event}\\ndata: ${JSON.stringify(event)}\\n\\n`).join('');
+        return new Response(stream, {
+          headers: {
+            'Content-Type': 'text/event-stream; charset=utf-8',
+            'Cache-Control': 'no-cache, no-transform',
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no',
+            'X-AiFBall-Presentation': 'daily-highlights',
+          },
+        });
+      }
+    }
     const jawwyLeague = isJawwyLeagueRequest(query);
     
     // 🌟 إضافة: استقبال الملفات المرفقة من الواجهة
