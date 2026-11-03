@@ -5,6 +5,7 @@ const vm=require('node:vm');
 const ts=require('typescript');
 function load(file){const m={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{exports:m.exports,module:m,URL});return m.exports;}
 const prompt=load('lib/match-summary-prompt.ts');
+const daily=load('lib/daily-match-highlights.ts');
 const presentation=load('lib/summary-presentation.ts');
 const competitions=load('lib/competitions.ts');
 test('detects match summary requests and daily highlights without catching ordinary stats',()=>{
@@ -34,4 +35,12 @@ test('Jawwy U21 is recognized and standings requests stay on official search rat
  assert.equal(prompt.isJawwyLeagueRequest('Jawwy Elite League U21 results'),true);
  assert.equal(competitions.COMPETITIONS['ksa.jawwy.u21'].searchOnly,true);
  assert.equal(competitions.resolveStandingsRequest('جدول دوري جوي للنخبة تحت 21 2026-2027'),null);
+});
+
+test('daily recap path catches today/yesterday lists but leaves a named match to Dify',()=>{
+ assert.equal(daily.isDailyHighlightsRequest('ملخصات مباريات الأمس'),true);
+ assert.equal(daily.isDailyHighlightsRequest('ملخصات مباريات اليوم'),true);
+ assert.equal(daily.isDailyHighlightsRequest('ملخص مباراة الهلال والنصر'),false);
+ assert.equal(daily.isDailyHighlightsRequest('ملخص مباراة اليوم'),false);
+ assert.equal(daily.isDailyHighlightsRequest('إحصائيات مباريات الأمس'),false);
 });
