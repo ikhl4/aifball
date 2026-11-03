@@ -600,16 +600,22 @@ function renderFormattedText(
       if (name === 'aifball-photo') {
         const photo = safeUrl(attrs.image);
         const source = safeUrl(attrs.source);
-        if (!photo?.startsWith('https://') || !source?.startsWith('https://')) continue;
+        if (!source?.startsWith('https://')) continue;
+        const preview = '/api/photo-preview?source=' + encodeURIComponent(source);
+        const imageSrc = photo?.startsWith('https://') ? photo : preview;
         elements.push(
           <figure key={i} dir="rtl" className="my-4 overflow-hidden rounded-2xl border border-emerald-700/50">
-            <img src={photo} alt={attrs.caption || 'صورة كروية'} loading="lazy" referrerPolicy="no-referrer"
+            <img src={imageSrc} alt={attrs.caption || 'صورة كروية'} loading="lazy" referrerPolicy="no-referrer"
               className="max-h-[36rem] w-full bg-black object-contain"
-              onError={(event) => { event.currentTarget.hidden = true; }} />
+              onError={(event) => {
+                const img = event.currentTarget;
+                if (img.getAttribute('src') !== preview) img.src = preview;
+                else { img.hidden = true; const notice = img.nextElementSibling; if (notice instanceof HTMLElement) notice.hidden = false; }
+              }} />
+            <p hidden className="p-4 text-sm">تعذّر عرض الصورة من المصدر داخل الشات.</p>
             <figcaption className="space-y-2 p-4 text-sm">
               {attrs.caption && <p>{attrs.caption}</p>}
               {attrs.date && <p>{attrs.date}</p>}
-              <a href={source} target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-500 underline">افتح الصورة في المصدر</a>
             </figcaption>
           </figure>
         );
