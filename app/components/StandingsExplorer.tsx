@@ -14,7 +14,7 @@ export default function StandingsExplorer({ isDark = true }: { isDark?: boolean 
           className={`mt-2 block w-full p-3 rounded-xl border ${isDark ? 'bg-[#1a1c1e] text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'}`}>
           {(['club', 'national'] as const).map(kind => (
             <optgroup key={kind} label={kind === 'club' ? 'بطولات الأندية' : 'بطولات المنتخبات'}>
-              {Object.entries(COMPETITIONS).filter(([, competition]) => competition.kind === kind).map(([code, competition]) => (
+              {Object.entries(COMPETITIONS).filter(([, competition]) => competition.kind === kind && !competition.searchOnly).map(([code, competition]) => (
                 <option key={code} value={code}>{competition.ar}</option>
               ))}
             </optgroup>
