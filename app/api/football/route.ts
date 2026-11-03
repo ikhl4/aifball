@@ -70,9 +70,9 @@ export async function GET(request: Request) {
       'saudi pro league',
     ];
     const normalize = (value: string) => value.toLocaleLowerCase().normalize('NFKD')
-      .replace(/[\\u0300-\\u036f\\u064b-\\u065f\\u0670ـ]/g, '')
+      .replace(/[\u0300-\u036f\u064b-\u065f\u0670ـ]/g, '')
       .replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي')
-      .replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();
+      .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
     try {
       const params = new URLSearchParams({
