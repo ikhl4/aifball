@@ -153,7 +153,7 @@ export function isDailyHighlightsRequest(query: string): boolean {
   return summary && date && plural;
 }
 
-export async function buildDailyHighlights(query: string): Promise<string | null> {
+export async function buildDailyHighlights(query: string, { includeVideos = true } = {}): Promise<string | null> {
   if (!isDailyHighlightsRequest(query)) return null;
   const date = targetDate(query);
   const dateKey = date.replace(/-/g, '');
@@ -182,7 +182,7 @@ export async function buildDailyHighlights(query: string): Promise<string | null
   await Promise.all(capped.map(async match => {
     const [summary, video] = await Promise.all([
       getEventSummary(match.slug, match.eventId),
-      findVideo(match),
+      includeVideos ? findVideo(match) : Promise.resolve(''),
     ]);
     match.goals = parseGoals(summary, { id: match.eventId, competitions: [{ details: match.details || [] }] });
     (match as Match & { videoUrl?: string }).videoUrl = video;
