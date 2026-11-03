@@ -641,8 +641,13 @@ function renderFormattedText(
             normalizeLeague(label) === normalizeLeague(attrs.competition || ''));
         });
         const logoId = logoLeague ? COMPETITIONS[logoLeague].fotmobId : undefined;
-        const crest = (value?: string) => {
-          const url = safeUrl(value || '');
+        const crest = (value: string | undefined, team: string) => {
+          const manchesterTeams: Record<string, number> = {
+            'مانشستر سيتي': 8456, 'manchester city': 8456,
+            'مانشستر يونايتد': 10260, 'manchester united': 10260,
+          };
+          const id = manchesterTeams[team.trim().toLowerCase()];
+          const url = id ? `https://images.fotmob.com/image_resources/logo/teamlogo/${id}.png` : safeUrl(value || '');
           return url?.startsWith('https://') ? <img src={url} alt="" loading="lazy" referrerPolicy="no-referrer" className="mx-auto mb-1 h-9 w-9 object-contain" onError={event => { event.currentTarget.hidden = true; }} /> : null;
         };
         const heading = attrs.kind === 'results' ? 'نتائج المباريات' : attrs.kind === 'draw' ? 'قرعة البطولة' : attrs.kind === 'match' ? 'يوم المباراة' : 'جدول المباريات';
@@ -661,9 +666,9 @@ function renderFormattedText(
                   {matches.map((row, index) => (
                     <div key={index} className="rounded-xl border border-white/10 bg-black/55 p-3">
                       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center font-bold">
-                        <span>{crest(row.homeLogo)}{row.home}</span>
+                        <span>{crest(row.homeLogo, row.home)}{row.home}</span>
                         <bdi className="rounded bg-emerald-950 px-2 py-1 text-emerald-200">{row.value || 'ضد'}</bdi>
-                        <span>{crest(row.awayLogo)}{row.away}</span>
+                        <span>{crest(row.awayLogo, row.away)}{row.away}</span>
                       </div>
                       {row.detail && <p className="mt-2 text-center text-xs text-gray-200">{row.detail}</p>}
                     </div>
