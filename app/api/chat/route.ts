@@ -52,7 +52,7 @@ export async function POST(req: Request) {
           { event: 'message', answer: dailyReport, conversation_id },
           { event: 'message_end', conversation_id },
         ];
-        const stream = events.map(event => `event: ${event.event}\\ndata: ${JSON.stringify(event)}\\n\\n`).join('');
+        const stream = events.map(event => `event: ${event.event}\ndata: ${JSON.stringify(event)}\n\n`).join('');
         return new Response(stream, {
           headers: {
             'Content-Type': 'text/event-stream; charset=utf-8',
