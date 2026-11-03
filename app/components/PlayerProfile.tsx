@@ -67,6 +67,8 @@ export default function PlayerProfile({ playerName, seasons, isDark = true }: Pl
       })
     : [];
 
+  if (!season || (current && !stats.length && available.length === 1)) return null;
+
   return (
     <section dir="rtl" className={`rounded-3xl border p-5 ${isDark ? 'bg-[#101714] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -94,7 +96,7 @@ export default function PlayerProfile({ playerName, seasons, isDark = true }: Pl
         </dl>
       ) : (
         <p className="mt-4 text-sm opacity-75" role="status">
-          {season && !current ? 'جاري جلب أرقام الموسم…' : 'أرقام الموسم المؤكدة غير متاحة في البطاقة.'}
+          {current ? 'أرقام هذا الموسم غير متاحة.' : 'جاري جلب أرقام الموسم…'}
         </p>
       )}
     </section>

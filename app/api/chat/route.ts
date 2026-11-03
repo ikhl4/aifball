@@ -8,7 +8,7 @@ export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 const PLAYER_CAREER_RULES = `
-إذا كان السؤال عن لاعب ومسيرته، تحقق من هويته بالأدوات أولاً. عند تشابه الأسماء اطلب النادي أو المنتخب.
+إذا كان السؤال عن لاعب أو اقتصر على اسمه فقط، تحقق من هويته بالأدوات أولاً. عند تشابه الأسماء اطلب النادي أو المنتخب.
 ابدأ ببطاقة مختصرة تلخص إجمالي المسيرة المثبت، ثم اعرض المواسم المتاحة بالأندية والبطولات والمباريات والدقائق والأهداف والصناعات والإنذارات والطرد. افصل المنتخب عن الأندية واذكر نطاق تغطية المصدر. اذكر الألقاب مع الفريق والموسم. لا تجمع الإجماليات مع تفاصيل البطولات المكررة، ولا تعامل الرقم المفقود كصفر.
 إذا توفر اسم اللاعب كما يظهر في FBref ومواسم موثقة ضمن الدوريات الخمسة، ضع قبل السرد <aifball-player name="اسم FBref" seasons="2025-2026,2024-2025" /> واستبدل المواسم النموذجية بالمواسم المسترجعة فعلاً. وإلا اعرض البطاقة كتابةً من المصادر المتاحة.
 بعد البطاقة، اسرد المسيرة بالعربية من بداياته حتى وضعه الحالي، مع الانتقالات ونقاط التحول. أضف قصصاً موثقة ومنشورة إن وجدت واربطها بمصادرها. سؤال أداء لاعب في مباراة يتبع سياق المباراة.
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       signal: req.signal,
       body: JSON.stringify({
         inputs: {},
-        query: detailedMatch ? withMatchReportPresentation(query) : analysis ? withAnalysisPresentation(query) : (conversation_id ? withMatchConversationContext(query) : query) + (/مسير|لاعب|بطاق|career|player|profile/i.test(query) ? PLAYER_CAREER_RULES : ''),
+        query: detailedMatch ? withMatchReportPresentation(query) : analysis ? withAnalysisPresentation(query) : (conversation_id ? withMatchConversationContext(query) : query) + ((/مسير|لاعب|بطاق|career|player|profile/i.test(query) || /^(?:[\p{L}\p{M}]+[ \t]+){1,4}[\p{L}\p{M}]+[؟?]?$/u.test(query.trim())) ? PLAYER_CAREER_RULES : ''),
         response_mode: 'streaming',
         conversation_id: conversation_id || undefined,
         user: 'aifball-web-user', 
