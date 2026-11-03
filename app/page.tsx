@@ -597,6 +597,86 @@ function renderFormattedText(
         continue;
       }
 
+      if (name === 'aifball-photo') {
+        const photo = safeUrl(attrs.image);
+        const source = safeUrl(attrs.source);
+        if (!source?.startsWith('https://')) continue;
+        const preview = '/api/photo-preview?source=' + encodeURIComponent(source);
+        const candidates = [...new Set([photo, safeUrl(attrs.alternate_image)]
+          .filter((url): url is string => Boolean(url?.startsWith('https://'))))];
+        candidates.push(preview);
+        const imageSrc = candidates[0];
+        elements.push(
+          <figure key={i} dir="rtl" className="my-4 overflow-hidden rounded-2xl border border-emerald-700/50">
+            <img src={imageSrc} alt={attrs.caption || 'صورة كروية'} loading="lazy" referrerPolicy="no-referrer"
+              className="max-h-[36rem] w-full bg-black object-contain"
+              onError={(event) => {
+                const img = event.currentTarget;
+                const next = candidates[candidates.indexOf(img.getAttribute('src') || '') + 1];
+                if (next) img.src = next;
+                else { img.hidden = true; const notice = img.nextElementSibling; if (notice instanceof HTMLElement) notice.hidden = false; }
+              }} />
+            <p hidden className="p-4 text-sm">تعذّر عرض الصورة من المصدر داخل الشات.</p>
+            <figcaption className="space-y-2 p-4 text-sm">
+              {attrs.caption && <p>{attrs.caption}</p>}
+              {attrs.date && <p>{attrs.date}</p>}
+            </figcaption>
+          </figure>
+        );
+        continue;
+      }
+
+      if (name === 'aifball-match-design') {
+        const rows = (attrs.rows || '').split(';').slice(0, 60).flatMap((row) => {
+          const [group, home, away, value, detail, homeLogo, awayLogo] = row.split('|').map(part => part.trim());
+          return home && away ? [{ group, home, away, value, detail, homeLogo, awayLogo }] : [];
+        });
+        if (!rows.length) continue;
+        const groups = new Map<string, typeof rows>();
+        for (const row of rows) groups.set(row.group, [...(groups.get(row.group) || []), row]);
+        const normalizeLeague = (value: string) => value.trim().toLowerCase().replace(/[أإآ]/g, 'ا');
+        const logoLeague = ['ksa.1', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1'].find(code => {
+          const item = COMPETITIONS[code];
+          return item && [code, item.ar, item.en, ...item.aliases].some(label =>
+            normalizeLeague(label) === normalizeLeague(attrs.competition || ''));
+        });
+        const logoId = logoLeague ? COMPETITIONS[logoLeague].fotmobId : undefined;
+        const crest = (value?: string) => {
+          const url = safeUrl(value || '');
+          return url?.startsWith('https://') ? <img src={url} alt="" loading="lazy" referrerPolicy="no-referrer" className="mx-auto mb-1 h-9 w-9 object-contain" onError={event => { event.currentTarget.hidden = true; }} /> : null;
+        };
+        const heading = attrs.kind === 'results' ? 'نتائج المباريات' : attrs.kind === 'draw' ? 'قرعة البطولة' : attrs.kind === 'match' ? 'يوم المباراة' : 'جدول المباريات';
+        elements.push(
+          <section key={i} dir="rtl" aria-label={heading} style={{ fontFamily: "Cairo, sans-serif" }} className="my-4 overflow-hidden rounded-3xl border border-emerald-700 bg-gradient-to-br from-[#08140f] via-[#123b2c] to-black p-5 text-white sm:p-8">
+            <div className="flex items-center gap-3 text-sm font-bold text-emerald-300">
+              {logoId && <img src={`https://images.fotmob.com/image_resources/logo/leaguelogo/${logoId}.png`} alt="" className="h-10 w-10 rounded-md bg-white object-contain p-1" onError={event => { event.currentTarget.hidden = true; }} />}
+              <span>{attrs.competition}</span>
+            </div>
+            <h3 className="my-3 text-3xl font-black sm:text-5xl">{heading}</h3>
+            {attrs.subtitle && <p className="mb-4 text-sm text-amber-200">{attrs.subtitle}</p>}
+            {[...groups.entries()].map(([group, matches]) => (
+              <div key={group} className="mt-4">
+                {group && <h4 className="mb-2 text-sm font-bold text-amber-200">{group}</h4>}
+                <div className={matches.length > 1 ? "grid gap-2 sm:grid-cols-2" : "grid gap-2"}>
+                  {matches.map((row, index) => (
+                    <div key={index} className="rounded-xl border border-white/10 bg-black/55 p-3">
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center font-bold">
+                        <span>{crest(row.homeLogo)}{row.home}</span>
+                        <bdi className="rounded bg-emerald-950 px-2 py-1 text-emerald-200">{row.value || 'ضد'}</bdi>
+                        <span>{crest(row.awayLogo)}{row.away}</span>
+                      </div>
+                      {row.detail && <p className="mt-2 text-center text-xs text-gray-200">{row.detail}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <p className="mt-5 border-t border-amber-300/50 pt-3 text-xs font-bold text-emerald-200">فوتبلاي</p>
+          </section>
+        );
+        continue;
+      }
+
       if (name === 'aifball-summary') {
         const order = attrs.order === 'video-first' ? 'video-first' : 'video-last';
         const title = lang === 'en' ? '📺 Match highlights' : '📺 ملخص المباراة';
