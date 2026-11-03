@@ -1344,10 +1344,27 @@ export default function FootPlayChat() {
             <span>+</span>
             <span>بدء محادثة جديدة</span>
           </button>
-          <button type="button" onClick={() => { setSidebarOpen(false); setShowStandings(true); }}
-            className="mt-2 w-full py-2.5 px-4 rounded-xl border border-emerald-500/30 bg-emerald-600/10 text-emerald-500 font-bold text-xs">
-            جداول الترتيب
-          </button>
+          <div className="mt-4 space-y-1.5">
+            <p className={`px-2 pb-1 text-[10px] font-bold ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>مراكز فوتبلاي</p>
+            <a href="/preview/transfers" onClick={() => setSidebarOpen(false)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition border ${isDarkMode ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15' : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 8h15l-3.5-3.5M20 16H5l3.5 3.5"/><path d="m15.5 4.5 3.5 3.5-3.5 3.5M8.5 12.5 5 16l3.5 3.5"/></svg>
+              <span>مركز الانتقالات</span>
+            </a>
+            <button type="button" onClick={() => { setSidebarOpen(false); void sendMessage('اعرض مكتبة التمارين'); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}>
+              <AppIcon name="activity" size={19} className="text-emerald-500"/><span>مركز التمارين</span>
+            </button>
+            <button type="button" onClick={() => { setSidebarOpen(false); setShowStandings(true); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}>
+              <AppIcon name="chart" size={19} className="text-emerald-500"/><span>جداول الدوريات</span>
+            </button>
+            <button type="button" onClick={() => { setSidebarOpen(false); setShowLiveScores(true); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}>
+              <AppIcon name="pitch" size={19} className="text-emerald-500"/><span>النتائج المباشرة</span>
+              <span className="mr-auto w-1.5 h-1.5 rounded-full bg-red-500" aria-hidden="true"/>
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5 custom-scrollbar">
