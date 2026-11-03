@@ -1,0 +1,112 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+
+type Deal = {
+  player: string;
+  from: string;
+  to: string;
+  fee: string;
+  kind: string;
+  league: 'السعودي' | 'الإنجليزي';
+  date: string;
+  source: string;
+  href: string;
+  departure?: boolean;
+};
+
+const sources = {
+  spl: 'https://www.spl.com.sa/en/2026-27-summer-transfer-watch',
+  splStory: 'https://www.spl.com.sa/en/news/wijnaldum-back-in-rsl-with-al-ittihad-and-other-deadline-day-deals',
+  sky: 'https://www.skysports.com/football/news/13546618/transfer-news-summer-transfer-window-2026-premier-league-deals-ins-and-outs',
+};
+
+const deals: Deal[] = [
+  { player: 'جورجينيو فينالدوم', from: 'الاتفاق', to: 'الاتحاد', fee: 'مجاناً', kind: 'انتقال حر', league: 'السعودي', date: '07 سبتمبر', source: 'الدوري السعودي', href: sources.splStory },
+  { player: 'كريسينسيو سامرفيل', from: 'وست هام', to: 'الهلال', fee: 'غير معلنة', kind: 'انتقال نهائي', league: 'السعودي', date: '25 يوليو', source: 'الدوري السعودي', href: 'https://www.spl.com.sa/en/news/can-t-wait-to-meet-you-crysencio-summerville-signs-with-al-hilal' },
+  { player: 'تيجاني ريندرز', from: 'مانشستر سيتي', to: 'القادسية', fee: 'غير معلنة', kind: 'انتقال نهائي', league: 'السعودي', date: 'صيف 2026', source: 'الدوري السعودي', href: sources.spl },
+  { player: 'أولي واتكينز', from: 'أستون فيلا', to: 'الهلال', fee: '£50m', kind: 'انتقال نهائي', league: 'السعودي', date: 'صيف 2026', source: 'Sky Sports', href: sources.sky, departure: true },
+  { player: 'غابرييل مارتينيلي', from: 'أرسنال', to: 'الهلال', fee: '£60m', kind: 'انتقال نهائي', league: 'السعودي', date: 'صيف 2026', source: 'Sky Sports', href: sources.sky, departure: true },
+  { player: 'مورغان روجرز', from: 'أستون فيلا', to: 'تشيلسي', fee: '£117m', kind: 'انتقال نهائي', league: 'الإنجليزي', date: 'صيف 2026', source: 'Sky Sports', href: sources.sky },
+  { player: 'إنزو فرنانديز', from: 'تشيلسي', to: 'مانشستر سيتي', fee: '£125m', kind: 'انتقال نهائي', league: 'الإنجليزي', date: 'صيف 2026', source: 'Sky Sports', href: sources.sky, departure: true },
+];
+
+const leagues = ['الكل', 'السعودي', 'الإنجليزي', 'الإسباني', 'الإيطالي', 'الألماني', 'الفرنسي'] as const;
+
+export default function TransfersPreview() {
+  const [league, setLeague] = useState<string>('الكل');
+  const [tab, setTab] = useState<'deals' | 'departures'>('deals');
+  const [query, setQuery] = useState('');
+  const visible = useMemo(() => deals.filter((deal) => {
+    const inLeague = league === 'الكل' || deal.league === league;
+    const inTab = tab === 'deals' || deal.departure;
+    const text = `${deal.player} ${deal.from} ${deal.to}`.toLowerCase();
+    return inLeague && inTab && text.includes(query.trim().toLowerCase());
+  }), [league, tab, query]);
+  const hasLeagueData = league === 'الكل' || league === 'السعودي' || league === 'الإنجليزي';
+
+  return (
+    <main className="transfer-page" dir="rtl">
+      <div className="ambient ambient-one" /><div className="ambient ambient-two" />
+      <header className="topbar">
+        <a className="brand" href="#top" aria-label="فوتبلاي"><span className="brand-mark">◉</span><span><b>فوتبلاي</b><small>مركز الانتقالات</small></span></a>
+        <nav><a href="#deals" className="nav-active">الانتقالات</a><a href="#leagues">الدوريات</a><a href="#deals">المغادرون</a></nav>
+        <span className="season-pill"><i /> صيف 2026 · موسم 2026/27</span>
+      </header>
+
+      <section className="hero" id="top">
+        <div className="hero-copy">
+          <span className="eyebrow"><i /> نافذة الانتقالات · تقرير موثق</span>
+          <h1>كل حركة<br /><em>لها وجهة.</em></h1>
+          <p>تابع صفقات الأندية من المصدر، نادياً بنادٍ. قيمة الصفقة ونوعها وحالتها في مكان واحد.</p>
+          <div className="hero-actions"><a href="#deals" className="primary-link">استكشف الصفقات <span>↙</span></a><span className="live-note"><i /> آخر تحديث: 3 نوفمبر 2026</span></div>
+        </div>
+        <div className="hero-graphic" aria-hidden="true">
+          <div className="orbit orbit-a"/><div className="orbit orbit-b"/><div className="pitch-lines" />
+          <div className="transfer-route"><span className="route-dot dot-a">A</span><span className="route-dash"/><span className="route-arrow">↙</span><span className="route-dot dot-b">B</span></div>
+          <div className="graphic-label label-a"><small>من</small><b>الاتفاق</b></div><div className="graphic-label label-b"><small>إلى</small><b>الاتحاد</b></div>
+          <div className="graphic-caption">نافذة صيفية <b>26/27</b></div>
+        </div>
+      </section>
+
+      <section className="stats-strip" aria-label="ملخص المعاينة">
+        <div><small>الدوريات</small><strong>6</strong><span>الدوريات الخمسة الكبرى + روشن</span></div>
+        <div><small>نمط التتبع</small><strong>ناديًا بنادي</strong><span>وارد · صادر · إعارات</span></div>
+        <div><small>المصدر الأول</small><strong>رسمي</strong><span>والصحفيون للتقارير غير المؤكدة</span></div>
+        <div className="stats-emblem"><span>26</span><b>27</b></div>
+      </section>
+
+      <section className="market" id="deals">
+        <div className="section-head">
+          <div><span className="eyebrow">السجل الحي <i /></span><h2>سوق الانتقالات</h2><p>الصفقة، وجهتها، وقيمتها — من مصادر قابلة للتحقق.</p></div>
+          <label className="search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث عن لاعب أو نادٍ" /><kbd>⌘ K</kbd></label>
+        </div>
+
+        <div className="market-controls" id="leagues">
+          <div className="league-tabs" role="tablist" aria-label="اختيار الدوري">{leagues.map((item) => <button key={item} onClick={() => setLeague(item)} className={league === item ? 'selected' : ''}>{item === 'السعودي' && <span className="league-spark">✳</span>}{item}</button>)}</div>
+          <div className="sub-controls"><div className="toggle-tabs"><button onClick={() => setTab('deals')} className={tab === 'deals' ? 'selected' : ''}>كل الصفقات <b>{deals.length}</b></button><button onClick={() => setTab('departures')} className={tab === 'departures' ? 'selected' : ''}>أبرز المغادرين</button></div><span className="window-state"><i /> نافذة الصيف مغلقة</span></div>
+        </div>
+
+        <div className="table-wrap">
+          <div className="table-label"><span>صفقات صيف 2026</span><span className="sample-tag">معاينة تصميمية · عينة موثقة</span></div>
+          <div className="deal-head"><span>اللاعب</span><span>من النادي</span><span className="direction"/><span>إلى النادي</span><span>نوع الصفقة</span><span>القيمة</span><span>المصدر</span></div>
+          {!hasLeagueData ? <div className="empty-state"><span>◌</span><b>قريباً في المعاينة</b><p>واجهة هذا الدوري جاهزة؛ نضيف بياناته عند اكتمال جمع الصفقات والتحقق منها.</p></div> : visible.length ? visible.map((deal, index) => <article className="deal-row" key={`${deal.league}-${deal.player}-${index}`}>
+            <div className="player-cell"><span className="player-avatar">{deal.player.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span><span><b>{deal.player}</b><small>{deal.date}</small></span></div>
+            <div className="club-cell"><span className="club-crest">{deal.from.slice(0, 1)}</span><span>{deal.from}</span></div><span className="direction-arrow">←</span>
+            <div className="club-cell"><span className="club-crest destination">{deal.to.slice(0, 1)}</span><span>{deal.to}</span></div>
+            <span><i className={`deal-type ${deal.kind === 'انتقال حر' ? 'free' : ''}`} />{deal.kind}</span><strong className="fee">{deal.fee}</strong><a className="source-link" href={deal.href} target="_blank" rel="noreferrer">{deal.source}<span>↗</span></a>
+          </article>) : <div className="empty-state"><span>⌕</span><b>ما لقينا نتيجة بهذا البحث</b><p>جرّب اسم اللاعب أو أحد الناديين.</p></div>}
+          <div className="table-foot"><span><i /> المعلومات المثبتة تظهر أولاً</span><span>القيمة السوقية منفصلة عن قيمة الصفقة</span></div>
+        </div>
+        <aside className="source-note"><span className="source-icon">✓</span><p><b>مصادر مختصرة، ومعلومة واضحة.</b> نربط كل صفقة باسم مصدرها مباشرة؛ المصدر الرسمي عند الإعلان، وتقارير الصحفيين تظهر كتقارير حتى يؤكدها النادي. إذا لم تُعلن القيمة نكتب «غير معلنة».</p><a href={sources.spl} target="_blank" rel="noreferrer">منهج التوثيق ↗</a></aside>
+      </section>
+
+      <footer><span className="brand-mark">◉</span><span>فوتبلاي</span><span>كرة القدم تتحرك. خلك قريب.</span><small>معاينة واجهة — بيانات نموذجية مختارة ومسنودة بمصادر ظاهرة</small></footer>
+
+      <style jsx global>{`
+        *{box-sizing:border-box}body{margin:0;background:#07110d;color:#f3f5f1}.transfer-page{--bg:#07110d;--panel:#101c17;--line:rgba(187,210,195,.12);--muted:#98a69c;--mint:#49d7a3;--yellow:#d2ff69;position:relative;min-height:100vh;overflow:hidden;padding:0 max(28px,calc((100vw - 1220px)/2));background:radial-gradient(ellipse at 68% 24%,rgba(35,115,79,.17),transparent 35%),linear-gradient(180deg,#08110e,#09140f 42%,#07110d);font-family:Arial,'Cairo',sans-serif;color:#f3f5f1}.ambient{position:absolute;width:500px;height:500px;filter:blur(100px);pointer-events:none;opacity:.1;border-radius:50%}.ambient-one{background:#15bc7e;top:120px;right:-240px}.ambient-two{background:#8fc542;top:720px;left:-360px}.topbar{position:relative;z-index:1;height:86px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none}.brand-mark{display:grid;place-items:center;width:40px;height:40px;border:1px solid rgba(73,215,163,.45);border-radius:13px;color:var(--mint);font-size:25px;box-shadow:0 0 24px rgba(73,215,163,.1)}.brand b{display:block;font-size:17px;letter-spacing:-.04em}.brand small{display:block;font-size:10px;color:var(--mint);margin-top:1px}.topbar nav{display:flex;gap:34px}.topbar nav a{color:#8b9a90;text-decoration:none;font-size:13px;padding:10px 0}.topbar nav a.nav-active{color:#f5faf6;border-bottom:1px solid var(--mint)}.season-pill{border:1px solid var(--line);border-radius:99px;padding:9px 14px;color:#d4dfd7;font-size:11px}.season-pill i,.live-note i,.window-state i,.table-foot i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--mint);margin-left:7px;box-shadow:0 0 10px var(--mint)}.hero{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1.05fr;gap:50px;align-items:center;padding:74px 0 56px;min-height:440px}.hero-copy{max-width:480px}.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.13em;color:var(--mint);font-weight:700}.eyebrow i{width:18px;height:1px;background:var(--mint)}h1{font-size:clamp(60px,7.5vw,94px);line-height:.95;letter-spacing:-.075em;margin:23px 0 19px;font-weight:800}h1 em{font-style:normal;color:var(--yellow)}.hero-copy p{max-width:380px;color:#a8b5ac;line-height:1.9;font-size:14px;margin:0}.hero-actions{display:flex;align-items:center;gap:20px;margin-top:27px}.primary-link{background:var(--yellow);color:#0b1710;border-radius:6px;padding:13px 17px;text-decoration:none;font-weight:700;font-size:12px}.primary-link span{font-size:16px;margin-right:12px}.live-note{font-size:10px;color:#89968e}.live-note i{width:6px;height:6px}.hero-graphic{height:320px;position:relative;border:1px solid rgba(213,238,222,.13);border-radius:50%;background:radial-gradient(ellipse at center,rgba(63,130,94,.22),rgba(10,28,19,.08) 59%,transparent 60%);display:grid;place-items:center;overflow:hidden}.orbit{position:absolute;border:1px solid rgba(73,215,163,.15);border-radius:50%;inset:22px 48px}.orbit-b{inset:66px 95px;border-color:rgba(210,255,105,.15)}.pitch-lines{position:absolute;inset:66px 115px;border:1px solid rgba(222,238,227,.18);border-radius:4px}.pitch-lines:before{content:'';position:absolute;top:0;bottom:0;left:50%;border-left:1px solid rgba(222,238,227,.18)}.pitch-lines:after{content:'';position:absolute;width:58px;height:58px;border:1px solid rgba(222,238,227,.18);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}.transfer-route{position:absolute;display:flex;align-items:center;gap:0;transform:rotate(-22deg)}.route-dot{width:48px;height:48px;display:grid;place-items:center;border-radius:50%;font-size:11px;font-weight:700;border:1px solid rgba(210,255,105,.55);background:#15271b;color:var(--yellow);box-shadow:0 0 24px rgba(210,255,105,.22)}.dot-b{background:var(--mint);color:#042015;border-color:var(--mint);box-shadow:0 0 32px rgba(73,215,163,.5)}.route-dash{width:136px;border-top:1px dashed var(--mint)}.route-arrow{color:var(--mint);font-size:22px;margin:0 -4px}.graphic-label{position:absolute;display:flex;flex-direction:column;gap:4px}.graphic-label small{font-size:9px;color:#8b9a90}.graphic-label b{font-size:14px}.label-a{top:66px;right:80px}.label-b{bottom:62px;left:82px}.graphic-caption{position:absolute;bottom:20px;font-size:9px;color:#74857a;letter-spacing:.1em}.graphic-caption b{color:var(--mint);font-size:11px}.stats-strip{position:relative;z-index:1;border-block:1px solid var(--line);padding:22px 0;display:grid;grid-template-columns:repeat(3,1fr) 90px;align-items:center;gap:20px}.stats-strip>div:not(.stats-emblem){display:flex;flex-direction:column;gap:3px;border-left:1px solid var(--line);padding-right:20px}.stats-strip small{font-size:9px;color:#89988f}.stats-strip strong{font-size:18px}.stats-strip span{font-size:10px;color:#8b9a90}.stats-emblem{direction:ltr;text-align:center;font-size:31px;letter-spacing:-.08em;line-height:.82}.stats-emblem span{color:var(--mint)}.stats-emblem b{color:var(--yellow)}.market{position:relative;z-index:1;padding:70px 0 56px}.section-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:30px}.section-head h2{font-size:32px;margin:8px 0 4px;letter-spacing:-.04em}.section-head p{color:#87968d;margin:0;font-size:12px}.search{display:flex;align-items:center;gap:10px;width:270px;border:1px solid var(--line);background:#0d1912;border-radius:6px;padding:10px 12px}.search>span{font-size:22px;color:var(--mint);line-height:1}.search input{flex:1;background:none;border:0;outline:0;color:#fff;font:inherit;font-size:11px;min-width:0}.search input::placeholder{color:#718078}.search kbd{font:9px Arial;color:#738078;border:1px solid var(--line);padding:4px 5px;border-radius:3px}.market-controls{border-bottom:1px solid var(--line)}.league-tabs{display:flex;gap:7px;overflow:auto;padding-bottom:14px}.league-tabs button,.toggle-tabs button{border:1px solid transparent;background:transparent;color:#87968d;padding:9px 14px;border-radius:4px;white-space:nowrap;font:inherit;font-size:11px;cursor:pointer}.league-tabs button.selected{border-color:rgba(73,215,163,.25);background:rgba(73,215,163,.09);color:var(--mint)}.league-spark{margin-left:6px;color:var(--mint)}.sub-controls{display:flex;align-items:center;justify-content:space-between;padding:11px 0}.toggle-tabs{display:flex;gap:5px}.toggle-tabs button{font-size:10px;padding:7px 10px}.toggle-tabs button.selected{background:#d6ff72;color:#0a170f;font-weight:700}.toggle-tabs b{font-size:9px;opacity:.7;margin-right:5px}.window-state{font-size:9px;color:#89968e}.window-state i{background:#8c9b92;box-shadow:none;width:6px;height:6px}.table-wrap{border:1px solid var(--line);background:rgba(15,27,21,.82);border-radius:7px;overflow:hidden;margin-top:20px}.table-label{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line);font-size:11px;font-weight:700}.sample-tag{font-weight:400;color:#88968d;font-size:9px}.deal-head,.deal-row{display:grid;grid-template-columns:1.35fr 1fr 32px 1fr .85fr .65fr .7fr;align-items:center;gap:13px;padding:13px 18px}.deal-head{font-size:9px;color:#819087;border-bottom:1px solid var(--line);background:rgba(255,255,255,.018)}.deal-row{min-height:70px;border-bottom:1px solid var(--line);font-size:10px;color:#dbe3dc}.deal-row:last-of-type{border-bottom:0}.player-cell,.club-cell{display:flex;align-items:center;gap:10px;min-width:0}.player-cell b{display:block;font-size:11px;color:#f4f7f4;font-weight:600}.player-cell small{display:block;color:#75847a;font-size:9px;margin-top:3px}.player-avatar{display:grid;place-items:center;flex:none;width:34px;height:34px;border:1px solid rgba(73,215,163,.2);border-radius:50%;background:rgba(73,215,163,.06);color:var(--mint);font-size:9px}.club-cell{gap:8px;white-space:nowrap}.club-crest{display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:#20392a;color:var(--mint);font-size:12px;font-weight:700}.club-crest.destination{background:rgba(210,255,105,.1);color:var(--yellow)}.direction-arrow{color:var(--mint);font-size:17px;text-align:center}.deal-type{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--mint);margin-left:7px}.deal-type.free{background:var(--yellow)}.fee{color:#eef5ee;font-size:11px;white-space:nowrap}.source-link{justify-self:start;color:#91a198;text-decoration:none;border-bottom:1px solid rgba(145,161,152,.35);font-size:9px;white-space:nowrap}.source-link span{color:var(--mint);margin-right:5px}.table-foot{display:flex;justify-content:space-between;padding:12px 18px;background:rgba(255,255,255,.018);border-top:1px solid var(--line);color:#738279;font-size:9px}.table-foot i{width:5px;height:5px;margin-left:5px}.empty-state{text-align:center;padding:42px 15px;color:#819087}.empty-state>span{font-size:24px;color:var(--mint)}.empty-state b{display:block;color:#e7eee8;font-size:13px;margin-top:8px}.empty-state p{font-size:10px;margin:6px 0}.source-note{display:flex;align-items:center;gap:14px;margin-top:17px;padding:15px 17px;background:rgba(73,215,163,.045);border:1px solid rgba(73,215,163,.13);border-radius:6px}.source-icon{display:grid;place-items:center;flex:none;width:25px;height:25px;border:1px solid rgba(73,215,163,.4);border-radius:50%;color:var(--mint);font-size:12px}.source-note p{flex:1;color:#91a097;font-size:10px;line-height:1.8;margin:0}.source-note p b{color:#e4ede6}.source-note>a{font-size:9px;color:var(--mint);text-decoration:none;white-space:nowrap}footer{position:relative;z-index:1;border-top:1px solid var(--line);height:76px;display:flex;align-items:center;gap:10px;color:#dce6de;font-size:11px}footer .brand-mark{width:28px;height:28px;font-size:18px;border-radius:9px}footer>span:nth-child(3){margin-right:auto;color:#77857c;font-size:10px}footer small{color:#66746b;font-size:8px;margin-right:20px}
+        @media(max-width:760px){.transfer-page{padding:0 19px}.topbar{height:69px}.topbar nav{display:none}.season-pill{font-size:9px;padding:8px 10px}.hero{grid-template-columns:1fr;gap:28px;padding:53px 0 40px;min-height:0}.hero-copy{max-width:100%}h1{font-size:67px}.hero-copy p{font-size:12px}.hero-graphic{height:250px;max-width:500px;width:100%;margin:auto}.pitch-lines{inset:52px 95px}.stats-strip{grid-template-columns:repeat(2,1fr) 56px;gap:12px;padding:17px 0}.stats-strip>div:not(.stats-emblem){padding-right:11px}.stats-strip strong{font-size:15px}.stats-strip span{font-size:8px}.stats-emblem{font-size:25px}.market{padding:48px 0 40px}.section-head{display:block}.section-head h2{font-size:27px}.section-head p{font-size:10px}.search{width:100%;margin-top:18px}.league-tabs{margin-left:-19px;margin-right:-19px;padding-inline:19px}.sub-controls{align-items:flex-start;gap:12px;flex-direction:column}.deal-head{display:none}.deal-row{grid-template-columns:1.2fr 1fr 18px 1fr;gap:7px;padding:13px 11px}.deal-row>span:nth-of-type(2){display:none}.deal-row .fee{grid-column:2;grid-row:2;font-size:10px;color:var(--yellow)}.deal-row .source-link{grid-column:4;grid-row:2;font-size:8px}.deal-row>span:nth-of-type(1){grid-column:1;grid-row:2;font-size:9px;color:#89978e}.deal-row>.club-cell:nth-of-type(3){grid-column:2;grid-row:1}.deal-row .direction-arrow{grid-column:3;grid-row:1}.deal-row>.club-cell:nth-of-type(4){grid-column:4;grid-row:1}.player-cell{grid-column:1;grid-row:1}.player-avatar{width:30px;height:30px}.player-cell b{font-size:10px}.player-cell small{font-size:8px}.club-cell{font-size:9px;gap:5px}.club-crest{width:20px;height:20px;font-size:10px}.table-label{padding:13px 12px}.sample-tag{font-size:8px}.table-foot{padding:10px 12px;font-size:8px}.source-note{align-items:flex-start;padding:13px}.source-note p{font-size:9px}.source-note>a{display:none}footer{height:auto;min-height:70px;flex-wrap:wrap;padding:15px 0;gap:7px}footer>span:nth-child(3){display:none}footer small{margin-right:auto;font-size:7px}}
+      `}</style>
+    </main>
+  );
+}
