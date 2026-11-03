@@ -70,7 +70,7 @@ function parseGoals(payload: any, event: EspnEvent): string[] {
   const seen = new Set<string>();
   return details.flatMap((item: any) => {
     const text = String(item?.text || item?.type?.text || item?.shortText || '');
-    const scoring = item?.scoringPlay === true || /goal|penalty/i.test(text);
+    const scoring = item?.scoringPlay === true || /goal/i.test(text) || (item?.scoreValue > 0 && /penalty/i.test(text));
     if (!scoring) return [];
     const minute = String(item?.clock?.displayValue || item?.clock?.value || item?.time || '').trim();
     const scorer = item?.participants?.map((p: any) =>
@@ -177,7 +177,7 @@ export async function buildDailyHighlights(query: string): Promise<string | null
   }));
   const grouped = new Map<string, Match[]>();
   for (const match of capped) grouped.set(match.leagueName, [...(grouped.get(match.leagueName) || []), match]);
-  const dateLabel = new Intl.DateTimeFormat('ar-SA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date(`${date}T12:00:00+03:00`));
+  const dateLabel = new Intl.DateTimeFormat('ar-SA', { calendar: 'gregory', timeZone: 'Asia/Riyadh', year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date(`${date}T12:00:00+03:00`));
   const parts = [`ملخصات مباريات ${/الأمس|امس|yesterday/i.test(query) ? 'الأمس' : 'اليوم'} — ${dateLabel} (توقيت الرياض)`];
   for (const [league, items] of grouped) {
     parts.push(`## ${league}`);
@@ -186,7 +186,7 @@ export async function buildDailyHighlights(query: string): Promise<string | null
       const goals = match.goals.length
         ? `الأهداف المؤكدة حسب سجل أحداث ESPN: ${match.goals.join('؛ ')}.`
         : 'لم يتوفر سجل موثوق لتفاصيل مسجلي الأهداف ودقائقها.';
-      const summary = `انتهت المباراة بفوز ${match.homeScore === match.awayScore ? 'الفريقين بالتعادل' : Number(match.homeScore) > Number(match.awayScore) ? match.home : match.away} بنتيجة ${match.homeScore}–${match.awayScore}. ${goals}`;
+      const summary = `${match.homeScore === match.awayScore ? 'انتهت المباراة بالتعادل' : `انتهت بفوز ${Number(match.homeScore) > Number(match.awayScore) ? match.home : match.away}`} بنتيجة ${match.homeScore}–${match.awayScore}. ${goals}`;
       const videoUrl = (match as Match & { videoUrl?: string }).videoUrl || '';
       parts.push(`<aifball-summary order="video-first" competition="${escapeAttribute(league)}" match="${escapeAttribute(score)}" date="${date}" summary="${escapeAttribute(summary)}"${videoUrl ? ` video_url="${escapeAttribute(videoUrl)}"` : ''} />`);
     }
