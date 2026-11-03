@@ -1668,7 +1668,7 @@ export default function FootPlayChat() {
                           <section dir="rtl" aria-label="أسئلة مقترحة" className="mt-3">
                             <p className="mb-2 text-sm font-bold text-emerald-500">أسئلة مقترحة</p>
                             <div className="flex flex-wrap gap-2">
-                              {(msg.content.includes('<aifball-player') ? [
+                              {((msg.content.includes('<aifball-player') || /اللاعب|مسير|راتب|عقد|قيمة سوقية|player|career/i.test(msg.userQuery ?? '')) ? [
                                 'ما أرقام هذا اللاعب في الموسم الحالي؟',
                                 'ما أبرز بطولاته ومحطات مسيرته؟',
                                 'متى ينتهي عقده وكم راتبه وقيمته السوقية؟',
