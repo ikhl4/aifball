@@ -538,7 +538,7 @@ function renderFormattedText(
         if (playerName) {
           elements.push(
             <div key={i} className="my-5">
-              <PlayerProfile playerName={playerName} isDark={isDark} />
+              <PlayerProfile playerName={playerName} seasons={attrs.seasons} isDark={isDark} />
             </div>
           );
         }
