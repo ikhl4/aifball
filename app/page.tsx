@@ -370,7 +370,7 @@ function renderFormattedText(
     });
   }
   const defaultLanguage = detectLanguage(userQuery);
-  const summaryMode = summaryPresentationMode(userQuery || '');
+  const summaryMode = summaryPresentationMode(userQuery || text);
   const youtubeIds = new Set<string>();
   const summaryTags: string[] = [];
 
@@ -389,7 +389,7 @@ function renderFormattedText(
 
   const withoutVideos = protectedSummaryTags
     .replace(youtubeRegex, (_full, id: string) => {
-      if (summaryMode === 'none') youtubeIds.add(id);
+      youtubeIds.add(id);
       return '';
     })
     .replace(/AIFBALLSUMMARYTAGTOKEN(\d+)END/g, (_token, index: string) => summaryTags[Number(index)] || '');
@@ -774,42 +774,52 @@ function renderFormattedText(
   }
 
   if (youtubeIds.size) {
-    elements.push(
+    const matchLabels = lines
+      .map((line) => line.trim().replace(/^#+\s*/, '').replace(/^\*\*|\*\*$/g, ''))
+      .filter((line) =>
+        /\d{1,2}\s*[-–]\s*\d{1,2}/.test(line) &&
+        !/^(?:النتيجة|score)\s*:/i.test(line)
+      );
+    const videoBlock = (
       <div key="videos" className="mt-6 pt-4 border-t border-emerald-500/20">
         <h4 className="font-bold text-emerald-500 mb-3">
-          {defaultLanguage === 'en'
-            ? '🎥 YouTube highlights'
-            : '🎥 روابط ملخصات يوتيوب'}
+          {defaultLanguage === 'en' ? '🎥 Match videos' : '🎥 مقاطع المباريات'}
         </h4>
-        {Array.from(youtubeIds).map((id) => (
-          <div
-            key={id}
-            className="rounded-2xl overflow-hidden border border-emerald-500/20 mb-5"
-          >
-            <a
-              className="block p-3 text-xs font-bold text-red-500"
-              href={`https://www.youtube.com/watch?v=${id}`}
-              target="_blank"
-              rel="noopener noreferrer"
+        {Array.from(youtubeIds).map((id, index) => {
+          const matchLabel = matchLabels.length === youtubeIds.size ? matchLabels[index] : '';
+          return (
+            <div
+              key={id}
+              className="rounded-2xl overflow-hidden border border-emerald-500/20 mb-5"
             >
-              {defaultLanguage === 'en'
-                ? 'Watch on YouTube ↗'
-                : 'مشاهدة على يوتيوب ↗'}
-            </a>
-            <div className="relative aspect-video bg-black">
-              <iframe
-                className="absolute inset-0 w-full h-full border-0"
-                src={`https://www.youtube-nocookie.com/embed/${id}?rel=0`}
-                title="Match highlights"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                referrerPolicy="strict-origin-when-cross-origin"
-                allowFullScreen
-              />
+              {matchLabel && (
+                <p className="px-3 pt-3 font-bold">{matchLabel}</p>
+              )}
+              <a
+                className="block p-3 text-xs font-bold text-red-500"
+                href={`https://www.youtube.com/watch?v=${id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {defaultLanguage === 'en' ? 'Watch on YouTube ↗' : 'مشاهدة على يوتيوب ↗'}
+              </a>
+              <div className="relative aspect-video bg-black">
+                <iframe
+                  className="absolute inset-0 w-full h-full border-0"
+                  src={`https://www.youtube-nocookie.com/embed/${id}?rel=0`}
+                  title={matchLabel ? `${matchLabel} highlights` : 'Match highlights'}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
+    if (summaryMode === 'date') elements.unshift(videoBlock);
+    else elements.push(videoBlock);
   }
 
   return elements;
