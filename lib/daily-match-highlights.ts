@@ -137,7 +137,7 @@ async function findVideo(match: Match): Promise<string> {
 export function isDailyHighlightsRequest(query: string): boolean {
   const normalized = normalize(query);
   const summary = /ملخص|هايلايت|أبرز اللقطات|highlights?|recaps?|summar(?:y|ies)/i.test(query);
-  const date = /اليوم|today|tonight|الأمس|امس|yesterday/i.test(normalized);
+  const date = /اليوم|today|tonight|الامس|امس|yesterday/i.test(normalized);
   const plural = /ملخصات|ملخصs+مباريات|highlights|recaps|summaries/i.test(query);
   return summary && date && plural;
 }
