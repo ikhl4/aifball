@@ -34,6 +34,21 @@ const TRANSFER_REPORT_RULES = `
 افصل الإعلانات الرسمية عن التقارير والمفاوضات. اكتب «القيمة غير معلنة» إذا غابت، ولا تصف الانتقال بأنه مجاني إلا بمصدر. أرفق روابط المصادر المستخدمة في نهاية الرد، مع تفضيل إعلان النادي أو البطولة.
 `;
 
+
+const FANTASY_RULES = `
+إذا كان السؤال عن الفانتازي، حدّد اللعبة والجولة المطلوبة (الجولة القادمة إذا لم يحددها المستخدم) وتحقق من موعد الإغلاق بتوقيت الرياض. استخدم رابط اللعبة المناسب: https://fantasy.spl.com.sa لفانتازي الدوري السعودي أو https://fantasy.premierleague.com/ar/ لفانتازي الدوري الإنجليزي، وضعه كرابط Markdown في الرد.
+لكل جولة، ابحث من جديد في موقع اللعبة والمصادر الرسمية، واستخدم Google أو DuckDuckGo للعثور على منشورات عامة حديثة عبر site:x.com وsite:twitter.com من حسابات الأندية والدوري والصحفيين المعروفين. اذكر رابط المنشور وتاريخه عند استخدامه، وافصل خبر النادي المؤكد عن تقرير الصحفي وتوقع فوتبلاي. إذا تعذر فتح المنشور أو لم تجد تحديثاً موثوقاً، صرّح بذلك. تحقق من نادي كل لاعب وأهليته في اللعبة قبل ترشيحه. اذكر موعد الإغلاق فقط إذا أكدته اللعبة الرسمية للجولة ذاتها، وإلا قل إنه غير مؤكد. ابحث بالأدوات عن المباريات والأسعار والإصابات والمشاركة المتوقعة. اقترح كابتن ونائباً وخيارات اقتصادية وانتقالات حسب الميزانية والتشكيلة إن ذكرهما المستخدم. اشرح سبب الترشيح ومخاطره بإيجاز. افصل توقعاتك عن الأخبار المؤكدة ولا تخترع سعراً أو موعداً أو قاعدة. تحقق من قواعد اللعبة المعنية قبل شرحها، ولا تطبق قواعد لعبة على الأخرى.
+`;
+
+const OFFICIAL_COMPETITION_SOURCES = `
+استخدم هذه المصادر الرسمية بحسب البطولة المطلوبة:
+- السعودية: https://www.saff.com.sa/championships.php وhttps://saffplus.sa/ar. ابحث باسم البطولة والفئة العمرية والموسم، من البراعم والناشئين إلى المحترفين. لا تخلط الفئات أو الدرجات أو المواسم.
+- مصر: https://www.egyptianproleague.com/league.
+- قطر: https://www.qsl.qa.
+- الإمارات: https://www.uaeproleague.ae/ar.
+إذا ورد اسم النادي وحده في سؤال عن مباراته القادمة، ابحث باسم النادي وعبارة «المباراة القادمة» في دليل الاتحاد السعودي وSAFF+ أيضاً، حتى إذا لم يُذكر البلد أو اسم الدوري. تحقق من درجة الفريق الأول في الموسم المطلوب. لأندية الدرجات الثانية والثالثة والرابعة السعودية، اعرض أقرب مباراة مؤكدة لكل فئة متاحة، بدءاً بالفريق الأول ثم الفئات العمرية، واذكر اسم البطولة والفئة والموعد لكل مباراة. لأندية دوري روشن، اعرض مباراة الفريق الأول فقط افتراضياً. إذا طلب المستخدم فئة محددة مثل تحت 19 سنة، اعرض الفئة المطلوبة فقط لأي نادٍ. إذا طلب تحت 19 وما دون، اعرض تحت 19 والفئات الأصغر المتاحة فقط. إذا طلب جميع الفئات صراحةً، اعرضها لكل نادٍ. لا تنسب مباراة فئة إلى أخرى أو تخترع مباريات عند غياب الجدول. افتح صفحة البطولة أو الجدول المطابق قبل نقل المعلومات، واربط الصفحة المستخدمة. إذا غابت البيانات قل ما الذي تعذر تأكيده.
+`;
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -90,7 +105,12 @@ export async function POST(req: Request) {
           ? withAnalysisPresentation(query)
           : (conversation_id ? withMatchConversationContext(query) : query) + (playerCareer ? PLAYER_CAREER_RULES : '');
     const dailyContext = dailyReport ? `\nهذه نتائج المباريات المسترجعة من سجل النتائج. حافظ على تغطيتها، وابحث عن كل مقطع عبر DuckDuckGo وفق قواعد القنوات أدناه:\n${dailyReport}` : '';
-    const guidedQuery = baseQuery + dailyContext + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '');
+    const fantasy = /فانتازي|فنتازي|fantasy|\bfpl\b/i.test(query);
+    const regionalCompetition = /السعود|روشن|جوي|براعم|ناشئ|مصر|قطر|الإمارات|الامارات|saudi|egypt|qatar|uae/i.test(query);
+    const upcomingFixture = /مبارا[ةت].{0,70}(?:القادم|المقبل|الجاي)|(?:القادم|المقبل|الجاي).{0,35}مبارا[ةت]|next match|next fixture/i.test(query);
+    const ageGroupFixture = /مبارا[ةت]|جدول/i.test(query) && /الفئات|تحت\s*(?:[\d٠-٩]+|التسعة|تسعة)|براعم|ناشئ/i.test(query);
+    const fixtureScope = upcomingFixture ? `\nطلبات المباراة القادمة: استخدم تاريخ ووقت الرياض. الطلب العام يبحث في جدول الفريق الأول الشامل لكل البطولات، بما فيها مباراة اليوم إذا لم تنتهِ. إذا حدد المستخدم الدوري أو بطولة أخرى، اقتصر على تلك البطولة. ابدأ بجدول النادي الشامل والمنظم الرسمي للبطولة، وقارن أحدث صف مؤرخ من الاتحاد أو الرابطة أو الاتحاد القاري. ESPN مصدر مساعد فقط ولا يكفي لاستبعاد مباراة. لا تختَر صفاً غير مؤرخ إذا وجدت مباراة مؤكدة مجدولة أقرب. لا تعتمد صفحة قديمة أو تجريبية. إذا اختلفت الساعات، تحقق من المنطقة الزمنية أولاً، وإذا بقي الاختلاف اذكره مع المصدرين. افصل فئات النادي حسب القواعد التالية.\n` : '';
+    const guidedQuery = baseQuery + fixtureScope + dailyContext + (fantasy ? FANTASY_RULES : '') + (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '');
 
     const apiRes = await fetch(url, {
       method: 'POST',
@@ -120,7 +140,7 @@ export async function POST(req: Request) {
     }
 
     // إرجاع الـ Stream مباشرة للواجهة الأمامية
-    return new Response(apiRes.body && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
+    return new Response(apiRes.body && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',

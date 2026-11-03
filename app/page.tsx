@@ -1428,6 +1428,15 @@ export default function FootPlayChat() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 8h15l-3.5-3.5M20 16H5l3.5 3.5"/><path d="m15.5 4.5 3.5 3.5-3.5 3.5M8.5 12.5 5 16l3.5 3.5"/></svg>
               <span>مركز الانتقالات</span>
             </a>
+            {[
+              { label: 'فانتازي الدوري السعودي', query: 'أعطني توصيات فانتازي الدوري السعودي للجولة القادمة' },
+              { label: 'فانتازي الدوري الإنجليزي', query: 'أعطني توصيات فانتازي الدوري الإنجليزي للجولة القادمة' },
+            ].map(({ label, query }) => (
+              <button key={label} type="button" onClick={() => { setSidebarOpen(false); void sendMessage(query); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <AppIcon name="chart" size={19} className="text-emerald-500"/><span>{label}</span>
+              </button>
+            ))}
             <button type="button" onClick={() => { setSidebarOpen(false); void sendMessage('اعرض مكتبة التمارين'); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}>
               <AppIcon name="activity" size={19} className="text-emerald-500"/><span>مركز التمارين</span>
