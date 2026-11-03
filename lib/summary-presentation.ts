@@ -1,7 +1,7 @@
 export type SummaryPresentationMode = 'date' | 'single' | 'none';
 
 const SUMMARY_REQUEST = /\b(?:match\s+)?(?:highlights?|recaps?|summar(?:y|ies))\b|ملخص|هايلايت|أبرز اللقطات|أبرز أحداث المباراة/i;
-const DATE_REQUEST = /(?:ملخصات?\s+(?:مباريات\s+)?(?:اليوم|أمس|الامس|امس)|(?:today|yesterday|tonight).{0,24}(?:highlights?|summar(?:y|ies))|(?:highlights?|summar(?:y|ies)).{0,24}(?:today|yesterday|tonight))/i;
+const DATE_REQUEST = /(?:ملخصات?\s+(?:مباريات\s+)?(?:اليوم|(?:ال)?أمس|(?:ال)?امس)|(?:today|yesterday|tonight).{0,24}(?:highlights?|summar(?:y|ies))|(?:highlights?|summar(?:y|ies)).{0,24}(?:today|yesterday|tonight))/i;
 
 export function summaryPresentationMode(query: string): SummaryPresentationMode {
   if (!SUMMARY_REQUEST.test(query)) return 'none';
