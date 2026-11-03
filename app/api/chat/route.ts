@@ -60,7 +60,7 @@ export async function POST(req: Request) {
 
     console.log('Sending to Dify:', { query, conversation_id, hasFiles: files.length > 0 });
 
-    const playerCareer = /مسير|لاعب|بطاق|راتب|عقد|سوقي|career|player|profile|salary|contract/i.test(query) || /^(?:[\\p{L}\\p{M}]+[ \\t]+){1,4}[\\p{L}\\p{M}]+[؟?]?$/u.test(query.trim());
+    const playerCareer = /مسير|لاعب|بطاق|راتب|عقد|سوقي|career|player|profile|salary|contract/i.test(query) || /^(?:[\p{L}\p{M}]+[ \t]+){1,4}[\p{L}\p{M}]+[؟?]?$/u.test(query.trim());
     const baseQuery = /انتقالات|ميركاتو|سوق الانتقال|صفقات|transfers|transfer window/i.test(query)
       ? query + TRANSFER_REPORT_RULES
       : detailedMatch
