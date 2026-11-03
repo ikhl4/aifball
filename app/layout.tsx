@@ -2,6 +2,9 @@ import { ClerkProvider } from '@clerk/nextjs';
 import './globals.css';
 
 export const metadata = {
+  icons: {
+    apple: [{ url: '/aifball-icon-180.png', sizes: '180x180', type: 'image/png' }],
+  },
   title: 'AiFBall - فوتبلاي',
   description: 'منصة فوتبلاي للذكاء الاصطناعي الرياضي',
 };

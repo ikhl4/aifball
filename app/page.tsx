@@ -1520,10 +1520,6 @@ export default function FootPlayChat() {
           </button>
           <div className="mt-4 space-y-1.5">
             <p className={`px-2 pb-1 text-[10px] font-bold ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>مراكز فوتبلاي</p>
-            <button type="button" onClick={() => { setSidebarOpen(false); void sendMessage('اعرض خيارات فانتازي دوري روشن والدوري الإنجليزي وروابط اللعب'); }}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-right text-xs font-bold ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'bg-white/60 text-gray-900 hover:bg-white'}`}>
-              <AppIcon name="chart" size={19} className="text-emerald-600"/><span>الفانتازي</span>
-            </button>
             <button type="button" onClick={() => { setSidebarOpen(false); void sendMessage('اعرض مكتبة التمارين'); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}>
               <AppIcon name="activity" size={19} className="text-emerald-500"/><span>التمارين</span>
