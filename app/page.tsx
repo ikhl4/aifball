@@ -25,6 +25,7 @@ import TrainingDrillWidget from './components/TrainingDrillWidget';
 import AnalysisStory from './components/AnalysisStory';
 import { analysisModeForQuery, splitAnalysisStory } from '../lib/analysis-story';
 import { LESSON_CHOICES, resolveTacticalRequest } from '../lib/tactical-lessons';
+import { summaryPresentationMode, youtubeVideoId } from '../lib/summary-presentation';
 
 type Language = 'ar' | 'en';
 type DataRecord = Record<string, unknown>;
@@ -369,22 +370,32 @@ function renderFormattedText(
     });
   }
   const defaultLanguage = detectLanguage(userQuery);
+  const summaryMode = summaryPresentationMode(userQuery || '');
   const youtubeIds = new Set<string>();
+  const summaryTags: string[] = [];
+
+  // Preserve structured match-summary tags so their video URLs stay attached
+  // to the correct match instead of being collected as unrelated page videos.
+  const protectedSummaryTags = text.replace(
+    /<aifball-summary\b[^>]*\/?>/gi,
+    (tag) => {
+      const index = summaryTags.push(tag) - 1;
+      return \`AIFBALLSUMMARYTAGTOKEN\${index}END\`;
+    }
+  );
 
   const youtubeRegex =
     /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/g;
 
-  const withoutVideos = text.replace(
-    youtubeRegex,
-    (_full, id: string) => {
-      youtubeIds.add(id);
+  const withoutVideos = protectedSummaryTags
+    .replace(youtubeRegex, (_full, id: string) => {
+      if (summaryMode === 'none') youtubeIds.add(id);
       return '';
-    }
-  );
+    })
+    .replace(/AIFBALLSUMMARYTAGTOKEN(\d+)END/g, (_token, index: string) => summaryTags[Number(index)] || '');
 
   const elements: React.ReactNode[] = [];
   const lines = withoutVideos.replace(/\r\n/g, '\n').split('\n');
-
   const tableLine = (line: string) => /^\s*\|.+\|\s*$/.test(line);
   const isDivider = (line: string) =>
     /^\s*\|(?:\s*:?-{3,}:?\s*\|)+\s*$/.test(line);
