@@ -57,7 +57,16 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   const seasonKey = season ? 'season_' + season.replace('-', '_') : '';
   const seasonSummary = seasonKey ? details?.[seasonKey] : undefined;
   const seasonSource = seasonKey ? details?.[seasonKey + '_source'] : undefined;
-  const hasSeasonSummary = Boolean(seasonSummary?.trim() && safeSource(seasonSource));
+  const competitionLabels = ['المشاركات', 'أساسي', 'دخل بديلاً', 'الدقائق', 'الأهداف', 'الصناعات', 'الإنذارات', 'الطرد'];
+  const competitions = (details?.[seasonKey + '_competitions'] ?? '').split(';').flatMap(line => {
+    const [team, competition, source, ...values] = line.split('|').map(value => value.trim());
+    const href = safeSource(source);
+    if (!team || !competition || !href || values.length !== competitionLabels.length) return [];
+    const numbers = values.flatMap((value, index) =>
+      /^\d+$/.test(value) ? [{ label: competitionLabels[index], value }] : []);
+    return numbers.length ? [{ team, competition, href, numbers }] : [];
+  });
+  const hasSeasonSummary = competitions.length > 0 || Boolean(seasonSummary?.trim() && safeSource(seasonSource));
 
   useEffect(() => {
     if (!season || hasSeasonSummary) return;
@@ -99,7 +108,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   const facts = [
     { label: 'إجمالي المسيرة', value: details?.career_summary, source: details?.career_source },
     { label: 'الألقاب', value: details?.honours, source: details?.honours_source },
-    { label: 'أرقام الموسم المختار', value: seasonSummary, source: seasonSource },
+    { label: 'أرقام الموسم المختار', value: competitions.length ? undefined : seasonSummary, source: seasonSource },
     { label: 'انتهاء العقد', value: details?.contract_end, source: details?.contract_source },
     { label: 'القيمة السوقية', value: details?.market_date && details?.market_value
       ? `${details.market_value} · ${details.market_date}` : undefined, source: details?.market_source },
@@ -108,7 +117,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     const href = safeSource(source);
     return value?.trim() && href ? [{ label, value, source: href }] : [];
   });
-  if (!facts.length && (!season || (current && !stats.length && available.length === 1))) return null;
+  if (!facts.length && !competitions.length && (!season || (current && !stats.length && available.length === 1))) return null;
 
   return (
     <section dir="rtl" className={`rounded-3xl border p-5 ${isDark ? 'bg-[#101714] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
@@ -137,6 +146,17 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
           ))}
         </dl>
       )}
+      {competitions.map(({ team, competition, href, numbers }, index) => (
+        <section key={index} className="mt-4 rounded-xl border border-gray-500/30 p-3">
+          <h3 className="font-bold">{team} · {competition}</h3>
+          <dl className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {numbers.map(({ label, value }) => (
+              <div key={label}><dt className="text-sm opacity-75">{label}</dt><dd className="font-bold">{value}</dd></div>
+            ))}
+          </dl>
+          <a className="text-sm underline" href={href} target="_blank" rel="noreferrer">مصدر أرقام البطولة</a>
+        </section>
+      ))}
       {stats.length ? (
         <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {stats.map(({ label, value }) => (
