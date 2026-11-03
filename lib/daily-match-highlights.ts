@@ -127,7 +127,16 @@ async function findVideo(match: Match): Promise<string> {
       const title = normalize(String(item?.snippet?.title || ''));
       const channel = normalize(String(item?.snippet?.channelTitle || ''));
       const confirmsTeams = homeTokens.some(token => title.includes(token)) && awayTokens.some(token => title.includes(token));
-      const trustedChannel = TRUSTED_CHANNEL_HINTS.some(token => channel.includes(normalize(token)));
+      const competitionOrBroadcaster = TRUSTED_CHANNEL_HINTS.some(token => channel.includes(normalize(token)));
+      // Official club channels are also valid sources. Accept an exact club name or a
+      // club-name channel explicitly branded as FC / Football Club / Official.
+      const teams = [match.home, match.away].map(normalize).filter(name => name.length > 4);
+      const officialClubChannel = teams.some(team =>
+        channel === team || channel === `${team} fc` || channel === `${team} football club` ||
+        channel === `official ${team}` || channel === `the ${team}` ||
+        (channel.startsWith(`${team} `) && /(^| )(fc|football club|official)( |$)/.test(channel))
+      );
+      const trustedChannel = competitionOrBroadcaster || officialClubChannel;
       const videoId = item?.id?.videoId;
       if (confirmsTeams && trustedChannel && /^[\w-]{11}$/.test(videoId || '')) {
         return `https://www.youtube.com/watch?v=${videoId}`;
