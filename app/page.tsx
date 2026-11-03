@@ -25,6 +25,7 @@ import TrainingDrillWidget from './components/TrainingDrillWidget';
 import AnalysisStory from './components/AnalysisStory';
 import { analysisModeForQuery, splitAnalysisStory } from '../lib/analysis-story';
 import { LESSON_CHOICES, resolveTacticalRequest } from '../lib/tactical-lessons';
+import { summaryPresentationMode, youtubeVideoId } from '../lib/summary-presentation';
 
 type Language = 'ar' | 'en';
 type DataRecord = Record<string, unknown>;
@@ -369,22 +370,32 @@ function renderFormattedText(
     });
   }
   const defaultLanguage = detectLanguage(userQuery);
+  const summaryMode = summaryPresentationMode(userQuery || text);
   const youtubeIds = new Set<string>();
+  const summaryTags: string[] = [];
+
+  // Preserve structured match-summary tags so their video URLs stay attached
+  // to the correct match instead of being collected as unrelated page videos.
+  const protectedSummaryTags = text.replace(
+    /<aifball-summary\b[^>]*\/?>/gi,
+    (tag) => {
+      const index = summaryTags.push(tag) - 1;
+      return `AIFBALLSUMMARYTAGTOKEN${index}END`;
+    }
+  );
 
   const youtubeRegex =
     /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/g;
 
-  const withoutVideos = text.replace(
-    youtubeRegex,
-    (_full, id: string) => {
+  const withoutVideos = protectedSummaryTags
+    .replace(youtubeRegex, (_full, id: string) => {
       youtubeIds.add(id);
       return '';
-    }
-  );
+    })
+    .replace(/AIFBALLSUMMARYTAGTOKEN(\d+)END/g, (_token, index: string) => summaryTags[Number(index)] || '');
 
   const elements: React.ReactNode[] = [];
   const lines = withoutVideos.replace(/\r\n/g, '\n').split('\n');
-
   const tableLine = (line: string) => /^\s*\|.+\|\s*$/.test(line);
   const isDivider = (line: string) =>
     /^\s*\|(?:\s*:?-{3,}:?\s*\|)+\s*$/.test(line);
@@ -461,6 +472,15 @@ function renderFormattedText(
           ? attrs.date
           : 'today';
 
+        if (COMPETITIONS[league]?.searchOnly) {
+          const sourceUrl = COMPETITIONS[league]?.officialUrl;
+          elements.push(<p key={i} className="my-3 text-sm text-amber-500">
+            بيانات هذه البطولة تُسترجع من مصدرها الرسمي داخل الرد الكتابي، ولا تتوفر لها لوحة نتائج مباشرة موثقة حالياً.
+            {sourceUrl && <> <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="underline">المصدر الرسمي</a></>}
+          </p>);
+          continue;
+        }
+
         elements.push(
           <div key={i} className="my-5 w-full">
             <LiveSportsWidget
@@ -475,6 +495,15 @@ function renderFormattedText(
 
       if (name === 'aifball-standings') {
         const season = attrs.season?.trim() ? normalizeSeason(attrs.season) : '';
+
+        if (COMPETITIONS[league]?.searchOnly) {
+          const sourceUrl = COMPETITIONS[league]?.officialUrl;
+          elements.push(<p key={i} className="my-3 text-sm text-amber-500">
+            جدول هذه البطولة يُعرض كسرد أو جدول مكتوب بعد التحقق من المصدر الرسمي؛ لا تتوفر لها لوحة ترتيب تفاعلية موثقة حالياً.
+            {sourceUrl && <> <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="underline">المصدر الرسمي</a></>}
+          </p>);
+          continue;
+        }
         const leagueName =
           lang === 'en'
             ? LEAGUES_EN[league] || league
@@ -569,35 +598,73 @@ function renderFormattedText(
       }
 
       if (name === 'aifball-summary') {
-        const title =
-          name === 'aifball-summary'
-            ? lang === 'en' ? '📺 Match highlights' : '📺 ملخص المباراة'
-            : lang === 'en' ? 'Tactical training' : 'تمرين تكتيكي';
-
-        const url = safeUrl(attrs.match_url || '');
+        const order = attrs.order === 'video-first' ? 'video-first' : 'video-last';
+        const title = lang === 'en' ? '📺 Match highlights' : '📺 ملخص المباراة';
+        const match = attrs.match || attrs.name || '';
+        const competition = attrs.competition || '';
+        const summary = attrs.summary || '';
+        const videoId = youtubeVideoId(attrs.video_url || '');
+        const video = videoId ? (
+          <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black">
+            {attrs.video_embed !== 'false' && <iframe
+              className="aspect-video w-full"
+              src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0`}
+              title={`${match || title} highlights`}
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />}
+            <a
+              className="inline-flex px-4 py-3 font-semibold text-white underline"
+              href={`https://www.youtube.com/watch?v=${videoId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {lang === 'en' ? 'Watch on YouTube' : 'شاهد على يوتيوب'}
+            </a>
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-gray-400">
+            {lang === 'en' ? 'Match video not available.' : 'مقطع المباراة غير متاح.'}
+          </p>
+        );
+        const writtenSummary = summary ? (
+          <p className="mt-3 whitespace-pre-wrap leading-7">{summary}</p>
+        ) : null;
 
         elements.push(
-          <div
+          <section
             key={i}
-            className={`my-4 p-4 rounded-2xl border ${
+            className={`my-4 overflow-hidden rounded-2xl border p-4 ${
               isDark
                 ? 'bg-emerald-950/30 border-emerald-800/40'
                 : 'bg-emerald-50 border-emerald-200'
             }`}
           >
-            <strong>{title}</strong>
-            <p>{attrs.match || attrs.name || ''}</p>
-            {url && (
-              <a
-                className="text-emerald-500 underline"
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {lang === 'en' ? 'View details' : 'عرض التفاصيل'}
-              </a>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <strong className={isDark ? 'text-emerald-300' : 'text-emerald-800'}>
+                {title}
+              </strong>
+              {competition && (
+                <span className="rounded-full border border-emerald-500/30 px-2.5 py-1 text-xs text-emerald-400">
+                  {competition}
+                </span>
+              )}
+            </div>
+            {match && <h3 className="mt-2 text-lg font-bold">{match}</h3>}
+            {order === 'video-first' ? (
+              <>
+                {video}
+                {writtenSummary}
+              </>
+            ) : (
+              <>
+                {writtenSummary}
+                {video}
+              </>
             )}
-          </div>
+          </section>
         );
         continue;
       }
@@ -715,42 +782,52 @@ function renderFormattedText(
   }
 
   if (youtubeIds.size) {
-    elements.push(
+    const matchLabels = lines
+      .map((line) => line.trim().replace(/^#+\s*/, '').replace(/^\*\*|\*\*$/g, ''))
+      .filter((line) =>
+        /\d{1,2}\s*[-–]\s*\d{1,2}/.test(line) &&
+        !/^(?:النتيجة|score)\s*:/i.test(line)
+      );
+    const videoBlock = (
       <div key="videos" className="mt-6 pt-4 border-t border-emerald-500/20">
         <h4 className="font-bold text-emerald-500 mb-3">
-          {defaultLanguage === 'en'
-            ? '🎥 YouTube highlights'
-            : '🎥 روابط ملخصات يوتيوب'}
+          {defaultLanguage === 'en' ? '🎥 Match videos' : '🎥 مقاطع المباريات'}
         </h4>
-        {Array.from(youtubeIds).map((id) => (
-          <div
-            key={id}
-            className="rounded-2xl overflow-hidden border border-emerald-500/20 mb-5"
-          >
-            <a
-              className="block p-3 text-xs font-bold text-red-500"
-              href={`https://www.youtube.com/watch?v=${id}`}
-              target="_blank"
-              rel="noopener noreferrer"
+        {Array.from(youtubeIds).map((id, index) => {
+          const matchLabel = matchLabels.length === youtubeIds.size ? matchLabels[index] : '';
+          return (
+            <div
+              key={id}
+              className="rounded-2xl overflow-hidden border border-emerald-500/20 mb-5"
             >
-              {defaultLanguage === 'en'
-                ? 'Watch on YouTube ↗'
-                : 'مشاهدة على يوتيوب ↗'}
-            </a>
-            <div className="relative aspect-video bg-black">
-              <iframe
-                className="absolute inset-0 w-full h-full border-0"
-                src={`https://www.youtube-nocookie.com/embed/${id}?rel=0`}
-                title="Match highlights"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                referrerPolicy="strict-origin-when-cross-origin"
-                allowFullScreen
-              />
+              {matchLabel && (
+                <p className="px-3 pt-3 font-bold">{matchLabel}</p>
+              )}
+              <a
+                className="block p-3 text-xs font-bold text-red-500"
+                href={`https://www.youtube.com/watch?v=${id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {defaultLanguage === 'en' ? 'Watch on YouTube ↗' : 'مشاهدة على يوتيوب ↗'}
+              </a>
+              <div className="relative aspect-video bg-black">
+                <iframe
+                  className="absolute inset-0 w-full h-full border-0"
+                  src={`https://www.youtube-nocookie.com/embed/${id}?rel=0`}
+                  title={matchLabel ? `${matchLabel} highlights` : 'Match highlights'}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
+    if (summaryMode === 'date') elements.unshift(videoBlock);
+    else elements.push(videoBlock);
   }
 
   return elements;

@@ -5,6 +5,9 @@ export interface Competition {
   seasonFormat: 'calendar' | 'split';
   aliases: string[];
   fotmobId?: number;
+  /** Competitions available through verified official-site search, not ESPN widgets. */
+  searchOnly?: boolean;
+  officialUrl?: string;
 }
 
 // Verified ESPN standings identifiers; missing tables stay explicitly unavailable.
@@ -20,6 +23,22 @@ export const COMPETITIONS: Record<string, Competition> = {
       "الدوري السعودي للمحترفين"
     ],
     "fotmobId": 536
+  },
+  "ksa.jawwy.u21": {
+    "ar": "دوري جوّي للنخبة تحت 21",
+    "en": "Jawwy Elite League U21",
+    "kind": "club",
+    "seasonFormat": "split",
+    "searchOnly": true,
+    "officialUrl": "https://www.saff.com.sa/championship.php?id=350&type=all",
+    "aliases": [
+      "دوري جوي",
+      "دوري جوّي",
+      "جوي للنخبة تحت 21",
+      "دوري جوي للنخبة تحت 21",
+      "jawwy elite league",
+      "jawwy elite league u21"
+    ]
   },
   "eng.1": {
     "ar": "الدوري الإنجليزي الممتاز",
@@ -490,6 +509,7 @@ export function resolveStandingsRequest(query: string): { league: string; season
   // Requests naming more than one independent competition are not intercepted.
   if (matches[0].league === 'fifa.world' && /(?:تصفيات|qualif|للانديه|للاندية|club)/i.test(input)) return null;
   const winner = COMPETITIONS[matches[0].league];
+  if (winner.searchOnly) return null;
   const winningAliases = [winner.ar, winner.en, ...winner.aliases].map(normalize);
   if (matches.slice(1).some(match => !winningAliases.some(alias =>
     [COMPETITIONS[match.league].ar, COMPETITIONS[match.league].en, ...COMPETITIONS[match.league].aliases]
