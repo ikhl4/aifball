@@ -1,6 +1,8 @@
 
 'use client';
 
+import { introArtwork } from './intro-artwork';
+
 import AppIcon, { SportIconText } from './components/AppIcon';
 import ReadAloudButton from './components/ReadAloudButton';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -1702,12 +1704,18 @@ export default function FootPlayChat() {
 
       {intro && (
         <button type="button" aria-label="تخطي المقدمة" onClick={() => setIntro(false)} className="fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_center,#114333,#050e0b_70%)] text-white backdrop-blur-xl">
-          <style>{`@keyframes glass-orbit{0%{transform:translateX(-22%);opacity:0}25%{opacity:.65}75%{opacity:.65}100%{transform:translateX(22%);opacity:0}}@keyframes glass-title{0%,52%,100%{opacity:0}68%,88%{opacity:1}}`}</style>
-          <span aria-hidden="true" className="absolute flex w-max items-center gap-5 [animation:glass-orbit_2.4s_ease-in-out_both]">
-            {[536,47,87,55,54,53,42].map((id) => <img key={id} alt="" onError={event => { event.currentTarget.hidden = true; }} className="h-16 w-16 rounded-2xl border border-white/30 bg-white/25 p-2 backdrop-blur" src={`https://images.fotmob.com/image_resources/logo/leaguelogo/${id}.png`} />)}
-            {['آسيا','FIFA','FC 27','فانتازي SPL','Fantasy PL'].map(label => <span key={label} className="rounded-2xl border border-white/30 bg-white/15 p-4 font-bold">{label}</span>)}
+          <style>{`@keyframes glass-orbit{from{transform:translateY(4vh);opacity:0}18%{opacity:1}70%{opacity:1}to{transform:translateY(-90vh);opacity:0}}@keyframes glass-title{0%,52%{opacity:0}68%,93%{opacity:1}100%{opacity:0}}`}</style>
+          <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 -top-[30vh] grid h-[245vh] grid-cols-5 place-items-center gap-4 px-4 mix-blend-screen [animation:glass-orbit_2.8s_ease-in-out_both] sm:grid-cols-9">
+            {Array.from({length: 154}, (_, index) => {
+              const logos = [536,47,87,55,54,53,42];
+              const slot = (index * 5) % 14;
+              const artwork = slot - logos.length;
+              const src = artwork < 0 ? `https://images.fotmob.com/image_resources/logo/leaguelogo/${logos[slot]}.png` : introArtwork[artwork];
+              const filter = artwork < 2 ? 'brightness(0) invert(1)' : [2,5,6].includes(artwork) ? 'grayscale(1) invert(1) contrast(3)' : 'grayscale(1) contrast(3) brightness(1.4)';
+              return <img key={index} src={src} alt="" style={{filter, opacity: .14 + (index % 4) * .04}} className="h-9 w-full max-w-20 object-contain sm:h-14" onError={event => { event.currentTarget.hidden = true; }} />;
+            })}
           </span>
-          <img src="/app-icon.svg" alt="فوتبلاي" className="relative h-24 w-24 rounded-3xl ring-1 ring-emerald-200/40 shadow-[0_0_70px_rgba(52,211,153,0.32)]" />
+          <span className="relative grid h-28 w-28 place-items-center rounded-3xl bg-[#08251a] ring-1 ring-emerald-200/40 shadow-[0_0_70px_rgba(52,211,153,0.32)]"><AiFBallLogo size="lg" /></span>
           <span className="absolute top-[65%] text-3xl font-black text-emerald-300 [animation:glass-title_3.1s_ease-in-out_both]">من الرياضة للعالم</span>
         </button>
       )}
