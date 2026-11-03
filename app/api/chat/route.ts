@@ -34,6 +34,21 @@ const TRANSFER_REPORT_RULES = `
 افصل الإعلانات الرسمية عن التقارير والمفاوضات. اكتب «القيمة غير معلنة» إذا غابت، ولا تصف الانتقال بأنه مجاني إلا بمصدر. أرفق روابط المصادر المستخدمة في نهاية الرد، مع تفضيل إعلان النادي أو البطولة.
 `;
 
+
+const FANTASY_RULES = `
+إذا كان السؤال عن الفانتازي، حدّد اللعبة والجولة المطلوبة (الجولة القادمة إذا لم يحددها المستخدم) وتحقق من موعد الإغلاق بتوقيت الرياض. استخدم رابط اللعبة المناسب: https://fantasy.spl.com.sa لفانتازي الدوري السعودي أو https://fantasy.premierleague.com/ar/ لفانتازي الدوري الإنجليزي، وضعه كرابط Markdown في الرد.
+ابحث بالأدوات عن المباريات والأسعار والإصابات والمشاركة المتوقعة. اقترح كابتن ونائباً وخيارات اقتصادية وانتقالات حسب الميزانية والتشكيلة إن ذكرهما المستخدم. اشرح سبب الترشيح ومخاطره بإيجاز. افصل توقعاتك عن الأخبار المؤكدة ولا تخترع سعراً أو موعداً أو قاعدة. تحقق من قواعد اللعبة المعنية قبل شرحها، ولا تطبق قواعد لعبة على الأخرى.
+`;
+
+const OFFICIAL_COMPETITION_SOURCES = `
+استخدم هذه المصادر الرسمية بحسب البطولة المطلوبة:
+- السعودية: https://www.saff.com.sa/championships.php وhttps://saffplus.sa/ar. ابحث باسم البطولة والفئة العمرية والموسم، من البراعم والناشئين إلى المحترفين. لا تخلط الفئات أو الدرجات أو المواسم.
+- مصر: https://www.egyptianproleague.com/league.
+- قطر: https://www.qsl.qa.
+- الإمارات: https://www.uaeproleague.ae/ar.
+افتح صفحة البطولة أو الجدول المطابق قبل نقل المعلومات، واربط الصفحة المستخدمة. إذا غابت البيانات قل ما الذي تعذر تأكيده.
+`;
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -90,7 +105,9 @@ export async function POST(req: Request) {
           ? withAnalysisPresentation(query)
           : (conversation_id ? withMatchConversationContext(query) : query) + (playerCareer ? PLAYER_CAREER_RULES : '');
     const dailyContext = dailyReport ? `\nهذه نتائج المباريات المسترجعة من سجل النتائج. حافظ على تغطيتها، وابحث عن كل مقطع عبر DuckDuckGo وفق قواعد القنوات أدناه:\n${dailyReport}` : '';
-    const guidedQuery = baseQuery + dailyContext + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '');
+    const fantasy = /فانتازي|فنتازي|fantasy|\bfpl\b/i.test(query);
+    const regionalCompetition = /السعود|روشن|جوي|براعم|ناشئ|مصر|قطر|الإمارات|الامارات|saudi|egypt|qatar|uae/i.test(query);
+    const guidedQuery = baseQuery + dailyContext + (fantasy ? FANTASY_RULES : '') + (regionalCompetition || fantasy ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '');
 
     const apiRes = await fetch(url, {
       method: 'POST',
