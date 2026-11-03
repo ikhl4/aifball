@@ -602,14 +602,18 @@ function renderFormattedText(
         const source = safeUrl(attrs.source);
         if (!source?.startsWith('https://')) continue;
         const preview = '/api/photo-preview?source=' + encodeURIComponent(source);
-        const imageSrc = photo?.startsWith('https://') ? photo : preview;
+        const candidates = [...new Set([photo, safeUrl(attrs.alternate_image)]
+          .filter((url): url is string => Boolean(url?.startsWith('https://'))))];
+        candidates.push(preview);
+        const imageSrc = candidates[0];
         elements.push(
           <figure key={i} dir="rtl" className="my-4 overflow-hidden rounded-2xl border border-emerald-700/50">
             <img src={imageSrc} alt={attrs.caption || 'صورة كروية'} loading="lazy" referrerPolicy="no-referrer"
               className="max-h-[36rem] w-full bg-black object-contain"
               onError={(event) => {
                 const img = event.currentTarget;
-                if (img.getAttribute('src') !== preview) img.src = preview;
+                const next = candidates[candidates.indexOf(img.getAttribute('src') || '') + 1];
+                if (next) img.src = next;
                 else { img.hidden = true; const notice = img.nextElementSibling; if (notice instanceof HTMLElement) notice.hidden = false; }
               }} />
             <p hidden className="p-4 text-sm">تعذّر عرض الصورة من المصدر داخل الشات.</p>
