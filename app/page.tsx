@@ -636,14 +636,14 @@ function renderFormattedText(
         for (const row of rows) groups.set(row.group, [...(groups.get(row.group) || []), row]);
         const heading = attrs.kind === 'results' ? 'نتائج المباريات' : attrs.kind === 'draw' ? 'قرعة البطولة' : attrs.kind === 'match' ? 'يوم المباراة' : 'جدول المباريات';
         elements.push(
-          <section key={i} dir="rtl" aria-label={heading} className="my-4 overflow-hidden rounded-3xl border border-emerald-700 bg-gradient-to-br from-[#08140f] via-[#123b2c] to-black p-5 text-white sm:p-8">
+          <section key={i} dir="rtl" aria-label={heading} style={{ fontFamily: "Cairo, sans-serif" }} className="my-4 overflow-hidden rounded-3xl border border-emerald-700 bg-gradient-to-br from-[#08140f] via-[#123b2c] to-black p-5 text-white sm:p-8">
             <p className="text-sm font-bold text-emerald-300">{attrs.competition}</p>
             <h3 className="my-3 text-3xl font-black sm:text-5xl">{heading}</h3>
             {attrs.subtitle && <p className="mb-4 text-sm text-amber-200">{attrs.subtitle}</p>}
             {[...groups.entries()].map(([group, matches]) => (
               <div key={group} className="mt-4">
                 {group && <h4 className="mb-2 text-sm font-bold text-amber-200">{group}</h4>}
-                <div className="grid gap-2">
+                <div className={matches.length > 1 ? "grid gap-2 sm:grid-cols-2" : "grid gap-2"}>
                   {matches.map((row, index) => (
                     <div key={index} className="rounded-xl border border-white/10 bg-black/55 p-3">
                       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center font-bold">
