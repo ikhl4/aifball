@@ -1424,7 +1424,7 @@ export default function FootPlayChat() {
                 ? 'bg-[#07110b]/35'
                 : 'bg-[#101312]/78'
               : messages.length === 0
-                ? 'bg-white/35'
+                ? 'bg-white/20'
                 : 'bg-white/72'
           }`}
         />
@@ -1701,23 +1701,23 @@ export default function FootPlayChat() {
       </header>
 
       {intro && (
-        <button type="button" aria-label="تخطي المقدمة" onClick={() => setIntro(false)} className="fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-[#061611]/95 text-white backdrop-blur-xl">
+        <button type="button" aria-label="تخطي المقدمة" onClick={() => setIntro(false)} className="fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_center,#114333,#050e0b_70%)] text-white backdrop-blur-xl">
           <style>{`@keyframes glass-orbit{0%{transform:translateX(-22%);opacity:0}25%{opacity:.65}75%{opacity:.65}100%{transform:translateX(22%);opacity:0}}@keyframes glass-title{0%,52%,100%{opacity:0}68%,88%{opacity:1}}`}</style>
           <span aria-hidden="true" className="absolute flex w-max items-center gap-5 [animation:glass-orbit_2.4s_ease-in-out_both]">
-            {[536,47,87,55,54,53,42].map((id) => <img key={id} alt="" className="h-16 w-16 rounded-2xl border border-white/30 bg-white/25 p-2 backdrop-blur" src={`https://images.fotmob.com/image_resources/logo/leaguelogo/${id}.png`} />)}
+            {[536,47,87,55,54,53,42].map((id) => <img key={id} alt="" onError={event => { event.currentTarget.hidden = true; }} className="h-16 w-16 rounded-2xl border border-white/30 bg-white/25 p-2 backdrop-blur" src={`https://images.fotmob.com/image_resources/logo/leaguelogo/${id}.png`} />)}
             {['آسيا','FIFA','FC 27','فانتازي SPL','Fantasy PL'].map(label => <span key={label} className="rounded-2xl border border-white/30 bg-white/15 p-4 font-bold">{label}</span>)}
           </span>
-          <img src="/app-icon.svg" alt="فوتبلاي" className="relative h-24 w-24 rounded-3xl shadow-2xl" />
-          <span className="absolute top-[65%] text-3xl font-black text-emerald-300 [animation:glass-title_3.1s_ease-in-out_both]">من الرياض للعالم</span>
+          <img src="/app-icon.svg" alt="فوتبلاي" className="relative h-24 w-24 rounded-3xl ring-1 ring-emerald-200/40 shadow-[0_0_70px_rgba(52,211,153,0.32)]" />
+          <span className="absolute top-[65%] text-3xl font-black text-emerald-300 [animation:glass-title_3.1s_ease-in-out_both]">من الرياضة للعالم</span>
         </button>
       )}
 
       {/* المحتوى الرئيسي */}
       <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto flex flex-col relative z-10 custom-scrollbar">
         {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col justify-center my-auto py-2">
+          <div className="flex-1 flex flex-col justify-center my-auto py-2" style={{ fontFamily: "Cairo, sans-serif" }}>
             <div className="text-right space-y-3 mb-5 px-1">
-              <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 text-emerald-500 border-emerald-500/40">
+              <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 text-emerald-700 dark:text-emerald-300 border-emerald-500/40">
                 <AppIcon name="pitch"/>
                 <span>HOME OF FOOTBALL</span>
               </div>
@@ -1735,7 +1735,7 @@ export default function FootPlayChat() {
                   isDarkMode ? 'text-gray-100' : 'text-gray-800'
                 }`}
               >
-                كل ما يتعلق بكرة القدم من السعودية إلى العالم
+                من الرياضة للعالم
               </p>
             </div>
 
@@ -1746,8 +1746,8 @@ export default function FootPlayChat() {
                 { title: 'FC 27', icon: 'pitch', href: 'https://www.futbin.com/' },
                 { title: 'الفانتازي', icon: 'chart', query: 'اعرض خيارات فانتازي دوري روشن والدوري الإنجليزي وروابط اللعب' },
               ].map(item => {
-                const style = 'flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-emerald-300/35 bg-emerald-950/55 p-2 text-center text-[10px] font-bold text-white backdrop-blur-md transition hover:bg-emerald-900/80 focus-visible:outline focus-visible:outline-emerald-300 sm:text-sm';
-                const label = <><AppIcon name={item.icon} size={23} className="text-emerald-300"/><span>{item.title}</span></>;
+                const style = 'flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-emerald-300/35 bg-emerald-950/25 p-2 text-center text-[10px] font-bold text-white backdrop-blur-md transition hover:bg-emerald-900/45 focus-visible:outline focus-visible:outline-emerald-300 sm:text-sm';
+                const label = <>{item.href ? <svg aria-hidden="true" width="27" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-emerald-300"><path d="M7 7h10a4 4 0 0 1 4 3l1 5a2 2 0 0 1-3 2l-3-3H8l-3 3a2 2 0 0 1-3-2l1-5a4 4 0 0 1 4-3Z"/><path d="M7 9v4m-2-2h4m7-1h.01m3 2h.01"/></svg> : <AppIcon name={item.icon} size={23} className="text-emerald-300"/>}<span>{item.title}</span></>;
                 return item.href ? <a key={item.title} href={item.href} className={style}>{label}</a> :
                   <button key={item.title} type="button" className={style} onClick={() => { if (item.query) void sendMessage(item.query); }}>{label}</button>;
               })}
@@ -1761,7 +1761,7 @@ export default function FootPlayChat() {
                   aria-label={`${card.tag}: ${card.question}`}
                   className={`pointer-events-none select-none flex flex-col justify-between text-right p-3 sm:p-4 rounded-2xl border backdrop-blur-[6px] min-h-[112px] sm:min-h-[126px] transition-all duration-500 ${
                     isDarkMode
-                      ? 'bg-[#07180f]/45 border-emerald-400/15 text-white shadow-md'
+                      ? 'bg-[#07180f]/25 border-emerald-400/15 text-white shadow-md'
                       : 'bg-white/35 border-white/55 text-gray-950 shadow-sm'
                   }`}
                 >
