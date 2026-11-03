@@ -1423,6 +1423,15 @@ export default function FootPlayChat() {
           </button>
           <div className="mt-4 space-y-1.5">
             <p className={`px-2 pb-1 text-[10px] font-bold ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>مراكز فوتبلاي</p>
+            <a href="https://www.futbin.com" onClick={() => setSidebarOpen(false)}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold text-emerald-500 hover:bg-emerald-500/10">
+              <AppIcon name="pitch" size={19} /><span>AFC 27</span>
+            </a>
+            <details className="rounded-xl px-3 py-2.5 text-xs">
+              <summary className="cursor-pointer font-bold text-emerald-500">إضافة إلى الشاشة الرئيسية</summary>
+              <p className="mt-2 leading-6">على سامسونج: افتح قائمة المتصفح واختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».</p>
+              <p className="leading-6">على آيفون: من سفاري اختر «مشاركة» ثم «إضافة إلى الشاشة الرئيسية».</p>
+            </details>
             <a href="/preview/transfers" onClick={() => setSidebarOpen(false)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition border ${isDarkMode ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15' : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 8h15l-3.5-3.5M20 16H5l3.5 3.5"/><path d="m15.5 4.5 3.5 3.5-3.5 3.5M8.5 12.5 5 16l3.5 3.5"/></svg>
