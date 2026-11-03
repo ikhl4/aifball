@@ -1520,36 +1520,17 @@ export default function FootPlayChat() {
           </button>
           <div className="mt-4 space-y-1.5">
             <p className={`px-2 pb-1 text-[10px] font-bold ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>مراكز فوتبلاي</p>
-            <a href="https://www.futbin.com" onClick={() => setSidebarOpen(false)}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold text-emerald-500 hover:bg-emerald-500/10">
-              <AppIcon name="pitch" size={19} /><span>AFC 27</span>
-            </a>
-            <details className="rounded-xl px-3 py-2.5 text-xs">
-              <summary className="cursor-pointer font-bold text-emerald-500">إضافة إلى الشاشة الرئيسية</summary>
-              <p className="mt-2 leading-6">على سامسونج: افتح قائمة المتصفح واختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».</p>
-              <p className="leading-6">على آيفون: من سفاري اختر «مشاركة» ثم «إضافة إلى الشاشة الرئيسية».</p>
-            </details>
-            <a href="/preview/transfers" onClick={() => setSidebarOpen(false)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition border ${isDarkMode ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15' : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 8h15l-3.5-3.5M20 16H5l3.5 3.5"/><path d="m15.5 4.5 3.5 3.5-3.5 3.5M8.5 12.5 5 16l3.5 3.5"/></svg>
-              <span>مركز الانتقالات</span>
-            </a>
-            {[
-              { label: 'فانتازي الدوري السعودي', query: 'أعطني توصيات فانتازي الدوري السعودي للجولة القادمة' },
-              { label: 'فانتازي الدوري الإنجليزي', query: 'أعطني توصيات فانتازي الدوري الإنجليزي للجولة القادمة' },
-            ].map(({ label, query }) => (
-              <button key={label} type="button" onClick={() => { setSidebarOpen(false); void sendMessage(query); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}>
-                <AppIcon name="chart" size={19} className="text-emerald-500"/><span>{label}</span>
-              </button>
-            ))}
+            <button type="button" onClick={() => { setSidebarOpen(false); void sendMessage('اعرض خيارات فانتازي دوري روشن والدوري الإنجليزي وروابط اللعب'); }}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-right text-xs font-bold ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'bg-white/60 text-gray-900 hover:bg-white'}`}>
+              <AppIcon name="chart" size={19} className="text-emerald-600"/><span>الفانتازي</span>
+            </button>
             <button type="button" onClick={() => { setSidebarOpen(false); void sendMessage('اعرض مكتبة التمارين'); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}>
-              <AppIcon name="activity" size={19} className="text-emerald-500"/><span>مركز التمارين</span>
+              <AppIcon name="activity" size={19} className="text-emerald-500"/><span>التمارين</span>
             </button>
             <button type="button" onClick={() => { setSidebarOpen(false); setShowStandings(true); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}>
-              <AppIcon name="chart" size={19} className="text-emerald-500"/><span>جداول الدوريات</span>
+              <AppIcon name="chart" size={19} className="text-emerald-500"/><span>الترتيب</span>
             </button>
             <button type="button" onClick={() => { setSidebarOpen(false); setShowLiveScores(true); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}>
@@ -1717,8 +1698,10 @@ export default function FootPlayChat() {
               return <img key={index} src={src} alt="" style={{filter, opacity: .14 + (index % 4) * .04}} className="h-9 w-full max-w-20 object-contain sm:h-14" onError={event => { event.currentTarget.hidden = true; }} />;
             })}
           </span>
-          <span className="relative grid h-36 w-36 place-items-center sm:h-48 sm:w-48 rounded-3xl bg-[#08251a] ring-1 ring-emerald-200/40 shadow-[0_0_70px_rgba(52,211,153,0.32)]"><span className="scale-125 sm:scale-150"><AiFBallLogo size="lg" /></span></span>
-          <span className="absolute top-[65%] text-3xl font-black text-emerald-300 [animation:glass-title_3.1s_ease-in-out_both]">من الرياض إلى العالم</span>
+          <span className="relative flex flex-col items-center gap-6">
+            <span className="my-4 scale-150 sm:scale-[1.8]"><AiFBallLogo size="lg" /></span>
+            <span className="text-sm font-normal text-white/80">من الرياض إلى العالم</span>
+          </span>
         </button>
       )}
 
@@ -1748,8 +1731,8 @@ export default function FootPlayChat() {
                 { title: 'FC 27', icon: 'pitch', href: 'https://www.futbin.com/' },
                 { title: 'الفانتازي', icon: 'chart', query: 'اعرض خيارات فانتازي دوري روشن والدوري الإنجليزي وروابط اللعب' },
               ].map(item => {
-                const style = 'flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-emerald-300/35 bg-emerald-950/25 p-2 text-center text-[10px] font-bold text-white backdrop-blur-md transition hover:bg-emerald-900/45 focus-visible:outline focus-visible:outline-emerald-300 sm:text-sm';
-                const label = <>{item.href ? <svg aria-hidden="true" width="27" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-emerald-300"><path d="M7 7h10a4 4 0 0 1 4 3l1 5a2 2 0 0 1-3 2l-3-3H8l-3 3a2 2 0 0 1-3-2l1-5a4 4 0 0 1 4-3Z"/><path d="M7 9v4m-2-2h4m7-1h.01m3 2h.01"/></svg> : <AppIcon name={item.icon} size={23} className="text-emerald-300"/>}<span>{item.title}</span></>;
+                const style = 'flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-emerald-300/35 p-2 text-center text-[10px] font-bold backdrop-blur-md transition focus-visible:outline focus-visible:outline-emerald-600 sm:text-sm' + (isDarkMode ? ' bg-emerald-950/25 text-white hover:bg-emerald-900/45' : ' bg-white/60 text-gray-900 hover:bg-white/90');
+                const label = <>{item.href ? <svg aria-hidden="true" width="27" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className={isDarkMode ? "text-emerald-300" : "text-emerald-800"}><path d="M7 7h10a4 4 0 0 1 4 3l1 5a2 2 0 0 1-3 2l-3-3H8l-3 3a2 2 0 0 1-3-2l1-5a4 4 0 0 1 4-3Z"/><path d="M7 9v4m-2-2h4m7-1h.01m3 2h.01"/></svg> : <AppIcon name={item.icon} size={23} className={isDarkMode ? "text-emerald-300" : "text-emerald-800"}/>}<span>{item.title}</span></>;
                 return item.href ? <a key={item.title} href={item.href} className={style}>{label}</a> :
                   <button key={item.title} type="button" className={style} onClick={() => { if (item.install) setShowInstallHelp(open => !open); else if (item.query) void sendMessage(item.query); }}>{label}</button>;
               })}
