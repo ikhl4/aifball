@@ -46,7 +46,7 @@ const OFFICIAL_COMPETITION_SOURCES = `
 - مصر: https://www.egyptianproleague.com/league.
 - قطر: https://www.qsl.qa.
 - الإمارات: https://www.uaeproleague.ae/ar.
-إذا ورد اسم النادي وحده في سؤال عن مباراته القادمة، ابحث باسم النادي وعبارة «المباراة القادمة» في دليل الاتحاد السعودي وSAFF+ أيضاً، حتى إذا لم يُذكر البلد أو اسم الدوري. حدّد الفريق الأول أو الفئة العمرية من الجدول ولا تعرض مباراة فئة أخرى باعتبارها مباراة الفريق الأول. إذا وجدت أكثر من فريق مطابق، اذكر الخيارات المؤكدة بحسب الفئة أو اطلب تحديد المقصود. افتح صفحة البطولة أو الجدول المطابق قبل نقل المعلومات، واربط الصفحة المستخدمة. إذا غابت البيانات قل ما الذي تعذر تأكيده.
+إذا ورد اسم النادي وحده في سؤال عن مباراته القادمة، ابحث باسم النادي وعبارة «المباراة القادمة» في دليل الاتحاد السعودي وSAFF+ أيضاً، حتى إذا لم يُذكر البلد أو اسم الدوري. تحقق من درجة الفريق الأول في الموسم المطلوب. لأندية الدرجات الثانية والثالثة والرابعة السعودية، اعرض أقرب مباراة مؤكدة لكل فئة متاحة، بدءاً بالفريق الأول ثم الفئات العمرية، واذكر اسم البطولة والفئة والموعد لكل مباراة. لأندية دوري روشن، اعرض مباراة الفريق الأول فقط افتراضياً. إذا طلب المستخدم فئة محددة مثل تحت 19 سنة، اعرض الفئة المطلوبة فقط لأي نادٍ. إذا طلب تحت 19 وما دون، اعرض تحت 19 والفئات الأصغر المتاحة فقط. إذا طلب جميع الفئات صراحةً، اعرضها لكل نادٍ. لا تنسب مباراة فئة إلى أخرى أو تخترع مباريات عند غياب الجدول. افتح صفحة البطولة أو الجدول المطابق قبل نقل المعلومات، واربط الصفحة المستخدمة. إذا غابت البيانات قل ما الذي تعذر تأكيده.
 `;
 
 export async function POST(req: Request) {
@@ -108,7 +108,8 @@ export async function POST(req: Request) {
     const fantasy = /فانتازي|فنتازي|fantasy|\bfpl\b/i.test(query);
     const regionalCompetition = /السعود|روشن|جوي|براعم|ناشئ|مصر|قطر|الإمارات|الامارات|saudi|egypt|qatar|uae/i.test(query);
     const upcomingFixture = /مبارا[ةت].{0,70}(?:القادم|المقبل|الجاي)|(?:القادم|المقبل|الجاي).{0,35}مبارا[ةت]|next match|next fixture/i.test(query);
-    const guidedQuery = baseQuery + dailyContext + (fantasy ? FANTASY_RULES : '') + (regionalCompetition || fantasy || upcomingFixture ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '');
+    const ageGroupFixture = /مبارا[ةت]|جدول/i.test(query) && /الفئات|تحت\s*(?:[\d٠-٩]+|التسعة|تسعة)|براعم|ناشئ/i.test(query);
+    const guidedQuery = baseQuery + dailyContext + (fantasy ? FANTASY_RULES : '') + (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '');
 
     const apiRes = await fetch(url, {
       method: 'POST',
