@@ -14,7 +14,7 @@ test('detects match summary requests and daily highlights without catching ordin
  assert.equal(prompt.isTodayHighlightsRequest('ملخص آخر مباراة'),false);
 });
 test('summary instructions prioritize latest finished match and all verified daily videos from the selected channels',()=>{
- for(const value of ['أحدث مباراة مكتملة','ملخصات اليوم','https://www.youtube.com/@beinsports','https://www.youtube.com/@thmanyahsports','https://www.youtube.com/@tod_bybein','https://www.youtube.com/@seriea','https://www.youtube.com/@laliga','https://www.youtube.com/@mls','https://www.youtube.com/@adsportstv','https://www.youtube.com/@alkasstvsports','https://www.youtube.com/@stctvsports','https://youtu.be/CmYv3AtEPuI']) assert.ok(prompt.MATCH_SUMMARY_RULES.includes(value),value);
+ for(const value of ['أحدث مباراة مكتملة','ملخصات اليوم','ملخصات الأمس','الدوري الإنجليزي الممتاز','الدوري الإسباني','الدوري الإيطالي','الدوري الألماني','الدوري الفرنسي','دوري روشن السعودي','دوري أبطال أوروبا','دوري أبطال آسيا للنخبة','في أي بطولة','لا تطلب من المستخدم اختيار فريق أو بطولة','https://www.youtube.com/@beinsports','https://www.youtube.com/@thmanyahsports','https://www.youtube.com/@tod_bybein','https://www.youtube.com/@seriea','https://www.youtube.com/@laliga','https://www.youtube.com/@mls','https://www.youtube.com/@adsportstv','https://www.youtube.com/@alkasstvsports','https://www.youtube.com/@stctvsports','https://youtu.be/CmYv3AtEPuI']) assert.ok(prompt.MATCH_SUMMARY_RULES.includes(value),value);
 });
 test('Jawwy U21 is recognized and standings requests stay on official search rather than ESPN widgets',()=>{
  assert.equal(prompt.isJawwyLeagueRequest('جدول دوري جوي للنخبة تحت 21'),true);
