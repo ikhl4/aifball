@@ -606,7 +606,7 @@ function renderFormattedText(
         const videoId = youtubeVideoId(attrs.video_url || '');
         const video = videoId ? (
           <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black">
-            <iframe
+            {attrs.video_embed !== 'false' && <iframe
               className="aspect-video w-full"
               src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0`}
               title={`${match || title} highlights`}
@@ -614,7 +614,15 @@ function renderFormattedText(
               referrerPolicy="strict-origin-when-cross-origin"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
-            />
+            />}
+            <a
+              className="inline-flex px-4 py-3 font-semibold text-white underline"
+              href={`https://www.youtube.com/watch?v=${videoId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {lang === 'en' ? 'Watch on YouTube' : 'شاهد على يوتيوب'}
+            </a>
           </div>
         ) : (
           <p className="mt-3 text-sm text-gray-400">
