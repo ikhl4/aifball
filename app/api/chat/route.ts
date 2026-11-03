@@ -60,7 +60,8 @@ const CLUB_NEWS_RULES = `
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const query = typeof body?.query === 'string' ? body.query.trim() : '';
+    const hasImage = Array.isArray(body?.files) && body.files.some((file: { type?: string } | null) => file?.type === 'image');
+    const query = (typeof body?.query === 'string' ? body.query.trim() : '') || (hasImage ? 'اقرأ الصورة المرفقة ووضح ما يظهر فيها.' : '');
     const detailedMatch=isDetailedMatchQuery(query);
     const analysis = body?.analysis_mode === true || isAnalysisRequest(query);
     const conversation_id = body?.conversation_id || '';
@@ -120,7 +121,9 @@ export async function POST(req: Request) {
     const fixtureScope = upcomingFixture ? `\nطلبات المباراة القادمة: استخدم تاريخ ووقت الرياض. الطلب العام يبحث في جدول الفريق الأول الشامل لكل البطولات، بما فيها مباراة اليوم إذا لم تنتهِ. إذا حدد المستخدم الدوري أو بطولة أخرى، اقتصر على تلك البطولة. ابدأ بجدول النادي الشامل والمنظم الرسمي للبطولة، وقارن أحدث صف مؤرخ من الاتحاد أو الرابطة أو الاتحاد القاري. ESPN مصدر مساعد فقط ولا يكفي لاستبعاد مباراة. لا تختَر صفاً غير مؤرخ إذا وجدت مباراة مؤكدة مجدولة أقرب. لا تعتمد صفحة قديمة أو تجريبية. إذا اختلفت الساعات، تحقق من المنطقة الزمنية أولاً، وإذا بقي الاختلاف اذكره مع المصدرين. افصل فئات النادي حسب القواعد التالية.\n` : '';
     const clubNews = /أخبار|اخبار|مستجد|تحديثات|تغريد|شائعات|وش صار|وش سوى|ماذا فعل|latest news|club news|\bx\.com\b|twitter|تويتر|منصة إكس|منصة اكس/i.test(query);
     const newsDate = clubNews ? new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Riyadh' }).format(new Date()) : '';
-    const guidedQuery = baseQuery + fixtureScope + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '');
+    const wantsDesign = /(?:صم[ّ]?م|تصميم|بوستر|ملصق|بطاقة مباراة|إنفوجرافيك)/i.test(query);
+    const visualRules = (hasImage || wantsDesign) ? `\nإذا أرفق المستخدم صورة، افحص الصورة نفسها واقرأ النص والشعارات الظاهرة. ميّز بوضوح ما قرأته من الصورة وما تحققت منه خارجياً. لا تخترع هوية أو موعداً أو نتيجة من جزء غير واضح. فرّق بين موعد انطلاق المباراة وموعد الاستوديو.\nعندما يطلب المستخدم تصميم بطاقة مباراة أو جدول أو نتائج أو قرعة، أخرج الوسم التالي في سطر مستقل: <aifball-match-design kind="schedule" competition="اسم البطولة" subtitle="الجولة أو التاريخ" rows="اليوم|الفريق على اليمين|الفريق على اليسار|الموعد أو النتيجة أو ضد|الملعب والقناة إن توفرا" />. استخدم kind من match أو schedule أو results أو draw. افصل الصفوف بفاصلة منقوطة ASCII واستعمل | للفصل بين الحقول. في النتائج اكتب قيمة النتيجة من اليسار إلى اليمين بحيث الرقم الأول يخص الفريق المكتوب أولاً في البيانات، واعرض تعيين الأهداف لكل فريق كتابةً بعد الوسم لتجنب اللبس. اترك البيانات الناقصة فارغة ولا تضع علامات اقتباس أو وسوماً داخل القيم. إذا كان المطلوب من الصورة فاستخدم محتواها المقروء فقط. إذا كان عن مباراة حقيقية دون مرفق فتحقق من المصادر أولاً.\n` : '';
+    const guidedQuery = baseQuery + visualRules + fixtureScope + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '');
 
     const apiRes = await fetch(url, {
       method: 'POST',
@@ -150,7 +153,7 @@ export async function POST(req: Request) {
     }
 
     // إرجاع الـ Stream مباشرة للواجهة الأمامية
-    return new Response(apiRes.body && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
+    return new Response(apiRes.body && !hasImage && !wantsDesign && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
