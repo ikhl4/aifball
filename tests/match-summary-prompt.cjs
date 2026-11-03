@@ -17,6 +17,8 @@ test('detects match summary requests and daily highlights without catching ordin
 test('daily requests play video before its recap; a specific match recaps before its video',()=>{
  assert.equal(presentation.summaryPresentationMode('ملخصات مباريات الأمس'),'date');
  assert.equal(presentation.summaryPresentationMode('ملخصات اليوم'),'date');
+ assert.equal(presentation.summaryPresentationMode('ملخصات مباريات الأمس'),'date');
+ assert.equal(presentation.summaryPresentationMode('ملخص مباريات الامس'),'date');
  assert.equal(presentation.summaryPresentationMode('ملخص مباراة الهلال والنصر'),'single');
  assert.equal(presentation.summaryPresentationMode('إحصائيات الهلال والنصر'),'none');
  assert.equal(presentation.youtubeVideoId('https://youtu.be/abcdefghijk'),'abcdefghijk');
