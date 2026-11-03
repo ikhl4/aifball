@@ -380,7 +380,7 @@ function renderFormattedText(
     /<aifball-summary\b[^>]*\/?>/gi,
     (tag) => {
       const index = summaryTags.push(tag) - 1;
-      return \`AIFBALLSUMMARYTAGTOKEN\${index}END\`;
+      return `AIFBALLSUMMARYTAGTOKEN${index}END`;
     }
   );
 
