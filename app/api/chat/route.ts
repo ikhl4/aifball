@@ -109,7 +109,8 @@ export async function POST(req: Request) {
     const regionalCompetition = /السعود|روشن|جوي|براعم|ناشئ|مصر|قطر|الإمارات|الامارات|saudi|egypt|qatar|uae/i.test(query);
     const upcomingFixture = /مبارا[ةت].{0,70}(?:القادم|المقبل|الجاي)|(?:القادم|المقبل|الجاي).{0,35}مبارا[ةت]|next match|next fixture/i.test(query);
     const ageGroupFixture = /مبارا[ةت]|جدول/i.test(query) && /الفئات|تحت\s*(?:[\d٠-٩]+|التسعة|تسعة)|براعم|ناشئ/i.test(query);
-    const guidedQuery = baseQuery + dailyContext + (fantasy ? FANTASY_RULES : '') + (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '');
+    const fixtureScope = upcomingFixture ? `\nطلبات المباراة القادمة: استخدم تاريخ ووقت الرياض. الطلب العام يبحث في جدول الفريق الأول الشامل لكل البطولات، بما فيها مباراة اليوم إذا لم تنتهِ. إذا حدد المستخدم الدوري أو بطولة أخرى، اقتصر على تلك البطولة. ابدأ بجدول النادي الشامل والمنظم الرسمي للبطولة، وقارن أحدث صف مؤرخ من الاتحاد أو الرابطة أو الاتحاد القاري. ESPN مصدر مساعد فقط ولا يكفي لاستبعاد مباراة. لا تختَر صفاً غير مؤرخ إذا وجدت مباراة مؤكدة مجدولة أقرب. لا تعتمد صفحة قديمة أو تجريبية. إذا اختلفت الساعات، تحقق من المنطقة الزمنية أولاً، وإذا بقي الاختلاف اذكره مع المصدرين. افصل فئات النادي حسب القواعد التالية.\n` : '';
+    const guidedQuery = baseQuery + fixtureScope + dailyContext + (fantasy ? FANTASY_RULES : '') + (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '');
 
     const apiRes = await fetch(url, {
       method: 'POST',
@@ -139,7 +140,7 @@ export async function POST(req: Request) {
     }
 
     // إرجاع الـ Stream مباشرة للواجهة الأمامية
-    return new Response(apiRes.body && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
+    return new Response(apiRes.body && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
