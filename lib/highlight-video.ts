@@ -7,7 +7,7 @@ export type HighlightVideo = { id: string; url: string; title: string; channel: 
 type ChannelIndex = { channelId: string; videos: { id: string; title: string }[] };
 type Result = { status: 'found'; video: HighlightVideo } | { status: 'not_found' | 'unavailable' };
 const cache = new Map<string, { expires: number; value: Promise<ChannelIndex> }>();
-const norm = (s: string) => s.normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f\u064b-\u065f\u0670ـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/[^\p{L}\p{N}]+/gu, ' ').replace(/\bاتليتيكو\b/g, 'اتلتيكو').replace(/\bبايرن ميونخ\b/g, 'بايرن').replace(/\s+/g, ' ').trim();
+const norm = (s: string) => s.normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f\u064b-\u065f\u0670ـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/[^\p{L}\p{N}]+/gu, ' ').replace(/اتليتيكو/g, 'اتلتيكو').replace(/\bبايرن ميونخ\b/g, 'بايرن').replace(/\s+/g, ' ').trim();
 const text = (v: any): string => v?.simpleText || v?.content || (Array.isArray(v?.runs) ? v.runs.map((r: any) => r.text || '').join('') : '');
 
 /** Parse a public page's JSON without executing any page code. */
