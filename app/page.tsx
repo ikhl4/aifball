@@ -22,6 +22,7 @@ import { COMPETITIONS, resolveStandingsRequest } from '../lib/competitions';
 import MatchReport from './components/MatchReport';
 import MatchHighlightCard from './components/MatchHighlightCard';
 import MatchPoster from './components/MatchPoster';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DocumentaryVideo from './components/DocumentaryVideo';
 import { MatchVisualDemo } from './components/MatchVisualReport';
 import PlayerComparison from './components/PlayerComparison';
@@ -1739,6 +1740,11 @@ export default function FootPlayChat() {
                 <button type="button" onClick={() => setShowInstallHelp(false)} className="underline">إغلاق</button>
               </section>
             )}
+
+            {/* ملخص إحصائي حي مع رابط للمركز المستقل */}
+            <div className="mb-5 rounded-2xl border border-emerald-500/25 bg-[#091d18]/90 backdrop-blur-lg p-3 sm:p-5">
+              <AnalyticsDashboard compact />
+            </div>
 
             {/* بطاقات أسئلة الاستكشاف التفاعلية */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full">
