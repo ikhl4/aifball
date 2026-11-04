@@ -12,7 +12,7 @@ const fmt = (date: string) => new Intl.DateTimeFormat('ar-SA', { day: 'numeric',
 const matchTime = (date: string) => new Intl.DateTimeFormat('ar-SA', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Riyadh' }).format(new Date(date));
 export default function AnalyticsDashboard({ compact = false }: { compact?: boolean }) {
   const [league, setLeague] = useState('ksa.1');
-  const [days, setDays] = useState(7);
+  const [days, setDays] = useState(30);
   const [team, setTeam] = useState('');
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,7 +59,7 @@ export default function AnalyticsDashboard({ compact = false }: { compact?: bool
         </select></label>
       {!compact && <><label className="flex flex-col gap-1 text-xs text-gray-300"><span>الفترة</span>
         <select aria-label="الفترة بالأيام" value={days} onChange={e=>setDays(Number(e.target.value))} className="rounded-lg bg-[#15332a] border border-emerald-500/30 px-3 py-2 text-white">
-          <option value={7}>آخر 7 أيام</option><option value={14}>آخر 14 يومًا</option><option value={30}>آخر 30 يومًا</option>
+          <option value={7}>آخر 7 أيام</option><option value={14}>آخر 14 يومًا</option><option value={30}>آخر 30 يومًا</option><option value={90}>آخر 90 يومًا</option>
         </select></label>
         <label className="flex flex-col gap-1 text-xs text-gray-300"><span>الفريق</span>
           <select aria-label="اختر الفريق" value={team} onChange={e=>setTeam(e.target.value)} className="rounded-lg bg-[#15332a] border border-emerald-500/30 px-3 py-2 text-white">
@@ -68,6 +68,9 @@ export default function AnalyticsDashboard({ compact = false }: { compact?: bool
     </div>
     {loading && <p role="status" className="py-6 text-sm text-emerald-300">جارٍ جلب النتائج من ESPN…</p>}
     {error && <div role="alert" className="py-5 text-amber-300 text-sm">{error} <button className="underline mr-2" type="button" onClick={()=>setRetry(n=>n+1)}>إعادة المحاولة</button></div>}
+    {data && data.matches.length === 0 && <div role="status" className="mb-4 rounded-xl border border-amber-500/30 bg-amber-950/30 p-4 text-xs text-amber-200">
+      لم يُرجع المصدر مباريات لهذه البطولة خلال الفترة المختارة. جرّب توسيع الفترة إلى 90 يومًا أو تغيير البطولة؛ لن نعرض أرقامًا تجريبية على أنها حقيقية.
+    </div>}
     {data && <><div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
       {[['المباريات',totals.games],['انتهت',totals.completed],['مباشرة',totals.live],['الأهداف المكتملة',totals.goals]].map(([label,value])=><div key={label} className={tile}><p className="text-xs text-gray-400">{label}</p><p className="text-2xl font-black mt-1 tabular-nums">{value}</p></div>)}
     </div>
