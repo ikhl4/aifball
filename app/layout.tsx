@@ -3,7 +3,9 @@ import './globals.css';
 
 export const metadata = {
   icons: {
-    apple: [{ url: '/aifball-icon-180.png', sizes: '180x180', type: 'image/png' }],
+    icon: [{ url: '/aifball-icon-180.png', sizes: '64x64', type: 'image/png' }],
+    shortcut: '/aifball-icon-180.png',
+    apple: [{ url: '/aifball-icon-180.png', sizes: '64x64', type: 'image/png' }],
   },
   title: 'AiFBall - فوتبلاي',
   description: 'منصة فوتبلاي للذكاء الاصطناعي الرياضي',
