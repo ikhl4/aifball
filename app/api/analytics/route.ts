@@ -17,12 +17,30 @@ export async function GET(req: Request) {
   const dates = windowDates(days);
   const selected = league === 'all' ? ANALYTICS_LEAGUES : ANALYTICS_LEAGUES.filter(x => x.id === league);
   const responses = await Promise.allSettled(selected.map(async ({ id, label }) => {
-    const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${id}/scoreboard?dates=${dates.from}-${dates.to}&limit=500`;
-    const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(12000), headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (!response.ok) throw new Error('ESPN HTTP ' + response.status);
-    const data = await response.json();
-    if (!Array.isArray(data?.events)) throw new Error('Invalid scoreboard');
-    return data.events.map((event: any) => normalizeAnalyticsEvent(event, id, label)).filter((event): event is NonNullable<typeof event> => event !== null);
+    const root = `https://site.api.espn.com/apis/site/v2/sports/soccer/${id}/scoreboard`;
+    const retrieve = async (suffix: string) => {
+      const response = await fetch(root + suffix, { cache: 'no-store', signal: AbortSignal.timeout(12000), headers: { 'User-Agent': 'Mozilla/5.0' } });
+      if (!response.ok) throw new Error('ESPN HTTP ' + response.status);
+      const data = await response.json();
+      if (!Array.isArray(data?.events)) throw new Error('Invalid scoreboard');
+      return data.events as any[];
+    };
+    // Some ESPN competitions return empty date ranges even when games exist.
+    // Retry their ordinary scoreboard and an exact-date request before declaring no coverage.
+    let events = await retrieve(`?dates=${dates.from}-${dates.to}&limit=500`);
+    if (events.length === 0) {
+      const alternate = await Promise.allSettled([
+        retrieve('?limit=500'),
+        retrieve(`?dates=${dates.to}&limit=500`),
+      ]);
+      events = alternate.flatMap(result => result.status === 'fulfilled' ? result.value : []);
+    }
+    const normalized = events.map((event: any) => normalizeAnalyticsEvent(event, id, label)).filter((event): event is NonNullable<typeof event> => event !== null);
+    const from = dates.from, to = dates.to;
+    return normalized.filter(m => {
+      const day = riyadhDay(new Date(m.date));
+      return day >= from && day <= to;
+    });
   }));
   const failed = selected.filter((_, index) => responses[index].status === 'rejected').map(x => x.label);
   const matches = responses.flatMap(result => result.status === 'fulfilled' ? result.value : []);
