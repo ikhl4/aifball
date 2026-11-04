@@ -900,6 +900,7 @@ export default function FootPlayChat() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showLiveScores, setShowLiveScores] = useState(false);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
+  const [showFantasyChoices, setShowFantasyChoices] = useState(false);
   // Render the logo in the initial HTML, before client JavaScript is ready.
   const [intro, setIntro] = useState(true);
   useEffect(() => {
@@ -1701,14 +1702,29 @@ export default function FootPlayChat() {
                 { title: 'إضافة التطبيق للرئيسية', icon: 'plus', install: true },
                 { title: 'نماذج تمرين', icon: 'activity', query: 'اعرض مكتبة التمارين' },
                 { title: 'FC 27', icon: 'pitch', href: 'https://www.futbin.com/' },
-                { title: 'الفانتازي', icon: 'chart', query: 'اعرض خيارات فانتازي دوري روشن والدوري الإنجليزي وروابط اللعب' },
+                { title: 'الفانتازي', icon: 'chart', fantasy: true },
               ].map(item => {
                 const style = 'flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-emerald-300/35 p-2 text-center text-[10px] font-bold backdrop-blur-md transition focus-visible:outline focus-visible:outline-emerald-600 sm:text-sm' + (isDarkMode ? ' bg-emerald-950/25 text-white hover:bg-emerald-900/45' : ' bg-white/60 text-gray-900 hover:bg-white/90');
                 const label = <>{item.href ? <svg aria-hidden="true" width="27" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className={isDarkMode ? "text-emerald-300" : "text-emerald-800"}><path d="M7 7h10a4 4 0 0 1 4 3l1 5a2 2 0 0 1-3 2l-3-3H8l-3 3a2 2 0 0 1-3-2l1-5a4 4 0 0 1 4-3Z"/><path d="M7 9v4m-2-2h4m7-1h.01m3 2h.01"/></svg> : <AppIcon name={item.icon} size={23} className={isDarkMode ? "text-emerald-300" : "text-emerald-800"}/>}<span>{item.title}</span></>;
                 return item.href ? <a key={item.title} href={item.href} className={style}>{label}</a> :
-                  <button key={item.title} type="button" className={style} onClick={() => { if (item.install) setShowInstallHelp(open => !open); else if (item.query) void sendMessage(item.query); }}>{label}</button>;
+                  <button key={item.title} type="button" className={style} onClick={() => { if (item.install) setShowInstallHelp(open => !open); else if (item.fantasy) setShowFantasyChoices(open => !open); else if (item.query) void sendMessage(item.query); }}>{label}</button>;
               })}
             </nav>
+            {showFantasyChoices && (
+              <section aria-label="اختر مسابقة الفانتازي" className={`mb-4 rounded-2xl border border-emerald-500/30 p-4 text-right ${isDarkMode ? 'bg-emerald-950/60 text-white' : 'bg-white/90 text-gray-900'}`}>
+                <p className="mb-3 text-sm font-bold">أي فانتازي تبي؟</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { title: 'فانتازي روشن', query: 'أريد فانتازي دوري روشن السعودي: اعرض نصائح الجولة القادمة واللاعبين المقترحين مع رابط اللعبة الرسمي.' },
+                    { title: 'فانتازي البريميرليغ', query: 'أريد فانتازي الدوري الإنجليزي الممتاز: اعرض نصائح الجولة القادمة واللاعبين المقترحين مع رابط اللعبة الرسمي.' },
+                  ].map(choice => (
+                    <button key={choice.title} type="button" onClick={() => { setShowFantasyChoices(false); void sendMessage(choice.query); }} className={`rounded-xl border border-emerald-400/40 px-3 py-4 text-center text-xs font-bold transition hover:border-emerald-400 sm:text-sm ${isDarkMode ? 'bg-emerald-900/50 hover:bg-emerald-800/70' : 'bg-emerald-50 hover:bg-emerald-100'}`}>
+                      {choice.title}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
             {showInstallHelp && (
               <section className={`mb-4 rounded-xl border border-emerald-500/30 p-3 text-sm leading-7 ${isDarkMode ? 'bg-emerald-950 text-white' : 'bg-white text-gray-900'}`}>
                 <p>آيفون: من سفاري اضغط مشاركة، ثم إضافة إلى الشاشة الرئيسية.</p>
