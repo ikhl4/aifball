@@ -21,6 +21,7 @@ import StandingsExplorer from './components/StandingsExplorer';
 import { COMPETITIONS, resolveStandingsRequest } from '../lib/competitions';
 import MatchReport from './components/MatchReport';
 import MatchHighlightCard from './components/MatchHighlightCard';
+import DocumentaryVideo from './components/DocumentaryVideo';
 import { MatchVisualDemo } from './components/MatchVisualReport';
 import PlayerComparison from './components/PlayerComparison';
 import PlayerProfile from './components/PlayerProfile';
@@ -381,7 +382,7 @@ function renderFormattedText(
   // Preserve structured match-summary tags so their video URLs stay attached
   // to the correct match instead of being collected as unrelated page videos.
   const protectedSummaryTags = text.replace(
-    /<aifball-summary\b[^>]*\/?>/gi,
+    /<aifball-(?:summary|documentary)\b[^>]*\/?>/gi,
     (tag) => {
       const index = summaryTags.push(tag) - 1;
       return `AIFBALLSUMMARYTAGTOKEN${index}END`;
@@ -689,6 +690,12 @@ function renderFormattedText(
             <p className="mt-5 border-t border-amber-300/50 pt-3 text-xs font-bold text-emerald-200">فوتبلاي</p>
           </section>
         );
+        continue;
+      }
+
+      if (name === 'aifball-documentary') {
+        const decoded = Object.fromEntries(Object.entries(attrs).map(([key, value]) => [key, value.replace(/&quot;/g, '"').replace(/&amp;/g, '&')]));
+        elements.push(<DocumentaryVideo key={i} attrs={decoded} />);
         continue;
       }
 
@@ -1233,6 +1240,12 @@ export default function FootPlayChat() {
         body: JSON.stringify({
           query,
           conversation_id: conversationId,
+          documentary_context: (() => {
+            const previous = [...messages].reverse().find(m => m.role === 'assistant');
+            if (!previous || !/يتوفر وثائقي/.test(previous.content)) return '';
+            const topic = [...messages].reverse().find(m => m.role === 'user');
+            return [topic?.content || '', previous.content].join('\n').slice(0, 6000);
+          })(),
           has_match_context: /<aifball-match-report\b/.test([...messages].reverse().find(m=>m.role==='assistant')?.content||''),
           analysis_mode: analysisModeForQuery(query, messages[messages.length - 1]?.role === 'assistant' ? messages[messages.length - 1].content : ''),
           ...(difyFiles.length ? { files: difyFiles } : {}),

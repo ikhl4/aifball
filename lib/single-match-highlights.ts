@@ -54,7 +54,13 @@ export async function buildSingleMatchHighlights(query: string, signal?: AbortSi
   const name=p.participants?.[0]?.athlete?.displayName||p.athletesInvolved?.[0]?.displayName||'',minute=p.clock?.displayValue||'';
   if(name&&minute)goals.push((footballNameInArabic(name)||name)+(p.ownGoal===true?' (هدف عكسي)':'')+'|'+String(minute).replace(/[′']/g,''));
  }
- if(goals.length)attrs.goals=goals.join(';');
+ if(goals.length){
+  attrs.goals=goals.join(';');
+  if(goals.length===Number(home.score)+Number(away.score)){
+    const first=goals[0].split('|'),last=goals[goals.length-1].split('|');
+    attrs.summary+=` افتتح ${first[0]} التسجيل في الدقيقة ${first[1]}${goals.length>1?`، واختتم ${last[0]} الأهداف في الدقيقة ${last[1]}`:''}.`;
+  }
+ }
  const video=await lookup({home:home.team.displayName,away:away.team.displayName,date,competition},'',signal,fetcher);attrs.video_status=video.status;
  if(video.status==='found')Object.assign(attrs,{video_url:video.video.url,video_embed:String(video.video.embeddable),video_channel:video.video.channel,video_published:video.video.publishedAt});
  return '<aifball-summary '+Object.entries(attrs).map(([k,v])=>`${k}="${esc(v)}"`).join(' ')+' />';

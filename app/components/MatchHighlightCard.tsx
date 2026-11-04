@@ -27,20 +27,17 @@ export default function MatchHighlightCard({ attrs, isDark = true }: { attrs: Re
       {attrs.video_status === 'not_found' ? 'لم أعثر على مقطع مطابق ضمن القنوات المحددة وقت البحث.' : 'تعذّر التحقق من المقطع حاليًا؛ هذا لا يعني أنه غير منشور.'}
     </p>}
   </div>;
-  const written = <div className="mt-4 space-y-4">
-    {attrs.summary && <div><h4 className="mb-1 text-xs font-bold text-emerald-500">خلاصة المباراة</h4><p className="whitespace-pre-line text-[15px] leading-7">{attrs.summary}</p></div>}
-    {!!goals.length && <div><h4 className="mb-2 text-xs font-bold text-emerald-500">الأهداف</h4><ol className="space-y-1.5">{goals.map((row, i) => <li key={i} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}><bdi dir="ltr" className="min-w-10 text-center font-bold text-emerald-500">{row[1].trim()}′</bdi><span>{row[0].trim()}</span></li>)}</ol></div>}
-    {attrs.moments && <div><h4 className="mb-1 text-xs font-bold text-emerald-500">أبرز الأحداث</h4><ul className="list-inside list-disc space-y-1 text-sm leading-7">{attrs.moments.split(';').filter(Boolean).map((s, i) => <li key={i}>{s}</li>)}</ul></div>}
+  const written = <div className="mt-4 space-y-5 text-[15px] leading-8">
+    {attrs.summary && <div><h4 className="mb-1 text-base font-bold text-emerald-500">قصة المباراة</h4><p className="whitespace-pre-line">{attrs.summary}</p></div>}
+    {!!goals.length && <div><h4 className="mb-2 text-base font-bold text-emerald-500">الأهداف</h4><ul className="list-inside list-disc space-y-1">{goals.map((row, i) => <li key={i}><span>{row[0].trim()}</span> — الدقيقة <bdi dir="ltr" className="font-semibold">{row[1].trim()}′</bdi></li>)}</ul></div>}
+    {attrs.moments && <div><h4 className="mb-1 text-base font-bold text-emerald-500">أبرز الأحداث</h4><ul className="list-inside list-disc space-y-1">{attrs.moments.split(';').filter(Boolean).map((s, i) => <li key={i}>{s}</li>)}</ul></div>}
   </div>;
-  return <section dir="rtl" aria-label="ملخص المباراة" className={`my-4 w-full overflow-hidden rounded-2xl border p-4 sm:p-5 ${isDark ? 'border-white/10 bg-[#101820] text-gray-200' : 'border-gray-200 bg-white text-gray-800'}`}>
-    <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className="font-bold text-emerald-500">ملخص المباراة</span><span>{attrs.competition}</span></div>
-    {attrs.home && attrs.away ? <div className={`mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-xl p-3 ${isDark ? 'bg-white/5' : 'bg-emerald-50'}`}>
-      <div className="text-center"><h3 className="text-sm font-bold">{attrs.home}</h3>{/^\d+$/.test(attrs.home_score || '') && <bdi className="mt-1 block text-2xl font-black">{attrs.home_score}</bdi>}</div>
-      <span className="text-gray-500">—</span>
-      <div className="text-center"><h3 className="text-sm font-bold">{attrs.away}</h3>{/^\d+$/.test(attrs.away_score || '') && <bdi className="mt-1 block text-2xl font-black">{attrs.away_score}</bdi>}</div>
-    </div> : <h3 className="mt-3 text-base font-bold">{attrs.match}</h3>}
-    {attrs.date && <p className="mt-2 text-center text-xs text-gray-500"><bdi dir="ltr">{attrs.date}</bdi></p>}
-    {attrs.order === 'video-first' ? <>{video}{written}</> : <>{written}{video}</>}
-    {sources && <a href={sources} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-xs text-emerald-500 underline">{attrs.source_name || 'مصدر تفاصيل المباراة'} ↗</a>}
+  return <section dir="rtl" aria-label="ملخص المباراة" className={`my-4 w-full min-w-0 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+    <h3 className="text-lg font-bold leading-8 text-emerald-500">{attrs.home && attrs.away ? <>{attrs.home} {/^\d+$/.test(attrs.home_score || '') && <bdi>{attrs.home_score}</bdi>} — {attrs.away} {/^\d+$/.test(attrs.away_score || '') && <bdi>{attrs.away_score}</bdi>}</> : attrs.match || 'ملخص المباراة'}</h3>
+    <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{attrs.competition}{attrs.date && <> · <bdi dir="ltr">{attrs.date}</bdi></>}</p>
+    {written}
+    {sources && <a href={sources} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-xs text-emerald-500 underline">{attrs.source_name || 'مصدر تفاصيل المباراة'} ↗</a>}
+    <h4 className="mt-6 text-base font-bold text-emerald-500">ملخص المباراة بالفيديو</h4>
+    {video}
   </section>;
 }

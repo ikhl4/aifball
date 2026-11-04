@@ -32,7 +32,7 @@ export async function verifySummaryAnswer(answer: string, signal?: AbortSignal, 
 }
 
 /** Buffer summary deltas until publisher/date verification finishes; keep Dify IDs and end order. */
-export function verifiedSummaryStream(upstream: ReadableStream<Uint8Array>, signal?: AbortSignal): ReadableStream<Uint8Array> {
+export function verifiedSummaryStream(upstream: ReadableStream<Uint8Array>, signal?: AbortSignal, verify = verifySummaryAnswer): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder(), decoder = new TextDecoder(); let reader: ReadableStreamDefaultReader<Uint8Array>;
   return new ReadableStream({ async start(out) {
     reader = upstream.getReader(); let buffer = '', answer = '', meta: any = {}, end: any = null;
@@ -52,7 +52,7 @@ export function verifiedSummaryStream(upstream: ReadableStream<Uint8Array>, sign
       }
       if (buffer.trim()) frame(buffer);
       if (!end) throw Error('INCOMPLETE_STREAM');
-      const verified = await verifySummaryAnswer(answer, signal);
+      const verified = await verify(answer, signal);
       if (signal?.aborted) throw Error('ABORTED');
       send({ ...meta, event: 'message', answer: verified }); send(end); out.close();
     } catch {
