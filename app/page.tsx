@@ -21,6 +21,7 @@ import StandingsExplorer from './components/StandingsExplorer';
 import { COMPETITIONS, resolveStandingsRequest } from '../lib/competitions';
 import MatchReport from './components/MatchReport';
 import MatchHighlightCard from './components/MatchHighlightCard';
+import MatchPoster from './components/MatchPoster';
 import DocumentaryVideo from './components/DocumentaryVideo';
 import { MatchVisualDemo } from './components/MatchVisualReport';
 import PlayerComparison from './components/PlayerComparison';
@@ -634,6 +635,12 @@ function renderFormattedText(
             </figcaption>
           </figure>
         );
+        continue;
+      }
+
+      if (name === 'aifball-match-poster') {
+        const posterQuery = attrs.query ? decodeURIComponent(attrs.query) : '';
+        if (posterQuery) elements.push(<MatchPoster key={i} query={posterQuery} />);
         continue;
       }
 
