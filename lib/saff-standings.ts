@@ -105,8 +105,10 @@ export async function getSaffStandings(season?: string | null, signal?: AbortSig
   const finalUrl = new URL(response.url);
   if (!['www.saff.com.sa', 'saff.com.sa'].includes(finalUrl.hostname) || finalUrl.pathname !== '/championship.php' || finalUrl.searchParams.get('id') !== String(edition.id)) throw Error('SAFF_COMPETITION_MISMATCH');
   if (Number(response.headers.get('content-length')) > 2_000_000) throw Error('SAFF_RESPONSE_TOO_LARGE');
-  const html = await response.text();
-  if (html.length > 2_000_000) throw Error('SAFF_RESPONSE_TOO_LARGE');
+  const bytes = await response.arrayBuffer();
+  if (bytes.byteLength > 2_000_000) throw Error('SAFF_RESPONSE_TOO_LARGE');
+  const charset = response.headers.get('content-type')?.match(/charset\s*=\s*[\"']?([^;\s\"']+)/i)?.[1] || 'utf-8';
+  const html = new TextDecoder(charset).decode(bytes);
   return parseSaffStandings(html, edition.season);
   } finally {
     clearTimeout(timer);
