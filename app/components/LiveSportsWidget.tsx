@@ -69,10 +69,10 @@ export default function LiveSportsWidget({ league = 'ksa.1', isDark = true, date
   }
 
   return (
-    <div className={`w-full rounded-2xl border shadow-xl my-4 overflow-hidden ${isDark ? 'border-gray-800/80 bg-[#131a2a]' : 'border-gray-200 bg-white'}`}>
+    <div dir="rtl" className={`w-full font-cairo rounded-2xl border shadow-xl my-4 overflow-hidden ${isDark ? 'border-gray-800/80 bg-[#131a2a]' : 'border-gray-200 bg-white'}`}>
       <div className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? 'bg-emerald-950/60 border-gray-800/80' : 'bg-emerald-50 border-gray-200'}`}>
         <span className={`font-bold text-sm flex items-center gap-2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> نتائج {dateLabel} (ESPN)
+          <span className="w-2 h-2 rounded-full bg-emerald-500"></span> مباريات {dateLabel}
         </span>
       </div>
 
@@ -90,14 +90,14 @@ export default function LiveSportsWidget({ league = 'ksa.1', isDark = true, date
           const isFinished = status?.state === 'post';
 
           return (
-            <div key={event.id} className={`rounded-xl p-3 border ${isDark ? 'bg-[#0f1420] border-gray-800/50' : 'bg-gray-50 border-gray-200'}`}>
+            <div key={event.id} className={`rounded-2xl p-3 sm:p-4 border transition-colors ${isDark ? 'bg-[#0f1420] border-white/10 hover:border-emerald-500/30' : 'bg-gray-50 border-gray-200 hover:border-emerald-200'}`}>
               {!isLive && !isFinished && event.date && (
                 <p className="text-xs text-emerald-600 mb-2">{Number.isNaN(new Date(event.date).getTime()) ? 'الموعد غير متاح' : new Intl.DateTimeFormat('ar-SA', {
                   hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Riyadh',
                 }).format(new Date(event.date))}</p>
               )}
-              <div className="flex items-center justify-between mb-2">
-                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{event.name}</span>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <span className={`text-[11px] truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{event.name}</span>
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
                   isLive
                     ? (isDark ? 'text-red-400 bg-red-950/40 border-red-900/30' : 'text-red-600 bg-red-100 border-red-200')
@@ -107,19 +107,19 @@ export default function LiveSportsWidget({ league = 'ksa.1', isDark = true, date
                 </span>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 w-1/3">
-                  <img src={homeTeam.team.logo} alt={homeTeam.team.name} className="w-6 h-6 object-contain" />
-                  <span className={`text-sm font-bold truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{homeTeam.team.shortDisplayName}</span>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4">
+                <div className="min-w-0 flex flex-col items-center justify-center gap-2 text-center">
+                  <img src={homeTeam.team.logo} alt={homeTeam.team.name} className="w-9 h-9 sm:w-11 sm:h-11 object-contain" />
+                  <span className={`text-xs sm:text-sm font-bold truncate max-w-full ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{homeTeam.team.shortDisplayName}</span>
                 </div>
 
-                <div className="flex items-center justify-center w-1/3">
-                  <span className={`text-xl font-extrabold px-3 py-1 rounded-lg ${isDark ? 'text-white bg-emerald-900/50' : 'text-gray-800 bg-gray-200'}`}>
-                    {!isLive && !isFinished ? 'VS' : `${homeTeam.score ?? '—'} - ${awayTeam.score ?? '—'}`}
+                <div className="flex flex-col items-center justify-center min-w-[68px]">
+                  <span className={`text-xl sm:text-2xl tabular-nums font-extrabold px-3 py-2 rounded-xl ${isDark ? 'text-white bg-emerald-900/30' : 'text-gray-800 bg-gray-200'}`}>
+                    {!isLive && !isFinished ? '—' : `${homeTeam.score ?? '—'} - ${awayTeam.score ?? '—'}`}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 w-1/3">
+                <div className="min-w-0 flex flex-col items-center justify-center gap-2 text-center">
                   <span className={`text-sm font-bold truncate text-left ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{awayTeam.team.shortDisplayName}</span>
                   <img src={awayTeam.team.logo} alt={awayTeam.team.shortDisplayName} className="w-6 h-6 object-contain" />
                 </div>
