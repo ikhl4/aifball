@@ -1,3 +1,4 @@
+import { getSaffStandings } from '../../../lib/saff-standings';
 import { COMPETITIONS } from '../../../lib/competitions';
 
 import { NextResponse } from 'next/server';
@@ -43,7 +44,8 @@ interface StandingGroup {
 }
 
 interface StandingsData {
-  source: 'ESPN' | 'FotMob';
+  source: 'ESPN' | 'FotMob' | 'SAFF';
+  sourceUrl?: string;
   league: string;
   leagueName: string | null;
   season: string | null;
@@ -1147,6 +1149,22 @@ export async function GET(request: Request) {
     }
   );
 
+  if (COMPETITIONS[league]?.standingsSource === 'SAFF') {
+    try {
+      return jsonResponse(await getSaffStandings(season, request.signal));
+    } catch (error) {
+      const code = error instanceof Error ? error.message : 'SAFF_SOURCE_UNAVAILABLE';
+      diagnostic('SAFF', league, code);
+      return errorResponse(
+        code === 'SAFF_UNSUPPORTED_SEASON'
+          ? 'هذا الموسم غير مربوط بمصدر الاتحاد السعودي لدوري جوي بعد.'
+          : 'تعذر التحقق من جدول دوري جوي لدى الاتحاد السعودي حالياً. حاول التحديث بعد قليل.',
+        code === 'SAFF_UNSUPPORTED_SEASON' ? 404 : 502,
+        code === 'SAFF_UNSUPPORTED_SEASON' ? code : 'SAFF_SOURCE_UNAVAILABLE'
+      );
+    }
+  }
+
   // Primary source: ESPN
   try {
     const data = await getESPN(
@@ -1213,3 +1231,4 @@ export async function GET(request: Request) {
     'STANDINGS_NOT_AVAILABLE'
   );
 }
+

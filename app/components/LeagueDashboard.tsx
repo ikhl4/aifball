@@ -45,6 +45,7 @@ interface StandingGroup {
 interface StandingsResult {
   groups: StandingGroup[];
   source: string | null;
+  sourceUrl: string | null;
   season: string | null;
   seasonName: string | null;
   updatedAt: string | null;
@@ -548,6 +549,7 @@ function normalizeResponse(
     return {
       groups: [],
       source: null,
+      sourceUrl: null,
       season: null,
       seasonName: null,
       updatedAt: null,
@@ -593,6 +595,7 @@ function normalizeResponse(
   return {
     groups,
     source: textValue(root.source) || null,
+    sourceUrl: /^https:\/\/(?:www\.)?saff\.com\.sa\/championship\.php\?id=\d+(?:&type=all)?$/.test(textValue(root.sourceUrl)) ? textValue(root.sourceUrl) : null,
     season:
       root.season == null
         ? null
@@ -993,7 +996,7 @@ export default function LeagueDashboard({
           <span>
             {t.source}:{' '}
             <bdi dir="ltr">
-              {result?.source ||
+              {result?.sourceUrl ? <a href={result.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline">الاتحاد السعودي لكرة القدم</a> : result?.source ||
                 (loading
                   ? t.checking
                   : t.unavailable)}
@@ -1420,3 +1423,4 @@ export default function LeagueDashboard({
     </div>
   );
 }
+

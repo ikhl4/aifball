@@ -23,7 +23,7 @@ export default function StandingsExplorer({ isDark = true }: { isDark?: boolean 
         </select>
       </label>
       <p className="text-xs text-gray-500 leading-relaxed">تُعرض آخر نسخة متاحة لدى المصدر، مع اسم موسمها. ترتيب المنتخبات هنا هو ترتيب مجموعات البطولات والتصفيات؛ وليس تصنيف FIFA العالمي.</p>
-      {selectedCompetition?.searchOnly ? (
+      {selectedCompetition?.searchOnly && !selectedCompetition.standingsSource ? (
         <section className={`rounded-2xl border p-5 space-y-3 ${isDark ? 'border-emerald-900 bg-[#111b16]' : 'border-emerald-200 bg-emerald-50'}`}>
           <h2 className="text-lg font-bold">{selectedCompetition.ar}</h2>
           <p className="text-sm leading-7 text-gray-500">تُعرض بيانات هذه البطولة من مصادر الاتحاد السعودي الرسمية؛ لا يتوفر لها جدول ESPN داخل اللوحة حالياً.</p>
@@ -40,3 +40,4 @@ export default function StandingsExplorer({ isDark = true }: { isDark?: boolean 
     </div>
   );
 }
+
