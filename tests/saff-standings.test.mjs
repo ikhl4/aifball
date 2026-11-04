@@ -39,3 +39,12 @@ test('fetches only the configured official edition and rejects login/HTML error 
     await assert.rejects(getSaffStandings(),/COMPETITION/);
   } finally { globalThis.fetch=original; }
 });
+
+test('reads source goals when present and expands merged blank headings', () => {
+  const html = fixture().replace('<td></td><td></td><td></td><td></td>', '<td colspan="4"></td>')
+    .replace('<th>فارق</th>', '<th class="d-none d-sm-table-cell">له</th><th class="d-none d-sm-table-cell">عليه</th><th>فارق</th>')
+    .replaceAll('<td>+12</td>', '<td class="d-none d-sm-table-cell">16</td><td class="d-none d-sm-table-cell">4</td><td>+12</td>');
+  const r = parseSaffStandings(html);
+  assert.equal(r.rows[0].gf, 16); assert.equal(r.rows[0].ga, 4);
+  assert.throws(() => parseSaffStandings(html.replace('>16</td>', '>15</td>')), /INVALID_ROW/);
+});

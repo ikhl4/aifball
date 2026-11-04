@@ -1160,7 +1160,7 @@ export async function GET(request: Request) {
           ? 'هذا الموسم غير مربوط بمصدر الاتحاد السعودي لدوري جوي بعد.'
           : 'تعذر التحقق من جدول دوري جوي لدى الاتحاد السعودي حالياً. حاول التحديث بعد قليل.',
         code === 'SAFF_UNSUPPORTED_SEASON' ? 404 : 502,
-        code === 'SAFF_UNSUPPORTED_SEASON' ? code : 'SAFF_SOURCE_UNAVAILABLE'
+        code.startsWith('SAFF_') ? code : 'SAFF_SOURCE_UNAVAILABLE'
       );
     }
   }

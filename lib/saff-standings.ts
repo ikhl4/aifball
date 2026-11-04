@@ -54,7 +54,10 @@ export function parseSaffStandings(html: string, requested?: string | null) {
   const candidates = [];
   for (const table of html.matchAll(/<table\b[^>]*>[\s\S]*?<\/table>/gi)) {
     const trs = [...table[0].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map(tr =>
-      [...tr[1].matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(cell => cell[1]));
+      [...tr[1].matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].flatMap(cell => {
+        const span = Math.min(12, Math.max(1, Number(attribute(cell[0], 'colspan')) || 1));
+        return [cell[1], ...Array<string>(span - 1).fill('')];
+      }));
     const headerIndex = trs.findIndex(cells => required.every(label => cells.some(cell => normalized(cell) === label)));
     if (headerIndex < 0) continue;
     const header = trs[headerIndex].map(normalized);
@@ -70,11 +73,15 @@ export function parseSaffStandings(html: string, requested?: string | null) {
       const stats = cols.map(index => integer(cells[index]));
       if (!pos || stats.some(value => value === null)) throw Error('SAFF_INVALID_ROW');
       const [played, won, draw, lost, gd, pts] = stats as number[];
+      const gfIndex = header.indexOf('له'), gaIndex = header.indexOf('عليه');
+      const gf = gfIndex >= 0 ? integer(cells[gfIndex]) : null;
+      const ga = gaIndex >= 0 ? integer(cells[gaIndex]) : null;
+      if ((gfIndex >= 0 && (gf === null || gf < 0)) || (gaIndex >= 0 && (ga === null || ga < 0)) || (gf !== null && ga !== null && gf - ga !== gd)) throw Error('SAFF_INVALID_ROW');
       if ([played, won, draw, lost].some(n => n < 0) || won + draw + lost !== played) throw Error('SAFF_INVALID_ROW');
       const image = cells.join(' ').match(/<img\b[^>]*>/i)?.[0];
       let logo: string | null = null;
       try { if (image) { const url = new URL(attribute(image, 'src'), edition.url); if (url.protocol === 'https:' && /(^|\.)saff\.com\.sa$/.test(url.hostname)) logo = url.href; } } catch { /* A logo is optional. */ }
-      rows.push({ ...team, pos, logo, played, won, draw, lost, gf: null, ga: null, gd, pts });
+      rows.push({ ...team, pos, logo, played, won, draw, lost, gf, ga, gd, pts });
     }
     if (rows.length) candidates.push(rows.sort((a, b) => a.pos - b.pos));
   }
