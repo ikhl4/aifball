@@ -22,23 +22,29 @@ export async function GET(req: Request) {
   const selected = league === 'all' ? ANALYTICS_LEAGUES : ANALYTICS_LEAGUES.filter(x => x.id === league);
   const responses = await Promise.allSettled(selected.map(async ({ id, label }) => {
     const root = `https://site.api.espn.com/apis/site/v2/sports/soccer/${id}/scoreboard`;
-    const retrieve = async (suffix: string) => {
-      const response = await fetch(root + suffix, { cache: 'no-store', signal: AbortSignal.timeout(12000), headers: { 'User-Agent': 'Mozilla/5.0' } });
+    const fetchMonth = async (yearMonth: string) => {
+      const response = await fetch(root + '?dates=' + yearMonth + '&limit=500', {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(12000),
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      });
       if (!response.ok) throw new Error('ESPN HTTP ' + response.status);
       const data = await response.json();
       if (!Array.isArray(data?.events)) throw new Error('Invalid scoreboard');
       return data.events as any[];
     };
-    // Some ESPN competitions return empty date ranges even when games exist.
-    // Retry their ordinary scoreboard and an exact-date request before declaring no coverage.
-    let events = await retrieve(`?dates=${dates.from}-${dates.to}&limit=500`).catch(() => [] as any[]);
-    if (events.length === 0) {
-      const alternate = await Promise.allSettled([
-        retrieve('?limit=500'),
-        retrieve(`?dates=${dates.to}&limit=500`),
-      ]);
-      events = alternate.flatMap(result => result.status === 'fulfilled' ? result.value : []);
+    // ESPN may reject YYYYMMDD-YYYYMMDD ranges. Query individual calendar months,
+    // then filter events to the exact Riyadh-day interval requested.
+    const months: string[] = [];
+    const first = new Date(Date.UTC(Number(dates.from.slice(0, 4)), Number(dates.from.slice(4, 6)) - 1, 1));
+    const last = new Date(Date.UTC(Number(dates.to.slice(0, 4)), Number(dates.to.slice(4, 6)) - 1, 1));
+    for (let month = first; month <= last; month = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 1))) {
+      months.push(String(month.getUTCFullYear()) + String(month.getUTCMonth() + 1).padStart(2, '0'));
     }
+    const monthResponses = await Promise.allSettled(months.map(fetchMonth));
+    const succeeded = monthResponses.filter((item): item is PromiseFulfilledResult<any[]> => item.status === 'fulfilled');
+    if (!succeeded.length) throw new Error('All monthly ESPN requests failed');
+    const events = succeeded.flatMap(item => item.value);
     const normalized = events.map((event: any) => normalizeAnalyticsEvent(event, id, label)).filter((event): event is NonNullable<typeof event> => event !== null);
     const from = dates.from, to = dates.to;
     return normalized.filter(m => {
