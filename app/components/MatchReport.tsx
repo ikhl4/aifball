@@ -8,13 +8,16 @@ import {scores365Identity} from '../../lib/scores365-report';
 import AdvancedMatchData from './AdvancedMatchData';
 import React,{useEffect,useRef,useState} from 'react';
 import { COMPETITIONS } from '../../lib/competitions';
+import XPostEmbed from './XPostEmbed';
 import { reportIdentity,type DetailedMatchReport } from '../../lib/match-report';
 const leagues=Object.entries(COMPETITIONS).map(([id,c])=>[id,c.ar]);
-export default function MatchReport(props:{matchName:string;isDark?:boolean;autoMatchUrl?:string;eventId?:string;leagueCode?:string;playerName?:string}){
- if(props.autoMatchUrl&&scores365Identity(props.autoMatchUrl))return <Scores365Report matchUrl={props.autoMatchUrl} playerName={props.playerName} isDark={props.isDark}/>;
- if(props.autoMatchUrl&&/^https:\/\/(?:www\.)?365scores\.com\//i.test(props.autoMatchUrl))return <p className="my-4 text-amber-500">يلزم رابط مباراة 365Scores محددة يتضمن معرّفها؛ لم نعرض مواجهة بديلة.</p>;
- if(props.autoMatchUrl&&sofaMatchId(props.autoMatchUrl))return <AdvancedMatchData autoMatchUrl={props.autoMatchUrl} playerName={props.playerName} isDark={props.isDark}/>;
- return <EspnMatchReport {...props}/>;
+export default function MatchReport(props:{matchName:string;isDark?:boolean;autoMatchUrl?:string;eventId?:string;leagueCode?:string;playerName?:string;clipUrl?:string}){
+ let report:React.ReactNode;
+ if(props.autoMatchUrl&&scores365Identity(props.autoMatchUrl))report=<Scores365Report matchUrl={props.autoMatchUrl} playerName={props.playerName} isDark={props.isDark}/>;
+ else if(props.autoMatchUrl&&/^https:\/\/(?:www\.)?365scores\.com\//i.test(props.autoMatchUrl))report=<p className="my-4 text-amber-500">يلزم رابط مباراة 365Scores محددة يتضمن معرّفها؛ لم نعرض مواجهة بديلة.</p>;
+ else if(props.autoMatchUrl&&sofaMatchId(props.autoMatchUrl))report=<AdvancedMatchData autoMatchUrl={props.autoMatchUrl} playerName={props.playerName} isDark={props.isDark}/>;
+ else report=<EspnMatchReport {...props}/>;
+ return <>{report}{props.clipUrl&&props.playerName&&<XPostEmbed url={props.clipUrl} playerName={props.playerName} isDark={props.isDark}/>}</>;
 }
 function EspnMatchReport({matchName,isDark=true,autoMatchUrl,eventId,leagueCode,playerName}:{matchName:string;isDark?:boolean;autoMatchUrl?:string;eventId?:string;leagueCode?:string;playerName?:string}){
  const identity=autoMatchUrl?reportIdentity(autoMatchUrl):null;

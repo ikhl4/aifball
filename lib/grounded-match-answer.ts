@@ -5,6 +5,7 @@ import { normalizeSpatialReport,sofaMatchId } from './spatial-report';
 import { footballNameInArabic } from './football-names-ar';
 import { uniquePlayer } from './match-narrative';
 const ar=(s:string)=>footballNameInArabic(s)||s;
+const xClip=(raw:string)=>{try{const u=new URL(raw);if(!['x.com','www.x.com','twitter.com','www.twitter.com'].includes(u.hostname.toLowerCase())||u.protocol!=='https:')return '';if(!/^\/[A-Za-z0-9_]{1,15}\/status\/\d+\/?$/.test(u.pathname))return '';return 'https://x.com'+u.pathname.replace(/\/$/,'');}catch{return '';}};
 const esc=(s:string)=>s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const number=(v:unknown)=>typeof v==='number'||typeof v==='string'?String(v):'غير متاح';
 const failure='تعذر جلب بيانات مؤكدة من المصدر لهذه المباراة. لن أعرض أرقاماً أو مشاركة لاعب غير متحقق منها. يمكنك إعادة المحاولة داخل الشات.';
@@ -37,7 +38,7 @@ export async function groundedMatchAnswer(answer:string,_query:string,signal?:Ab
   if(state!=='انتهت')return 'لم أتمكن من تأكيد مباراة مكتملة بهذا المعرّف.';
   const heading=`**${home} ضد ${away} — ${date.slice(0,10)} — ${title} — ${state}**\n\nالنتيجة (${home} ثم ${away}): **${score}**.`;
   let prose='';let playerAttr='';
-  if(attrs.player_name){const p=uniquePlayer(players,attrs.player_name);if(p){prose=`\n\n**أداء ${p.name} في هذه المباراة:**\n\n`+(p.statistics.length?p.statistics.map(s=>`- ${s.label}: ${number(s.value)}.`).join('\n'):'الأرقام الفردية غير متاحة في استجابة المصدر.');playerAttr=` player_name="${esc(p.name)}"`;}else prose=`\n\nلم أتمكن من تأكيد ${attrs.player_name.replace(/[<>]/g,'')} في قائمة هذه المباراة بالاسم المسترجع. لن أنسب له مشاركة أو أرقاماً؛ يمكنك تحديد الاسم داخل الشات.`;}
+  if(attrs.player_name){const p=uniquePlayer(players,attrs.player_name);if(p){prose=`\n\n**أداء ${p.name} في هذه المباراة:**\n\n`+(p.statistics.length?p.statistics.map(s=>`- ${s.label}: ${number(s.value)}.`).join('\n'):'الأرقام الفردية غير متاحة في استجابة المصدر.');playerAttr=` player_name="${esc(p.name)}"`;const clip=xClip(attrs.clip_url||'');if(clip){playerAttr+=` clip_url="${esc(clip)}"`;prose+=`\n\n**مقطع من المباراة على X:** [مشاهدة أداء ${p.name}](${clip})`;}}else prose=`\n\nلم أتمكن من تأكيد ${attrs.player_name.replace(/[<>]/g,'')} في قائمة هذه المباراة بالاسم المسترجع. لن أنسب له مشاركة أو أرقاماً؛ يمكنك تحديد الاسم داخل الشات.`;}
   else prose='\n\n**إحصائيات المباراة من المصدر:**\n\n'+(metrics.length?metrics.map(m=>`- ${m.label}: ${home} ${number(m.home)}${m.percent&&m.home!=null?'%':''}، مقابل ${away} ${number(m.away)}${m.percent&&m.away!=null?'%':''}.`).join('\n'):'الإحصائيات التفصيلية غير متاحة.');
   return heading+prose+'\n\nالأرقام الغائبة ليست صفراً. لا تتوفر خريطة حرارية أو مسارات تحرك إلا عند وصول إحداثيات مصدرية؛ أرقام المباراة وحدها لا تثبت أسلوب اللعب.\n\n[فتح مصدر المباراة]('+source+')\n\n'+`<aifball-match-report match="${esc(home+' ضد '+away+' · '+date.slice(0,10))}" ${outputTag}${playerAttr} />`;
  }catch{return failure;}finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);}
