@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const ts=require('typescript');
-function load(file){const m={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{exports:m.exports,module:m,URL});return m.exports;}
+function load(file){const path=require('node:path');const m={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{exports:m.exports,module:m,URL,process,require: name=>name.startsWith('.')?load(path.resolve(path.dirname(file),name+'.ts')):require(name)});return m.exports;}
 const prompt=load('lib/match-summary-prompt.ts');
 const daily=load('lib/daily-match-highlights.ts');
 const presentation=load('lib/summary-presentation.ts');
@@ -34,7 +34,7 @@ test('Jawwy U21 is recognized and standings requests stay on official search rat
  assert.equal(prompt.isJawwyLeagueRequest('جدول دوري جوي للنخبة تحت 21'),true);
  assert.equal(prompt.isJawwyLeagueRequest('Jawwy Elite League U21 results'),true);
  assert.equal(competitions.COMPETITIONS['ksa.jawwy.u21'].searchOnly,true);
- assert.equal(competitions.resolveStandingsRequest('جدول دوري جوي للنخبة تحت 21 2026-2027'),null);
+ assert.equal(competitions.resolveStandingsRequest('جدول دوري جوي للنخبة تحت 21 2026-2027').league,'ksa.jawwy.u21');
 });
 
 test('daily recap path catches today/yesterday lists but leaves a named match to Dify',()=>{
