@@ -7,6 +7,7 @@ export interface Competition {
   fotmobId?: number;
   /** Competitions available through verified official-site search, not ESPN widgets. */
   searchOnly?: boolean;
+  standingsSource?: 'SAFF';
   officialUrl?: string;
 }
 
@@ -30,7 +31,8 @@ export const COMPETITIONS: Record<string, Competition> = {
     "kind": "club",
     "seasonFormat": "split",
     "searchOnly": true,
-    "officialUrl": "https://www.saff.com.sa/championship.php?id=350&type=all",
+    "standingsSource": "SAFF",
+    "officialUrl": "https://www.saff.com.sa/championship.php?id=419&type=all",
     "aliases": [
       "دوري جوي",
       "دوري جوّي",
@@ -509,7 +511,7 @@ export function resolveStandingsRequest(query: string): { league: string; season
   // Requests naming more than one independent competition are not intercepted.
   if (matches[0].league === 'fifa.world' && /(?:تصفيات|qualif|للانديه|للاندية|club)/i.test(input)) return null;
   const winner = COMPETITIONS[matches[0].league];
-  if (winner.searchOnly) return null;
+  if (winner.searchOnly && !winner.standingsSource) return null;
   const winningAliases = [winner.ar, winner.en, ...winner.aliases].map(normalize);
   if (matches.slice(1).some(match => !winningAliases.some(alias =>
     [COMPETITIONS[match.league].ar, COMPETITIONS[match.league].en, ...COMPETITIONS[match.league].aliases]
@@ -517,3 +519,4 @@ export function resolveStandingsRequest(query: string): { league: string; season
   const year = input.match(/\b((?:19|20)\d{2})(?:\s+(\d{2}|(?:19|20)\d{2}))?\b/);
   return { league: matches[0].league, season: year ? year[1] + (year[2] ? '-' + year[2] : '') : '' };
 }
+
