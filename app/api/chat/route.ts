@@ -1,4 +1,5 @@
 import { verifiedSummaryStream } from '../../../lib/verified-summary';
+import { posterIntent } from '../../../lib/match-card-data';
 import { buildSingleMatchHighlights } from '../../../lib/single-match-highlights';
 import { historyMode, FOOTBALL_HISTORY_RULES, DOCUMENTARY_REQUEST_RULES, presentHistoryAnswer } from '../../../lib/football-history';
 import { groundedMatchStream } from '../../../lib/grounded-match-answer';
@@ -77,6 +78,15 @@ export async function POST(req: Request) {
     const body = await req.json();
     const hasImage = Array.isArray(body?.files) && body.files.some((file: { type?: string } | null) => file?.type === 'image');
     const query = (typeof body?.query === 'string' ? body.query.trim() : '') || (hasImage ? 'اقرأ الصورة المرفقة ووضح ما يظهر فيها.' : '');
+    // Match artwork is built from independently verified provider data, not model-invented fixture rows.
+    if (!hasImage && posterIntent(query)) {
+      const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
+      const tag = '<aifball-match-poster query="' + encodeURIComponent(query) + '" />';
+      const events = [{ event: 'message', answer: tag, conversation_id }, { event: 'message_end', conversation_id }];
+      return new Response(events.map(event => 'data: ' + JSON.stringify(event) + '\\n\\n').join(''), {
+        headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform' },
+      });
+    }
     const detailedMatch=isDetailedMatchQuery(query);
     const analysis = body?.analysis_mode === true || isAnalysisRequest(query);
     const conversation_id = body?.conversation_id || '';
