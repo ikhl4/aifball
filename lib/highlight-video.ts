@@ -7,7 +7,7 @@ export type HighlightVideo = { id: string; url: string; title: string; channel: 
 type ChannelIndex = { channelId: string; videos: { id: string; title: string }[] };
 type Result = { status: 'found'; video: HighlightVideo } | { status: 'not_found' | 'unavailable' };
 const cache = new Map<string, { expires: number; value: Promise<ChannelIndex> }>();
-const norm = (s: string) => s.normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f\u064b-\u065f\u0670ـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+const norm = (s: string) => s.normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f\u064b-\u065f\u0670ـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/[^\p{L}\p{N}]+/gu, ' ').replace(/اتليتيكو/g, 'اتلتيكو').replace(/\bبايرن ميونخ\b/g, 'بايرن').replace(/\s+/g, ' ').trim();
 const text = (v: any): string => v?.simpleText || v?.content || (Array.isArray(v?.runs) ? v.runs.map((r: any) => r.text || '').join('') : '');
 
 /** Parse a public page's JSON without executing any page code. */
@@ -54,6 +54,9 @@ export function matchesTeams(title: string, match: HighlightMatch): boolean {
   return [match.home, match.away].every(team => {
     const aliases = [team, footballNameInArabic(team)].filter(Boolean).map(name => norm(name!));
     if (aliases.includes('paris saint germain') || aliases.includes('باريس سان جيرمان')) aliases.push('psg', 'باريس سان جيرمان');
+    // Official highlight titles often omit city suffixes or use different Arabic spellings.
+    if (aliases.some(a => /^(?:atletico madrid|atletico de madrid|اتلتيكو مدريد|اتلتيكو)$/.test(a))) aliases.push('atletico', 'atletico madrid', 'اتلتيكو');
+    if (aliases.some(a => /^(?:bayern|bayern munich|fc bayern munchen|بايرن)$/.test(a))) aliases.push('bayern', 'bayern munich', 'بايرن');
     return aliases.some(name => name.length >= 3 && ((` ${value} `).includes(` ${name} `) || (/[\u0600-\u06ff]/.test(name) && (` ${value} `).includes(` و${name} `))));
   }) && /ملخص|highlights?|özet|resumen|sintesi/i.test(title);
 }
