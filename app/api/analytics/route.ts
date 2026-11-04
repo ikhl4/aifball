@@ -22,7 +22,7 @@ export async function GET(req: Request) {
     if (!response.ok) throw new Error('ESPN HTTP ' + response.status);
     const data = await response.json();
     if (!Array.isArray(data?.events)) throw new Error('Invalid scoreboard');
-    return data.events.map((event: any) => normalizeAnalyticsEvent(event, id, label)).filter(Boolean);
+    return data.events.map((event: any) => normalizeAnalyticsEvent(event, id, label)).filter((event): event is NonNullable<typeof event> => event !== null);
   }));
   const failed = selected.filter((_, index) => responses[index].status === 'rejected').map(x => x.label);
   const matches = responses.flatMap(result => result.status === 'fulfilled' ? result.value : []);
