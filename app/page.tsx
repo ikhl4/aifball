@@ -157,53 +157,29 @@ function asRecord(value: unknown): DataRecord | null {
 }
 
 function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  const dimensions =
-    size === 'sm'
-      ? 'w-8 h-8 rounded-[9px]'
-      : size === 'lg'
-        ? 'w-14 h-14 rounded-[16px]'
-        : 'w-10 h-10 rounded-[11px]';
-
+  const dimensions = size === 'sm'
+    ? 'w-8 h-8 rounded-[9px]'
+    : size === 'lg'
+      ? 'w-14 h-14 rounded-[16px]'
+      : 'w-10 h-10 rounded-[11px]';
   return (
-    <div className={`${dimensions} bg-[#1D6B35] flex items-center justify-center shadow-md flex-shrink-0 select-none overflow-hidden`}>
-      <svg viewBox="0 0 200 200" className="w-full h-full" aria-hidden="true">
-        <rect width="200" height="200" rx="42" fill="#1D6B35" />
-        <g transform="translate(100, 74)">
-          <circle r="48" fill="#FFFFFF" />
-          <polygon
-            points="0,-19 18,-6 11,15 -11,15 -18,-6"
-            fill="#FFFFFF"
-            stroke="#1D6B35"
-            strokeWidth="5.5"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M0,-19 L0,-37 M18,-6 L35,-12 M11,15 L22,31 M-11,15 L-22,31 M-18,-6 L-35,-12"
-            stroke="#1D6B35"
-            strokeWidth="5.5"
-            strokeLinecap="round"
-          />
-          <path
-            d="M-19,-35 L0,-37 L19,-35 M19,-35 L35,-12 L37,8 M37,8 L22,31 L0,38 M0,38 L-22,31 L-37,8 M-37,8 L-35,-12 L-19,-35"
-            fill="none"
-            stroke="#1D6B35"
-            strokeWidth="5"
-            strokeLinejoin="round"
-          />
-          <circle r="47" fill="none" stroke="#1D6B35" strokeWidth="4" />
+    <div className={`${dimensions} bg-[#146B34] flex items-center justify-center shadow-md flex-shrink-0 select-none overflow-hidden`}>
+      <svg viewBox="0 0 200 200" className="w-full h-full" role="img" aria-label="AiFBall">
+        <defs>
+          <linearGradient id="stadium-brand-green" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#217C41"/>
+            <stop offset="1" stopColor="#075225"/>
+          </linearGradient>
+        </defs>
+        <rect width="200" height="200" rx="42" fill="url(#stadium-brand-green)"/>
+        <g fill="#fff" stroke="#fff" strokeLinejoin="round">
+          <path d="M26 91 Q100 40 174 91 L162 116 Q100 83 38 116Z" fill="none" strokeWidth="5"/>
+          <path d="M36 90 52 72 62 74 44 113ZM58 72 78 62 85 66 71 110 49 116ZM87 63 97 60 96 109 79 111ZM103 60 113 62 121 111 104 109ZM122 64 143 73 151 116 129 109ZM147 75 164 90 157 112Z" strokeWidth="1"/>
+          <path d="M32 122 Q100 146 168 122" fill="none" strokeWidth="4"/>
+          <path d="M45 128 Q100 150 155 128" fill="none" strokeWidth="2.5"/>
+          <path d="M63 80 Q100 61 137 80" fill="none" strokeWidth="4"/>
         </g>
-        <text
-          x="100"
-          y="168"
-          textAnchor="middle"
-          fill="#FFFFFF"
-          fontSize="43"
-          fontWeight="900"
-          fontStyle="italic"
-          fontFamily="system-ui, sans-serif"
-        >
-          AiFBall
-        </text>
+        <text x="100" y="174" textAnchor="middle" fill="#fff" fontSize="42" fontWeight="900" fontStyle="italic" fontFamily="Arial, sans-serif">AiFBall</text>
       </svg>
     </div>
   );
@@ -1414,7 +1390,7 @@ export default function FootPlayChat() {
             isDarkMode
               ? messages.length === 0
                 ? 'bg-[#07110b]/35'
-                : 'bg-[#101312]/78'
+                : 'bg-[#052318]/62'
               : messages.length === 0
                 ? 'bg-white/20'
                 : 'bg-white'
@@ -1887,7 +1863,7 @@ export default function FootPlayChat() {
                           }
                           className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-5 shadow-2xl text-sm sm:text-[15px] leading-relaxed break-words ${
                             isDarkMode
-                              ? 'bg-[#131814]/85 border-white/10 text-gray-200'
+                              ? 'bg-[#10231b]/72 border-emerald-100/10 text-gray-100'
                               : 'bg-white/90 border-gray-200 text-gray-800'
                           }`}
                         >
@@ -2110,7 +2086,7 @@ export default function FootPlayChat() {
       <footer
         className={`p-3 backdrop-blur-md border-t relative z-20 ${
           isDarkMode
-            ? 'bg-[#131314]/90 border-white/10'
+            ? 'bg-[#0a1913]/82 border-white/10'
             : 'bg-white/90 border-gray-200'
         }`}
       >
