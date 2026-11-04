@@ -31,7 +31,7 @@ export async function GET(req: Request) {
     };
     // Some ESPN competitions return empty date ranges even when games exist.
     // Retry their ordinary scoreboard and an exact-date request before declaring no coverage.
-    let events = await retrieve(`?dates=${dates.from}-${dates.to}&limit=500`);
+    let events = await retrieve(`?dates=${dates.from}-${dates.to}&limit=500`).catch(() => [] as any[]);
     if (events.length === 0) {
       const alternate = await Promise.allSettled([
         retrieve('?limit=500'),
