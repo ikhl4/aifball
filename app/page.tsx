@@ -1733,13 +1733,16 @@ export default function FootPlayChat() {
               </section>
             )}
 
-            {/* بطاقات الاستكشاف الزخرفية */}
+            {/* بطاقات أسئلة الاستكشاف التفاعلية */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full">
               {suggestionCards.map((card, index) => (
-                <div
+                <button
+                  type="button"
                   key={`${discoveryPage}-${index}`}
+                  disabled={loading}
+                  onClick={() => { void sendMessage(card.question); }}
                   aria-label={`${card.tag}: ${card.question}`}
-                  className={`pointer-events-none select-none flex flex-col justify-between text-right p-3 sm:p-4 rounded-2xl border backdrop-blur-[6px] min-h-[112px] sm:min-h-[126px] transition-all duration-500 ${
+                  className={`flex flex-col justify-between text-right p-3 sm:p-4 rounded-2xl border backdrop-blur-[6px] min-h-[112px] sm:min-h-[126px] transition-all duration-500 cursor-pointer hover:border-emerald-400/60 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-wait disabled:opacity-60 ${
                     isDarkMode
                       ? 'bg-[#07180f]/25 border-emerald-400/15 text-white shadow-md'
                       : 'bg-white/35 border-white/55 text-gray-950 shadow-sm'
@@ -1761,7 +1764,7 @@ export default function FootPlayChat() {
                   <p className="mt-3 text-[11px] sm:text-sm font-bold leading-[1.8] line-clamp-3">
                     {card.question}
                   </p>
-                </div>
+                </button>
               ))}
             </div>
 
