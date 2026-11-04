@@ -1391,43 +1391,46 @@ export default function FootPlayChat() {
           : 'bg-gray-50 text-gray-900'
       }`}
     >
-      {/* خلفية الملعب */}
+      {/* معاينة الخلفية السينمائية: ملعب واضح في الرئيسية وخلفية هادئة أثناء المحادثة */}
       <div
         aria-hidden="true"
         className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
       >
         <div
-          className={`absolute inset-0 bg-center bg-no-repeat transition-all duration-700 ease-in-out ${
-            messages.length === 0
+          className={`absolute inset-0 bg-no-repeat transition-[opacity,transform] duration-700 ease-out ${
+            messages.length === 0 && homeScreen === 'home'
               ? 'opacity-100 scale-100'
-              : 'opacity-45 scale-[1.03]'
+              : 'opacity-35 scale-[1.04]'
           }`}
           style={{
-            backgroundImage: isDarkMode ? "url('/IMG_0091.jpeg')" : messages.length === 0 ? "linear-gradient(90deg, transparent 49.8%, #e2e8f0 50%, transparent 50.2%), radial-gradient(circle at center, transparent 13%, #e2e8f0 13.2%, transparent 13.5%)" : 'none',
-            backgroundColor: isDarkMode ? undefined : '#fff',
+            backgroundImage: isDarkMode
+              ? "url('/IMG_0091.jpeg')"
+              : "linear-gradient(115deg, #f4faf6, #e5eee8)",
+            backgroundPosition: 'center 42%',
             backgroundSize: 'cover',
           }}
         />
-
-        <div
-          className={`absolute inset-0 transition-all duration-700 ${
-            isDarkMode
-              ? messages.length === 0
-                ? 'bg-[#07110b]/35'
-                : 'bg-[#101312]/78'
-              : messages.length === 0
-                ? 'bg-white/20'
-                : 'bg-white'
-          }`}
-        />
-
-        <div
-          className={`absolute inset-0 bg-gradient-to-b ${
-            isDarkMode
-              ? 'from-[#07110b]/15 via-transparent to-[#101312]/55'
-              : 'from-white/10 via-transparent to-white/50'
-          }`}
-        />
+        {isDarkMode && (
+          <>
+            <div
+              className={`absolute inset-0 transition-opacity duration-700 ${
+                messages.length === 0 && homeScreen === 'home'
+                  ? 'opacity-100'
+                  : 'opacity-100'
+              }`}
+              style={{
+                background: messages.length === 0 && homeScreen === 'home'
+                  ? 'linear-gradient(180deg, rgba(3,18,13,.75) 0%, rgba(3,32,22,.28) 32%, rgba(3,17,13,.30) 58%, rgba(3,15,11,.88) 100%)'
+                  : 'linear-gradient(180deg, rgba(3,12,10,.88), rgba(3,12,10,.93))',
+              }}
+            />
+            <div
+              className="absolute inset-x-0 bottom-0 h-[60%] opacity-80"
+              style={{background: 'radial-gradient(ellipse 60% 45% at 50% 100%, rgba(4,109,62,.26), transparent 75%)'}}
+            />
+          </>
+        )}
+        {!isDarkMode && <div className="absolute inset-0 bg-white/20" />}
       </div>
 
       {/* خط Cairo */}
