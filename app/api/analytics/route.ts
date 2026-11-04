@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { ANALYTICS_LEAGUES, aggregateAnalytics, normalizeAnalyticsEvent } from '../../../lib/analytics-core';
 
 export const dynamic = 'force-dynamic';
-const riyadhDay = (date: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date).replace(/-/g, '');
+const riyadhDay = (date: Date) => {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+  const part = (kind: string) => parts.find(item => item.type === kind)?.value || '';
+  return part('year') + part('month') + part('day');
+};
 const windowDates = (days: number) => {
   const today = new Date(); const start = new Date(today.getTime() - (days - 1) * 86400000);
   return { from: riyadhDay(start), to: riyadhDay(today) };
@@ -10,8 +14,8 @@ const windowDates = (days: number) => {
 export async function GET(req: Request) {
   const params = new URL(req.url).searchParams;
   const league = params.get('league') || 'ksa.1';
-  const days = Number(params.get('days') || '7');
-  if (!(league === 'all' || ANALYTICS_LEAGUES.some(x => x.id === league)) || ![7, 14, 30].includes(days)) {
+  const days = Number(params.get('days') || '30');
+  if (!(league === 'all' || ANALYTICS_LEAGUES.some(x => x.id === league)) || ![7, 14, 30, 90].includes(days)) {
     return NextResponse.json({ error: 'الدوري أو الفترة غير مدعومين.' }, { status: 400 });
   }
   const dates = windowDates(days);
