@@ -907,6 +907,9 @@ export default function FootPlayChat() {
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showLiveScores, setShowLiveScores] = useState(false);
+  const [homeScreen, setHomeScreen] = useState<'home' | 'analytics'>('home');
+  const homeSwipe = useRef<{x:number;y:number} | null>(null);
+
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [showFantasyChoices, setShowFantasyChoices] = useState(false);
   // Render the logo in the initial HTML, before client JavaScript is ready.
@@ -1687,8 +1690,25 @@ export default function FootPlayChat() {
       )}
 
       {/* المحتوى الرئيسي */}
-      <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto flex flex-col relative z-10 custom-scrollbar">
-        {messages.length === 0 ? (
+      <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto flex flex-col relative z-10 custom-scrollbar"
+        onTouchStart={e => { if (messages.length === 0) homeSwipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }}
+        onTouchEnd={e => {
+          const start = homeSwipe.current;
+          homeSwipe.current = null;
+          if (!start || messages.length !== 0) return;
+          const dx = e.changedTouches[0].clientX - start.x;
+          const dy = e.changedTouches[0].clientY - start.y;
+          if (Math.abs(dx) > 75 && Math.abs(dx) > Math.abs(dy) * 1.5) setHomeScreen(dx < 0 ? 'analytics' : 'home');
+        }}>
+        {messages.length === 0 && (
+          <nav aria-label="شاشات فوتبلاي" className="sticky top-0 z-20 mx-auto mb-5 flex w-full max-w-sm gap-1 rounded-2xl border border-emerald-500/30 bg-[#0a211b]/95 p-1 shadow-lg backdrop-blur-lg">
+            <button type="button" aria-current={homeScreen === 'home' ? 'page' : undefined} onClick={() => setHomeScreen('home')}
+              className={`flex-1 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold transition ${homeScreen === 'home' ? 'bg-emerald-600 text-white' : 'text-gray-300 hover:bg-white/10'}`}>الرئيسية</button>
+            <button type="button" aria-current={homeScreen === 'analytics' ? 'page' : undefined} onClick={() => setHomeScreen('analytics')}
+              className={`flex-1 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold transition ${homeScreen === 'analytics' ? 'bg-emerald-600 text-white' : 'text-gray-300 hover:bg-white/10'}`}>التحليلات <span aria-hidden="true">📊</span></button>
+          </nav>
+        )}
+        {messages.length === 0 ? (homeScreen === 'home' ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2" style={{ fontFamily: "Cairo, sans-serif" }}>
             <div className="text-right space-y-3 mb-5 px-1">
               <div className={`inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 border-emerald-500/40 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-900'}`}>
@@ -1740,11 +1760,6 @@ export default function FootPlayChat() {
                 <button type="button" onClick={() => setShowInstallHelp(false)} className="underline">إغلاق</button>
               </section>
             )}
-
-            {/* ملخص إحصائي حي مع رابط للمركز المستقل */}
-            <div className="mb-5 rounded-2xl border border-emerald-500/25 bg-[#091d18]/90 backdrop-blur-lg p-3 sm:p-5">
-              <AnalyticsDashboard compact />
-            </div>
 
             {/* بطاقات أسئلة الاستكشاف التفاعلية */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full">
@@ -1805,6 +1820,11 @@ export default function FootPlayChat() {
             </div>
           </div>
         ) : (
+          <div className="w-full flex-1 rounded-2xl border border-emerald-500/20 bg-[#071b16]/95 p-3 sm:p-5">
+            <p className="mb-4 text-center text-xs text-emerald-300">الشاشة الثانية • اسحب يمينًا للعودة للرئيسية</p>
+            <AnalyticsDashboard />
+          </div>
+        )) : (
           <div className="space-y-6 pb-4">
             {messages.map((msg, index) =>
               msg.content.trim() || (msg.imageUrls?.length ?? 0) > 0 ? (
