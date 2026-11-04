@@ -20,6 +20,7 @@ import LeagueDashboard from './components/LeagueDashboard';
 import StandingsExplorer from './components/StandingsExplorer';
 import { COMPETITIONS, resolveStandingsRequest } from '../lib/competitions';
 import MatchReport from './components/MatchReport';
+import { MatchVisualDemo } from './components/MatchVisualReport';
 import PlayerComparison from './components/PlayerComparison';
 import PlayerProfile from './components/PlayerProfile';
 import TacticalLesson from './components/TacticalLesson';
@@ -525,6 +526,11 @@ function renderFormattedText(
         continue;
       }
 
+      if (name === 'aifball-analysis-demo') {
+        elements.push(<MatchVisualDemo key={i} isDark={isDark} />);
+        continue;
+      }
+
       if (name === 'aifball-match-report' || name === 'aifball-shotmap') {
         const matchName = attrs.match;
         const matchUrl = safeUrl(attrs.match_url || '');
@@ -553,7 +559,7 @@ function renderFormattedText(
           <div key={i} className="my-5 w-full">
             <MatchReport
               matchName={matchName}
-              autoMatchUrl={matchUrl}
+              autoMatchUrl={matchUrl || undefined}
               playerName={attrs.player_name}
               eventId={attrs.event}
               leagueCode={attrs.league}
@@ -1170,6 +1176,17 @@ export default function FootPlayChat() {
         { role: 'assistant', content: GREETING },
       ];
 
+      setMessages(result);
+      saveSession(id, conversationId, result);
+      return;
+    }
+
+    if (files.length === 0 && /^(?:اعرض\s+)?(?:معاينة|نموذج|تجربة)\s+(?:تقرير فوتبلاي|التقرير التفاعلي)[.!؟?]*$/.test(query.trim())) {
+      const result: Message[] = [...base, {
+        role: 'assistant',
+        content: 'معاينة تقرير فوتبلاي. المباراة والقيم والإحداثيات افتراضية للتوضيح فقط.\n<aifball-analysis-demo />',
+        userQuery: query,
+      }];
       setMessages(result);
       saveSession(id, conversationId, result);
       return;
@@ -2276,3 +2293,4 @@ export default function FootPlayChat() {
     </div>
   );
 }
+

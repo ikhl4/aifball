@@ -1,5 +1,6 @@
 'use client';
 import React,{useEffect,useState} from 'react';
+import MatchVisualReport, { visualFrom365 } from './MatchVisualReport';
 import {footballNameInArabic} from '../../lib/football-names-ar';
 import {uniquePlayer} from '../../lib/match-narrative';
 import {normalize365Report,type Scores365Report as Data} from '../../lib/scores365-report';
@@ -16,6 +17,7 @@ export default function Scores365Report({matchUrl,playerName,isDark=true}:{match
  <header className="p-5 border-b border-emerald-700/30"><p className="text-xs text-emerald-500 font-bold">فوتبلاي · تحليل المباراة</p><h2 className="font-black text-xl mt-2">{data?`${ar(data.home.name)} — ${ar(data.away.name)}`:'إحصائيات المباراة'}</h2><p className="text-xs leading-7 mt-2 opacity-70">365Scores · شرح بالأرقام ثم عرض بصري من المصدر نفسه.</p></header>
  {busy&&<p role="status" className="p-5 text-emerald-500">جارٍ التحقق من المباراة وجلب الإحصائيات…</p>}{error&&<p role="alert" className="p-5 text-amber-500">{error}</p>}
  {data&&<div className="p-4 space-y-5"><div className="rounded-2xl bg-emerald-600/10 p-5 text-center"><p className="text-xs opacity-70">{data.competition||'البطولة غير متاحة'} · {data.date.slice(0,10)} · {data.state==='post'?'انتهت':data.state==='in'?'جارية':'الحالة غير مؤكدة'}</p><p className="text-3xl font-black text-emerald-500 mt-3" dir="ltr">{data.home.score??'—'} : {data.away.score??'—'}</p><p className="text-xs mt-2">النتيجة: {ar(data.home.name)} ثم {ar(data.away.name)}</p></div>
+ <MatchVisualReport key={data.eventId} data={{...visualFrom365(data),home:ar(data.home.name),away:ar(data.away.name)}} isDark={isDark}/>
  <div aria-label="شرح أرقام 365Scores" className="text-sm leading-8"><h3 className="font-bold text-emerald-500">قراءة الأرقام</h3>{data.statistics.slice(0,9).map(s=><p key={s.key}>{s.label}: {ar(data.home.name)} {s.home??'غير متاح'}، مقابل {ar(data.away.name)} {s.away??'غير متاح'}.</p>)}{!data.statistics.length&&<p>الإحصائيات غير متاحة في استجابة المصدر.</p>}</div>
  {data.warnings.length>0&&<p className="text-xs text-amber-500" role="status">بعض أقسام المصدر لم تصل؛ نعرض البيانات التي أمكن التحقق منها فقط.</p>}
  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">{data.statistics.map(s=><div key={s.key} className={box}><p className="text-xs opacity-70">{s.label}</p><p className="text-lg font-bold mt-2" dir="ltr">{s.home??'—'} — {s.away??'—'}</p></div>)}</div>
@@ -26,3 +28,4 @@ export default function Scores365Report({matchUrl,playerName,isDark=true}:{match
  <footer className="text-xs leading-7 opacity-70"><a href={data.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-500 underline">المصدر: صفحة المباراة في 365Scores</a><p>المؤشرات تخص المباراة المحددة فقط؛ «—» تعني غير متاح. إجماليات المسيرة غير مشمولة.</p></footer></div>}
  </section>;
 }
+
