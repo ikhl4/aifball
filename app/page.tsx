@@ -472,6 +472,41 @@ function renderFormattedText(
         userQuery
       );
 
+      if (name === 'aifball-club-location') {
+        const address = (attrs.address || '').trim().slice(0, 240);
+        const locationName = (attrs.name || '').trim().slice(0, 100);
+        const locationType = (attrs.kind || 'موقع النادي').trim().slice(0, 70);
+        const source = safeUrl(attrs.source || '');
+        // Render only source-backed, sufficiently precise locations; never infer coordinates.
+        const preciseAddress = address.split(/[،,]/).map(part => part.trim()).filter(Boolean).length >= 3;
+        if (!locationName || !preciseAddress || !source || new URL(source).protocol !== 'https:') continue;
+        const mapsUrl = 'https://www.google.com/maps?q=' + encodeURIComponent(address);
+        const mapEmbed = mapsUrl + '&output=embed';
+        elements.push(
+          <section key={i} className={`my-4 overflow-hidden rounded-2xl border ${isDark ? 'border-emerald-400/25 bg-emerald-950/25' : 'border-emerald-700/20 bg-white/80'}`} dir="rtl" aria-label={`موقع ${locationName}`}>
+            <div className="flex items-start justify-between gap-2 p-3">
+              <div>
+                <p className="text-sm font-bold">موقع {locationType}</p>
+                <p className="mt-1 text-xs opacity-80">{locationName} — {address}</p>
+              </div>
+              <span aria-hidden="true">📍</span>
+            </div>
+            <iframe
+              title={`خريطة موقع ${locationName}`}
+              src={mapEmbed}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="h-48 w-full border-0 sm:h-56"
+            />
+            <div className="flex flex-wrap gap-4 px-3 py-2 text-xs">
+              <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-500 underline">فتح في خرائط Google</a>
+              <a href={source} target="_blank" rel="noopener noreferrer" className="underline opacity-80">مصدر الموقع</a>
+            </div>
+          </section>
+        );
+        continue;
+      }
+
       if (name === 'aifball-livescores') {
         const date = ['today', 'yesterday', 'tomorrow'].includes(attrs.date)
           ? attrs.date
