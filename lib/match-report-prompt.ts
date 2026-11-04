@@ -2,7 +2,7 @@ const normalize=(text:string)=>text.normalize('NFD').replace(/[\u064b-\u065f]/g,
 export function isDetailedMatchQuery(query:string):boolean {
  const q=normalize(query);
  if(/تمرين|تدريب|مسيرة|ترتيب|هداف|career|standings/i.test(q))return false;
- return ((/احصا|ارقام|تقرير|stats|statistics|report/i.test(q))&&/مباراة|مباراه|مواجهة|ضد| و| vs | v | versus /i.test(q))||(/مباراة|مباراه|match/i.test(q)&&/تحليل|حلل|تفاصيل|analysis/i.test(q));
+ return ((/احصا|ارقام|تقرير|stats|statistics|report/i.test(q))&&/مباراة|مباراه|مواجهة|ضد| و| vs | v | versus /i.test(q))||(/مباراة|مباراه|match/i.test(q)&&/تحليل|حلل|تفاصيل|analysis/i.test(q))||(/اداء|مستوى|كيف لعب|performance|performed/i.test(q)&&/مبار|مواج|لقاء|ضد|امام|vs|versus/i.test(q));
 }
 export const MATCH_CHAT_RULES=`
 قواعد فوتبلاي لإحصائيات المباريات داخل الشات:
