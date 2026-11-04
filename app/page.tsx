@@ -959,12 +959,23 @@ export default function FootPlayChat() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showLiveScores, setShowLiveScores] = useState(false);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
-  const [intro, setIntro] = useState(false);
+  // Render the logo in the initial HTML, before client JavaScript is ready.
+  const [intro, setIntro] = useState(true);
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || sessionStorage.getItem('aifball-intro')) return;
-    sessionStorage.setItem('aifball-intro', '1');
-    setIntro(true);
-    const timer = window.setTimeout(() => setIntro(false), 3100);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem('aifball-intro') === '1';
+      sessionStorage.setItem('aifball-intro', '1');
+    } catch {
+      // A blocked storage API must never prevent entry.
+    }
+    if (reducedMotion || seen) {
+      setIntro(false);
+      return;
+    }
+    // Count from navigation, so hydration does not add another full intro.
+    const timer = window.setTimeout(() => setIntro(false), Math.max(0, 1200 - performance.now()));
     return () => window.clearTimeout(timer);
   }, []);
   const [showStandings, setShowStandings] = useState(false);
@@ -1700,16 +1711,16 @@ export default function FootPlayChat() {
       </header>
 
       {intro && (
-        <button type="button" aria-label="تخطي المقدمة" onClick={() => setIntro(false)} className="fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_center,#114333,#050e0b_70%)] text-white backdrop-blur-xl">
-          <style>{`@keyframes glass-orbit{from{transform:translateY(4vh);opacity:0}18%{opacity:1}70%{opacity:1}to{transform:translateY(-90vh);opacity:0}}@keyframes glass-title{0%,52%{opacity:0}68%,93%{opacity:1}100%{opacity:0}}`}</style>
-          <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 -top-[30vh] grid h-[245vh] grid-cols-5 place-items-center gap-4 px-4 mix-blend-screen [animation:glass-orbit_2.8s_ease-in-out_both] sm:grid-cols-9">
-            {Array.from({length: 154}, (_, index) => {
+        <button type="button" aria-label="تخطي المقدمة" onClick={() => setIntro(false)} className="aifball-intro fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_center,#114333,#050e0b_70%)] text-white ">
+          <style>{`@keyframes glass-orbit{from{transform:translateY(4vh);opacity:0}18%{opacity:1}70%{opacity:1}to{transform:translateY(-90vh);opacity:0}}`}</style>
+          <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 -top-[30vh] grid h-[150vh] grid-cols-5 place-items-center gap-4 px-4 mix-blend-screen [animation:glass-orbit_1.2s_ease-in-out_both] sm:grid-cols-9">
+            {Array.from({length: 28}, (_, index) => {
               const logos = [536,47,87,55,54,53,42];
               const slot = (index * 5) % 14;
               const artwork = slot - logos.length;
               const src = artwork < 0 ? `https://images.fotmob.com/image_resources/logo/leaguelogo/${logos[slot]}.png` : introArtwork[artwork];
               const filter = artwork < 2 ? 'brightness(0) invert(1)' : [2,5,6].includes(artwork) ? 'grayscale(1) invert(1) contrast(3)' : 'grayscale(1) contrast(3) brightness(1.4)';
-              return <img key={index} src={src} alt="" style={{filter, opacity: .14 + (index % 4) * .04}} className="h-9 w-full max-w-20 object-contain sm:h-14" onError={event => { event.currentTarget.hidden = true; }} />;
+              return <img key={index} src={src} alt="" width={80} height={56} decoding="async" style={{filter, opacity: .14 + (index % 4) * .04}} className="h-9 w-full max-w-20 object-contain sm:h-14" onError={event => { event.currentTarget.hidden = true; }} />;
             })}
           </span>
           <span className="relative flex flex-col items-center gap-6">
