@@ -48,3 +48,22 @@ test('public metadata parser never executes scripts and handles braces in string
   assert.equal(h.pageJson('var demo = {"title":"a } \\\" b"};</script>', 'demo').title, 'a } " b');
   assert.throws(() => h.pageJson('var demo = alert("bad");', 'demo'));
 });
+test('official RSS metadata preserves a region-restricted upload', () => {
+  const xml = `<feed><yt:channelId>${channelId}</yt:channelId><entry><yt:videoId>${id}</yt:videoId><title>${title}</title></entry></feed>`;
+  assert.equal(h.feedVideos(xml, channelId)[0].id, id);
+  assert.throws(() => h.feedVideos(xml, 'another-publisher'));
+  const regionRestricted = watch().replace('"status":"OK"', '"status":"UNPLAYABLE"');
+  assert.equal(h.videoMetadata(regionRestricted, id, match, channelId).embeddable, false);
+});
+test('named match uses source fixtures and goals even when model search misses it', async () => {
+  const single = load('lib/single-match-highlights.ts');
+  const date = new Date('2026-11-04T14:00:00Z');
+  assert.equal(single.teamMentioned('ملخص فياريال وباريس', 'Paris Saint-Germain'), true);
+  assert.equal(single.summaryDateRange('ملخص أمس', date).join(','), '2026-11-03,2026-11-03');
+  const event = { id: '123456', date: '2026-11-03T20:00:00Z', status: { type: { completed: true } }, competitions: [{ competitors: [{ homeAway: 'home', team: { displayName: 'Villarreal' }, score: '0' }, { homeAway: 'away', team: { displayName: 'Paris Saint-Germain' }, score: '6' }] }] };
+  const fetcher = async url => new Response(JSON.stringify(url.includes('/summary?') ? { header: { competitions: [{ id: '123456', details: [{ scoringPlay: true, ownGoal: false, clock: { displayValue: "17'" }, participants: [{ athlete: { displayName: 'Fabián Ruiz' } }] }] }] } } : { events: url.includes('/uefa.champions/') ? [event] : [] }));
+  const lookup = async () => ({ status: 'found', video: { url: 'https://www.youtube.com/watch?v=' + id, channel: 'beIN SPORTS', embeddable: false, publishedAt: '2026-11-03T22:00:00Z' } });
+  const answer = await single.buildSingleMatchHighlights('ملخص فياريال وباريس أمس', undefined, fetcher, lookup, date);
+  assert.match(answer, /home_score="0" away_score="6"/); assert.match(answer, /goals="فابيان رويز\|17"/); assert.match(answer, /video_embed="false"/); assert.doesNotMatch(answer, /هدف عكسي/);
+  assert.equal(await single.buildSingleMatchHighlights('ملخص فياريال وبرشلونة أمس', undefined, fetcher, lookup, date), null);
+});

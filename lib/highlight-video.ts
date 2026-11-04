@@ -41,6 +41,14 @@ export function channelIndex(html: string, handle: string): ChannelIndex {
   visit(data.contents);
   return { channelId: meta.externalId, videos: [...videos].map(([id, title]) => ({ id, title })) };
 }
+export function feedVideos(xml: string, channelId: string): { id: string; title: string }[] {
+  if (!xml.includes(`<yt:channelId>${channelId}</yt:channelId>`)) throw Error('FEED_IDENTITY');
+  const decode = (s: string) => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  return [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].flatMap(m => {
+    const id = m[1].match(/<yt:videoId>([\w-]{11})<\/yt:videoId>/)?.[1], title = m[1].match(/<title>([\s\S]*?)<\/title>/)?.[1];
+    return id && title ? [{ id, title: decode(title) }] : [];
+  });
+}
 export function matchesTeams(title: string, match: HighlightMatch): boolean {
   const value = norm(title);
   return [match.home, match.away].every(team => {
@@ -82,7 +90,16 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
       const results = await Promise.allSettled(channels.slice(offset, offset + 3).map(async handle => {
         const existing = cache.get(handle);
         if (existing && existing.expires > Date.now()) return existing.value;
-        const value = html(`https://www.youtube.com/@${handle}/videos`, c.signal, fetcher).then(page => channelIndex(page, handle));
+        const value = html(`https://www.youtube.com/@${handle}/videos`, c.signal, fetcher).then(async page => {
+          const channel = channelIndex(page, handle);
+          // The public syndication feed lists uploads independently of playback region.
+          // We only read metadata; playback stays on YouTube with the publisher's restrictions.
+          try {
+            const feed = feedVideos(await html(`https://www.youtube.com/feeds/videos.xml?channel_id=${channel.channelId}`, c.signal, fetcher), channel.channelId);
+            channel.videos = [...new Map([...feed, ...channel.videos].map(v => [v.id, v])).values()];
+          } catch { /* The public videos page is still a valid discovery source. */ }
+          return channel;
+        });
         cache.set(handle, { expires: Date.now() + 300000, value });
         value.catch(() => { if (cache.get(handle)?.value === value) cache.delete(handle); });
         return value;

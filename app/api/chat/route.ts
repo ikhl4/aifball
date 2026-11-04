@@ -1,4 +1,5 @@
 import { verifiedSummaryStream } from '../../../lib/verified-summary';
+import { buildSingleMatchHighlights } from '../../../lib/single-match-highlights';
 import { groundedMatchStream } from '../../../lib/grounded-match-answer';
 import { NextResponse } from 'next/server';
 import { isDetailedMatchQuery, withMatchReportPresentation, withMatchConversationContext } from '../../../lib/match-report-prompt';
@@ -79,6 +80,12 @@ export async function POST(req: Request) {
     const analysis = body?.analysis_mode === true || isAnalysisRequest(query);
     const conversation_id = body?.conversation_id || '';
     const matchSummary = isMatchSummaryRequest(query) && !/(?:صم[ّ]?م|تصميم|بوستر|ملصق|إنفوجرافيك)/i.test(query);
+
+    const singleReport = matchSummary && !hasImage ? await buildSingleMatchHighlights(query, req.signal).catch(() => null) : null;
+    if (singleReport) {
+      const events = [{ event: 'message', answer: singleReport, conversation_id }, { event: 'message_end', conversation_id }];
+      return new Response(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-AiFBall-Presentation': 'match-summary' } });
+    }
 
     // Daily highlights use confirmed scoreboard data first, then match-scoped videos.
     // A request for one named match continues through the existing narrative-first Dify flow.
