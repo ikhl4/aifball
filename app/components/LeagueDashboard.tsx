@@ -924,7 +924,7 @@ export default function LeagueDashboard({
     <div
       dir={isArabic ? 'rtl' : 'ltr'}
       lang={lang}
-      className={`w-full min-w-0 overflow-hidden rounded-3xl border shadow-xl font-cairo ${
+      className={`w-full min-w-0 overflow-hidden rounded-2xl sm:rounded-3xl border shadow-xl font-cairo ${
         isDark
           ? 'bg-[#1a1c1e] border-gray-800 text-white'
           : 'bg-white border-gray-200 text-gray-900'
@@ -1140,7 +1140,7 @@ export default function LeagueDashboard({
             aria-label={`${t.standings}: ${displayLeagueName}`}
             tabIndex={0}
           >
-            <table className="w-full min-w-[690px] border-separate border-spacing-0 text-center text-xs sm:text-sm whitespace-nowrap">
+            <table className="w-full min-w-[690px] border-separate border-spacing-0 text-center text-xs sm:text-sm whitespace-nowrap tabular-nums">
               <thead
                 className={
                   isDark
@@ -1250,7 +1250,7 @@ export default function LeagueDashboard({
                     >
                       <td
                         title={zoneTitle}
-                        className={`sticky ${rankSticky} z-10 py-3 px-2 w-9 font-bold text-gray-500 border-b ${stickyBg} ${cellBorder} ${zoneStripe}`}
+                        className={`sticky ${rankSticky} z-10 py-3.5 px-2 w-9 font-extrabold text-gray-400 border-b ${stickyBg} ${cellBorder} ${zoneStripe}`}
                       >
                         {displayNumber(
                           team.position
@@ -1258,7 +1258,7 @@ export default function LeagueDashboard({
                       </td>
 
                       <td
-                        className={`sticky ${teamSticky} z-10 py-3 px-3 ${teamAlign} font-bold border-b ${stickyBg} ${cellBorder}`}
+                        className={`sticky ${teamSticky} z-10 py-3.5 px-3 ${teamAlign} font-bold border-b ${stickyBg} ${cellBorder}`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           {team.logo ? (
@@ -1267,7 +1267,7 @@ export default function LeagueDashboard({
                               src={team.logo}
                               alt=""
                               loading="lazy"
-                              className="w-7 h-7 object-contain flex-shrink-0"
+                              className="w-8 h-8 object-contain flex-shrink-0"
                               onError={(event) => {
                                 event.currentTarget.style.display =
                                   'none';
@@ -1347,9 +1347,9 @@ export default function LeagueDashboard({
                         className={`sticky ${pointsSticky} z-10 py-3 px-2 border-b ${stickyBg} ${cellBorder}`}
                       >
                         <span
-                          className={`inline-flex items-center justify-center min-w-9 px-2 py-1 rounded-lg font-extrabold ${
+                          className={`inline-flex items-center justify-center min-w-10 px-2 py-1.5 rounded-lg font-extrabold ${
                             isDark
-                              ? 'bg-emerald-900/40 text-emerald-400'
+                              ? 'bg-emerald-900/30 text-emerald-300 ring-1 ring-emerald-500/15'
                               : 'bg-emerald-100 text-emerald-700'
                           }`}
                         >
