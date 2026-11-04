@@ -8,23 +8,33 @@ export default function MatchHighlightCard({ attrs, isDark = true }: { attrs: Re
   const id = youtubeVideoId(attrs.video_url || ''), verified = attrs.video_status === 'found';
   const goals = (attrs.goals || '').split(';').map(s => s.split('|')).filter(row => row[0]?.trim() && row[1]?.trim());
   const sources = (() => { try { const u = new URL(attrs.source_url); return u.protocol === 'https:' ? u.href : ''; } catch { return ''; } })();
+  const youtubeUrl = id ? `https://www.youtube.com/watch?v=${id}` : '';
+  const cannotEmbed = attrs.video_embed !== 'true';
   const video = <div className="mt-4">
     {id && (verified || !attrs.video_status) ? <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-white/10 bg-black' : 'border-gray-200 bg-white'}`}>
-      {playing && attrs.video_embed === 'true' ? <iframe className="aspect-video w-full" src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`} title={`ملخص ${attrs.match || ''}`} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen /> :
-        <a className={`relative block ${thumbnailFailed ? 'min-h-32 bg-gradient-to-l from-emerald-950 to-slate-900' : 'aspect-video bg-black'}`} href={`https://www.youtube.com/watch?v=${id}`} target="_blank" rel="noopener noreferrer" aria-label="مشاهدة الملخص على يوتيوب">
+      {cannotEmbed ? (
+        <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="مشاهدة الملخص الحقيقي على يوتيوب" className="flex min-h-40 flex-col items-center justify-center gap-3 bg-gradient-to-br from-emerald-950 to-slate-950 px-4 py-7 text-center text-white">
+          <span aria-hidden="true" className="rounded-full bg-red-600 px-5 py-3 text-xl">▶</span>
+          <span className="text-base font-bold">مشاهدة الملخص على يوتيوب</span>
+          <span className="text-xs text-gray-300">المقطع الرسمي لا يسمح بالتشغيل داخل فوتبلاي؛ اضغط لفتح الفيديو مباشرة.</span>
+        </a>
+      ) : playing ? (
+        <div className="relative">
+          <iframe className="aspect-video w-full" src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`} title={`ملخص ${attrs.match || ''}`} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
+          <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" className="block p-3 text-center text-xs font-bold text-emerald-400">إذا لم يعمل المشغل، شاهد الملخص على يوتيوب ↗</a>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setPlaying(true)} className={`relative block w-full text-white ${thumbnailFailed ? 'min-h-40 bg-gradient-to-l from-emerald-950 to-slate-900' : 'aspect-video bg-black'}`} aria-label="تشغيل ملخص المباراة">
           {!thumbnailFailed && <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt={`ملخص ${attrs.match || ''}`} className="h-full w-full object-cover" loading="lazy" onError={() => setThumbnailFailed(true)} />}
-          <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/15"><span className="rounded-full bg-red-600 px-5 py-3 text-xl text-white">▶</span>{thumbnailFailed && <span className="text-sm font-bold text-white">مشاهدة ملخص المباراة على يوتيوب</span>}</span>
-        </a>}
+          <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/20"><span className="rounded-full bg-red-600 px-5 py-3 text-xl">▶</span>{thumbnailFailed && <span className="text-sm font-bold">تشغيل الملخص</span>}</span>
+        </button>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-2 p-3 text-xs">
         <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>{attrs.video_channel || 'القناة الرسمية'}</span>
-        <div className="flex gap-3">
-          {!playing && attrs.video_embed === 'true' && <button type="button" onClick={() => setPlaying(true)} className="font-bold text-emerald-500">تشغيل هنا</button>}
-          <a href={`https://www.youtube.com/watch?v=${id}`} target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-500">شاهد على يوتيوب ↗</a>
-        </div>
+        <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-500">فتح الملخص الحقيقي في يوتيوب ↗</a>
       </div>
-      {attrs.video_embed !== 'true' && <p className={`px-3 pb-3 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>المقطع متوفر؛ المشاهدة على يوتيوب حسب إعدادات القناة.</p>}
     </div> : <p className={`rounded-lg px-3 py-2 text-xs ${isDark ? 'bg-white/5 text-gray-400' : 'bg-gray-50 text-gray-500'}`}>
-      {attrs.video_status === 'not_found' ? 'لم أعثر على مقطع مطابق ضمن القنوات المحددة وقت البحث.' : 'تعذّر التحقق من المقطع حاليًا؛ هذا لا يعني أنه غير منشور.'}
+      {attrs.video_status === 'not_found' ? 'لم أعثر على مقطع مطابق ضمن القنوات المحددة وقت البحث.' : 'تعذّر التحقق من رابط المقطع الرسمي حاليًا؛ لن أضع رابطًا غير مؤكد.'}
     </p>}
   </div>;
   const written = <div className="mt-4 space-y-5 text-[15px] leading-8">
