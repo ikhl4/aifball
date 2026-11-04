@@ -110,10 +110,10 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
   }, [dateMode]);
 
   return (
-    <div className={`w-full max-w-4xl mx-auto p-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+    <div dir="rtl" className={`w-full max-w-4xl mx-auto px-2 py-4 sm:p-4 font-cairo ${isDark ? 'text-white' : 'text-gray-900'}`}>
 
       {/* أزرار التحكم (الأمس، اليوم، غداً) */}
-      <div className={`flex justify-center gap-2 mb-6 p-1 rounded-xl ${isDark ? 'bg-[#1A1C1E]' : 'bg-gray-100'}`}>
+      <div className={`flex justify-center gap-1 sm:gap-2 mb-5 p-1 rounded-2xl border border-white/10 ${isDark ? 'bg-[#1A1C1E]' : 'bg-gray-100'}`}>
         <button onClick={() => setDateMode('yesterday')} className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${dateMode === 'yesterday' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}>نتائج الأمس</button>
         <button onClick={() => setDateMode('today')} className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${dateMode === 'today' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}>مباريات اليوم</button>
         <button onClick={() => setDateMode('tomorrow')} className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${dateMode === 'tomorrow' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}>مباريات غداً</button>
@@ -164,10 +164,10 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
             if (leagueMatches.length === 0) return null;
 
             return (
-              <div key={league.id} className={`rounded-2xl border overflow-hidden shadow-lg ${isDark ? 'border-gray-800 bg-[#131a2a]' : 'border-gray-200 bg-white'}`}>
-                <div className={`px-4 py-3 border-b flex items-center gap-2 ${isDark ? 'bg-[#0f1420] border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
+              <div key={league.id} className={`rounded-2xl border overflow-hidden shadow-lg ${isDark ? 'border-white/10 bg-[#131a2a]' : 'border-gray-200 bg-white'}`}>
+                <div className={`px-4 py-3.5 border-b flex items-center gap-2 ${isDark ? 'bg-[#0f1420] border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
                   <span className="text-xl">{league.flag==='🏆'?<AppIcon name="trophy" size={22}/>:['🌍','🌏','🌎','🌐'].includes(league.flag)?<AppIcon name="globe" size={22}/>:league.flag}</span>
-                  <h2 className="font-bold text-md">{league.name}</h2>
+                  <h2 className="font-extrabold text-sm sm:text-base flex-1">{league.name}</h2><span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-500">{leagueMatches.length} مباراة</span>
                 </div>
 
                 <div className={`divide-y ${isDark ? 'divide-gray-800/50' : 'divide-gray-100'}`}>
@@ -202,9 +202,9 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
                             }
                           }}
                           onClick={() => setExpandedMatchId(isExpanded ? null : matchKey)}
-                          className={`p-3 flex items-center justify-between cursor-pointer transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${isExpanded ? (isDark ? 'bg-white/5 border-b border-gray-700' : 'bg-gray-50 border-b border-gray-200') : ''}`}
+                          className={`p-3 sm:p-4 flex items-center justify-between gap-1 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-emerald-500 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${isExpanded ? (isDark ? 'bg-white/5 border-b border-gray-700' : 'bg-gray-50 border-b border-gray-200') : ''}`}
                         >
-                          <div className="w-16 sm:w-20 text-center flex-shrink-0">
+                          <div className="w-14 sm:w-20 text-center flex-shrink-0">
                             {specialStatus ? (
                               <span className="text-amber-600 text-xs font-bold">{specialStatus}</span>
                             ) : isLive ? (
@@ -216,16 +216,16 @@ export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean })
                             )}
                           </div>
 
-                          <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
-                            <span className={`font-bold text-sm truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{footballNameInArabic(home.team.displayName || home.team.shortDisplayName) || home.team.shortDisplayName}</span>
-                            <img src={home.team.logo} alt={home.team.name} className="w-6 h-6 object-contain flex-shrink-0" />
+                          <div className="flex-1 flex flex-col sm:flex-row-reverse items-center justify-center sm:justify-start gap-1.5 sm:gap-2 min-w-0 text-center">
+                            <span className={`font-bold text-[11px] sm:text-sm text-center sm:text-start line-clamp-2 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{footballNameInArabic(home.team.displayName || home.team.shortDisplayName) || home.team.shortDisplayName}</span>
+                            <img src={home.team.logo} alt={home.team.name} className="w-8 h-8 sm:w-9 sm:h-9 object-contain flex-shrink-0" />
                           </div>
 
-                          <div className={`mx-2 sm:mx-3 w-12 sm:w-16 text-center font-black px-1 py-0.5 rounded flex-shrink-0 flex items-center justify-center ${isDark ? 'bg-gray-800' : 'bg-gray-200'} ${isScheduled ? 'text-gray-400 text-[10px] sm:text-xs font-bold' : (isDark ? 'text-lg text-white' : 'text-lg text-gray-900')}`}>
-                            {isScheduled ? 'VS' : `${home.score ?? '—'} - ${away.score ?? '—'}`}
+                          <div className={`mx-1 sm:mx-3 min-w-12 sm:min-w-16 text-center font-black tabular-nums px-2 py-2 rounded-xl flex-shrink-0 flex items-center justify-center ${isDark ? 'bg-gray-800' : 'bg-gray-200'} ${isScheduled ? 'text-gray-400 text-[10px] sm:text-xs font-bold' : (isDark ? 'text-lg text-white' : 'text-lg text-gray-900')}`}>
+                            {isScheduled ? '—' : `${home.score ?? '—'} - ${away.score ?? '—'}`}
                           </div>
 
-                          <div className="flex-1 flex items-center justify-start gap-2 min-w-0">
+                          <div className="flex-1 flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1.5 sm:gap-2 min-w-0 text-center">
                             <img src={away.team.logo} alt={away.team.name} className="w-6 h-6 object-contain flex-shrink-0" />
                             <span className={`font-bold text-sm truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{footballNameInArabic(away.team.displayName || away.team.shortDisplayName) || away.team.shortDisplayName}</span>
                           </div>
