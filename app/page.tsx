@@ -1399,8 +1399,8 @@ export default function FootPlayChat() {
         <div
           className={`absolute inset-0 bg-no-repeat transition-[opacity,transform] duration-700 ease-out ${
             messages.length === 0 && homeScreen === 'home'
-              ? 'opacity-100 scale-100'
-              : 'opacity-35 scale-[1.04]'
+              ? 'opacity-80 scale-100'
+              : 'opacity-65 scale-[1.02]'
           }`}
           style={{
             backgroundImage: isDarkMode
@@ -1420,8 +1420,8 @@ export default function FootPlayChat() {
               }`}
               style={{
                 background: messages.length === 0 && homeScreen === 'home'
-                  ? 'linear-gradient(180deg, rgba(3,18,13,.75) 0%, rgba(3,32,22,.28) 32%, rgba(3,17,13,.30) 58%, rgba(3,15,11,.88) 100%)'
-                  : 'linear-gradient(180deg, rgba(3,12,10,.88), rgba(3,12,10,.93))',
+                  ? 'linear-gradient(180deg, rgba(3,18,13,.52) 0%, rgba(3,32,22,.12) 32%, rgba(3,17,13,.10) 58%, rgba(3,15,11,.68) 100%)'
+                  : 'linear-gradient(180deg, rgba(3,12,10,.57), rgba(3,12,10,.63))',
               }}
             />
             <div
@@ -1429,6 +1429,19 @@ export default function FootPlayChat() {
               style={{background: 'radial-gradient(ellipse 60% 45% at 50% 100%, rgba(4,109,62,.26), transparent 75%)'}}
             />
           </>
+        )}
+        {isDarkMode && (
+          <div
+            className="absolute inset-x-0 top-[33%] bottom-[12%] flex items-center justify-center"
+            style={{ opacity: messages.length === 0 ? 0.9 : 0.75 }}
+          >
+            <img
+              src="/stadium-home.webp"
+              alt=""
+              draggable={false}
+              className="w-[94vw] max-w-[860px] object-contain drop-shadow-[0_0_38px_rgba(255,188,56,0.42)]"
+            />
+          </div>
         )}
         {!isDarkMode && <div className="absolute inset-0 bg-white/20" />}
       </div>
