@@ -56,3 +56,19 @@
     animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 }
+
+/* Paint the app background immediately, before hydration. */
+html, body {
+  background-color: #050e0b;
+}
+
+/* Release the overlay even if client JavaScript is delayed or unavailable. */
+.aifball-intro {
+  animation: intro-release 1.2s step-end forwards;
+}
+@keyframes intro-release {
+  to { visibility: hidden; pointer-events: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aifball-intro { display: none; }
+}
