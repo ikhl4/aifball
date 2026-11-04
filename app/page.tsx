@@ -561,6 +561,7 @@ function renderFormattedText(
               matchName={matchName}
               autoMatchUrl={matchUrl || undefined}
               playerName={attrs.player_name}
+              clipUrl={attrs.clip_url}
               eventId={attrs.event}
               leagueCode={attrs.league}
               isDark={isDark}
