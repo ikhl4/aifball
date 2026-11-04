@@ -4,15 +4,16 @@ import { youtubeVideoId } from '../../lib/summary-presentation';
 
 export default function MatchHighlightCard({ attrs, isDark = true }: { attrs: Record<string, string>; isDark?: boolean }) {
   const [playing, setPlaying] = useState(false);
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const id = youtubeVideoId(attrs.video_url || ''), verified = attrs.video_status === 'found';
   const goals = (attrs.goals || '').split(';').map(s => s.split('|')).filter(row => row[0]?.trim() && row[1]?.trim());
   const sources = (() => { try { const u = new URL(attrs.source_url); return u.protocol === 'https:' ? u.href : ''; } catch { return ''; } })();
   const video = <div className="mt-4">
     {id && (verified || !attrs.video_status) ? <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-white/10 bg-black' : 'border-gray-200 bg-white'}`}>
       {playing && attrs.video_embed === 'true' ? <iframe className="aspect-video w-full" src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`} title={`ملخص ${attrs.match || ''}`} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen /> :
-        <a className="relative block aspect-video bg-black" href={`https://www.youtube.com/watch?v=${id}`} target="_blank" rel="noopener noreferrer" aria-label="مشاهدة الملخص على يوتيوب">
-          <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt={`ملخص ${attrs.match || ''}`} className="h-full w-full object-cover" loading="lazy" />
-          <span className="absolute inset-0 grid place-items-center bg-black/15"><span className="rounded-full bg-red-600 px-5 py-3 text-xl text-white">▶</span></span>
+        <a className={`relative block ${thumbnailFailed ? 'min-h-32 bg-gradient-to-l from-emerald-950 to-slate-900' : 'aspect-video bg-black'}`} href={`https://www.youtube.com/watch?v=${id}`} target="_blank" rel="noopener noreferrer" aria-label="مشاهدة الملخص على يوتيوب">
+          {!thumbnailFailed && <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt={`ملخص ${attrs.match || ''}`} className="h-full w-full object-cover" loading="lazy" onError={() => setThumbnailFailed(true)} />}
+          <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/15"><span className="rounded-full bg-red-600 px-5 py-3 text-xl text-white">▶</span>{thumbnailFailed && <span className="text-sm font-bold text-white">مشاهدة ملخص المباراة على يوتيوب</span>}</span>
         </a>}
       <div className="flex flex-wrap items-center justify-between gap-2 p-3 text-xs">
         <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>{attrs.video_channel || 'القناة الرسمية'}</span>
