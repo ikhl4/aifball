@@ -1,5 +1,10 @@
 // Presentation-only aliases. Unknown names retain their source spelling.
 const ARABIC_NAMES: Record<string, string> = {
+  "João Neves": "جواو نيفيز",
+  "Désiré Doué": "ديزيري دوي",
+  "Senny Mayulu": "سيني مايولو",
+  "Fabián Ruiz": "فابيان رويز",
+  "David Boly": "ديفيد بولي",
   "PSG": "باريس سان جيرمان",
   "Paris Saint-Germain": "باريس سان جيرمان",
   "Aston Villa": "أستون فيلا",

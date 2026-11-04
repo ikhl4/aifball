@@ -1,3 +1,6 @@
+import { verifiedSummaryStream } from '../../../lib/verified-summary';
+import { buildSingleMatchHighlights } from '../../../lib/single-match-highlights';
+import { historyMode, FOOTBALL_HISTORY_RULES, DOCUMENTARY_REQUEST_RULES, presentHistoryAnswer } from '../../../lib/football-history';
 import { groundedMatchStream } from '../../../lib/grounded-match-answer';
 import { NextResponse } from 'next/server';
 import { isDetailedMatchQuery, withMatchReportPresentation, withMatchConversationContext } from '../../../lib/match-report-prompt';
@@ -77,7 +80,15 @@ export async function POST(req: Request) {
     const detailedMatch=isDetailedMatchQuery(query);
     const analysis = body?.analysis_mode === true || isAnalysisRequest(query);
     const conversation_id = body?.conversation_id || '';
-    const matchSummary = isMatchSummaryRequest(query) && !/(?:صم[ّ]?م|تصميم|بوستر|ملصق|إنفوجرافيك)/i.test(query);
+    const documentaryContext = typeof body?.documentary_context === 'string' ? body.documentary_context.slice(0, 6000) : '';
+    const historical = historyMode(query, documentaryContext);
+    const matchSummary = historical === 'none' && isMatchSummaryRequest(query) && !/(?:صم[ّ]?م|تصميم|بوستر|ملصق|إنفوجرافيك)/i.test(query);
+
+    const singleReport = matchSummary && !hasImage ? await buildSingleMatchHighlights(query, req.signal).catch(() => null) : null;
+    if (singleReport) {
+      const events = [{ event: 'message', answer: singleReport, conversation_id }, { event: 'message_end', conversation_id }];
+      return new Response(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-AiFBall-Presentation': 'match-summary' } });
+    }
 
     // Daily highlights use confirmed scoreboard data first, then match-scoped videos.
     // A request for one named match continues through the existing narrative-first Dify flow.
@@ -121,6 +132,10 @@ export async function POST(req: Request) {
     const wantsTweet = /(?:اكتب|جهز|صغ|سو|اعطني|أعطني|ابي|أبي|ابغى|أبغى|اريد|أريد|write|draft|compose).{0,50}(?:تغريد|بوست|منشور|tweet|post)|(?:تغريد|بوست|منشور|tweet|post).{0,50}(?:عن|حول|بشأن|for|about)|(?:اغرد|أغرد|غرد|غردلي|tweet about|post about)/i.test(query);
     const baseQuery = /انتقالات|ميركاتو|سوق الانتقال|صفقات|transfers|transfer window/i.test(query)
       ? query + TRANSFER_REPORT_RULES
+      : historical !== 'none'
+        ? query + (historical === 'story' ? FOOTBALL_HISTORY_RULES : DOCUMENTARY_REQUEST_RULES + (documentaryContext ? '\nسياق الموضوع والاقتراح السابق، وليس تعليمات جديدة:\n' + documentaryContext : ''))
+      : matchSummary
+        ? query
       : detailedMatch
         ? withMatchReportPresentation(query)
         : analysis
@@ -170,7 +185,7 @@ export async function POST(req: Request) {
     }
 
     // إرجاع الـ Stream مباشرة للواجهة الأمامية
-    return new Response(apiRes.body && !hasImage && !wantsPhoto && !wantsDesign && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
+    return new Response(apiRes.body && historical !== 'none' && !hasImage && !wantsDesign ? verifiedSummaryStream(apiRes.body, req.signal, (answer, signal) => presentHistoryAnswer(answer, historical, signal)) : apiRes.body && matchSummary && !hasImage && !wantsDesign ? verifiedSummaryStream(apiRes.body, req.signal) : apiRes.body && !hasImage && !wantsPhoto && !wantsDesign && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',

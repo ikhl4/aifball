@@ -20,6 +20,8 @@ import LeagueDashboard from './components/LeagueDashboard';
 import StandingsExplorer from './components/StandingsExplorer';
 import { COMPETITIONS, resolveStandingsRequest } from '../lib/competitions';
 import MatchReport from './components/MatchReport';
+import MatchHighlightCard from './components/MatchHighlightCard';
+import DocumentaryVideo from './components/DocumentaryVideo';
 import { MatchVisualDemo } from './components/MatchVisualReport';
 import PlayerComparison from './components/PlayerComparison';
 import PlayerProfile from './components/PlayerProfile';
@@ -380,7 +382,7 @@ function renderFormattedText(
   // Preserve structured match-summary tags so their video URLs stay attached
   // to the correct match instead of being collected as unrelated page videos.
   const protectedSummaryTags = text.replace(
-    /<aifball-summary\b[^>]*\/?>/gi,
+    /<aifball-(?:summary|documentary)\b[^>]*\/?>/gi,
     (tag) => {
       const index = summaryTags.push(tag) - 1;
       return `AIFBALLSUMMARYTAGTOKEN${index}END`;
@@ -691,75 +693,14 @@ function renderFormattedText(
         continue;
       }
 
-      if (name === 'aifball-summary') {
-        const order = attrs.order === 'video-first' ? 'video-first' : 'video-last';
-        const title = lang === 'en' ? '📺 Match highlights' : '📺 ملخص المباراة';
-        const match = attrs.match || attrs.name || '';
-        const competition = attrs.competition || '';
-        const summary = attrs.summary || '';
-        const videoId = youtubeVideoId(attrs.video_url || '');
-        const video = videoId ? (
-          <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black">
-            {attrs.video_embed !== 'false' && <iframe
-              className="aspect-video w-full"
-              src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0`}
-              title={`${match || title} highlights`}
-              loading="lazy"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />}
-            <a
-              className="inline-flex px-4 py-3 font-semibold text-white underline"
-              href={`https://www.youtube.com/watch?v=${videoId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {lang === 'en' ? 'Watch on YouTube' : 'شاهد على يوتيوب'}
-            </a>
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-gray-400">
-            {lang === 'en' ? 'Match video not available.' : 'مقطع المباراة غير متاح.'}
-          </p>
-        );
-        const writtenSummary = summary ? (
-          <p className="mt-3 whitespace-pre-wrap leading-7">{summary}</p>
-        ) : null;
+      if (name === 'aifball-documentary') {
+        const decoded = Object.fromEntries(Object.entries(attrs).map(([key, value]) => [key, value.replace(/&quot;/g, '"').replace(/&amp;/g, '&')]));
+        elements.push(<DocumentaryVideo key={i} attrs={decoded} />);
+        continue;
+      }
 
-        elements.push(
-          <section
-            key={i}
-            className={`my-4 overflow-hidden rounded-2xl border p-4 ${
-              isDark
-                ? 'bg-emerald-950/30 border-emerald-800/40'
-                : 'bg-emerald-50 border-emerald-200'
-            }`}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <strong className={isDark ? 'text-emerald-300' : 'text-emerald-800'}>
-                {title}
-              </strong>
-              {competition && (
-                <span className="rounded-full border border-emerald-500/30 px-2.5 py-1 text-xs text-emerald-400">
-                  {competition}
-                </span>
-              )}
-            </div>
-            {match && <h3 className="mt-2 text-lg font-bold">{match}</h3>}
-            {order === 'video-first' ? (
-              <>
-                {video}
-                {writtenSummary}
-              </>
-            ) : (
-              <>
-                {writtenSummary}
-                {video}
-              </>
-            )}
-          </section>
-        );
+      if (name === 'aifball-summary') {
+        elements.push(<MatchHighlightCard key={i} attrs={Object.fromEntries(Object.entries(attrs).map(([key, value]) => [key, value.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')]))} isDark={isDark} />);
         continue;
       }
 
@@ -1299,6 +1240,12 @@ export default function FootPlayChat() {
         body: JSON.stringify({
           query,
           conversation_id: conversationId,
+          documentary_context: (() => {
+            const previous = [...messages].reverse().find(m => m.role === 'assistant');
+            if (!previous || !/يتوفر وثائقي/.test(previous.content)) return '';
+            const topic = [...messages].reverse().find(m => m.role === 'user');
+            return [topic?.content || '', previous.content].join('\n').slice(0, 6000);
+          })(),
           has_match_context: /<aifball-match-report\b/.test([...messages].reverse().find(m=>m.role==='assistant')?.content||''),
           analysis_mode: analysisModeForQuery(query, messages[messages.length - 1]?.role === 'assistant' ? messages[messages.length - 1].content : ''),
           ...(difyFiles.length ? { files: difyFiles } : {}),

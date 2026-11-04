@@ -1,3 +1,4 @@
+import { findHighlightVideo } from './highlight-video';
 type EspnCompetitor = {
   homeAway?: string;
   team?: { displayName?: string; name?: string; abbreviation?: string };
@@ -8,7 +9,7 @@ type EspnEvent = {
   date?: string;
   name?: string;
   status?: { type?: { completed?: boolean; state?: string } };
-  competitions?: Array<{ competitors?: EspnCompetitor[]; details?: Array<any> }>;
+  competitions?: Array<{ status?: { type?: { completed?: boolean; state?: string } }; competitors?: EspnCompetitor[]; details?: Array<any> }>;
 };
 type Match = {
   league: string;
@@ -37,12 +38,6 @@ const COMPETITIONS = [
   { slug: 'uefa.europa.conf', name: 'دوري المؤتمر الأوروبي' },
 ] as const;
 
-const TRUSTED_CHANNEL_HINTS = [
-  'bein', 'be in', 'thmanyah', 'ثمانية', 'tod', 'serie a', 'laliga',
-  'la liga', 'mls', 'abu dhabi', 'أبوظبي', 'alkass', 'الكأس', 'stc',
-  'premier league', 'bundesliga', 'ligue 1', 'uefa', 'afc', 'saudi pro league',
-];
-
 function normalize(value: string): string {
   return value.toLocaleLowerCase().normalize('NFKD')
     .replace(/[\u0300-\u036f\u064b-\u065f\u0670ـ]/g, '')
@@ -60,7 +55,7 @@ function targetDate(query: string, now = new Date()): string {
   }).formatToParts(now);
   const get = (key: string) => Number(parts.find(part => part.type === key)?.value);
   const date = new Date(Date.UTC(get('year'), get('month') - 1, get('day')));
-  if (/الأمس|امس|مباراة امس|yesterday/i.test(query)) date.setUTCDate(date.getUTCDate() - 1);
+  if (/الامس|امس|yesterday/i.test(normalize(query))) date.setUTCDate(date.getUTCDate() - 1);
   return date.toISOString().slice(0, 10);
 }
 function parseGoals(payload: any, event: EspnEvent): string[] {
@@ -116,40 +111,14 @@ async function getEventSummary(slug: string, id: string): Promise<any> {
   } catch { return null; }
 }
 async function findVideo(match: Match): Promise<string> {
-  const key = process.env.YOUTUBE_API_KEY;
-  if (!key) return '';
-  const q = `${match.home} vs ${match.away} highlights`;
-  try {
-    const data = await fetchJson(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&safeSearch=strict&maxResults=10&q=${encodeURIComponent(q)}&key=${encodeURIComponent(key)}`, 8000);
-    const homeTokens = normalize(match.home).split(' ').filter(token => token.length > 3);
-    const awayTokens = normalize(match.away).split(' ').filter(token => token.length > 3);
-    for (const item of data?.items || []) {
-      const title = normalize(String(item?.snippet?.title || ''));
-      const channel = normalize(String(item?.snippet?.channelTitle || ''));
-      const confirmsTeams = homeTokens.some(token => title.includes(token)) && awayTokens.some(token => title.includes(token));
-      const competitionOrBroadcaster = TRUSTED_CHANNEL_HINTS.some(token => channel.includes(normalize(token)));
-      // Official club channels are also valid sources. Accept an exact club name or a
-      // club-name channel explicitly branded as FC / Football Club / Official.
-      const teams = [match.home, match.away].map(normalize).filter(name => name.length > 4);
-      const officialClubChannel = teams.some(team =>
-        channel === team || channel === `${team} fc` || channel === `${team} football club` ||
-        channel === `official ${team}` || channel === `the ${team}` ||
-        (channel.startsWith(`${team} `) && /(^| )(fc|football club|official)( |$)/.test(channel))
-      );
-      const trustedChannel = competitionOrBroadcaster || officialClubChannel;
-      const videoId = item?.id?.videoId;
-      if (confirmsTeams && trustedChannel && /^[\w-]{11}$/.test(videoId || '')) {
-        return `https://www.youtube.com/watch?v=${videoId}`;
-      }
-    }
-  } catch { /* The confirmed written result is still useful without a video. */ }
-  return '';
+  const result = await findHighlightVideo({ home: match.home, away: match.away, date: match.date, competition: match.leagueName });
+  return result.status === 'found' ? result.video.url : '';
 }
 export function isDailyHighlightsRequest(query: string): boolean {
   const normalized = normalize(query);
   const summary = /ملخص|هايلايت|أبرز اللقطات|highlights?|recaps?|summar(?:y|ies)/i.test(query);
   const date = /اليوم|today|tonight|الامس|امس|yesterday/i.test(normalized);
-  const plural = /ملخصات|ملخصs+مباريات|highlights|recaps|summaries/i.test(query);
+  const plural = /ملخصات|ملخص\s+مباريات|highlights|recaps|summaries/i.test(query);
   return summary && date && plural;
 }
 
@@ -200,7 +169,7 @@ export async function buildDailyHighlights(query: string, { includeVideos = true
         : 'لم يتوفر سجل موثوق لتفاصيل مسجلي الأهداف ودقائقها.';
       const summary = `${match.homeScore === match.awayScore ? 'انتهت المباراة بالتعادل' : `انتهت بفوز ${Number(match.homeScore) > Number(match.awayScore) ? match.home : match.away}`} بنتيجة ${match.homeScore}–${match.awayScore}. ${goals}`;
       const videoUrl = (match as Match & { videoUrl?: string }).videoUrl || '';
-      parts.push(`<aifball-summary order="video-first" competition="${escapeAttribute(league)}" match="${escapeAttribute(score)}" date="${date}" summary="${escapeAttribute(summary)}"${videoUrl ? ` video_url="${escapeAttribute(videoUrl)}"` : ''} />`);
+      parts.push(`<aifball-summary order="video-first" competition="${escapeAttribute(league)}" match="${escapeAttribute(score)}" home="${escapeAttribute(match.home)}" away="${escapeAttribute(match.away)}" home_score="${match.homeScore}" away_score="${match.awayScore}" date="${date}" summary="${escapeAttribute(summary)}"${videoUrl ? ` video_url="${escapeAttribute(videoUrl)}"` : ''} />`);
     }
   }
   return parts.join('\n\n');
