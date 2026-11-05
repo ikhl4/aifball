@@ -56,6 +56,36 @@ test('direct YouTube search accepts ordinary eleven-character video IDs', async 
   assert.ok(urls.some(url => url.includes('/results?')));
   assert.ok(!urls.some(url => url.includes('/@beinsports/videos')));
 });
+test('DuckDuckGo preserves an official highlight when YouTube refuses server-side access', async () => {
+  const page = '<div class="result results_links"><div class="result__body">'
+    + '<a class="result__a" href="//duckduckgo.com/l/?uddg='
+    + encodeURIComponent('https://www.youtube.com/watch?v=' + id)
+    + '">ملخص مباراة فياريال وباريس سان جيرمان</a>'
+    + '<a class="result__snippet">YouTube · beIN SPORTS · Official football highlights</a>'
+    + '</div></div>';
+  const parsed = h.duckDuckGoVideos(page);
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0].id, id);
+  assert.equal(h.trustedSearchVideo(parsed[0], match).channel, 'beIN SPORTS');
+  const requests = [];
+  const fetcher = async url => {
+    requests.push(url);
+    if (url.includes('duckduckgo.com/html/')) return new Response(page);
+    return new Response('', { status: 403 });
+  };
+  const result = await h.findHighlightVideo(match, '', undefined, fetcher);
+  assert.equal(result.status, 'found');
+  assert.equal(result.video.url, 'https://www.youtube.com/watch?v=' + id);
+  assert.equal(result.video.embeddable, false);
+  assert.ok(requests[0].includes('duckduckgo.com/html/'));
+});
+test('DuckDuckGo cannot pass an unofficial publisher or wrong fixture', () => {
+  const candidate = { id, url: 'https://www.youtube.com/watch?v=' + id,
+    title: 'ملخص مباراة فياريال وباريس سان جيرمان', snippet: 'YouTube · unofficial clips' };
+  assert.equal(h.trustedSearchVideo(candidate, match), null);
+  assert.equal(h.trustedSearchVideo({ ...candidate, title: 'ملخص برشلونة وريال مدريد', snippet: 'beIN SPORTS' }, match), null);
+  assert.equal(h.duckDuckGoVideos('<div class="result"><a class="result__a" href="https://evil.example/watch?v=abcdefghijk">beIN SPORTS highlights</a></div>').length, 0);
+});
 test('recent channel uploads are discovered without oEmbed or a paid API key', async () => {
   const requested = [];
   const fetcher = async url => { requested.push(url); if (url.includes('/@beinsports/')) return new Response(channelPage()); if (url.includes('/watch?')) return new Response(watch()); return new Response('', { status: 503 }); };
