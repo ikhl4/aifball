@@ -41,6 +41,22 @@ export function channelIndex(html: string, handle: string): ChannelIndex {
   visit(data.contents);
   return { channelId: meta.externalId, videos: [...videos].map(([id, title]) => ({ id, title })) };
 }
+/** Safely extract search result candidates. Result URLs are never shown until verified. */
+export function searchVideoCandidates(html: string): { id: string; title: string }[] {
+  const data = pageJson(html, 'ytInitialData');
+  const videos = new Map<string,string>();
+  const visit = (node: any) => {
+    if (!node || typeof node !== 'object') return;
+    const item = node.videoRenderer;
+    if (item && /^[\\w-]{11}$/.test(item.videoId || '')) videos.set(item.videoId, text(item.title));
+    for (const child of Object.values(node)) {
+      if (Array.isArray(child)) child.forEach(visit);
+      else if (child && typeof child === 'object') visit(child);
+    }
+  };
+  visit(data.contents);
+  return [...videos].map(([id,title]) => ({id,title}));
+}
 export function feedVideos(xml: string, channelId: string): { id: string; title: string }[] {
   if (!xml.includes(`<yt:channelId>${channelId}</yt:channelId>`)) throw Error('FEED_IDENTITY');
   const decode = (s: string) => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
@@ -54,6 +70,12 @@ export function matchesTeams(title: string, match: HighlightMatch): boolean {
   return [match.home, match.away].every(team => {
     const aliases = [team, footballNameInArabic(team)].filter(Boolean).map(name => norm(name!));
     if (aliases.includes('paris saint germain') || aliases.includes('باريس سان جيرمان')) aliases.push('psg', 'باريس سان جيرمان');
+    // Broadcaster spellings differ from ESPN names (Lens = لانس / لونس).
+    if (aliases.some(a => ['lens', 'rc lens', 'لانس', 'لونس'].includes(a))) aliases.push('lens', 'rc lens', 'لانس', 'لونس');
+    if (aliases.some(a => a.includes('shabab al ahli') || a.includes('shabab al ahly') || a.includes('شباب الاهلي'))) aliases.push('شباب الاهلي', 'شباب اهلي دبي', 'شباب الأهلي دبي', 'شباب الاهلي دبي', 'shabab al ahli', 'shabab al ahly', 'shabab al ahli dubai');
+    if (aliases.some(a => a.includes('aek athens') || a === 'ايك اثينا' || a === 'ايك اثينا')) aliases.push('aek', 'aek athens', 'ايك', 'ايك اثينا', 'أيك أثينا');
+    if (aliases.some(a => a.includes('real madrid') || a === 'ريال مدريد')) aliases.push('real madrid', 'ريال مدريد');
+    if (aliases.some(a => a.includes('al hilal') || a === 'الهلال')) aliases.push('al hilal', 'al hilal sfc', 'الهلال');
     // Official highlight titles often omit city suffixes or use different Arabic spellings.
     if (aliases.some(a => /^(?:atletico madrid|atletico de madrid|اتلتيكو مدريد|اتلتيكو)$/.test(a))) aliases.push('atletico', 'atletico madrid', 'اتلتيكو');
     if (aliases.some(a => /^(?:bayern|bayern munich|fc bayern munchen|بايرن)$/.test(a))) aliases.push('bayern', 'bayern munich', 'بايرن');
@@ -80,13 +102,31 @@ async function html(url: string, signal: AbortSignal, fetcher: typeof fetch): Pr
  * oEmbed failure and disabled embedding are not evidence that a video is absent. */
 export async function findHighlightVideo(match: HighlightMatch, candidate = '', signal?: AbortSignal, fetcher: typeof fetch = fetch): Promise<Result> {
   if (!match.home || !match.away || !/^\d{4}-\d{2}-\d{2}$/.test(match.date)) return { status: 'unavailable' };
-  const c = new AbortController(), timer = setTimeout(() => c.abort(), 24000), abort = () => c.abort();
+  const c = new AbortController(), timer = setTimeout(() => c.abort(), 35000), abort = () => c.abort();
   signal?.addEventListener('abort', abort, { once: true }); if (signal?.aborted) abort();
   let failed = false;
   const check = async (id: string, channelId?: string) => videoMetadata(await html(`https://www.youtube.com/watch?v=${id}`, c.signal, fetcher), id, match, channelId);
   try {
     const candidateId = youtubeVideoId(candidate);
     if (candidateId) { try { return { status: 'found', video: await check(candidateId) }; } catch { /* Try the official channel instead of declaring absence. */ } }
+    // Search fixture-specific uploads first; recent channel feeds omit older clips
+    // when a broadcaster publishes multiple videos daily.
+    const arHome = footballNameInArabic(match.home) || match.home;
+    const arAway = footballNameInArabic(match.away) || match.away;
+    const queryVariants = [
+      `${arHome} ${arAway} ملخص beIN SPORTS`,
+      `${match.home} ${match.away} highlights`,
+    ];
+    for (const query of queryVariants) {
+      if (c.signal.aborted) break;
+      try {
+        const candidates = searchVideoCandidates(await html('https://www.youtube.com/results?search_query=' + encodeURIComponent(query), c.signal, fetcher));
+        for (const item of candidates.filter(v => matchesTeams(v.title, match)).slice(0, 8)) {
+          try { return { status: 'found', video: await check(item.id) }; }
+          catch { failed = true; }
+        }
+      } catch { failed = true; }
+    }
     const channels = [...HIGHLIGHT_CHANNELS];
     if (/روشن|saudi|ksa/i.test(match.competition || '')) channels.sort((a, b) => Number(b === 'thmanyahsports') - Number(a === 'thmanyahsports'));
     for (let offset = 0; offset < channels.length && !c.signal.aborted; offset += 3) {
