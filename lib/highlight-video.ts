@@ -12,9 +12,9 @@ const text = (v: any): string => v?.simpleText || v?.content || (Array.isArray(v
 
 /** Parse a public page's JSON without executing any page code. */
 export function pageJson(html: string, variable: string): any {
-  const marker = html.indexOf(`var ${variable} = `);
-  if (marker < 0) throw Error('MISSING_METADATA');
-  const start = html.indexOf('{', marker); let depth = 0, quoted = false, escaped = false;
+  const markerMatch = new RegExp('(?:\\bvar\\s+|\\bwindow\\s*\\[\\s*["\\\']?)' + variable + '(?:["\\\']?\\s*\\])?\\s*=\\s*\\{').exec(html);
+  if (!markerMatch) throw Error('MISSING_METADATA');
+  const start = html.indexOf('{', markerMatch.index); let depth = 0, quoted = false, escaped = false;
   for (let i = start; i < html.length; i++) {
     const c = html[i];
     if (quoted) { if (escaped) escaped = false; else if (c === '\\') escaped = true; else if (c === '"') quoted = false; }
