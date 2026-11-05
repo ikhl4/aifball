@@ -7,12 +7,20 @@ export type HighlightVideo = { id: string; url: string; title: string; channel: 
 type ChannelIndex = { channelId: string; videos: { id: string; title: string }[] };
 type Result = { status: 'found'; video: HighlightVideo } | { status: 'not_found' | 'unavailable' };
 const cache = new Map<string, { expires: number; value: Promise<ChannelIndex> }>();
+// YouTube often uses /channel/UC... instead of a vanity handle for real publishers.
+const OFFICIAL_CHANNEL_TITLES = new Set([
+  'beIN SPORTS', 'beIN SPORTS العربية', 'beIN SPORTS Türkiye',
+  'TOD', 'TOD by beIN', 'ثمانية', 'ثمانية رياضة', 'Thmanyah Sports',
+  'Serie A', 'Serie A Enilive', 'LaLiga', 'LaLiga EA SPORTS',
+  'MLS', 'Major League Soccer', 'AD Sports', 'أبوظبي الرياضية',
+  'Alkass Sports Channels', 'قنوات الكأس', 'stc tv sports'
+].map(name => name.toLowerCase()));
 const norm = (s: string) => s.normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f\u064b-\u065f\u0670ـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/[^\p{L}\p{N}]+/gu, ' ').replace(/اتليتيكو/g, 'اتلتيكو').replace(/\bبايرن ميونخ\b/g, 'بايرن').replace(/\s+/g, ' ').trim();
 const text = (v: any): string => v?.simpleText || v?.content || (Array.isArray(v?.runs) ? v.runs.map((r: any) => r.text || '').join('') : '');
 
 /** Parse a public page's JSON without executing any page code. */
 export function pageJson(html: string, variable: string): any {
-  const marker = html.indexOf(`var ${variable} = `);
+  const marker = html.indexOf(`var ${variable} = `) >= 0 ? html.indexOf(`var ${variable} = `) : html.indexOf(`${variable} = `);
   if (marker < 0) throw Error('MISSING_METADATA');
   const start = html.indexOf('{', marker); let depth = 0, quoted = false, escaped = false;
   for (let i = start; i < html.length; i++) {
@@ -29,7 +37,9 @@ function handleOf(raw: string): string {
 }
 export function channelIndex(html: string, handle: string): ChannelIndex {
   const data = pageJson(html, 'ytInitialData'), meta = data.metadata?.channelMetadataRenderer;
-  if (!meta || handleOf(meta.vanityChannelUrl || '') !== handle || !/^UC[\w-]{22}$/.test(meta.externalId || '')) throw Error('CHANNEL_IDENTITY');
+  if (!meta || !/^UC[\w-]{22}$/.test(meta.externalId || '')) throw Error('CHANNEL_IDENTITY');
+  const actualHandle = handleOf(meta.vanityChannelUrl || '');
+  if (actualHandle && actualHandle !== handle) throw Error('CHANNEL_IDENTITY');
   const videos = new Map<string, string>();
   const visit = (v: any) => {
     if (!v || typeof v !== 'object') return;
@@ -63,7 +73,11 @@ export function matchesTeams(title: string, match: HighlightMatch): boolean {
 export function videoMetadata(html: string, id: string, match: HighlightMatch, expectedChannelId?: string): HighlightVideo {
   const p = pageJson(html, 'ytInitialPlayerResponse'), d = p.videoDetails, m = p.microformat?.playerMicroformatRenderer;
   const handle = handleOf(m?.ownerProfileUrl || '');
-  if (d?.videoId !== id || !HIGHLIGHT_CHANNELS.includes(handle as any) || (expectedChannelId && d.channelId !== expectedChannelId) || !matchesTeams(d.title || '', match)) throw Error('VIDEO_IDENTITY');
+  const publisherName = String(m?.ownerChannelName || d?.author || '').toLowerCase().trim();
+  const recognized = HIGHLIGHT_CHANNELS.includes(handle as any)
+    || OFFICIAL_CHANNEL_TITLES.has(publisherName)
+    || Boolean(expectedChannelId && d?.channelId === expectedChannelId);
+  if (d?.videoId !== id || !recognized || (expectedChannelId && d.channelId !== expectedChannelId) || !matchesTeams(d.title || '', match)) throw Error('VIDEO_IDENTITY');
   const publishedAt = m?.publishDate || m?.uploadDate || '', published = Date.parse(publishedAt), played = Date.parse(match.date + 'T00:00:00+03:00');
   // Publication can cross midnight; never use a previous season's meeting.
   if (!Number.isFinite(played) || (Number.isFinite(published) && (published < played - 86400000 || published > played + 14 * 86400000))) throw Error('VIDEO_DATE');
