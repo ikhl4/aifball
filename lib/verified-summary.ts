@@ -1,4 +1,4 @@
-import { findHighlightVideo, trustedSearchVideo } from './highlight-video';
+import { findHighlightVideo } from './highlight-video';
 import { youtubeVideoId } from './summary-presentation';
 
 const decode = (s: string) => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
@@ -17,24 +17,16 @@ export async function verifySummaryAnswer(answer: string, signal?: AbortSignal, 
     if (!controller.signal.aborted) {
       try { result = await lookup({ home: attrs.home || '', away: attrs.away || '', date: attrs.date || '', competition: attrs.competition }, attrs.video_url || '', controller.signal); } catch { /* Keep a usable card with an honest verification status. */ }
     }
-    // A video discovered by Dify's DuckDuckGo tool may be inaccessible from
-    // the Vercel server. Do not silently erase that external search result
-    // when the title, actual publisher and fixture are all supplied.
+    // Dify's supplied title/channel are untrusted hints, not publisher
+    // verification. The lookup independently validates an actual YouTube
+    // channel and the requested fixture before displaying a video.
     const candidateId = youtubeVideoId(attrs.video_url || '');
     const candidateTitle = attrs.video_title || '';
     const candidateChannel = attrs.video_channel || '';
     const candidateSource = attrs.video_source_url || '';
-    let externallyCorroborated = null;
-    if (result.status !== 'found' && candidateId && candidateTitle && candidateChannel
-      && candidateSource && youtubeVideoId(candidateSource) === candidateId) {
-      externallyCorroborated = trustedSearchVideo({
-        id: candidateId, title: candidateTitle,
-        snippet: candidateChannel, url: 'https://www.youtube.com/watch?v=' + candidateId,
-      }, { home: attrs.home || '', away: attrs.away || '', date: attrs.date || '', competition: attrs.competition });
-    }
     delete attrs.video_url; delete attrs.video_embed; delete attrs.video_channel;
     delete attrs.video_title; delete attrs.video_source_url;
-    const video = result.status === 'found' ? result.video : externallyCorroborated;
+    const video = result.status === 'found' ? result.video : null;
     attrs.video_status = video ? 'found' : result.status;
     if (video) {
       attrs.video_url = video.url;
@@ -50,7 +42,7 @@ export async function verifySummaryAnswer(answer: string, signal?: AbortSignal, 
         difyProvidedChannel: Boolean(candidateChannel),
         difyProvidedSource: Boolean(candidateSource),
         lookupStatus: result.status,
-        externalCandidateAccepted: Boolean(externallyCorroborated),
+        externalCandidateAccepted: false,
         finalStatus: attrs.video_status,
       }));
     }
