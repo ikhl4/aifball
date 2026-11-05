@@ -106,7 +106,7 @@ test('publication age and absolute date gate respects match date', () => {
   assert.equal(h.searchDateMatches('', '2026-11-02', now), false);
   assert.equal(h.searchDateMatches('2025-11-03', '2026-11-02', now), false);
 });
-test('only approved publishers can be accepted from YouTube search when watch metadata is blocked', async () => {
+test('a matching attributed YouTube fallback is shown while official publisher remains preferred', async () => {
   const played = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const fixture = { ...match, date: played.toISOString().slice(0, 10) };
   const otherChannel = 'UC' + 'z'.repeat(22);
@@ -124,7 +124,9 @@ test('only approved publishers can be accepted from YouTube search when watch me
     return new Response('', { status: 403 });
   };
   const result = await h.findHighlightVideo(fixture, '', undefined, fetcher);
-  assert.equal(result.status, 'unavailable');
+  assert.equal(result.status, 'found');
+  assert.equal(result.video.channel, 'Nonlisted football channel');
+  assert.equal(result.video.embeddable, false);
 
   const official = await h.findHighlightVideo(fixture, '', undefined, async url => {
     if (url.includes('duckduckgo.com')) return new Response('', { status: 403 });
