@@ -2,7 +2,7 @@
 import { footballNameInArabic } from './football-names-ar';
 import { youtubeVideoId } from './summary-presentation';
 
-export const HIGHLIGHT_CHANNELS = ['beinsports', 'tod_bybein', 'thmanyahsports', 'beinsportsturkiye', 'seriea', 'laliga', 'mls', 'adsportstv', 'alkasstvsports', 'stctvsports'] as const;
+export const HIGHLIGHT_CHANNELS = ['beinsports', 'ittihadclub', 'theafchub', 'tod_bybein', 'thmanyahsports', 'beinsportsturkiye', 'seriea', 'laliga', 'mls', 'adsportstv', 'alkasstvsports', 'stctvsports'] as const;
 export type HighlightMatch = { home: string; away: string; date: string; competition?: string };
 export type HighlightVideo = { id: string; url: string; title: string; channel: string; publishedAt: string; embeddable: boolean };
 type ChannelIndex = { channelId: string; videos: { id: string; title: string }[] };
@@ -14,8 +14,22 @@ const OFFICIAL_CHANNEL_TITLES = new Set([
   'TOD', 'TOD by beIN', 'ثمانية', 'ثمانية رياضة', 'Thmanyah Sports',
   'Serie A', 'Serie A Enilive', 'LaLiga', 'LaLiga EA SPORTS',
   'MLS', 'Major League Soccer', 'AD Sports', 'أبوظبي الرياضية',
+  'قناة نادي الاتحاد السعودي', 'نادي الاتحاد السعودي', 'Al-Ittihad Club',
+  'The AFC Hub',
   'Alkass Sports Channels', 'قنوات الكأس', 'stc tv sports'
 ].map(name => name.toLowerCase()));
+// Verified official YouTube channel IDs, used if search omits @handles.
+const VERIFIED_CHANNEL_IDS: Record<string, string> = {
+  UCivJETAP4VD7rXRgjdpVwNw: 'ittihadclub',
+  UCnj0TjaM0wyxkAWW_nz8_1g: 'theafchub',
+};
+function verifiedPublisher(handle: string, channelId: string, channelName: string): boolean {
+  const knownHandle = VERIFIED_CHANNEL_IDS[channelId];
+  if (knownHandle) return !handle || handle === knownHandle;
+  // Search metadata has to give an exact official channel handle; title
+  // alone is not evidence that a similarly named account is official.
+  return HIGHLIGHT_CHANNELS.includes(handle as typeof HIGHLIGHT_CHANNELS[number]);
+}
 const norm = (s: string) => s.normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f\u064b-\u065f\u0670ـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/[^\p{L}\p{N}]+/gu, ' ').replace(/اتليتيكو/g, 'اتلتيكو').replace(/\bبايرن ميونخ\b/g, 'بايرن').replace(/\s+/g, ' ').trim();
 const text = (v: any): string => v?.simpleText || v?.content || (Array.isArray(v?.runs) ? v.runs.map((r: any) => r.text || '').join('') : '');
 
@@ -77,10 +91,7 @@ export function videoMetadata(html: string, id: string, match: HighlightMatch, e
   const publisherName = String(m?.ownerChannelName || d?.author || '').toLowerCase().trim();
   // A YouTube watch page with a real handle must match the allowlist;
   // the display name alone cannot override an explicitly different handle.
-  const recognized = handle
-    ? HIGHLIGHT_CHANNELS.includes(handle as any)
-    : OFFICIAL_CHANNEL_TITLES.has(publisherName)
-      || Boolean(expectedChannelId && d?.channelId === expectedChannelId);
+  const recognized = verifiedPublisher(handle, String(d?.channelId || ''), publisherName);
   // Keep identity checks strict, but identify precisely which one failed.
   if (!d?.videoId) throw Error('VIDEO_ID_MISSING');
   if (d.videoId !== id) throw Error('VIDEO_ID_MISMATCH');
@@ -226,7 +237,6 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
   if (!match.home || !match.away || !/^\d{4}-\d{2}-\d{2}$/.test(match.date)) return { status: 'unavailable' };
   const c = new AbortController(), timer = setTimeout(() => c.abort(), 24000), abort = () => c.abort();
   signal?.addEventListener('abort', abort, { once: true }); if (signal?.aborted) abort();
-  let unofficialFallback: HighlightVideo | null = null;
   let failed = false;
   // Preview-only diagnostic counters; no URLs, prompts, API keys, or snippets.
   const diagnostics = { ddgRequests: 0, ddgErrors: 0, ddgCandidates: 0, ddgMatch: 0,
@@ -335,16 +345,12 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
               title: entry.title, channel: entry.channelName,
               publishedAt: '', embeddable: false,
             };
-            const official = entry.handle
-              ? HIGHLIGHT_CHANNELS.includes(entry.handle as any)
-              : OFFICIAL_CHANNEL_TITLES.has(entry.channelName.trim().toLowerCase());
+            const official = verifiedPublisher(entry.handle, entry.channelId, entry.channelName);
             if (official) {
               diagnostics.result = 'youtube_verified_publisher_search';
               return { status: 'found', video: searchVideo };
             }
-            // Keep an accurately attributed nonofficial video only as a fallback.
-            // Prioritize authorized channels across every search query and upload feed.
-            if (!unofficialFallback) unofficialFallback = searchVideo;
+            diagnostics.searchPublisherRejected++;
           }
         }
       } catch { failed = true; diagnostics.youtubeSearchErrors++; }
@@ -379,10 +385,6 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
           try { return { status: 'found', video: await check(item.id, result.value.channelId) }; } catch { failed = true; }
         }
       }
-    }
-    if (unofficialFallback && !c.signal.aborted) {
-      diagnostics.result = 'youtube_attributed_unofficial_fallback';
-      return { status: 'found', video: unofficialFallback };
     }
     diagnostics.result = failed || c.signal.aborted ? 'unavailable' : 'not_found';
     return { status: failed || c.signal.aborted ? 'unavailable' : 'not_found' };
