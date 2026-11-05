@@ -26,6 +26,12 @@ test('disabled embedding does not reject a verified official highlight', () => {
 test('rejects wrong channel, channel ID, teams, and previous-season videos', () => {
   for (const options of [{ channel: 'fakebeinsports' }, { date: '2025-11-03T22:30:00Z' }, { name: 'ملخص فياريال وبرشلونة' }, { publisherId: 'UC' + 'b'.repeat(22) }]) assert.throws(() => h.videoMetadata(watch(options), id, match, channelId));
 });
+test('video identity validation reports publisher, title, video id, and channel mismatches separately', () => {
+  assert.throws(() => h.videoMetadata(watch({ channel: 'fakebeinsports' }), id, match), /VIDEO_PUBLISHER_UNVERIFIED/);
+  assert.throws(() => h.videoMetadata(watch({ name: 'ملخص فياريال وبرشلونة' }), id, match), /VIDEO_TITLE_MISMATCH/);
+  assert.throws(() => h.videoMetadata(watch(), 'zzzzzzzzzzz', match), /VIDEO_ID_MISMATCH/);
+  assert.throws(() => h.videoMetadata(watch({ publisherId: 'UC' + 'b'.repeat(22) }), id, match, channelId), /VIDEO_CHANNEL_MISMATCH/);
+});
 test('official publisher name still works when YouTube exposes a /channel/ URL', () => {
   const page = watch({ channel: 'beinsports' }).replace('https://www.youtube.com/@beinsports', 'https://www.youtube.com/channel/' + channelId);
   assert.equal(h.videoMetadata(page, id, match).id, id);
