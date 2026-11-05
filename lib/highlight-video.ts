@@ -1,3 +1,4 @@
+// Preview deployment refresh: open-channel YouTube discovery remains experimental and is not merged to main.
 import { footballNameInArabic } from './football-names-ar';
 import { youtubeVideoId } from './summary-presentation';
 
