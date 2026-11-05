@@ -226,6 +226,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
   if (!match.home || !match.away || !/^\d{4}-\d{2}-\d{2}$/.test(match.date)) return { status: 'unavailable' };
   const c = new AbortController(), timer = setTimeout(() => c.abort(), 24000), abort = () => c.abort();
   signal?.addEventListener('abort', abort, { once: true }); if (signal?.aborted) abort();
+  let unofficialFallback: HighlightVideo | null = null;
   let failed = false;
   // Preview-only diagnostic counters; no URLs, prompts, API keys, or snippets.
   const diagnostics = { ddgRequests: 0, ddgErrors: 0, ddgCandidates: 0, ddgMatch: 0,
@@ -317,10 +318,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
             if (reason !== 'VIDEO_ID_MISSING') continue;
             const entry = searchEntries.get(id);
             if (!entry || !/^UC[\w-]{22}$/.test(entry.channelId)
-              || !entry.channelName.trim() || !matchesTeams(entry.title, match)
-              || !(entry.handle
-                ? HIGHLIGHT_CHANNELS.includes(entry.handle as any)
-                : OFFICIAL_CHANNEL_TITLES.has(entry.channelName.trim().toLowerCase()))) {
+              || !entry.channelName.trim() || !matchesTeams(entry.title, match)) {
               diagnostics.searchMissingIdentity++; continue;
             }
             diagnostics.searchPublisherCandidates++;
@@ -332,12 +330,21 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
               continue;
             }
             diagnostics.searchPublisherValidated++;
-            diagnostics.result = 'youtube_open_channel_search';
-            return { status: 'found', video: {
+            const searchVideo: HighlightVideo = {
               id: entry.id, url: 'https://www.youtube.com/watch?v=' + entry.id,
               title: entry.title, channel: entry.channelName,
               publishedAt: '', embeddable: false,
-            } };
+            };
+            const official = entry.handle
+              ? HIGHLIGHT_CHANNELS.includes(entry.handle as any)
+              : OFFICIAL_CHANNEL_TITLES.has(entry.channelName.trim().toLowerCase());
+            if (official) {
+              diagnostics.result = 'youtube_verified_publisher_search';
+              return { status: 'found', video: searchVideo };
+            }
+            // Keep an accurately attributed nonofficial video only as a fallback.
+            // Prioritize authorized channels across every search query and upload feed.
+            if (!unofficialFallback) unofficialFallback = searchVideo;
           }
         }
       } catch { failed = true; diagnostics.youtubeSearchErrors++; }
@@ -372,6 +379,10 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
           try { return { status: 'found', video: await check(item.id, result.value.channelId) }; } catch { failed = true; }
         }
       }
+    }
+    if (unofficialFallback && !c.signal.aborted) {
+      diagnostics.result = 'youtube_attributed_unofficial_fallback';
+      return { status: 'found', video: unofficialFallback };
     }
     diagnostics.result = failed || c.signal.aborted ? 'unavailable' : 'not_found';
     return { status: failed || c.signal.aborted ? 'unavailable' : 'not_found' };
