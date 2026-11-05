@@ -75,9 +75,12 @@ export function videoMetadata(html: string, id: string, match: HighlightMatch, e
   const p = pageJson(html, 'ytInitialPlayerResponse'), d = p.videoDetails, m = p.microformat?.playerMicroformatRenderer;
   const handle = handleOf(m?.ownerProfileUrl || '');
   const publisherName = String(m?.ownerChannelName || d?.author || '').toLowerCase().trim();
-  const recognized = HIGHLIGHT_CHANNELS.includes(handle as any)
-    || OFFICIAL_CHANNEL_TITLES.has(publisherName)
-    || Boolean(expectedChannelId && d?.channelId === expectedChannelId);
+  // A YouTube watch page with a real handle must match the allowlist;
+  // the display name alone cannot override an explicitly different handle.
+  const recognized = handle
+    ? HIGHLIGHT_CHANNELS.includes(handle as any)
+    : OFFICIAL_CHANNEL_TITLES.has(publisherName)
+      || Boolean(expectedChannelId && d?.channelId === expectedChannelId);
   // Keep identity checks strict, but identify precisely which one failed.
   if (!d?.videoId) throw Error('VIDEO_ID_MISSING');
   if (d.videoId !== id) throw Error('VIDEO_ID_MISMATCH');
