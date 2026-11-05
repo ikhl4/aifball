@@ -80,25 +80,24 @@ test('accepts Arabic broadcaster variations for several competitions', () => {
   }
 });
 
-test('search results produce candidates but only verified official video is accepted', async () => {
-  const search = 'var ytInitialData = ' + JSON.stringify({
-    contents: { sectionListRenderer: { contents: [
-      { videoRenderer: { videoId: 'notreally11', title: { runs: [{ text: title }] } } },
-      { videoRenderer: { videoId: id, title: { runs: [{ text: title }] } } },
-    ] } },
-  }) + ';';
-  assert.equal(h.searchVideoCandidates(search).map(v => v.id).join(','), ['notreally11', id].join(','));
+test('DuckDuckGo discovers official YouTube candidates and validates them', async () => {
+  const ddg = '<a class="result__a" href="https://www.youtube.com/watch?v=abcdefghijk">ملخص مباراة فياريال وباريس</a>'
+    + '<a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fyoutu.be%2Fabcdefghijk">Duplicate</a>'
+    + '<a href="https://random.example/watch?v=notallowed1">Untrusted</a>';
+  assert.equal(h.duckDuckGoVideoCandidates(ddg).length, 1);
+  assert.equal(h.duckDuckGoVideoCandidates(ddg)[0].id, id);
   const urls = [];
   const fetcher = async url => {
     urls.push(url);
-    if (url.includes('/results?')) return new Response(search);
+    if (url.includes('html.duckduckgo.com/html/')) return new Response(ddg);
     if (url.includes('watch?v=' + id)) return new Response(watch());
     return new Response('', { status: 503 });
   };
   const result = await h.findHighlightVideo(match, '', undefined, fetcher);
   assert.equal(result.status, 'found');
   assert.equal(result.video.id, id);
-  assert.ok(urls.some(u => u.includes('results?')));
+  assert.ok(urls.some(u => u.includes('duckduckgo.com')));
+  assert.ok(!urls.some(u => u.includes('youtube.com/results?')));
 });
 
 test('YouTube window assignment variant is parsed without executing scripts', () => {
