@@ -103,27 +103,32 @@ function decodeSearchText(value: string): string {
 export type DuckDuckGoVideoResult = { id: string; title: string; snippet: string; url: string };
 export function duckDuckGoVideos(page: string): DuckDuckGoVideoResult[] {
   const found = new Map<string, DuckDuckGoVideoResult>();
-  // Limit parsing to organic result cards; unrelated YouTube links elsewhere on
-  // the search page must not become playable recommendations.
-  for (const section of page.split(/<div\b[^>]*class=["'][^"']*\bresult(?:\s|__body|["'])/i).slice(1, 31)) {
-    if (/\bresult--ad\b|\bresult--sponsored\b/i.test(section.slice(0, 180))) continue;
-    const link = section.match(/<a\b(?=[^>]*\bclass=["'][^"']*\bresult__a\b)[^>]*>[\s\S]*?<\/a>/i)?.[0] || '';
+  // DuckDuckGo has two different public HTML layouts. Read result title
+  // anchors in both, without depending on an exact enclosing <div>.
+  const anchors = [...page.matchAll(/<a\b[^>]*class=["'][^"']*\b(?:result__a|result-link)\b[^"']*["'][^>]*>[\s\S]*?<\/a>/gi)].slice(0, 50);
+  for (const anchor of anchors) {
+    const link = anchor[0];
     const rawHref = link.match(/\bhref=["']([^"']+)["']/i)?.[1] || '';
     if (!rawHref) continue;
     let url = decodeSearchText(rawHref);
     if (url.startsWith('//')) url = 'https:' + url;
     try {
       const redirect = new URL(url, 'https://duckduckgo.com');
-      if (redirect.hostname.endsWith('.duckduckgo.com') || redirect.hostname === 'duckduckgo.com') {
+      if (redirect.hostname === 'duckduckgo.com' || redirect.hostname.endsWith('.duckduckgo.com')) {
         url = redirect.searchParams.get('uddg') || '';
       }
     } catch { continue; }
     const id = youtubeVideoId(url);
-    if (!id) continue;
+    if (!id || found.has(id)) continue;
     const title = decodeSearchText(link.replace(/^<a\b[^>]*>/i, '').replace(/<\/a>$/i, ''));
-    const snippet = decodeSearchText(section.match(/<a\b(?=[^>]*\bclass=["'][^"']*\bresult__snippet\b)[^>]*>([\s\S]*?)<\/a>/i)?.[1]
-      || section.match(/<(?:div|span)\b(?=[^>]*\bclass=["'][^"']*\bresult__snippet\b)[^>]*>([\s\S]*?)<\/(?:div|span)>/i)?.[1] || '');
-    if (!title || found.has(id)) continue;
+    if (!title) continue;
+    // Snippets can be separated from their title by layout wrappers, so
+    // inspect the following small neighborhood until the next result title.
+    const tail = page.slice((anchor.index || 0) + link.length, (anchor.index || 0) + link.length + 5000);
+    const nextTitle = tail.search(/<a\b[^>]*class=["'][^"']*\b(?:result__a|result-link)\b/i);
+    const body = nextTitle >= 0 ? tail.slice(0, nextTitle) : tail;
+    const snippet = decodeSearchText(body.match(/<(?:a|div|span|td)\b[^>]*class=["'][^"']*\b(?:result__snippet|result-snippet)\b[^"']*["'][^>]*>([\s\S]*?)<\/(?:a|div|span|td)>/i)?.[1] || '');
+    if (/\bresult--ad\b|\bresult--sponsored\b/i.test(page.slice(Math.max(0, (anchor.index || 0) - 300), anchor.index || 0))) continue;
     found.set(id, { id, title, snippet, url: 'https://www.youtube.com/watch?v=' + id });
   }
   return [...found.values()];
@@ -168,6 +173,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     const queries = [
       'site:youtube.com/watch ' + match.home + ' ' + match.away + ' highlights ' + match.date,
       'site:youtube.com/watch ' + (footballNameInArabic(match.home) || match.home) + ' ' + (footballNameInArabic(match.away) || match.away) + ' ملخص',
+      'site:youtube.com/watch ' + (footballNameInArabic(match.home) || match.home) + ' ' + (footballNameInArabic(match.away) || match.away) + ' beIN SPORTS',
     ];
     // DuckDuckGo is the primary discovery source. If YouTube blocks the watch
     // page, retain an official result whose title and publisher are both
@@ -175,7 +181,9 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     for (const query of [...new Set(queries)]) {
       if (c.signal.aborted) break;
       try {
-        const page = await html('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query), c.signal, fetcher);
+        let page = '';
+        try { page = await html('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query), c.signal, fetcher); }
+        catch { page = await html('https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(query), c.signal, fetcher); }
         for (const item of duckDuckGoVideos(page)) {
           const fallback = trustedSearchVideo(item, match);
           if (!fallback) continue;
