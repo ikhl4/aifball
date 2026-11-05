@@ -97,7 +97,7 @@ export async function POST(req: Request) {
     const singleReport = matchSummary && !hasImage ? await buildSingleMatchHighlights(query, req.signal).catch(() => null) : null;
     // Only short-circuit Dify when an actual official video was found.
     // Otherwise let Dify's connected DuckDuckGo search try the same fixture.
-    if (singleReport && /\\bvideo_status="found"/.test(singleReport)) {
+    if (singleReport && /\bvideo_status="found"/.test(singleReport)) {
       const events = [{ event: 'message', answer: singleReport, conversation_id }, { event: 'message_end', conversation_id }];
       return new Response(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-AiFBall-Presentation': 'match-summary' } });
     }
@@ -153,8 +153,8 @@ export async function POST(req: Request) {
         : analysis
           ? withAnalysisPresentation(query)
           : (conversation_id ? withMatchConversationContext(query) : query) + (playerCareer ? PLAYER_CAREER_RULES : '');
-    const fixtureContext = singleReport && !/\\bvideo_status="found"/.test(singleReport)
-      ? '\\nبيانات المباراة المؤكدة من مصدر النتائج (لا تعرض رسالة فشل الفيديو قبل تجربة DuckDuckGo المتصلة):\\n'
+    const fixtureContext = singleReport && !/\bvideo_status="found"/.test(singleReport)
+      ? '\nبيانات المباراة المؤكدة من مصدر النتائج (لا تعرض رسالة فشل الفيديو قبل تجربة DuckDuckGo المتصلة):\n'
         + singleReport.replace(/\\s+video_status="[^"]*"/, '')
         + '\\nابحث عن رابط فيديو في القنوات المحددة باستخدام أداة DuckDuckGo المتصلة في Dify. لا تفترض أن عدم وصول خادم الموقع إلى يوتيوب يعني أن الفيديو غير موجود.\\n'
       : '';
