@@ -95,6 +95,14 @@ test('official search metadata rescues a blocked watch page only for matching pu
   assert.notEqual(verified.channelId, 'UC' + 'b'.repeat(22));
   assert.equal((await fetcher('https://www.youtube.com/@beinsports/videos')).status, 200);
 });
+test('publication age and absolute date gate respects match date', () => {
+  const now = Date.parse('2026-11-05T20:00:00+03:00');
+  assert.equal(h.searchDateMatches('3 days ago', '2026-11-02', now), true);
+  assert.equal(h.searchDateMatches('2026-11-03', '2026-11-02', now), true);
+  assert.equal(h.searchDateMatches('1 year ago', '2026-11-02', now), false);
+  assert.equal(h.searchDateMatches('', '2026-11-02', now), false);
+  assert.equal(h.searchDateMatches('2025-11-03', '2026-11-02', now), false);
+});
 test('open-channel mode finds a dated match highlight even when DuckDuckGo 403s and watch metadata is blocked', async () => {
   const played = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const fixture = { ...match, date: played.toISOString().slice(0, 10) };
