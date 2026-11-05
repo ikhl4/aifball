@@ -21,6 +21,7 @@ import StandingsExplorer from './components/StandingsExplorer';
 import { COMPETITIONS, resolveStandingsRequest } from '../lib/competitions';
 import MatchReport from './components/MatchReport';
 import MatchHighlightCard from './components/MatchHighlightCard';
+import YouTubePreviewCard from './components/YouTubePreviewCard';
 import MatchPoster from './components/MatchPoster';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DocumentaryVideo from './components/DocumentaryVideo';
@@ -391,10 +392,21 @@ function renderFormattedText(
     }
   );
 
+  // Keep YouTube URLs out of the visible prose and render an elegant link
+  // preview instead of a region-blocked iframe. Structured summary tags remain
+  // protected so their videos appear only inside their verified match cards.
   const youtubeRegex =
-    /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/g;
+    /(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com\/(?:watch\?[^\s)\]]*?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})(?:[?&][^\s)\]]*)?/gi;
 
   const withoutVideos = protectedSummaryTags
+    // Remove the entire Markdown link, not just its URL, to avoid []() debris.
+    .replace(/\[([^\]]*)\]\(\s*((?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com\/[^\s)]+|youtu\.be\/[^\s)]+))\s*\)/gi,
+      (full, _label: string, url: string) => {
+        const id = youtubeVideoId(url.startsWith('http') ? url : `https://${url}`);
+        if (!id) return full;
+        youtubeIds.add(id);
+        return '';
+      })
     .replace(youtubeRegex, (_full, id: string) => {
       youtubeIds.add(id);
       return '';
@@ -839,31 +851,14 @@ function renderFormattedText(
         {Array.from(youtubeIds).map((id, index) => {
           const matchLabel = matchLabels.length === youtubeIds.size ? matchLabels[index] : '';
           return (
-            <div
-              key={id}
-              className="rounded-2xl overflow-hidden border border-emerald-500/20 mb-5"
-            >
-              {matchLabel && (
-                <p className="px-3 pt-3 font-bold">{matchLabel}</p>
-              )}
-              <a
-                className="block p-3 text-xs font-bold text-red-500"
-                href={`https://www.youtube.com/watch?v=${id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {defaultLanguage === 'en' ? 'Watch on YouTube ↗' : 'مشاهدة على يوتيوب ↗'}
-              </a>
-              <div className="relative aspect-video bg-black">
-                <iframe
-                  className="absolute inset-0 w-full h-full border-0"
-                  src={`https://www.youtube-nocookie.com/embed/${id}?rel=0`}
-                  title={matchLabel ? `${matchLabel} highlights` : 'Match highlights'}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allowFullScreen
-                />
-              </div>
+            <div key={id}>
+              {matchLabel && <p className="mb-2 text-sm font-bold">{matchLabel}</p>}
+              <YouTubePreviewCard
+                url={`https://www.youtube.com/watch?v=${id}`}
+                title={matchLabel || undefined}
+                label={defaultLanguage === 'en' ? 'Match highlights' : 'ملخص المباراة بالفيديو'}
+                isDark={isDark}
+              />
             </div>
           );
         })}
