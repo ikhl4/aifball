@@ -90,6 +90,70 @@ async function html(url: string, signal: AbortSignal, fetcher: typeof fetch): Pr
   if (Number(r.headers.get('content-length')) > 4_000_000) throw Error('PAGE_SIZE');
   const value = await r.text(); if (value.length > 4_000_000) throw Error('PAGE_SIZE'); return value;
 }
+/** DuckDuckGo's lightweight HTML results can be read when YouTube blocks server-side pages. */
+function decodeSearchText(value: string): string {
+  return value.replace(/<[^>]+>/g, ' ').replace(/&(?:amp|quot|apos|lt|gt|nbsp);|&#(?:x[0-9a-f]+|\d+);/gi, entity => {
+    const named: Record<string, string> = { '&amp;': '&', '&quot;': '"', '&apos;': "'", '&lt;': '<', '&gt;': '>', '&nbsp;': ' ' };
+    if (named[entity.toLowerCase()]) return named[entity.toLowerCase()];
+    const hex = entity.startsWith('&#x') || entity.startsWith('&#X');
+    const point = parseInt(entity.slice(hex ? 3 : 2, -1), hex ? 16 : 10);
+    return Number.isFinite(point) && point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : '';
+  }).replace(/\s+/g, ' ').trim();
+}
+export type DuckDuckGoVideoResult = { id: string; title: string; snippet: string; url: string };
+export function duckDuckGoVideos(page: string): DuckDuckGoVideoResult[] {
+  const found = new Map<string, DuckDuckGoVideoResult>();
+  // Limit parsing to organic result cards; unrelated YouTube links elsewhere on
+  // the search page must not become playable recommendations.
+  for (const section of page.split(/<div\b[^>]*class=["'][^"']*\bresult(?:\s|__body|["'])/i).slice(1, 31)) {
+    if (/\bresult--ad\b|\bresult--sponsored\b/i.test(section.slice(0, 180))) continue;
+    const link = section.match(/<a\b(?=[^>]*\bclass=["'][^"']*\bresult__a\b)[^>]*>[\s\S]*?<\/a>/i)?.[0] || '';
+    const rawHref = link.match(/\bhref=["']([^"']+)["']/i)?.[1] || '';
+    if (!rawHref) continue;
+    let url = decodeSearchText(rawHref);
+    if (url.startsWith('//')) url = 'https:' + url;
+    try {
+      const redirect = new URL(url, 'https://duckduckgo.com');
+      if (redirect.hostname.endsWith('.duckduckgo.com') || redirect.hostname === 'duckduckgo.com') {
+        url = redirect.searchParams.get('uddg') || '';
+      }
+    } catch { continue; }
+    const id = youtubeVideoId(url);
+    if (!id) continue;
+    const title = decodeSearchText(link.replace(/^<a\b[^>]*>/i, '').replace(/<\/a>$/i, ''));
+    const snippet = decodeSearchText(section.match(/<a\b(?=[^>]*\bclass=["'][^"']*\bresult__snippet\b)[^>]*>([\s\S]*?)<\/a>/i)?.[1]
+      || section.match(/<(?:div|span)\b(?=[^>]*\bclass=["'][^"']*\bresult__snippet\b)[^>]*>([\s\S]*?)<\/(?:div|span)>/i)?.[1] || '');
+    if (!title || found.has(id)) continue;
+    found.set(id, { id, title, snippet, url: 'https://www.youtube.com/watch?v=' + id });
+  }
+  return [...found.values()];
+}
+
+function recognizedSearchPublisher(value: string): string {
+  const lower = norm(value);
+  const publishers = [
+    ['beIN SPORTS', /(?:^|\s)bein sports(?:\s|$)/],
+    ['TOD by beIN', /(?:^|\s)tod by bein(?:\s|$)/],
+    ['ثمانية', /(?:^|\s)(?:ثمانيه|ثمانية|thmanyah sports)(?:\s|$)/],
+    ['Serie A', /(?:^|\s)serie a(?:\s|$)/],
+    ['LaLiga', /(?:^|\s)laliga(?:\s|$)/],
+    ['MLS', /(?:^|\s)(?:mls|major league soccer)(?:\s|$)/],
+    ['AD Sports', /(?:^|\s)(?:ad sports|abu dhabi sports|ابوظبي الرياضيه|ابوظبي الرياضية)(?:\s|$)/],
+    ['Alkass', /(?:^|\s)(?:alkass|قنوات الكاس)(?:\s|$)/],
+    ['STC TV Sports', /(?:^|\s)stc tv sports(?:\s|$)/],
+  ] as const;
+  return publishers.find(([, pattern]) => pattern.test(lower))?.[0] || '';
+}
+/** This is a search-verified result, not a claim YouTube confirmed embedding. */
+export function trustedSearchVideo(item: DuckDuckGoVideoResult, match: HighlightMatch): HighlightVideo | null {
+  if (!matchesTeams(item.title, match)) return null;
+  const channel = recognizedSearchPublisher(item.title + ' ' + item.snippet);
+  if (!channel) return null;
+  // The search result corroborates the publisher and two clubs. Without an
+  // accessible watch page, do not make an unsupported embed claim.
+  return { id: item.id, url: item.url, title: item.title, channel, publishedAt: '', embeddable: false };
+}
+
 /** Discovery starts with Dify's DDG candidates, then the selected channels' recent public uploads.
  * oEmbed failure and disabled embedding are not evidence that a video is absent. */
 export async function findHighlightVideo(match: HighlightMatch, candidate = '', signal?: AbortSignal, fetcher: typeof fetch = fetch): Promise<Result> {
@@ -101,13 +165,27 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
   try {
     const candidateId = youtubeVideoId(candidate);
     if (candidateId) { try { return { status: 'found', video: await check(candidateId) }; } catch { /* Try the official channel instead of declaring absence. */ } }
-    // Search YouTube directly first: relevant official highlights can be older than the
-    // channel's recent uploads feed, especially on busy sports channels.
     const queries = [
-      [match.home, match.away, 'highlights'].join(' '),
-      [footballNameInArabic(match.home) || match.home, footballNameInArabic(match.away) || match.away, 'ملخص'].join(' '),
+      'site:youtube.com/watch ' + match.home + ' ' + match.away + ' highlights ' + match.date,
+      'site:youtube.com/watch ' + (footballNameInArabic(match.home) || match.home) + ' ' + (footballNameInArabic(match.away) || match.away) + ' ملخص',
     ];
-    for (const query of [...new Set(queries)] ) {
+    // DuckDuckGo is the primary discovery source. If YouTube blocks the watch
+    // page, retain an official result whose title and publisher are both
+    // corroborated by the external search result.
+    for (const query of [...new Set(queries)]) {
+      if (c.signal.aborted) break;
+      try {
+        const page = await html('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query), c.signal, fetcher);
+        for (const item of duckDuckGoVideos(page)) {
+          const fallback = trustedSearchVideo(item, match);
+          if (!fallback) continue;
+          try { return { status: 'found', video: await check(item.id) }; }
+          catch { return { status: 'found', video: fallback }; }
+        }
+      } catch { failed = true; }
+    }
+    // Fall back to YouTube's own search and then official recent uploads.
+    for (const query of [...new Set(queries.map(q => q.replace('site:youtube.com/watch ', '')))]) {
       if (c.signal.aborted) break;
       try {
         const searchPage = await html('https://www.youtube.com/results?search_query=' + encodeURIComponent(query), c.signal, fetcher);
@@ -124,7 +202,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
         };
         visit(data.contents);
         for (const [id, title] of [...videos].filter(([, title]) => matchesTeams(title, match)).slice(0, 10)) {
-          try { return { status: 'found', video: await check(id) }; } catch { /* Ignore unrelated or unavailable results. */ }
+          try { return { status: 'found', video: await check(id) }; } catch { /* Continue to official channel feeds. */ }
         }
       } catch { failed = true; }
     }
