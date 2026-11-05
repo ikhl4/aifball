@@ -1,4 +1,5 @@
-import { findHighlightVideo } from './highlight-video';
+import { findHighlightVideo, trustedSearchVideo } from './highlight-video';
+import { youtubeVideoId } from './summary-presentation';
 
 const decode = (s: string) => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -16,11 +17,30 @@ export async function verifySummaryAnswer(answer: string, signal?: AbortSignal, 
     if (!controller.signal.aborted) {
       try { result = await lookup({ home: attrs.home || '', away: attrs.away || '', date: attrs.date || '', competition: attrs.competition }, attrs.video_url || '', controller.signal); } catch { /* Keep a usable card with an honest verification status. */ }
     }
+    // A video discovered by Dify's DuckDuckGo tool may be inaccessible from
+    // the Vercel server. Do not silently erase that external search result
+    // when the title, actual publisher and fixture are all supplied.
+    const candidateId = youtubeVideoId(attrs.video_url || '');
+    const candidateTitle = attrs.video_title || '';
+    const candidateChannel = attrs.video_channel || '';
+    const candidateSource = attrs.video_source_url || '';
+    let externallyCorroborated = null;
+    if (result.status !== 'found' && candidateId && candidateTitle && candidateChannel
+      && candidateSource && youtubeVideoId(candidateSource) === candidateId) {
+      externallyCorroborated = trustedSearchVideo({
+        id: candidateId, title: candidateTitle,
+        snippet: candidateChannel, url: 'https://www.youtube.com/watch?v=' + candidateId,
+      }, { home: attrs.home || '', away: attrs.away || '', date: attrs.date || '', competition: attrs.competition });
+    }
     delete attrs.video_url; delete attrs.video_embed; delete attrs.video_channel;
-    attrs.video_status = result.status;
-    if (result.status === 'found') {
-      attrs.video_url = result.video.url; attrs.video_embed = String(result.video.embeddable);
-      attrs.video_channel = result.video.channel; attrs.video_published = result.video.publishedAt;
+    delete attrs.video_title; delete attrs.video_source_url;
+    const video = result.status === 'found' ? result.video : externallyCorroborated;
+    attrs.video_status = video ? 'found' : result.status;
+    if (video) {
+      attrs.video_url = video.url;
+      attrs.video_embed = String(video.embeddable);
+      attrs.video_channel = video.channel;
+      if (video.publishedAt) attrs.video_published = video.publishedAt;
     }
     const replacement = '<aifball-summary ' + Object.entries(attrs).map(([key, value]) => `${key}="${esc(value)}"`).join(' ') + ' />';
     replacements[index] = replacement;
