@@ -155,8 +155,8 @@ export async function POST(req: Request) {
           : (conversation_id ? withMatchConversationContext(query) : query) + (playerCareer ? PLAYER_CAREER_RULES : '');
     const fixtureContext = singleReport && !/\bvideo_status="found"/.test(singleReport)
       ? '\nبيانات المباراة المؤكدة من مصدر النتائج (لا تعرض رسالة فشل الفيديو قبل تجربة DuckDuckGo المتصلة):\n'
-        + singleReport.replace(/\\s+video_status="[^"]*"/, '')
-        + '\\nابحث عن رابط فيديو في القنوات المحددة باستخدام أداة DuckDuckGo المتصلة في Dify. لا تفترض أن عدم وصول خادم الموقع إلى يوتيوب يعني أن الفيديو غير موجود.\\n'
+        + singleReport.replace(/\s+video_status="[^"]*"/, '')
+        + '\nابحث عن رابط فيديو في القنوات المحددة باستخدام أداة DuckDuckGo المتصلة في Dify. لا تفترض أن عدم وصول خادم الموقع إلى يوتيوب يعني أن الفيديو غير موجود.\n'
       : '';
     const dailyContext = dailyReport ? `\nهذه نتائج المباريات المسترجعة من سجل النتائج. حافظ على تغطيتها، وابحث عن كل مقطع عبر DuckDuckGo وفق قواعد القنوات أدناه:\n${dailyReport}` : '';
     const fantasy = /فانتازي|فنتازي|fantasy|\bfpl\b/i.test(query);
