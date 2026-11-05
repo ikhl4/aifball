@@ -42,6 +42,18 @@ export async function verifySummaryAnswer(answer: string, signal?: AbortSignal, 
       attrs.video_channel = video.channel;
       if (video.publishedAt) attrs.video_published = video.publishedAt;
     }
+    if (process.env.VERCEL_ENV === 'preview') {
+      console.info('[AIFBALL_VIDEO_HANDOFF_DEBUG]', JSON.stringify({
+        date: attrs.date || '',
+        difyProvidedVideo: Boolean(candidateId),
+        difyProvidedTitle: Boolean(candidateTitle),
+        difyProvidedChannel: Boolean(candidateChannel),
+        difyProvidedSource: Boolean(candidateSource),
+        lookupStatus: result.status,
+        externalCandidateAccepted: Boolean(externallyCorroborated),
+        finalStatus: attrs.video_status,
+      }));
+    }
     const replacement = '<aifball-summary ' + Object.entries(attrs).map(([key, value]) => `${key}="${esc(value)}"`).join(' ') + ' />';
     replacements[index] = replacement;
   } };
