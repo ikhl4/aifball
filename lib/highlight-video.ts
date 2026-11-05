@@ -1,4 +1,4 @@
-// Preview deployment refresh: open-channel YouTube discovery remains experimental and is not merged to main.
+// Official-source highlights experiment; preview branch only, not merged to production.
 import { footballNameInArabic } from './football-names-ar';
 import { youtubeVideoId } from './summary-presentation';
 
@@ -20,6 +20,7 @@ const OFFICIAL_CHANNEL_TITLES = new Set([
 ].map(name => name.toLowerCase()));
 // Verified official YouTube channel IDs, used if search omits @handles.
 const VERIFIED_CHANNEL_IDS: Record<string, string> = {
+  UCJUCcJUeh0Cz2xyKwkw5Q1w: 'beinsports',
   UCivJETAP4VD7rXRgjdpVwNw: 'ittihadclub',
   UCnj0TjaM0wyxkAWW_nz8_1g: 'theafchub',
 };
@@ -89,8 +90,8 @@ export function videoMetadata(html: string, id: string, match: HighlightMatch, e
   const p = pageJson(html, 'ytInitialPlayerResponse'), d = p.videoDetails, m = p.microformat?.playerMicroformatRenderer;
   const handle = handleOf(m?.ownerProfileUrl || '');
   const publisherName = String(m?.ownerChannelName || d?.author || '').toLowerCase().trim();
-  // A YouTube watch page with a real handle must match the allowlist;
-  // the display name alone cannot override an explicitly different handle.
+  // Require an approved @handle or a separately verified channel ID;
+  // a display name is insufficient because it can be imitated.
   const recognized = verifiedPublisher(handle, String(d?.channelId || ''), publisherName);
   // Keep identity checks strict, but identify precisely which one failed.
   if (!d?.videoId) throw Error('VIDEO_ID_MISSING');
@@ -290,7 +291,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
       } catch (err) { failed = true; diagnostics.ddgErrors++; const kind = err instanceof Error ? err.message : 'UNKNOWN';
         if (!diagnostics.ddgErrorKinds.includes(kind)) diagnostics.ddgErrorKinds.push(kind.slice(0, 40)); }
     }
-    // Fall back to YouTube's own search and then official recent uploads.
+    // Discover verified publishers in YouTube search, then scan official uploads.
     for (const query of [...new Set(queries.map(q => q.replace('site:youtube.com/watch ', '')))]) {
       if (c.signal.aborted) break;
       diagnostics.youtubeSearchRequests++;
@@ -320,11 +321,9 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
             const safeReason = /^(VIDEO_IDENTITY|VIDEO_ID_MISSING|VIDEO_ID_MISMATCH|VIDEO_PUBLISHER_UNVERIFIED|VIDEO_CHANNEL_MISMATCH|VIDEO_TITLE_MISMATCH|VIDEO_DATE|VIDEO_UNAVAILABLE|MISSING_METADATA|INVALID_METADATA|UPSTREAM_\d{3})$/.test(reason) ? reason : 'OTHER';
             diagnostics.youtubeRejectReasons[safeReason] = (diagnostics.youtubeRejectReasons[safeReason] || 0) + 1;
             if (reason.startsWith('UPSTREAM_')) diagnostics.youtubeWatchStatusErrors++;
-            // Separate discovery from verification: YouTube's own search
-            // identifies the video's channel, publication age and match.
-            // A known but different handle is never overridden by a similar
-            // display name. A missing handle requires an exact official name.
-            // A blocked watch page does not prove that embedding is allowed.
+            // YouTube search exposes the publisher's channel ID, upload age and
+            // video ID. Only known official accounts can pass when watch metadata
+            // is incomplete; a matching title alone is not sufficient.
             if (reason !== 'VIDEO_ID_MISSING') continue;
             const entry = searchEntries.get(id);
             if (!entry || !/^UC[\w-]{22}$/.test(entry.channelId)
