@@ -23,7 +23,7 @@ export function summaryDateRange(query: string, now = new Date()): [string,strin
 export async function buildSingleMatchHighlights(query: string, signal?: AbortSignal, fetcher: typeof fetch = fetch, lookup = findHighlightVideo, now = new Date()): Promise<string|null> {
  if(isDailyHighlightsRequest(query))return null;
  const [start,end]=summaryDateRange(query,now);
- const controller = new AbortController(), timer=setTimeout(()=>controller.abort(),12000), abort=()=>controller.abort();
+ const controller = new AbortController(), timer=setTimeout(()=>controller.abort(),45000), abort=()=>controller.abort();
  signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)abort();
  const get=async(url:string)=>{const r=await fetcher(url,{signal:controller.signal,cache:'no-store'});if(!r.ok)throw Error('SOURCE');return r.json();};
  let selected:any;
@@ -42,7 +42,7 @@ export async function buildSingleMatchHighlights(query: string, signal?: AbortSi
    const results=await Promise.allSettled(leagues.map(async ([league,competition])=>({league,competition,raw:await get(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard?dates=${windowDates}`)})));
    for(const r of results){if(r.status!=='fulfilled')continue;for(const event of r.value.raw.events||[]){
     const c=event.competitions?.[0], home=c?.competitors?.find((t:any)=>t.homeAway==='home'),away=c?.competitors?.find((t:any)=>t.homeAway==='away');
-    if(!event.status?.type?.completed||!/^\\d{1,12}$/.test(event.id)||!home?.team?.displayName||!away?.team?.displayName||!/^\\d+$/.test(String(home.score))||!/^\\d+$/.test(String(away.score)))continue;
+    if(!event.status?.type?.completed||!/^\d{1,12}$/.test(event.id)||!home?.team?.displayName||!away?.team?.displayName||!/^\d+$/.test(String(home.score))||!/^\\d+$/.test(String(away.score)))continue;
     const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Riyadh'}).format(new Date(event.date));if(date<windowStart||date>windowEnd)continue;
     if(teamMentioned(query,home.team.displayName)&&teamMentioned(query,away.team.displayName))candidates.push({event,home,away,date,league:r.value.league,competition:r.value.competition});
    }}
