@@ -33,6 +33,15 @@ test('official club and confederation channel IDs are accepted without a vanity 
     assert.equal(h.videoMetadata(page, id, match).channel, publisher);
   }
   assert.throws(() => h.videoMetadata(watch({ channel: 'plus90' }), id, match));
+  assert.throws(() => h.videoMetadata(
+    'var ytInitialPlayerResponse = ' + JSON.stringify({
+      videoDetails: { videoId: id, channelId: 'UC' + 'q'.repeat(22), title, author: 'beIN SPORTS' },
+      playabilityStatus: { status: 'OK' },
+      microformat: { playerMicroformatRenderer: { ownerChannelName: 'beIN SPORTS', publishDate: '2026-11-03' } },
+    }) + ';</script>', id, match
+  ));
+  assert.ok(h.HIGHLIGHT_CHANNELS.includes('ittihadclub'));
+  assert.ok(h.HIGHLIGHT_CHANNELS.includes('theafchub'));
 });
 test('disabled embedding does not reject a verified official highlight', () => {
   const video = h.videoMetadata(watch(), id, match, channelId);
