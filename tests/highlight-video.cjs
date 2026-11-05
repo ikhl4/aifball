@@ -34,6 +34,28 @@ test('channel page can use a verified channel ID without a vanity URL', () => {
   const page = channelPage().replace('https://www.youtube.com/@beinsports', '');
   assert.equal(h.channelIndex(page, 'beinsports').channelId, channelId);
 });
+test('direct YouTube search accepts ordinary eleven-character video IDs', async () => {
+  const player = watch();
+  const searchPage = 'var ytInitialData = ' + JSON.stringify({ contents: {
+    twoColumnSearchResultsRenderer: { primaryContents: { sectionListRenderer: {
+      contents: [{ itemSectionRenderer: { contents: [{
+        videoRenderer: { videoId: id, title: { runs: [{ text: title }] } }
+      }] } }]
+    } } }
+  } }) + ';</script>';
+  const urls = [];
+  const fetcher = async url => {
+    urls.push(url);
+    if (url.includes('/results?')) return new Response(searchPage);
+    if (url.includes('/watch?')) return new Response(player);
+    return new Response('', { status: 503 });
+  };
+  const result = await h.findHighlightVideo(match, '', undefined, fetcher);
+  assert.equal(result.status, 'found');
+  assert.equal(result.video.id, id);
+  assert.ok(urls.some(url => url.includes('/results?')));
+  assert.ok(!urls.some(url => url.includes('/@beinsports/videos')));
+});
 test('recent channel uploads are discovered without oEmbed or a paid API key', async () => {
   const requested = [];
   const fetcher = async url => { requested.push(url); if (url.includes('/@beinsports/')) return new Response(channelPage()); if (url.includes('/watch?')) return new Response(watch()); return new Response('', { status: 503 }); };
