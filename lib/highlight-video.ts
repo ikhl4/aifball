@@ -312,7 +312,9 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
             if (reason !== 'VIDEO_ID_MISSING') continue;
             const entry = searchEntries.get(id);
             if (!entry || !/^UC[\w-]{22}$/.test(entry.channelId)
-              || !entry.channelName.trim() || !matchesTeams(entry.title, match)) {
+              || !entry.channelName.trim() || !matchesTeams(entry.title, match)
+              || !(HIGHLIGHT_CHANNELS.includes(entry.handle as any)
+                || OFFICIAL_CHANNEL_TITLES.has(entry.channelName.trim().toLowerCase()))) {
               diagnostics.searchMissingIdentity++; continue;
             }
             diagnostics.searchPublisherCandidates++;
