@@ -95,6 +95,37 @@ test('official search metadata rescues a blocked watch page only for matching pu
   assert.notEqual(verified.channelId, 'UC' + 'b'.repeat(22));
   assert.equal((await fetcher('https://www.youtube.com/@beinsports/videos')).status, 200);
 });
+test('open-channel mode finds a dated match highlight even when DuckDuckGo 403s and watch metadata is blocked', async () => {
+  const played = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const fixture = { ...match, date: played.toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' }) };
+  const otherChannel = 'UC' + 'z'.repeat(22);
+  const searchResult = (channelName, channelId, date = '1 day ago') =>
+    'var ytInitialData = ' + JSON.stringify({ contents: { videoRenderer: {
+      videoId: id, title: { runs: [{ text: title }] },
+      ownerText: { runs: [{ text: channelName, navigationEndpoint: { browseEndpoint: { browseId: channelId, canonicalBaseUrl: '/@otherchannel' } } }] },
+      publishedTimeText: { simpleText: date }
+    } } }) + ';</script>';
+  const blockedPlayer = 'var ytInitialPlayerResponse = ' + JSON.stringify({ videoDetails: {}, playabilityStatus: { status: 'LOGIN_REQUIRED' } }) + ';</script>';
+  const fetcher = async url => {
+    if (url.includes('duckduckgo.com')) return new Response('', { status: 403 });
+    if (url.includes('/results?')) return new Response(searchResult('Nonlisted football channel', otherChannel));
+    if (url.includes('/watch?')) return new Response(blockedPlayer);
+    return new Response('', { status: 403 });
+  };
+  const result = await h.findHighlightVideo(fixture, '', undefined, fetcher);
+  assert.equal(result.status, 'found');
+  assert.equal(result.video.id, id);
+  assert.equal(result.video.channel, 'Nonlisted football channel');
+  assert.equal(result.video.embeddable, false);
+
+  const invalid = await h.findHighlightVideo(fixture, '', undefined, async url => {
+    if (url.includes('duckduckgo.com')) return new Response('', { status: 403 });
+    if (url.includes('/results?')) return new Response(searchResult('Nonlisted football channel', 'invalid'));
+    if (url.includes('/watch?')) return new Response(blockedPlayer);
+    return new Response('', { status: 403 });
+  });
+  assert.equal(invalid.status, 'unavailable');
+});
 test('DuckDuckGo preserves an official highlight when YouTube refuses server-side access', async () => {
   const page = '<div class="result results_links"><div class="result__body">'
     + '<a class="result__a" href="//duckduckgo.com/l/?uddg='
