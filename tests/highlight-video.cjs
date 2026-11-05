@@ -183,7 +183,7 @@ test('DuckDuckGo results parse across HTML and Lite layouts without enclosing re
     assert.equal(h.trustedSearchVideo(results[0], match).channel, 'beIN SPORTS');
   }
 });
-test('DuckDuckGo Lite fallback works when HTML endpoint is blocked', async () => {
+test('DuckDuckGo Lite provides discovery but not independent publisher proof', async () => {
   const direct = 'https://www.youtube.com/watch?v=' + id;
   const lite = '<table><tr><td><a class="result-link" href="' + direct
     + '">ملخص مباراة فياريال وباريس سان جيرمان</a></td></tr>'
@@ -196,8 +196,7 @@ test('DuckDuckGo Lite fallback works when HTML endpoint is blocked', async () =>
       : new Response('', { status: 403 });
   };
   const result = await h.findHighlightVideo(match, '', undefined, fetcher);
-  assert.equal(result.status, 'found');
-  assert.equal(result.video.embeddable, false);
+  assert.equal(result.status, 'unavailable');
   assert.ok(requested.some(url => url.includes('lite.duckduckgo.com/lite/')));
 });
 test('DuckDuckGo cannot pass an unofficial publisher or wrong fixture', () => {
@@ -225,16 +224,15 @@ test('the stream answer uses verified metadata and strips an unverified model UR
   const unavailable = await v.verifySummaryAnswer(answer, undefined, async () => ({ status: 'unavailable' }));
   assert.ok(!unavailable.includes('video_url=')); assert.ok(unavailable.includes('video_status="unavailable"'));
 });
-test('Dify DuckDuckGo result survives inaccessible YouTube player metadata', async () => {
+test('Dify channel claim cannot bypass independent YouTube verification', async () => {
   const attrs = '<aifball-summary home="فياريال" away="باريس سان جيرمان" date="2026-11-03"'
     + ' video_url="https://www.youtube.com/watch?v=abcdefghijk"'
     + ' video_title="ملخص مباراة فياريال وباريس سان جيرمان"'
     + ' video_channel="beIN SPORTS"'
     + ' video_source_url="https://www.youtube.com/watch?v=abcdefghijk" />';
   const answer = await v.verifySummaryAnswer(attrs, undefined, async () => ({ status: 'unavailable' }));
-  assert.match(answer, /video_status="found"/);
-  assert.match(answer, /video_embed="false"/);
-  assert.match(answer, /video_url="https:\/\/www.youtube.com\/watch\?v=abcdefghijk"/);
+  assert.match(answer, /video_status="unavailable"/);
+  assert.doesNotMatch(answer, /video_url=/);
   assert.doesNotMatch(answer, /video_title=/);
 });
 test('unmatched or uncorroborated DuckDuckGo result is never shown', async () => {
