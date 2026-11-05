@@ -166,9 +166,21 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
   const c = new AbortController(), timer = setTimeout(() => c.abort(), 24000), abort = () => c.abort();
   signal?.addEventListener('abort', abort, { once: true }); if (signal?.aborted) abort();
   let failed = false;
+  // Preview-only diagnostic counters; no URLs, prompts, API keys, or snippets.
+  const diagnostics = { ddgRequests: 0, ddgErrors: 0, ddgCandidates: 0, ddgMatch: 0,
+    ddgPublisherRejected: 0, ddgTitleRejected: 0, youtubeSearchRequests: 0,
+    youtubeSearchErrors: 0, channelFailures: 0, result: 'unknown' };
+  const logDiagnostic = () => {
+    if (process.env.VERCEL_ENV === 'preview') {
+      console.info('[AIFBALL_HIGHLIGHTS_DEBUG]', JSON.stringify({
+        date: match.date, diagnostics,
+      }));
+    }
+  };
   const check = async (id: string, channelId?: string) => videoMetadata(await html(`https://www.youtube.com/watch?v=${id}`, c.signal, fetcher), id, match, channelId);
   try {
     const candidateId = youtubeVideoId(candidate);
+    if (candidateId) diagnostics.result = 'candidate_supplied';
     if (candidateId) { try { return { status: 'found', video: await check(candidateId) }; } catch { /* Try the official channel instead of declaring absence. */ } }
     const queries = [
       'site:youtube.com/watch ' + match.home + ' ' + match.away + ' highlights ' + match.date,
@@ -180,21 +192,27 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     // corroborated by the external search result.
     for (const query of [...new Set(queries)]) {
       if (c.signal.aborted) break;
+      diagnostics.ddgRequests++;
       try {
         let page = '';
         try { page = await html('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query), c.signal, fetcher); }
         catch { page = await html('https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(query), c.signal, fetcher); }
         for (const item of duckDuckGoVideos(page)) {
+          diagnostics.ddgCandidates++;
+          if (!matchesTeams(item.title, match)) { diagnostics.ddgTitleRejected++; continue; }
+          diagnostics.ddgMatch++;
           const fallback = trustedSearchVideo(item, match);
+          if (!fallback) diagnostics.ddgPublisherRejected++;
           if (!fallback) continue;
-          try { return { status: 'found', video: await check(item.id) }; }
-          catch { return { status: 'found', video: fallback }; }
+          try { const video = await check(item.id); diagnostics.result = 'ddg_verified'; return { status: 'found', video }; }
+          catch { diagnostics.result = 'ddg_search_corroborated'; return { status: 'found', video: fallback }; }
         }
-      } catch { failed = true; }
+      } catch { failed = true; diagnostics.ddgErrors++; }
     }
     // Fall back to YouTube's own search and then official recent uploads.
     for (const query of [...new Set(queries.map(q => q.replace('site:youtube.com/watch ', '')))]) {
       if (c.signal.aborted) break;
+      diagnostics.youtubeSearchRequests++;
       try {
         const searchPage = await html('https://www.youtube.com/results?search_query=' + encodeURIComponent(query), c.signal, fetcher);
         const data = pageJson(searchPage, 'ytInitialData');
@@ -212,7 +230,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
         for (const [id, title] of [...videos].filter(([, title]) => matchesTeams(title, match)).slice(0, 10)) {
           try { return { status: 'found', video: await check(id) }; } catch { /* Continue to official channel feeds. */ }
         }
-      } catch { failed = true; }
+      } catch { failed = true; diagnostics.youtubeSearchErrors++; }
     }
     const channels = [...HIGHLIGHT_CHANNELS];
     if (/روشن|saudi|ksa/i.test(match.competition || '')) channels.sort((a, b) => Number(b === 'thmanyahsports') - Number(a === 'thmanyahsports'));
@@ -235,12 +253,13 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
         return value;
       }));
       for (const result of results) {
-        if (result.status === 'rejected') { failed = true; continue; }
+        if (result.status === 'rejected') { failed = true; diagnostics.channelFailures++; continue; }
         for (const item of result.value.videos.filter(v => matchesTeams(v.title, match)).slice(0, 3)) {
           try { return { status: 'found', video: await check(item.id, result.value.channelId) }; } catch { failed = true; }
         }
       }
     }
+    diagnostics.result = failed || c.signal.aborted ? 'unavailable' : 'not_found';
     return { status: failed || c.signal.aborted ? 'unavailable' : 'not_found' };
-  } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
+  } finally { logDiagnostic(); clearTimeout(timer); signal?.removeEventListener('abort', abort); }
 }
