@@ -1,4 +1,4 @@
-import { verifiedSummaryStream } from '../../../lib/verified-summary';
+import { verifiedSummaryStream, verifySummaryAnswer } from '../../../lib/verified-summary';
 import { posterIntent } from '../../../lib/match-card-data';
 import { buildSingleMatchHighlights } from '../../../lib/single-match-highlights';
 import { historyMode, FOOTBALL_HISTORY_RULES, DOCUMENTARY_REQUEST_RULES, presentHistoryAnswer } from '../../../lib/football-history';
@@ -202,7 +202,19 @@ export async function POST(req: Request) {
     }
 
     // إرجاع الـ Stream مباشرة للواجهة الأمامية
-    return new Response(apiRes.body && historical !== 'none' && !hasImage && !wantsDesign ? verifiedSummaryStream(apiRes.body, req.signal, (answer, signal) => presentHistoryAnswer(answer, historical, signal)) : apiRes.body && matchSummary && !hasImage && !wantsDesign ? verifiedSummaryStream(apiRes.body, req.signal) : apiRes.body && !hasImage && !wantsPhoto && !wantsDesign && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
+    return new Response(apiRes.body && historical !== 'none' && !hasImage && !wantsDesign ? verifiedSummaryStream(apiRes.body, req.signal, (answer, signal) => presentHistoryAnswer(answer, historical, signal)) : apiRes.body && matchSummary && !hasImage && !wantsDesign
+      ? verifiedSummaryStream(apiRes.body, req.signal, async (answer, signal) => {
+          if (/<aifball-summary\b/i.test(answer)) return verifySummaryAnswer(answer, signal);
+          // Never fabricate structure from free prose. Use the independently
+          // confirmed fixture only when the scoreboard lookup succeeded.
+          if (process.env.VERCEL_ENV === 'preview') {
+            console.info('[AIFBALL_SUMMARY_FORMAT_DEBUG]', JSON.stringify({
+              difyEmittedTag: false, confirmedFixtureAvailable: Boolean(singleReport),
+            }));
+          }
+          return singleReport ? verifySummaryAnswer(singleReport, signal) : answer;
+        })
+      : apiRes.body && !hasImage && !wantsPhoto && !wantsDesign && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
