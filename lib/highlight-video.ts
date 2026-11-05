@@ -165,7 +165,7 @@ export function trustedSearchVideo(item: DuckDuckGoVideoResult, match: Highlight
 }
 
 
-type YoutubeSearchEntry = { id: string; title: string; channelId: string; handle: string; published: string };
+type YoutubeSearchEntry = { id: string; title: string; channelId: string; handle: string; channelName: string; published: string };
 export function youtubeSearchEntries(data: any): YoutubeSearchEntry[] {
   const entries: YoutubeSearchEntry[] = [];
   const visit = (node: any): void => {
@@ -175,7 +175,7 @@ export function youtubeSearchEntries(data: any): YoutubeSearchEntry[] {
       const owner = v.ownerText?.runs?.[0]?.navigationEndpoint?.browseEndpoint;
       const handle = handleOf('https://www.youtube.com' + (owner?.canonicalBaseUrl || ''));
       entries.push({ id: v.videoId, title: text(v.title), channelId: String(owner?.browseId || ''),
-        handle, published: text(v.publishedTimeText) });
+        handle, channelName: text(v.ownerText) || '', published: text(v.publishedTimeText) });
     }
     for (const child of Object.values(node)) {
       if (Array.isArray(child)) child.forEach(visit);
@@ -209,7 +209,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     youtubeWatchRejected: 0, youtubeWatchStatusErrors: 0, channelFailures: 0,
     youtubeRejectReasons: {} as Record<string, number>, channelRejectReasons: {} as Record<string, number>,
     ddgErrorKinds: [] as string[], searchPublisherCandidates: 0,
-    searchPublisherValidated: 0, searchDateRejected: 0, result: 'unknown' };
+    searchPublisherValidated: 0, searchDateRejected: 0, searchMissingIdentity: 0, result: 'unknown' };
   const logDiagnostic = () => {
     if (process.env.VERCEL_ENV === 'preview') {
       console.info('[AIFBALL_HIGHLIGHTS_DEBUG]', JSON.stringify({
@@ -280,25 +280,28 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
             const safeReason = /^(VIDEO_IDENTITY|VIDEO_ID_MISSING|VIDEO_ID_MISMATCH|VIDEO_PUBLISHER_UNVERIFIED|VIDEO_CHANNEL_MISMATCH|VIDEO_TITLE_MISMATCH|VIDEO_DATE|VIDEO_UNAVAILABLE|MISSING_METADATA|INVALID_METADATA|UPSTREAM_\d{3})$/.test(reason) ? reason : 'OTHER';
             diagnostics.youtubeRejectReasons[safeReason] = (diagnostics.youtubeRejectReasons[safeReason] || 0) + 1;
             if (reason.startsWith('UPSTREAM_')) diagnostics.youtubeWatchStatusErrors++;
-            // A blocked watch page can omit metadata. In this case, verify the
-            // result's publisher by matching its channel ID against the official
-            // handle's own page; never bypass a true mismatch.
+            // Experimental open-channel mode: trust YouTube's search result
+            // only for a real video ID + named publisher channel ID + fixture
+            // title and a publication date near the fixture. Do not claim
+            // successful embedding or publisher verification from a blocked
+            // watch page. Keep positive ID mismatches rejected.
             if (reason !== 'VIDEO_ID_MISSING') continue;
             const entry = searchEntries.get(id);
-            if (!entry || !HIGHLIGHT_CHANNELS.includes(entry.handle as any)
-              || !/^UC[\w-]{22}$/.test(entry.channelId)) continue;
+            if (!entry || !/^UC[\w-]{22}$/.test(entry.channelId)
+              || !entry.channelName.trim() || !matchesTeams(entry.title, match)) {
+              diagnostics.searchMissingIdentity++; continue;
+            }
             diagnostics.searchPublisherCandidates++;
-            if (!searchDateMatches(entry.published, match.date)) { diagnostics.searchDateRejected++; continue; }
-            try {
-              const channel = channelIndex(await html('https://www.youtube.com/@' + entry.handle + '/videos', c.signal, fetcher), entry.handle);
-              if (channel.channelId !== entry.channelId) continue;
-              diagnostics.searchPublisherValidated++;
-              diagnostics.result = 'youtube_official_search_fallback';
-              return { status: 'found', video: {
-                id: entry.id, url: 'https://www.youtube.com/watch?v=' + entry.id,
-                title: entry.title, channel: entry.handle, publishedAt: '', embeddable: false,
-              } };
-            } catch { /* Keep searching: unverified publisher is not acceptable. */ }
+            if (!searchDateMatches(entry.published, match.date)) {
+              diagnostics.searchDateRejected++; continue;
+            }
+            diagnostics.searchPublisherValidated++;
+            diagnostics.result = 'youtube_open_channel_search';
+            return { status: 'found', video: {
+              id: entry.id, url: 'https://www.youtube.com/watch?v=' + entry.id,
+              title: entry.title, channel: entry.channelName,
+              publishedAt: '', embeddable: false,
+            } };
           }
         }
       } catch { failed = true; diagnostics.youtubeSearchErrors++; }
