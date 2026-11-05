@@ -58,7 +58,7 @@ export function matchesTeams(title: string, match: HighlightMatch): boolean {
     if (aliases.some(a => /^(?:atletico madrid|atletico de madrid|اتلتيكو مدريد|اتلتيكو)$/.test(a))) aliases.push('atletico', 'atletico madrid', 'اتلتيكو');
     if (aliases.some(a => /^(?:bayern|bayern munich|fc bayern munchen|بايرن)$/.test(a))) aliases.push('bayern', 'bayern munich', 'بايرن');
     return aliases.some(name => name.length >= 3 && ((` ${value} `).includes(` ${name} `) || (/[\u0600-\u06ff]/.test(name) && (` ${value} `).includes(` و${name} `))));
-  }) && /ملخص|highlights?|özet|resumen|sintesi/i.test(title);
+  }) && /ملخص|اهداف|الأهداف|highlights?|goals|özet|resumen|sintesi/i.test(title);
 }
 export function videoMetadata(html: string, id: string, match: HighlightMatch, expectedChannelId?: string): HighlightVideo {
   const p = pageJson(html, 'ytInitialPlayerResponse'), d = p.videoDetails, m = p.microformat?.playerMicroformatRenderer;
@@ -66,7 +66,7 @@ export function videoMetadata(html: string, id: string, match: HighlightMatch, e
   if (d?.videoId !== id || !HIGHLIGHT_CHANNELS.includes(handle as any) || (expectedChannelId && d.channelId !== expectedChannelId) || !matchesTeams(d.title || '', match)) throw Error('VIDEO_IDENTITY');
   const publishedAt = m?.publishDate || m?.uploadDate || '', published = Date.parse(publishedAt), played = Date.parse(match.date + 'T00:00:00+03:00');
   // Publication can cross midnight; never use a previous season's meeting.
-  if (!Number.isFinite(published) || !Number.isFinite(played) || published < played || published > played + 4 * 86400000) throw Error('VIDEO_DATE');
+  if (!Number.isFinite(played) || (Number.isFinite(published) && (published < played - 86400000 || published > played + 14 * 86400000))) throw Error('VIDEO_DATE');
   if (!['OK', 'UNPLAYABLE'].includes(p.playabilityStatus?.status)) throw Error('VIDEO_UNAVAILABLE');
   return { id, url: `https://www.youtube.com/watch?v=${id}`, title: d.title, channel: m.ownerChannelName || d.author, publishedAt, embeddable: p.playabilityStatus?.playableInEmbed === true };
 }
@@ -87,6 +87,33 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
   try {
     const candidateId = youtubeVideoId(candidate);
     if (candidateId) { try { return { status: 'found', video: await check(candidateId) }; } catch { /* Try the official channel instead of declaring absence. */ } }
+    // Search YouTube directly first: relevant official highlights can be older than the
+    // channel's recent uploads feed, especially on busy sports channels.
+    const queries = [
+      [match.home, match.away, 'highlights'].join(' '),
+      [footballNameInArabic(match.home) || match.home, footballNameInArabic(match.away) || match.away, 'ملخص'].join(' '),
+    ];
+    for (const query of [...new Set(queries)] ) {
+      if (c.signal.aborted) break;
+      try {
+        const searchPage = await html('https://www.youtube.com/results?search_query=' + encodeURIComponent(query), c.signal, fetcher);
+        const data = pageJson(searchPage, 'ytInitialData');
+        const videos = new Map<string, string>();
+        const visit = (value: any): void => {
+          if (!value || typeof value !== 'object') return;
+          const entry = value.videoRenderer;
+          if (/^[\\w-]{11}$/.test(entry?.videoId || '')) videos.set(entry.videoId, text(entry.title));
+          for (const child of Object.values(value)) {
+            if (Array.isArray(child)) child.forEach(visit);
+            else if (child && typeof child === 'object') visit(child);
+          }
+        };
+        visit(data.contents);
+        for (const [id, title] of [...videos].filter(([, title]) => matchesTeams(title, match)).slice(0, 10)) {
+          try { return { status: 'found', video: await check(id) }; } catch { /* Ignore unrelated or unavailable results. */ }
+        }
+      } catch { failed = true; }
+    }
     const channels = [...HIGHLIGHT_CHANNELS];
     if (/روشن|saudi|ksa/i.test(match.competition || '')) channels.sort((a, b) => Number(b === 'thmanyahsports') - Number(a === 'thmanyahsports'));
     for (let offset = 0; offset < channels.length && !c.signal.aborted; offset += 3) {
