@@ -9,7 +9,8 @@ import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 
 // 🌟 استيراد المكونات الخاصة بك (تأكد من صحة المسارات)
-import MatchSummary from '../MatchSummary' 
+import MatchSummary from '../MatchSummary'
+import ChatYouTubeCard from '../ChatYouTubeCard' 
 // import MatchReport from '../MatchReport'
 // import Standings from '../Standings'
 // import ShotMap from '../ShotMap'
@@ -88,24 +89,11 @@ export function Markdown(props: { content: string }) {
             const ytMatch = href.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
             
             if (ytMatch && ytMatch[1]) {
-              const vidId = ytMatch[1];
               return (
-                <div className="my-5 rounded-2xl overflow-hidden border border-emerald-500/30 bg-[#131314] shadow-xl w-full">
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-[#1D6B35]/20 border-b border-gray-800/80">
-                    <span className="text-xs sm:text-sm font-bold text-emerald-400">🎥 مشاهدة الملخص المباشر</span>
-                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
-                      فتح في تطبيق يوتيوب ↗
-                    </a>
-                  </div>
-                  <div className="relative w-full aspect-video">
-                    <iframe 
-                      src={`https://www.youtube.com/embed/${vidId}`} 
-                      title="YouTube video player" 
-                      className="w-full h-full border-0" 
-                      allowFullScreen 
-                    />
-                  </div>
-                </div>
+                <ChatYouTubeCard
+                  url={href}
+                  title="ملخص المباراة"
+                />
               );
             }
 
