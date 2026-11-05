@@ -232,7 +232,8 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     youtubeRejectReasons: {} as Record<string, number>, channelRejectReasons: {} as Record<string, number>,
     ddgErrorKinds: [] as string[], searchPublisherCandidates: 0,
     searchPublisherValidated: 0, searchDateRejected: 0, searchDateMissing: 0,
-    searchDateOutsideWindow: 0, searchMissingIdentity: 0, result: 'unknown' };
+    searchDateOutsideWindow: 0, searchMissingIdentity: 0,
+    searchPublicationExamples: [] as string[], result: 'unknown' };
   const logDiagnostic = () => {
     if (process.env.VERCEL_ENV === 'preview') {
       console.info('[AIFBALL_HIGHLIGHTS_DEBUG]', JSON.stringify({
@@ -247,8 +248,8 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     if (candidateId) { try { return { status: 'found', video: await check(candidateId) }; } catch { /* Try the official channel instead of declaring absence. */ } }
     const queries = [
       'site:youtube.com/watch ' + match.home + ' ' + match.away + ' highlights ' + match.date,
-      'site:youtube.com/watch ' + (footballNameInArabic(match.home) || match.home) + ' ' + (footballNameInArabic(match.away) || match.away) + ' ملخص',
-      'site:youtube.com/watch ' + (footballNameInArabic(match.home) || match.home) + ' ' + (footballNameInArabic(match.away) || match.away) + ' beIN SPORTS',
+      'site:youtube.com/watch ' + (footballNameInArabic(match.home) || match.home) + ' ' + (footballNameInArabic(match.away) || match.away) + ' ملخص ' + match.date + ' ' + (match.competition || ''),
+      'site:youtube.com/watch ' + (footballNameInArabic(match.home) || match.home) + ' ' + (footballNameInArabic(match.away) || match.away) + ' highlights ' + match.date.slice(0, 4) + ' ' + (match.competition || ''),
     ];
     // DuckDuckGo is the primary discovery source. If YouTube blocks the watch
     // page, retain an official result whose title and publisher are both
@@ -317,6 +318,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
             diagnostics.searchPublisherCandidates++;
             if (!searchDateMatches(entry.published, match.date)) {
               diagnostics.searchDateRejected++;
+              if (diagnostics.searchPublicationExamples.length < 5) diagnostics.searchPublicationExamples.push(entry.published.slice(0, 70));
               if (searchPublicationReason(entry.published, match.date) === 'missing') diagnostics.searchDateMissing++;
               else diagnostics.searchDateOutsideWindow++;
               continue;
