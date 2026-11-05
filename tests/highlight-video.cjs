@@ -26,6 +26,14 @@ test('disabled embedding does not reject a verified official highlight', () => {
 test('rejects wrong channel, channel ID, teams, and previous-season videos', () => {
   for (const options of [{ channel: 'fakebeinsports' }, { date: '2025-11-03T22:30:00Z' }, { name: 'ملخص فياريال وبرشلونة' }, { publisherId: 'UC' + 'b'.repeat(22) }]) assert.throws(() => h.videoMetadata(watch(options), id, match, channelId));
 });
+test('official publisher name still works when YouTube exposes a /channel/ URL', () => {
+  const page = watch({ channel: 'beinsports' }).replace('https://www.youtube.com/@beinsports', 'https://www.youtube.com/channel/' + channelId);
+  assert.equal(h.videoMetadata(page, id, match).id, id);
+});
+test('channel page can use a verified channel ID without a vanity URL', () => {
+  const page = channelPage().replace('https://www.youtube.com/@beinsports', '');
+  assert.equal(h.channelIndex(page, 'beinsports').channelId, channelId);
+});
 test('recent channel uploads are discovered without oEmbed or a paid API key', async () => {
   const requested = [];
   const fetcher = async url => { requested.push(url); if (url.includes('/@beinsports/')) return new Response(channelPage()); if (url.includes('/watch?')) return new Response(watch()); return new Response('', { status: 503 }); };
