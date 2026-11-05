@@ -59,22 +59,22 @@ export function searchVideoCandidates(html: string): { id: string; title: string
 }
 /** DuckDuckGo HTML search provides candidate YouTube IDs, never verified videos. */
 export function duckDuckGoVideoCandidates(page: string): { id: string; title: string }[] {
-  const decoded = (raw: string) => raw.replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#(?:x([0-9a-f]+)|(\\d+));/gi, (_, hex: string, dec: string) => {
+  const decoded = (raw: string) => raw.replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#(?:x([0-9a-f]+)|(\d+));/gi, (_, hex: string, dec: string) => {
     const point = parseInt(hex || dec, hex ? 16 : 10);
     return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : '';
   });
   const out = new Map<string, string>();
-  for (const anchor of page.matchAll(/<a\\b([^>]*?)>([\\s\\S]*?)<\\/a>/gi)) {
-    const href = anchor[1].match(/\\bhref\\s*=\\s*["']([^"']+)["']/i)?.[1];
+  for (const anchor of page.matchAll(/<a\b([^>]*?)>([\s\S]*?)<\/a>/gi)) {
+    const href = anchor[1].match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1];
     if (!href) continue;
     try {
       const url = new URL(decoded(href), 'https://html.duckduckgo.com');
       const redirect = url.searchParams.get('uddg');
       const destination = redirect ? new URL(redirect) : url;
-      if (!['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(destination.hostname)) continue;
+      if (!['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'].includes(destination.hostname)) continue;
       const id = youtubeVideoId(destination.href);
-      if (!id || !/^[\\w-]{11}$/.test(id)) continue;
-      const title = decoded(anchor[2].replace(/<[^>]*>/g, ' ')).replace(/\\s+/g, ' ').trim();
+      if (!id || !/^[\w-]{11}$/.test(id)) continue;
+      const title = decoded(anchor[2].replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
       if (!out.has(id)) out.set(id, title);
     } catch { /* Ignore invalid, redirected or unsupported links. */ }
   }
