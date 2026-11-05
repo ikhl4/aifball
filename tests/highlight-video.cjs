@@ -106,14 +106,14 @@ test('publication age and absolute date gate respects match date', () => {
   assert.equal(h.searchDateMatches('', '2026-11-02', now), false);
   assert.equal(h.searchDateMatches('2025-11-03', '2026-11-02', now), false);
 });
-test('open-channel mode finds a dated match highlight even when DuckDuckGo 403s and watch metadata is blocked', async () => {
+test('only approved publishers can be accepted from YouTube search when watch metadata is blocked', async () => {
   const played = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const fixture = { ...match, date: played.toISOString().slice(0, 10) };
   const otherChannel = 'UC' + 'z'.repeat(22);
-  const searchResult = (channelName, channelId, date = '1 day ago') =>
+  const searchResult = (channelName, channelId, date = '1 day ago', handle = 'otherchannel') =>
     'var ytInitialData = ' + JSON.stringify({ contents: { videoRenderer: {
       videoId: id, title: { runs: [{ text: title }] },
-      ownerText: { runs: [{ text: channelName, navigationEndpoint: { browseEndpoint: { browseId: channelId, canonicalBaseUrl: '/@otherchannel' } } }] },
+      ownerText: { runs: [{ text: channelName, navigationEndpoint: { browseEndpoint: { browseId: channelId, canonicalBaseUrl: '/@' + handle } } }] },
       publishedTimeText: { simpleText: date }
     } } }) + ';</script>';
   const blockedPlayer = 'var ytInitialPlayerResponse = ' + JSON.stringify({ videoDetails: {}, playabilityStatus: { status: 'LOGIN_REQUIRED' } }) + ';</script>';
@@ -124,10 +124,18 @@ test('open-channel mode finds a dated match highlight even when DuckDuckGo 403s 
     return new Response('', { status: 403 });
   };
   const result = await h.findHighlightVideo(fixture, '', undefined, fetcher);
-  assert.equal(result.status, 'found');
-  assert.equal(result.video.id, id);
-  assert.equal(result.video.channel, 'Nonlisted football channel');
-  assert.equal(result.video.embeddable, false);
+  assert.equal(result.status, 'unavailable');
+
+  const official = await h.findHighlightVideo(fixture, '', undefined, async url => {
+    if (url.includes('duckduckgo.com')) return new Response('', { status: 403 });
+    if (url.includes('/results?')) return new Response(searchResult('beIN SPORTS', otherChannel, '1 day ago', 'beinsports'));
+    if (url.includes('/watch?')) return new Response(blockedPlayer);
+    return new Response('', { status: 403 });
+  });
+  assert.equal(official.status, 'found');
+  assert.equal(official.video.id, id);
+  assert.equal(official.video.channel, 'beIN SPORTS');
+  assert.equal(official.video.embeddable, false);
 
   const invalid = await h.findHighlightVideo(fixture, '', undefined, async url => {
     if (url.includes('duckduckgo.com')) return new Response('', { status: 403 });
