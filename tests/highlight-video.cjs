@@ -32,6 +32,10 @@ test('video identity validation reports publisher, title, video id, and channel 
   assert.throws(() => h.videoMetadata(watch(), 'zzzzzzzzzzz', match), /VIDEO_ID_MISMATCH/);
   assert.throws(() => h.videoMetadata(watch({ publisherId: 'UC' + 'b'.repeat(22) }), id, match, channelId), /VIDEO_CHANNEL_MISMATCH/);
 });
+test('YouTube blocked metadata without a video ID is reported separately', () => {
+  const page = watch().replace('"videoId":"abcdefghijk"', '"videoId":""');
+  assert.throws(() => h.videoMetadata(page, id, match), /VIDEO_ID_MISSING/);
+});
 test('official publisher name still works when YouTube exposes a /channel/ URL', () => {
   const page = watch({ channel: 'beinsports' }).replace('https://www.youtube.com/@beinsports', 'https://www.youtube.com/channel/' + channelId);
   assert.equal(h.videoMetadata(page, id, match).id, id);
