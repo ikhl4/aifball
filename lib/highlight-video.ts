@@ -171,6 +171,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     ddgPublisherRejected: 0, ddgTitleRejected: 0, youtubeSearchRequests: 0,
     youtubeSearchErrors: 0, youtubeVideoEntries: 0, youtubeMatchedTitles: 0,
     youtubeWatchRejected: 0, youtubeWatchStatusErrors: 0, channelFailures: 0,
+    youtubeRejectReasons: {} as Record<string, number>, channelRejectReasons: {} as Record<string, number>,
     ddgErrorKinds: [] as string[], result: 'unknown' };
   const logDiagnostic = () => {
     if (process.env.VERCEL_ENV === 'preview') {
@@ -236,7 +237,10 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
         for (const [id] of matched.slice(0, 10)) {
           try { const video = await check(id); diagnostics.result = 'youtube_verified'; return { status: 'found', video }; }
           catch (err) { diagnostics.youtubeWatchRejected++;
-            if (err instanceof Error && err.message.startsWith('UPSTREAM_')) diagnostics.youtubeWatchStatusErrors++; }
+            const reason = err instanceof Error ? err.message : 'UNKNOWN';
+            const safeReason = /^(VIDEO_IDENTITY|VIDEO_DATE|VIDEO_UNAVAILABLE|MISSING_METADATA|INVALID_METADATA|UPSTREAM_\d{3})$/.test(reason) ? reason : 'OTHER';
+            diagnostics.youtubeRejectReasons[safeReason] = (diagnostics.youtubeRejectReasons[safeReason] || 0) + 1;
+            if (reason.startsWith('UPSTREAM_')) diagnostics.youtubeWatchStatusErrors++; }
         }
       } catch { failed = true; diagnostics.youtubeSearchErrors++; }
     }
@@ -261,7 +265,11 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
         return value;
       }));
       for (const result of results) {
-        if (result.status === 'rejected') { failed = true; diagnostics.channelFailures++; continue; }
+        if (result.status === 'rejected') { failed = true; diagnostics.channelFailures++;
+          const reason = result.reason instanceof Error ? result.reason.message : 'UNKNOWN';
+          const safeReason = /^(CHANNEL_IDENTITY|MISSING_METADATA|INVALID_METADATA|UPSTREAM_\d{3})$/.test(reason) ? reason : 'OTHER';
+          diagnostics.channelRejectReasons[safeReason] = (diagnostics.channelRejectReasons[safeReason] || 0) + 1;
+          continue; }
         for (const item of result.value.videos.filter(v => matchesTeams(v.title, match)).slice(0, 3)) {
           try { return { status: 'found', video: await check(item.id, result.value.channelId) }; } catch { failed = true; }
         }
