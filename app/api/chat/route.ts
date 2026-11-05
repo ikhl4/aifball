@@ -1,3 +1,4 @@
+// Vercel preview rebuild trigger for PR #50 - 2026-11-05 rerun; no production merge.
 // Preview redeploy trigger: structured highlights fallback, unrestricted discovery experiment; production unchanged.
 import { verifiedSummaryStream, verifySummaryAnswer } from '../../../lib/verified-summary';
 import { posterIntent } from '../../../lib/match-card-data';
