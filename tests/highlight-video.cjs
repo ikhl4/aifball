@@ -100,3 +100,13 @@ test('search results produce candidates but only verified official video is acce
   assert.equal(result.video.id, id);
   assert.ok(urls.some(u => u.includes('results?')));
 });
+
+test('YouTube window assignment variant is parsed without executing scripts', () => {
+  const data = h.pageJson('window["ytInitialData"] = {"contents":{"ok":true}};', 'ytInitialData');
+  assert.equal(data.contents.ok, true);
+});
+test('unverified highlight response provides a direct search fallback in the UI', () => {
+  const card = fs.readFileSync('app/components/MatchHighlightCard.tsx', 'utf8');
+  assert.match(card, /youtube\.com\/results\?search_query=/);
+  assert.match(card, /البحث عن ملخص هذه المباراة في يوتيوب/);
+});
