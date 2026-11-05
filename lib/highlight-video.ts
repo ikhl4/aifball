@@ -193,13 +193,13 @@ export function searchDateMatches(published: string, matchDate: string, now = Da
   let stamp: number | null = null;
   // Relative publication ages are routinely shown instead of absolute dates
   // on YouTube search result cards.
-  const age = value.match(/(\d+)\s*(hours?|days?|weeks?|months?|years?|ساعه|ساعات|يوم|ايام|اسبوع|اسابيع|شهر|اشهر|سنه|سنوات)/i);
+  const age = value.match(/(\d+)\s*(hours?|days?|weeks?|months?|years?|mo|[hdwy]|ساعه|ساعات|يوم|ايام|اسبوع|اسابيع|شهر|اشهر|سنه|سنوات)(?=\s|$)/i);
   if (age) {
     const n = Number(age[1]), unit = age[2].toLowerCase();
-    const days = /hour|ساع/.test(unit) ? n / 24
-      : /week|اسبوع/.test(unit) ? n * 7
-      : /month|شهر/.test(unit) ? n * 30
-      : /year|سن/.test(unit) ? n * 365 : n;
+    const days = /^(h|hours?)$|ساع/.test(unit) ? n / 24
+      : /^(w|weeks?)$|اسبوع/.test(unit) ? n * 7
+      : /^(mo|months?)$|شهر/.test(unit) ? n * 30
+      : /^(y|years?)$|سن/.test(unit) ? n * 365 : n;
     stamp = now - days * 86400000;
   }
   if (stamp === null && /(?:yesterday|امس)/.test(value)) stamp = now - 86400000;
