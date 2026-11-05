@@ -10,8 +10,9 @@ export default function MatchHighlightCard({ attrs, isDark = true }: { attrs: Re
   const sources = (() => { try { const u = new URL(attrs.source_url); return u.protocol === 'https:' ? u.href : ''; } catch { return ''; } })();
   const youtubeUrl = id ? `https://www.youtube.com/watch?v=${id}` : '';
   const cannotEmbed = attrs.video_embed !== 'true';
+  const hasVerifiedVideo = Boolean(id && verified);
   const video = <div className="mt-4">
-    {id && (verified || !attrs.video_status) ? <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-white/10 bg-black' : 'border-gray-200 bg-white'}`}>
+    {hasVerifiedVideo ? <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-white/10 bg-black' : 'border-gray-200 bg-white'}`}>
       {cannotEmbed ? (
         <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="فتح ملخص المباراة في يوتيوب" className="group relative block aspect-video w-full overflow-hidden bg-slate-900">
           {!thumbnailFailed && <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt={attrs.video_title || 'صورة ملخص المباراة'} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" loading="lazy" onError={() => setThumbnailFailed(true)} />}
@@ -35,9 +36,7 @@ export default function MatchHighlightCard({ attrs, isDark = true }: { attrs: Re
         <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>{attrs.video_channel || 'يوتيوب'}</span>
         <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-500">مشاهدة على يوتيوب ↗</a>
       </div>
-    </div> : <p className={`rounded-lg px-3 py-2 text-xs ${isDark ? 'bg-white/5 text-gray-400' : 'bg-gray-50 text-gray-500'}`}>
-      {attrs.video_status === 'not_found' ? 'لم أجد ملخصًا مؤكدًا من قناة معتمدة حتى الآن.' : 'لم أتمكن من التحقق من ملخص رسمي مطابق لهذه المباراة.'}
-    </p>}
+    </div> : null}
   </div>;
   const written = <div className="mt-4 space-y-5 text-[15px] leading-8">
     {attrs.summary && <div><h4 className="mb-1 text-base font-bold text-emerald-500">قصة المباراة</h4><p className="whitespace-pre-line">{attrs.summary}</p></div>}
@@ -49,7 +48,6 @@ export default function MatchHighlightCard({ attrs, isDark = true }: { attrs: Re
     <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{attrs.competition}{attrs.date && <> · <bdi dir="ltr">{attrs.date}</bdi></>}</p>
     {written}
     {sources && <a href={sources} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-xs text-emerald-500 underline">{attrs.source_name || 'مصدر تفاصيل المباراة'} ↗</a>}
-    <h4 className="mt-6 text-base font-bold text-emerald-500">ملخص المباراة بالفيديو</h4>
-    {video}
+    {hasVerifiedVideo && <><h4 className="mt-6 text-base font-bold text-emerald-500">ملخص المباراة بالفيديو</h4>{video}</>}
   </section>;
 }
