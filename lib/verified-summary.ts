@@ -20,6 +20,10 @@ export async function verifySummaryAnswer(answer: string, signal?: AbortSignal, 
     // Preserve a candidate that Dify actually supplied when the server cannot
     // access YouTube metadata. It is explicitly unverified and NEVER embedded.
     const candidateId = youtubeVideoId(attrs.video_url || '');
+    // Explain the actual pipeline state without exposing model traces, credentials or URLs.
+    attrs.video_diagnostic = candidateId
+      ? (result.status === 'found' ? 'verified' : result.status === 'not_found' ? 'rejected' : 'verification_failed')
+      : 'no_candidate_from_dify';
     delete attrs.video_url; delete attrs.video_embed; delete attrs.video_channel;
     attrs.video_status = result.status;
     if (result.status === 'found') {
