@@ -116,7 +116,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
         const visit = (value: any): void => {
           if (!value || typeof value !== 'object') return;
           const entry = value.videoRenderer;
-          if (/^[\\w-]{11}$/.test(entry?.videoId || '')) videos.set(entry.videoId, text(entry.title));
+          if (/^[\w-]{11}$/.test(entry?.videoId || '')) videos.set(entry.videoId, text(entry.title));
           for (const child of Object.values(value)) {
             if (Array.isArray(child)) child.forEach(visit);
             else if (child && typeof child === 'object') visit(child);
