@@ -13,10 +13,12 @@ export default function MatchHighlightCard({ attrs, isDark = true }: { attrs: Re
   const video = <div className="mt-4">
     {id && (verified || !attrs.video_status) ? <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-white/10 bg-black' : 'border-gray-200 bg-white'}`}>
       {cannotEmbed ? (
-        <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="مشاهدة الملخص الحقيقي على يوتيوب" className="flex min-h-40 flex-col items-center justify-center gap-3 bg-gradient-to-br from-emerald-950 to-slate-950 px-4 py-7 text-center text-white">
-          <span aria-hidden="true" className="rounded-full bg-red-600 px-5 py-3 text-xl">▶</span>
-          <span className="text-base font-bold">مشاهدة الملخص على يوتيوب</span>
-          <span className="text-xs text-gray-300">المقطع الرسمي لا يسمح بالتشغيل داخل فوتبلاي؛ اضغط لفتح الفيديو مباشرة.</span>
+        <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="فتح ملخص المباراة في يوتيوب" className="group relative block aspect-video w-full overflow-hidden bg-slate-900">
+          {!thumbnailFailed && <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt={attrs.video_title || 'صورة ملخص المباراة'} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" loading="lazy" onError={() => setThumbnailFailed(true)} />}
+          <span className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/35">
+            <span aria-hidden="true" className="flex h-14 w-16 items-center justify-center rounded-2xl bg-red-600 text-2xl text-white shadow-lg">▶</span>
+          </span>
+          <span className="absolute bottom-3 right-3 rounded-md bg-black/75 px-3 py-1.5 text-xs font-semibold text-white">شاهد الملخص على يوتيوب</span>
         </a>
       ) : playing ? (
         <div className="relative">
@@ -30,11 +32,11 @@ export default function MatchHighlightCard({ attrs, isDark = true }: { attrs: Re
         </button>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2 p-3 text-xs">
-        <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>{attrs.video_channel || 'القناة الرسمية'}</span>
-        <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-500">فتح الملخص الحقيقي في يوتيوب ↗</a>
+        <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>{attrs.video_channel || 'يوتيوب'}</span>
+        <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-500">مشاهدة على يوتيوب ↗</a>
       </div>
     </div> : <p className={`rounded-lg px-3 py-2 text-xs ${isDark ? 'bg-white/5 text-gray-400' : 'bg-gray-50 text-gray-500'}`}>
-      {attrs.video_status === 'not_found' ? 'لم أعثر على مقطع مطابق ضمن القنوات المحددة وقت البحث.' : 'تعذّر التحقق من رابط المقطع الرسمي حاليًا؛ لن أضع رابطًا غير مؤكد.'}
+      {attrs.video_status === 'not_found' ? 'لم أجد ملخصًا مؤكدًا من قناة معتمدة حتى الآن.' : 'لم أتمكن من التحقق من ملخص رسمي مطابق لهذه المباراة.'}
     </p>}
   </div>;
   const written = <div className="mt-4 space-y-5 text-[15px] leading-8">
