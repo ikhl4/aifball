@@ -98,6 +98,9 @@ test('official search metadata rescues a blocked watch page only for matching pu
 test('publication age and absolute date gate respects match date', () => {
   const now = Date.parse('2026-11-05T20:00:00+03:00');
   assert.equal(h.searchDateMatches('3 days ago', '2026-11-02', now), true);
+  assert.equal(h.searchDateMatches('2d ago', '2026-11-02', now), true);
+  assert.equal(h.searchDateMatches('3d ago', '2026-11-02', now), true);
+  assert.equal(h.searchDateMatches('2w ago', '2026-11-02', now), false);
   assert.equal(h.searchDateMatches('2026-11-03', '2026-11-02', now), true);
   assert.equal(h.searchDateMatches('1 year ago', '2026-11-02', now), false);
   assert.equal(h.searchDateMatches('', '2026-11-02', now), false);
