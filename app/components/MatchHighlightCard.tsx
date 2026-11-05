@@ -1,43 +1,20 @@
 'use client';
-import { useState } from 'react';
 import { youtubeVideoId } from '../../lib/summary-presentation';
+import YouTubePreviewCard from './YouTubePreviewCard';
 
 export default function MatchHighlightCard({ attrs, isDark = true }: { attrs: Record<string, string>; isDark?: boolean }) {
-  const [playing, setPlaying] = useState(false);
-  const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const id = youtubeVideoId(attrs.video_url || ''), verified = attrs.video_status === 'found';
   const goals = (attrs.goals || '').split(';').map(s => s.split('|')).filter(row => row[0]?.trim() && row[1]?.trim());
   const sources = (() => { try { const u = new URL(attrs.source_url); return u.protocol === 'https:' ? u.href : ''; } catch { return ''; } })();
-  const youtubeUrl = id ? `https://www.youtube.com/watch?v=${id}` : '';
-  const cannotEmbed = attrs.video_embed !== 'true';
   const hasVerifiedVideo = Boolean(id && verified);
-  const video = <div className="mt-4">
-    {hasVerifiedVideo ? <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-white/10 bg-black' : 'border-gray-200 bg-white'}`}>
-      {cannotEmbed ? (
-        <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="فتح ملخص المباراة في يوتيوب" className="group relative block aspect-video w-full overflow-hidden bg-slate-900">
-          {!thumbnailFailed && <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt={attrs.video_title || 'صورة ملخص المباراة'} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" loading="lazy" onError={() => setThumbnailFailed(true)} />}
-          <span className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/35">
-            <span aria-hidden="true" className="flex h-14 w-16 items-center justify-center rounded-2xl bg-red-600 text-2xl text-white shadow-lg">▶</span>
-          </span>
-          <span className="absolute bottom-3 right-3 rounded-md bg-black/75 px-3 py-1.5 text-xs font-semibold text-white">شاهد الملخص على يوتيوب</span>
-        </a>
-      ) : playing ? (
-        <div className="relative">
-          <iframe className="aspect-video w-full" src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`} title={`ملخص ${attrs.match || ''}`} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
-          <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" className="block p-3 text-center text-xs font-bold text-emerald-400">إذا لم يعمل المشغل، شاهد الملخص على يوتيوب ↗</a>
-        </div>
-      ) : (
-        <button type="button" onClick={() => setPlaying(true)} className={`relative block w-full text-white ${thumbnailFailed ? 'min-h-40 bg-gradient-to-l from-emerald-950 to-slate-900' : 'aspect-video bg-black'}`} aria-label="تشغيل ملخص المباراة">
-          {!thumbnailFailed && <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt={`ملخص ${attrs.match || ''}`} className="h-full w-full object-cover" loading="lazy" onError={() => setThumbnailFailed(true)} />}
-          <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/20"><span className="rounded-full bg-red-600 px-5 py-3 text-xl">▶</span>{thumbnailFailed && <span className="text-sm font-bold">تشغيل الملخص</span>}</span>
-        </button>
-      )}
-      <div className="flex flex-wrap items-center justify-between gap-2 p-3 text-xs">
-        <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>{attrs.video_channel || 'يوتيوب'}</span>
-        <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-500">مشاهدة على يوتيوب ↗</a>
-      </div>
-    </div> : null}
-  </div>;
+  const video = hasVerifiedVideo ? (
+    <YouTubePreviewCard
+      url={attrs.video_url}
+      title={attrs.video_title || (attrs.home && attrs.away ? `ملخص ${attrs.home} ضد ${attrs.away}` : 'ملخص المباراة')}
+      channel={attrs.video_channel}
+      isDark={isDark}
+    />
+  ) : null;
   const written = <div className="mt-4 space-y-5 text-[15px] leading-8">
     {attrs.summary && <div><h4 className="mb-1 text-base font-bold text-emerald-500">قصة المباراة</h4><p className="whitespace-pre-line">{attrs.summary}</p></div>}
     {!!goals.length && <div><h4 className="mb-2 text-base font-bold text-emerald-500">الأهداف</h4><ul className="list-inside list-disc space-y-1">{goals.map((row, i) => <li key={i}><span>{row[0].trim()}</span> — الدقيقة <bdi dir="ltr" className="font-semibold">{row[1].trim()}′</bdi></li>)}</ul></div>}
