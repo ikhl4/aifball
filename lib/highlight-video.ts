@@ -85,7 +85,11 @@ export function matchesTeams(title: string, match: HighlightMatch): boolean {
 export function videoMetadata(html: string, id: string, match: HighlightMatch, expectedChannelId?: string): HighlightVideo {
   const p = pageJson(html, 'ytInitialPlayerResponse'), d = p.videoDetails, m = p.microformat?.playerMicroformatRenderer;
   const handle = handleOf(m?.ownerProfileUrl || '');
-  if (d?.videoId !== id || !HIGHLIGHT_CHANNELS.includes(handle as any) || (expectedChannelId && d.channelId !== expectedChannelId) || !matchesTeams(d.title || '', match)) throw Error('VIDEO_IDENTITY');
+  // YouTube sometimes exposes the publisher as /channel/UC... instead of /@handle.
+  // A verified channel index ID is stronger evidence than URL formatting.
+  const approvedPublisher = HIGHLIGHT_CHANNELS.includes(handle as any)
+    || (Boolean(expectedChannelId) && d?.channelId === expectedChannelId);
+  if (d?.videoId !== id || !approvedPublisher || (expectedChannelId && d.channelId !== expectedChannelId) || !matchesTeams(d.title || '', match)) throw Error('VIDEO_IDENTITY');
   const publishedAt = m?.publishDate || m?.uploadDate || '', published = Date.parse(publishedAt), played = Date.parse(match.date + 'T00:00:00+03:00');
   // Publication can cross midnight; never use a previous season's meeting.
   if (!Number.isFinite(published) || !Number.isFinite(played) || published < played || published > played + 4 * 86400000) throw Error('VIDEO_DATE');
