@@ -1,4 +1,5 @@
 import { findHighlightVideo } from './highlight-video';
+import { youtubeVideoId } from './summary-presentation';
 
 const decode = (s: string) => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -16,11 +17,18 @@ export async function verifySummaryAnswer(answer: string, signal?: AbortSignal, 
     if (!controller.signal.aborted) {
       try { result = await lookup({ home: attrs.home || '', away: attrs.away || '', date: attrs.date || '', competition: attrs.competition }, attrs.video_url || '', controller.signal); } catch { /* Keep a usable card with an honest verification status. */ }
     }
+    // Preserve a candidate that Dify actually supplied when the server cannot
+    // access YouTube metadata. It is explicitly unverified and NEVER embedded.
+    const candidateId = youtubeVideoId(attrs.video_url || '');
     delete attrs.video_url; delete attrs.video_embed; delete attrs.video_channel;
     attrs.video_status = result.status;
     if (result.status === 'found') {
       attrs.video_url = result.video.url; attrs.video_embed = String(result.video.embeddable);
       attrs.video_channel = result.video.channel; attrs.video_published = result.video.publishedAt;
+    } else if (candidateId && result.status === 'unavailable') {
+      attrs.video_status = 'candidate';
+      attrs.video_url = 'https://www.youtube.com/watch?v=' + candidateId;
+      attrs.video_embed = 'false';
     }
     const replacement = '<aifball-summary ' + Object.entries(attrs).map(([key, value]) => `${key}="${esc(value)}"`).join(' ') + ' />';
     replacements[index] = replacement;

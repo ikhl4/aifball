@@ -94,7 +94,11 @@ export async function POST(req: Request) {
     const historical = historyMode(query, documentaryContext);
     const matchSummary = historical === 'none' && isMatchSummaryRequest(query) && !/(?:صم[ّ]?م|تصميم|بوستر|ملصق|إنفوجرافيك)/i.test(query);
 
-    const singleReport = matchSummary && !hasImage ? await buildSingleMatchHighlights(query, req.signal).catch(() => null) : null;
+    // Prefer the connected Dify DuckDuckGo workflow for highlight discovery.
+    // The deterministic ESPN-only path is a fallback when Dify is not configured.
+    const singleReport = matchSummary && !hasImage && !process.env.DIFY_API_KEY
+      ? await buildSingleMatchHighlights(query, req.signal).catch(() => null)
+      : null;
     if (singleReport) {
       const events = [{ event: 'message', answer: singleReport, conversation_id }, { event: 'message_end', conversation_id }];
       return new Response(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-AiFBall-Presentation': 'match-summary' } });

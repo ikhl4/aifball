@@ -67,3 +67,18 @@ test('named match uses source fixtures and goals even when model search misses i
   assert.match(answer, /home_score="0" away_score="6"/); assert.match(answer, /goals="فابيان رويز\|17"/); assert.match(answer, /video_embed="false"/); assert.doesNotMatch(answer, /هدف عكسي/);
   assert.equal(await single.buildSingleMatchHighlights('ملخص فياريال وبرشلونة أمس', undefined, fetcher, lookup, date), null);
 });
+
+test('unavailable metadata preserves a Dify candidate as visibly unverified', async () => {
+  const answer = '<aifball-summary home="بايرن ميونخ" away="أتلتيكو مدريد" date="2026-11-04" video_url="https://youtu.be/abcdefghijk" />';
+  const result = await v.verifySummaryAnswer(answer, undefined, async () => ({ status: 'unavailable' }));
+  assert.match(result, /video_status="candidate"/);
+  assert.match(result, /video_url="https:\/\/www.youtube.com\/watch\?v=abcdefghijk"/);
+  assert.match(result, /video_embed="false"/);
+  const card = fs.readFileSync('app/components/MatchHighlightCard.tsx', 'utf8');
+  assert.match(card, /الناشر غير مؤكد/);
+});
+test('wrong or absent video IDs remain hidden when verification is unavailable', async () => {
+  const answer = '<aifball-summary home="A" away="B" date="2026-11-04" video_url="https://example.com/false" />';
+  const result = await v.verifySummaryAnswer(answer, undefined, async () => ({ status: 'unavailable' }));
+  assert.doesNotMatch(result, /video_url=/);
+});

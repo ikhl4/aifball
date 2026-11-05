@@ -6,13 +6,21 @@ export default function MatchHighlightCard({ attrs, isDark = true }: { attrs: Re
   const [playing, setPlaying] = useState(false);
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const id = youtubeVideoId(attrs.video_url || ''), verified = attrs.video_status === 'found';
+  const candidate = attrs.video_status === 'candidate';
   const goals = (attrs.goals || '').split(';').map(s => s.split('|')).filter(row => row[0]?.trim() && row[1]?.trim());
   const sources = (() => { try { const u = new URL(attrs.source_url); return u.protocol === 'https:' ? u.href : ''; } catch { return ''; } })();
   const youtubeUrl = id ? `https://www.youtube.com/watch?v=${id}` : '';
   const cannotEmbed = attrs.video_embed !== 'true';
   const video = <div className="mt-4">
-    {id && (verified || !attrs.video_status) ? <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-white/10 bg-black' : 'border-gray-200 bg-white'}`}>
-      {cannotEmbed ? (
+    {id && (verified || candidate || !attrs.video_status) ? <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-white/10 bg-black' : 'border-gray-200 bg-white'}`}>
+      {candidate ? (
+        <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" className="flex min-h-36 flex-col items-center justify-center gap-3 bg-[#15241e] px-4 py-6 text-center text-white">
+          <span aria-hidden="true" className="rounded-full bg-amber-600 px-4 py-2 text-base">▶</span>
+          <span className="font-bold">رابط فيديو مرشح من نتائج DuckDuckGo</span>
+          <span className="text-xs text-amber-200">تعذّر على خادم فوتبلاي تأكيد القناة والتاريخ؛ تحقق من الفيديو على يوتيوب قبل الاعتماد عليه.</span>
+          <span className="text-sm text-emerald-400 underline">فتح الفيديو المرشح في يوتيوب</span>
+        </a>
+      ) : cannotEmbed ? (
         <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="مشاهدة الملخص الحقيقي على يوتيوب" className="flex min-h-40 flex-col items-center justify-center gap-3 bg-gradient-to-br from-emerald-950 to-slate-950 px-4 py-7 text-center text-white">
           <span aria-hidden="true" className="rounded-full bg-red-600 px-5 py-3 text-xl">▶</span>
           <span className="text-base font-bold">مشاهدة الملخص على يوتيوب</span>
@@ -30,8 +38,8 @@ export default function MatchHighlightCard({ attrs, isDark = true }: { attrs: Re
         </button>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2 p-3 text-xs">
-        <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>{attrs.video_channel || 'القناة الرسمية'}</span>
-        <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-500">فتح الملخص الحقيقي في يوتيوب ↗</a>
+        <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>{candidate ? 'الناشر غير مؤكد' : attrs.video_channel || 'القناة الرسمية'}</span>
+        <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-500">{candidate ? 'التحقق من المرشح على يوتيوب ↗' : 'فتح الملخص الحقيقي في يوتيوب ↗'}</a>
       </div>
     </div> : <p className={`rounded-lg px-3 py-2 text-xs ${isDark ? 'bg-white/5 text-gray-400' : 'bg-gray-50 text-gray-500'}`}>
       {attrs.video_status === 'not_found' ? 'لم أعثر على مقطع مطابق ضمن القنوات المحددة وقت البحث.' : 'تعذّر التحقق من رابط المقطع الرسمي حاليًا؛ لن أضع رابطًا غير مؤكد.'}
