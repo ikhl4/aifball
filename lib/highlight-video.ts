@@ -77,7 +77,11 @@ export function videoMetadata(html: string, id: string, match: HighlightMatch, e
   const recognized = HIGHLIGHT_CHANNELS.includes(handle as any)
     || OFFICIAL_CHANNEL_TITLES.has(publisherName)
     || Boolean(expectedChannelId && d?.channelId === expectedChannelId);
-  if (d?.videoId !== id || !recognized || (expectedChannelId && d.channelId !== expectedChannelId) || !matchesTeams(d.title || '', match)) throw Error('VIDEO_IDENTITY');
+  // Keep identity checks strict, but identify precisely which one failed.
+  if (d?.videoId !== id) throw Error('VIDEO_ID_MISMATCH');
+  if (!recognized) throw Error('VIDEO_PUBLISHER_UNVERIFIED');
+  if (expectedChannelId && d.channelId !== expectedChannelId) throw Error('VIDEO_CHANNEL_MISMATCH');
+  if (!matchesTeams(d.title || '', match)) throw Error('VIDEO_TITLE_MISMATCH');
   const publishedAt = m?.publishDate || m?.uploadDate || '', published = Date.parse(publishedAt), played = Date.parse(match.date + 'T00:00:00+03:00');
   // Publication can cross midnight; never use a previous season's meeting.
   if (!Number.isFinite(played) || (Number.isFinite(published) && (published < played - 86400000 || published > played + 14 * 86400000))) throw Error('VIDEO_DATE');
@@ -238,7 +242,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
           try { const video = await check(id); diagnostics.result = 'youtube_verified'; return { status: 'found', video }; }
           catch (err) { diagnostics.youtubeWatchRejected++;
             const reason = err instanceof Error ? err.message : 'UNKNOWN';
-            const safeReason = /^(VIDEO_IDENTITY|VIDEO_DATE|VIDEO_UNAVAILABLE|MISSING_METADATA|INVALID_METADATA|UPSTREAM_\d{3})$/.test(reason) ? reason : 'OTHER';
+            const safeReason = /^(VIDEO_IDENTITY|VIDEO_ID_MISMATCH|VIDEO_PUBLISHER_UNVERIFIED|VIDEO_CHANNEL_MISMATCH|VIDEO_TITLE_MISMATCH|VIDEO_DATE|VIDEO_UNAVAILABLE|MISSING_METADATA|INVALID_METADATA|UPSTREAM_\d{3})$/.test(reason) ? reason : 'OTHER';
             diagnostics.youtubeRejectReasons[safeReason] = (diagnostics.youtubeRejectReasons[safeReason] || 0) + 1;
             if (reason.startsWith('UPSTREAM_')) diagnostics.youtubeWatchStatusErrors++; }
         }
