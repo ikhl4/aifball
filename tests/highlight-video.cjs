@@ -136,6 +136,31 @@ test('the stream answer uses verified metadata and strips an unverified model UR
   const unavailable = await v.verifySummaryAnswer(answer, undefined, async () => ({ status: 'unavailable' }));
   assert.ok(!unavailable.includes('video_url=')); assert.ok(unavailable.includes('video_status="unavailable"'));
 });
+test('Dify DuckDuckGo result survives inaccessible YouTube player metadata', async () => {
+  const attrs = '<aifball-summary home="فياريال" away="باريس سان جيرمان" date="2026-11-03"'
+    + ' video_url="https://www.youtube.com/watch?v=abcdefghijk"'
+    + ' video_title="ملخص مباراة فياريال وباريس سان جيرمان"'
+    + ' video_channel="beIN SPORTS"'
+    + ' video_source_url="https://www.youtube.com/watch?v=abcdefghijk" />';
+  const answer = await v.verifySummaryAnswer(attrs, undefined, async () => ({ status: 'unavailable' }));
+  assert.match(answer, /video_status="found"/);
+  assert.match(answer, /video_embed="false"/);
+  assert.match(answer, /video_url="https:\/\/www.youtube.com\/watch\?v=abcdefghijk"/);
+  assert.doesNotMatch(answer, /video_title=/);
+});
+test('unmatched or uncorroborated DuckDuckGo result is never shown', async () => {
+  for (const details of [
+    ' video_channel="Unknown channel"',
+    ' video_channel="beIN SPORTS" video_title="ملخص برشلونة وريال مدريد"',
+    ' video_channel="beIN SPORTS" video_title="ملخص مباراة فياريال وباريس سان جيرمان" video_source_url="https://youtu.be/zzzzzzzzzzz"',
+  ]) {
+    const tag = '<aifball-summary home="فياريال" away="باريس سان جيرمان" date="2026-11-03"'
+      + ' video_url="https://www.youtube.com/watch?v=abcdefghijk"' + details + ' />';
+    const answer = await v.verifySummaryAnswer(tag, undefined, async () => ({ status: 'unavailable' }));
+    assert.doesNotMatch(answer, /video_url=/);
+    assert.match(answer, /video_status="unavailable"/);
+  }
+});
 test('public metadata parser never executes scripts and handles braces in strings', () => {
   assert.equal(h.pageJson('var demo = {"title":"a } \\\" b"};</script>', 'demo').title, 'a } " b');
   assert.throws(() => h.pageJson('var demo = alert("bad");', 'demo'));
