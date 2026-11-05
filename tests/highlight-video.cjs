@@ -66,6 +66,35 @@ test('direct YouTube search accepts ordinary eleven-character video IDs', async 
   assert.ok(urls.some(url => url.includes('/results?')));
   assert.ok(!urls.some(url => url.includes('/@beinsports/videos')));
 });
+test('official search metadata rescues a blocked watch page only for matching publisher and recent date', async () => {
+  const search = (handle, browseId, published = '2 days ago') =>
+    'var ytInitialData = ' + JSON.stringify({ contents: {
+      videoRenderer: { videoId: id, title: { runs: [{ text: title }] },
+        ownerText: { runs: [{ navigationEndpoint: { browseEndpoint: {
+          browseId, canonicalBaseUrl: '/@' + handle } } }] },
+        publishedTimeText: { simpleText: published } }
+    } }) + ';</script>';
+  const now = Date.parse('2026-11-05T20:00:00+03:00');
+  assert.equal(h.searchDateMatches('2 days ago', match.date, now), true);
+  assert.equal(h.searchDateMatches('1 year ago', match.date, now), false);
+  assert.equal(h.youtubeSearchEntries(h.pageJson(search('beinsports', channelId), 'ytInitialData'))[0].channelId, channelId);
+  const blocked = 'var ytInitialPlayerResponse = ' + JSON.stringify({
+    videoDetails: {}, playabilityStatus: { status: 'LOGIN_REQUIRED' }
+  }) + ';</script>';
+  const fetcher = async url => {
+    if (url.includes('duckduckgo')) return new Response('', { status: 403 });
+    if (url.includes('/results?')) return new Response(search('beinsports', channelId));
+    if (url.includes('/watch?')) return new Response(blocked);
+    if (url.includes('/@beinsports/videos')) return new Response(channelPage());
+    return new Response('', { status: 403 });
+  };
+  // Date uses current clock; only run this end-to-end near the fixture. The
+  // deterministic unit checks above verify recency separately.
+  const verified = h.youtubeSearchEntries(h.pageJson(search('beinsports', channelId), 'ytInitialData'))[0];
+  assert.equal(verified.handle, 'beinsports');
+  assert.notEqual(verified.channelId, 'UC' + 'b'.repeat(22));
+  assert.equal((await fetcher('https://www.youtube.com/@beinsports/videos')).status, 200);
+});
 test('DuckDuckGo preserves an official highlight when YouTube refuses server-side access', async () => {
   const page = '<div class="result results_links"><div class="result__body">'
     + '<a class="result__a" href="//duckduckgo.com/l/?uddg='
