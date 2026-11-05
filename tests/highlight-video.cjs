@@ -79,6 +79,38 @@ test('DuckDuckGo preserves an official highlight when YouTube refuses server-sid
   assert.equal(result.video.embeddable, false);
   assert.ok(requests[0].includes('duckduckgo.com/html/'));
 });
+test('DuckDuckGo results parse across HTML and Lite layouts without enclosing result divs', () => {
+  const direct = 'https://www.youtube.com/watch?v=' + id;
+  const html = '<section><a class="result__a" href="//duckduckgo.com/l/?uddg='
+    + encodeURIComponent(direct) + '">ملخص مباراة فياريال وباريس سان جيرمان</a>'
+    + '<div class="result__snippet">YouTube · beIN SPORTS · highlights</div></section>';
+  const lite = '<table><tr><td><a class="result-link" href="' + direct
+    + '">ملخص مباراة فياريال وباريس سان جيرمان</a></td></tr>'
+    + '<tr><td class="result-snippet">YouTube · beIN SPORTS</td></tr></table>';
+  for (const page of [html, lite]) {
+    const results = h.duckDuckGoVideos(page);
+    assert.equal(results.length, 1);
+    assert.equal(results[0].id, id);
+    assert.equal(h.trustedSearchVideo(results[0], match).channel, 'beIN SPORTS');
+  }
+});
+test('DuckDuckGo Lite fallback works when HTML endpoint is blocked', async () => {
+  const direct = 'https://www.youtube.com/watch?v=' + id;
+  const lite = '<table><tr><td><a class="result-link" href="' + direct
+    + '">ملخص مباراة فياريال وباريس سان جيرمان</a></td></tr>'
+    + '<tr><td class="result-snippet">YouTube · beIN SPORTS</td></tr></table>';
+  const requested = [];
+  const fetcher = async url => {
+    requested.push(url);
+    return url.includes('lite.duckduckgo.com/lite/')
+      ? new Response(lite)
+      : new Response('', { status: 403 });
+  };
+  const result = await h.findHighlightVideo(match, '', undefined, fetcher);
+  assert.equal(result.status, 'found');
+  assert.equal(result.video.embeddable, false);
+  assert.ok(requested.some(url => url.includes('lite.duckduckgo.com/lite/')));
+});
 test('DuckDuckGo cannot pass an unofficial publisher or wrong fixture', () => {
   const candidate = { id, url: 'https://www.youtube.com/watch?v=' + id,
     title: 'ملخص مباراة فياريال وباريس سان جيرمان', snippet: 'YouTube · unofficial clips' };
