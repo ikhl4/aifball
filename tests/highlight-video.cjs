@@ -97,7 +97,7 @@ test('official search metadata rescues a blocked watch page only for matching pu
 });
 test('open-channel mode finds a dated match highlight even when DuckDuckGo 403s and watch metadata is blocked', async () => {
   const played = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const fixture = { ...match, date: played.toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' }) };
+  const fixture = { ...match, date: played.toISOString().slice(0, 10) };
   const otherChannel = 'UC' + 'z'.repeat(22);
   const searchResult = (channelName, channelId, date = '1 day ago') =>
     'var ytInitialData = ' + JSON.stringify({ contents: { videoRenderer: {
