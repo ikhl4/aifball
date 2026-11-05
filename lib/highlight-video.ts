@@ -57,6 +57,29 @@ export function searchVideoCandidates(html: string): { id: string; title: string
   visit(data.contents);
   return [...videos].map(([id,title]) => ({id,title}));
 }
+/** DuckDuckGo HTML search provides candidate YouTube IDs, never verified videos. */
+export function duckDuckGoVideoCandidates(page: string): { id: string; title: string }[] {
+  const decoded = (raw: string) => raw.replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#(?:x([0-9a-f]+)|(\\d+));/gi, (_, hex: string, dec: string) => {
+    const point = parseInt(hex || dec, hex ? 16 : 10);
+    return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : '';
+  });
+  const out = new Map<string, string>();
+  for (const anchor of page.matchAll(/<a\\b([^>]*?)>([\\s\\S]*?)<\\/a>/gi)) {
+    const href = anchor[1].match(/\\bhref\\s*=\\s*["']([^"']+)["']/i)?.[1];
+    if (!href) continue;
+    try {
+      const url = new URL(decoded(href), 'https://html.duckduckgo.com');
+      const redirect = url.searchParams.get('uddg');
+      const destination = redirect ? new URL(redirect) : url;
+      if (!['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(destination.hostname)) continue;
+      const id = youtubeVideoId(destination.href);
+      if (!id || !/^[\\w-]{11}$/.test(id)) continue;
+      const title = decoded(anchor[2].replace(/<[^>]*>/g, ' ')).replace(/\\s+/g, ' ').trim();
+      if (!out.has(id)) out.set(id, title);
+    } catch { /* Ignore invalid, redirected or unsupported links. */ }
+  }
+  return [...out].map(([id, title]) => ({ id, title }));
+}
 export function feedVideos(xml: string, channelId: string): { id: string; title: string }[] {
   if (!xml.includes(`<yt:channelId>${channelId}</yt:channelId>`)) throw Error('FEED_IDENTITY');
   const decode = (s: string) => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
@@ -102,7 +125,7 @@ async function html(url: string, signal: AbortSignal, fetcher: typeof fetch): Pr
   if (Number(r.headers.get('content-length')) > 4_000_000) throw Error('PAGE_SIZE');
   const value = await r.text(); if (value.length > 4_000_000) throw Error('PAGE_SIZE'); return value;
 }
-/** Discovery starts with Dify's DDG candidates, then the selected channels' recent public uploads.
+/** Discovery uses DuckDuckGo fixture-specific results, then official channels' recent uploads.
  * oEmbed failure and disabled embedding are not evidence that a video is absent. */
 export async function findHighlightVideo(match: HighlightMatch, candidate = '', signal?: AbortSignal, fetcher: typeof fetch = fetch): Promise<Result> {
   if (!match.home || !match.away || !/^\d{4}-\d{2}-\d{2}$/.test(match.date)) return { status: 'unavailable' };
@@ -113,19 +136,25 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
   try {
     const candidateId = youtubeVideoId(candidate);
     if (candidateId) { try { return { status: 'found', video: await check(candidateId) }; } catch { /* Try the official channel instead of declaring absence. */ } }
-    // Search fixture-specific uploads first; recent channel feeds omit older clips
-    // when a broadcaster publishes multiple videos daily.
+    // Discover through DuckDuckGo, as configured for AiFBall.
+    // Candidate URLs are NEVER surfaced until publisher, teams and date verify.
     const arHome = footballNameInArabic(match.home) || match.home;
     const arAway = footballNameInArabic(match.away) || match.away;
-    const queryVariants = [
-      `${arHome} ${arAway} ملخص beIN SPORTS`,
-      `${match.home} ${match.away} highlights`,
+    const searches = [
+      `${arHome} ${arAway} ملخص site:youtube.com/watch`,
+      `${match.home} ${match.away} highlights site:youtube.com/watch`,
+      `${arHome} ${arAway} TOD beIN ملخص`,
     ];
-    for (const query of queryVariants) {
+    const discovered = new Set<string>();
+    for (const query of searches) {
       if (c.signal.aborted) break;
       try {
-        const candidates = searchVideoCandidates(await html('https://www.youtube.com/results?search_query=' + encodeURIComponent(query), c.signal, fetcher));
-        for (const item of candidates.filter(v => matchesTeams(v.title, match)).slice(0, 8)) {
+        const resultPage = await html('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query), c.signal, fetcher);
+        const candidates = duckDuckGoVideoCandidates(resultPage);
+        for (const item of candidates) {
+          if (discovered.has(item.id)) continue;
+          discovered.add(item.id);
+          // DDG result headlines can be shortened; use the real video page for identity.
           try { return { status: 'found', video: await check(item.id) }; }
           catch { failed = true; }
         }
