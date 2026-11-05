@@ -2202,24 +2202,29 @@ export default function FootPlayChat() {
               </svg>
             </button>
 
-            <input
-              type="text"
+            <textarea
+              rows={1}
               value={input}
-              onChange={(event) => setInput(event.target.value)}
+              onChange={(event) => {
+                setInput(event.target.value);
+                event.currentTarget.style.height = 'auto';
+                event.currentTarget.style.height = Math.min(event.currentTarget.scrollHeight, 144) + 'px';
+              }}
               onKeyDown={(event) => {
-                if (
-                  event.key === 'Enter' &&
-                  !event.nativeEvent.isComposing
-                ) {
-                  sendMessage();
+                // Enter inserts a newline on iPhone, Android and desktop.
+                // Sending is intentionally restricted to the visible send button.
+                if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                  event.stopPropagation();
                 }
               }}
+              aria-label="اكتب رسالتك"
+              enterKeyHint="enter"
               placeholder={
                 isListening
                   ? 'جاري الاستماع لصوتك...'
                   : 'اسأل عن أي مباراة، تحليل، أو إحصائية...'
               }
-              className={`flex-1 min-w-0 bg-transparent px-3 py-2 text-sm focus:outline-none ${
+              className={`flex-1 min-w-0 max-h-36 resize-none overflow-y-auto bg-transparent px-3 py-2 text-sm leading-6 focus:outline-none ${
                 isDarkMode
                   ? 'text-white placeholder-gray-500'
                   : 'text-gray-900 placeholder-gray-400'
