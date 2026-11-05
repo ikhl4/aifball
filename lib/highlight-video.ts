@@ -169,7 +169,9 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
   // Preview-only diagnostic counters; no URLs, prompts, API keys, or snippets.
   const diagnostics = { ddgRequests: 0, ddgErrors: 0, ddgCandidates: 0, ddgMatch: 0,
     ddgPublisherRejected: 0, ddgTitleRejected: 0, youtubeSearchRequests: 0,
-    youtubeSearchErrors: 0, channelFailures: 0, result: 'unknown' };
+    youtubeSearchErrors: 0, youtubeVideoEntries: 0, youtubeMatchedTitles: 0,
+    youtubeWatchRejected: 0, youtubeWatchStatusErrors: 0, channelFailures: 0,
+    ddgErrorKinds: [] as string[], result: 'unknown' };
   const logDiagnostic = () => {
     if (process.env.VERCEL_ENV === 'preview') {
       console.info('[AIFBALL_HIGHLIGHTS_DEBUG]', JSON.stringify({
@@ -207,7 +209,8 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
           try { const video = await check(item.id); diagnostics.result = 'ddg_verified'; return { status: 'found', video }; }
           catch { diagnostics.result = 'ddg_search_corroborated'; return { status: 'found', video: fallback }; }
         }
-      } catch { failed = true; diagnostics.ddgErrors++; }
+      } catch (err) { failed = true; diagnostics.ddgErrors++; const kind = err instanceof Error ? err.message : 'UNKNOWN';
+        if (!diagnostics.ddgErrorKinds.includes(kind)) diagnostics.ddgErrorKinds.push(kind.slice(0, 40)); }
     }
     // Fall back to YouTube's own search and then official recent uploads.
     for (const query of [...new Set(queries.map(q => q.replace('site:youtube.com/watch ', '')))]) {
@@ -227,8 +230,13 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
           }
         };
         visit(data.contents);
-        for (const [id, title] of [...videos].filter(([, title]) => matchesTeams(title, match)).slice(0, 10)) {
-          try { return { status: 'found', video: await check(id) }; } catch { /* Continue to official channel feeds. */ }
+        diagnostics.youtubeVideoEntries += videos.size;
+        const matched = [...videos].filter(([, title]) => matchesTeams(title, match));
+        diagnostics.youtubeMatchedTitles += matched.length;
+        for (const [id] of matched.slice(0, 10)) {
+          try { const video = await check(id); diagnostics.result = 'youtube_verified'; return { status: 'found', video }; }
+          catch (err) { diagnostics.youtubeWatchRejected++;
+            if (err instanceof Error && err.message.startsWith('UPSTREAM_')) diagnostics.youtubeWatchStatusErrors++; }
         }
       } catch { failed = true; diagnostics.youtubeSearchErrors++; }
     }
