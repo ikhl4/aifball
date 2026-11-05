@@ -12,9 +12,9 @@ const text = (v: any): string => v?.simpleText || v?.content || (Array.isArray(v
 
 /** Parse a public page's JSON without executing any page code. */
 export function pageJson(html: string, variable: string): any {
-  const marker = html.indexOf(`var ${variable} = `);
-  if (marker < 0) throw Error('MISSING_METADATA');
-  const start = html.indexOf('{', marker); let depth = 0, quoted = false, escaped = false;
+  const markerMatch = new RegExp('(?:\\bvar\\s+|\\bwindow\\s*\\[\\s*["\\\']?)' + variable + '(?:["\\\']?\\s*\\])?\\s*=\\s*\\{').exec(html);
+  if (!markerMatch) throw Error('MISSING_METADATA');
+  const start = html.indexOf('{', markerMatch.index); let depth = 0, quoted = false, escaped = false;
   for (let i = start; i < html.length; i++) {
     const c = html[i];
     if (quoted) { if (escaped) escaped = false; else if (c === '\\') escaped = true; else if (c === '"') quoted = false; }
@@ -41,6 +41,45 @@ export function channelIndex(html: string, handle: string): ChannelIndex {
   visit(data.contents);
   return { channelId: meta.externalId, videos: [...videos].map(([id, title]) => ({ id, title })) };
 }
+/** Safely extract search result candidates. Result URLs are never shown until verified. */
+export function searchVideoCandidates(html: string): { id: string; title: string }[] {
+  const data = pageJson(html, 'ytInitialData');
+  const videos = new Map<string,string>();
+  const visit = (node: any) => {
+    if (!node || typeof node !== 'object') return;
+    const item = node.videoRenderer;
+    if (item && /^[\\w-]{11}$/.test(item.videoId || '')) videos.set(item.videoId, text(item.title));
+    for (const child of Object.values(node)) {
+      if (Array.isArray(child)) child.forEach(visit);
+      else if (child && typeof child === 'object') visit(child);
+    }
+  };
+  visit(data.contents);
+  return [...videos].map(([id,title]) => ({id,title}));
+}
+/** DuckDuckGo HTML search provides candidate YouTube IDs, never verified videos. */
+export function duckDuckGoVideoCandidates(page: string): { id: string; title: string }[] {
+  const decoded = (raw: string) => raw.replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#(?:x([0-9a-f]+)|(\\d+));/gi, (_, hex: string, dec: string) => {
+    const point = parseInt(hex || dec, hex ? 16 : 10);
+    return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : '';
+  });
+  const out = new Map<string, string>();
+  for (const anchor of page.matchAll(/<a\\b([^>]*?)>([\\s\\S]*?)<\\/a>/gi)) {
+    const href = anchor[1].match(/\\bhref\\s*=\\s*["']([^"']+)["']/i)?.[1];
+    if (!href) continue;
+    try {
+      const url = new URL(decoded(href), 'https://html.duckduckgo.com');
+      const redirect = url.searchParams.get('uddg');
+      const destination = redirect ? new URL(redirect) : url;
+      if (!['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(destination.hostname)) continue;
+      const id = youtubeVideoId(destination.href);
+      if (!id || !/^[\\w-]{11}$/.test(id)) continue;
+      const title = decoded(anchor[2].replace(/<[^>]*>/g, ' ')).replace(/\\s+/g, ' ').trim();
+      if (!out.has(id)) out.set(id, title);
+    } catch { /* Ignore invalid, redirected or unsupported links. */ }
+  }
+  return [...out].map(([id, title]) => ({ id, title }));
+}
 export function feedVideos(xml: string, channelId: string): { id: string; title: string }[] {
   if (!xml.includes(`<yt:channelId>${channelId}</yt:channelId>`)) throw Error('FEED_IDENTITY');
   const decode = (s: string) => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
@@ -54,6 +93,12 @@ export function matchesTeams(title: string, match: HighlightMatch): boolean {
   return [match.home, match.away].every(team => {
     const aliases = [team, footballNameInArabic(team)].filter(Boolean).map(name => norm(name!));
     if (aliases.includes('paris saint germain') || aliases.includes('باريس سان جيرمان')) aliases.push('psg', 'باريس سان جيرمان');
+    // Broadcaster spellings differ from ESPN names (Lens = لانس / لونس).
+    if (aliases.some(a => ['lens', 'rc lens', 'لانس', 'لونس'].includes(a))) aliases.push('lens', 'rc lens', 'لانس', 'لونس');
+    if (aliases.some(a => a.includes('shabab al ahli') || a.includes('shabab al ahly') || a.includes('شباب الاهلي'))) aliases.push('شباب الاهلي', 'شباب اهلي دبي', 'شباب الأهلي دبي', 'شباب الاهلي دبي', 'shabab al ahli', 'shabab al ahly', 'shabab al ahli dubai');
+    if (aliases.some(a => a.includes('aek athens') || a === 'ايك اثينا' || a === 'ايك اثينا')) aliases.push('aek', 'aek athens', 'ايك', 'ايك اثينا', 'أيك أثينا');
+    if (aliases.some(a => a.includes('real madrid') || a === 'ريال مدريد')) aliases.push('real madrid', 'ريال مدريد');
+    if (aliases.some(a => a.includes('al hilal') || a === 'الهلال')) aliases.push('al hilal', 'al hilal sfc', 'الهلال');
     // Official highlight titles often omit city suffixes or use different Arabic spellings.
     if (aliases.some(a => /^(?:atletico madrid|atletico de madrid|اتلتيكو مدريد|اتلتيكو)$/.test(a))) aliases.push('atletico', 'atletico madrid', 'اتلتيكو');
     if (aliases.some(a => /^(?:bayern|bayern munich|fc bayern munchen|بايرن)$/.test(a))) aliases.push('bayern', 'bayern munich', 'بايرن');
@@ -63,7 +108,11 @@ export function matchesTeams(title: string, match: HighlightMatch): boolean {
 export function videoMetadata(html: string, id: string, match: HighlightMatch, expectedChannelId?: string): HighlightVideo {
   const p = pageJson(html, 'ytInitialPlayerResponse'), d = p.videoDetails, m = p.microformat?.playerMicroformatRenderer;
   const handle = handleOf(m?.ownerProfileUrl || '');
-  if (d?.videoId !== id || !HIGHLIGHT_CHANNELS.includes(handle as any) || (expectedChannelId && d.channelId !== expectedChannelId) || !matchesTeams(d.title || '', match)) throw Error('VIDEO_IDENTITY');
+  // YouTube sometimes exposes the publisher as /channel/UC... instead of /@handle.
+  // A verified channel index ID is stronger evidence than URL formatting.
+  const approvedPublisher = HIGHLIGHT_CHANNELS.includes(handle as any)
+    || (Boolean(expectedChannelId) && d?.channelId === expectedChannelId);
+  if (d?.videoId !== id || !approvedPublisher || (expectedChannelId && d.channelId !== expectedChannelId) || !matchesTeams(d.title || '', match)) throw Error('VIDEO_IDENTITY');
   const publishedAt = m?.publishDate || m?.uploadDate || '', published = Date.parse(publishedAt), played = Date.parse(match.date + 'T00:00:00+03:00');
   // Publication can cross midnight; never use a previous season's meeting.
   if (!Number.isFinite(published) || !Number.isFinite(played) || published < played || published > played + 4 * 86400000) throw Error('VIDEO_DATE');
@@ -76,17 +125,41 @@ async function html(url: string, signal: AbortSignal, fetcher: typeof fetch): Pr
   if (Number(r.headers.get('content-length')) > 4_000_000) throw Error('PAGE_SIZE');
   const value = await r.text(); if (value.length > 4_000_000) throw Error('PAGE_SIZE'); return value;
 }
-/** Discovery starts with Dify's DDG candidates, then the selected channels' recent public uploads.
+/** Discovery uses DuckDuckGo fixture-specific results, then official channels' recent uploads.
  * oEmbed failure and disabled embedding are not evidence that a video is absent. */
 export async function findHighlightVideo(match: HighlightMatch, candidate = '', signal?: AbortSignal, fetcher: typeof fetch = fetch): Promise<Result> {
   if (!match.home || !match.away || !/^\d{4}-\d{2}-\d{2}$/.test(match.date)) return { status: 'unavailable' };
-  const c = new AbortController(), timer = setTimeout(() => c.abort(), 24000), abort = () => c.abort();
+  const c = new AbortController(), timer = setTimeout(() => c.abort(), 35000), abort = () => c.abort();
   signal?.addEventListener('abort', abort, { once: true }); if (signal?.aborted) abort();
   let failed = false;
   const check = async (id: string, channelId?: string) => videoMetadata(await html(`https://www.youtube.com/watch?v=${id}`, c.signal, fetcher), id, match, channelId);
   try {
     const candidateId = youtubeVideoId(candidate);
     if (candidateId) { try { return { status: 'found', video: await check(candidateId) }; } catch { /* Try the official channel instead of declaring absence. */ } }
+    // Discover through DuckDuckGo, as configured for AiFBall.
+    // Candidate URLs are NEVER surfaced until publisher, teams and date verify.
+    const arHome = footballNameInArabic(match.home) || match.home;
+    const arAway = footballNameInArabic(match.away) || match.away;
+    const searches = [
+      `${arHome} ${arAway} ملخص site:youtube.com/watch`,
+      `${match.home} ${match.away} highlights site:youtube.com/watch`,
+      `${arHome} ${arAway} TOD beIN ملخص`,
+    ];
+    const discovered = new Set<string>();
+    for (const query of searches) {
+      if (c.signal.aborted) break;
+      try {
+        const resultPage = await html('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query), c.signal, fetcher);
+        const candidates = duckDuckGoVideoCandidates(resultPage);
+        for (const item of candidates) {
+          if (discovered.has(item.id)) continue;
+          discovered.add(item.id);
+          // DDG result headlines can be shortened; use the real video page for identity.
+          try { return { status: 'found', video: await check(item.id) }; }
+          catch { failed = true; }
+        }
+      } catch { failed = true; }
+    }
     const channels = [...HIGHLIGHT_CHANNELS];
     if (/روشن|saudi|ksa/i.test(match.competition || '')) channels.sort((a, b) => Number(b === 'thmanyahsports') - Number(a === 'thmanyahsports'));
     for (let offset = 0; offset < channels.length && !c.signal.aborted; offset += 3) {

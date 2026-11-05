@@ -67,3 +67,45 @@ test('named match uses source fixtures and goals even when model search misses i
   assert.match(answer, /home_score="0" away_score="6"/); assert.match(answer, /goals="فابيان رويز\|17"/); assert.match(answer, /video_embed="false"/); assert.doesNotMatch(answer, /هدف عكسي/);
   assert.equal(await single.buildSingleMatchHighlights('ملخص فياريال وبرشلونة أمس', undefined, fetcher, lookup, date), null);
 });
+
+test('accepts Arabic broadcaster variations for several competitions', () => {
+  const cases = [
+    ['Lens', 'Como', 'ملخص مباراة لونس وكومو'],
+    ['Bayern Munich', 'Atletico Madrid', 'ملخص بايرن ميونخ وأتلتيكو مدريد'],
+    ['Real Madrid', 'AEK Athens', 'ملخص ريال مدريد وأيك أثينا'],
+    ['Al Hilal', 'Shabab Al Ahli', 'ملخص الهلال وشباب أهلي دبي'],
+  ];
+  for (const [home, away, title] of cases) {
+    assert.equal(h.matchesTeams(title, { home, away, date: '2026-11-04' }), true, title);
+  }
+});
+
+test('DuckDuckGo discovers official YouTube candidates and validates them', async () => {
+  const ddg = '<a class="result__a" href="https://www.youtube.com/watch?v=abcdefghijk">ملخص مباراة فياريال وباريس</a>'
+    + '<a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fyoutu.be%2Fabcdefghijk">Duplicate</a>'
+    + '<a href="https://random.example/watch?v=notallowed1">Untrusted</a>';
+  assert.equal(h.duckDuckGoVideoCandidates(ddg).length, 1);
+  assert.equal(h.duckDuckGoVideoCandidates(ddg)[0].id, id);
+  const urls = [];
+  const fetcher = async url => {
+    urls.push(url);
+    if (url.includes('html.duckduckgo.com/html/')) return new Response(ddg);
+    if (url.includes('watch?v=' + id)) return new Response(watch());
+    return new Response('', { status: 503 });
+  };
+  const result = await h.findHighlightVideo(match, '', undefined, fetcher);
+  assert.equal(result.status, 'found');
+  assert.equal(result.video.id, id);
+  assert.ok(urls.some(u => u.includes('duckduckgo.com')));
+  assert.ok(!urls.some(u => u.includes('youtube.com/results?')));
+});
+
+test('YouTube window assignment variant is parsed without executing scripts', () => {
+  const data = h.pageJson('window["ytInitialData"] = {"contents":{"ok":true}};', 'ytInitialData');
+  assert.equal(data.contents.ok, true);
+});
+test('unverified highlight response provides a direct search fallback in the UI', () => {
+  const card = fs.readFileSync('app/components/MatchHighlightCard.tsx', 'utf8');
+  assert.match(card, /youtube\.com\/results\?search_query=/);
+  assert.match(card, /البحث عن ملخص هذه المباراة في يوتيوب/);
+});
