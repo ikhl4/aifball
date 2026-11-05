@@ -78,7 +78,8 @@ export function videoMetadata(html: string, id: string, match: HighlightMatch, e
     || OFFICIAL_CHANNEL_TITLES.has(publisherName)
     || Boolean(expectedChannelId && d?.channelId === expectedChannelId);
   // Keep identity checks strict, but identify precisely which one failed.
-  if (d?.videoId !== id) throw Error('VIDEO_ID_MISMATCH');
+  if (!d?.videoId) throw Error('VIDEO_ID_MISSING');
+  if (d.videoId !== id) throw Error('VIDEO_ID_MISMATCH');
   if (!recognized) throw Error('VIDEO_PUBLISHER_UNVERIFIED');
   if (expectedChannelId && d.channelId !== expectedChannelId) throw Error('VIDEO_CHANNEL_MISMATCH');
   if (!matchesTeams(d.title || '', match)) throw Error('VIDEO_TITLE_MISMATCH');
@@ -242,7 +243,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
           try { const video = await check(id); diagnostics.result = 'youtube_verified'; return { status: 'found', video }; }
           catch (err) { diagnostics.youtubeWatchRejected++;
             const reason = err instanceof Error ? err.message : 'UNKNOWN';
-            const safeReason = /^(VIDEO_IDENTITY|VIDEO_ID_MISMATCH|VIDEO_PUBLISHER_UNVERIFIED|VIDEO_CHANNEL_MISMATCH|VIDEO_TITLE_MISMATCH|VIDEO_DATE|VIDEO_UNAVAILABLE|MISSING_METADATA|INVALID_METADATA|UPSTREAM_\d{3})$/.test(reason) ? reason : 'OTHER';
+            const safeReason = /^(VIDEO_IDENTITY|VIDEO_ID_MISSING|VIDEO_ID_MISMATCH|VIDEO_PUBLISHER_UNVERIFIED|VIDEO_CHANNEL_MISMATCH|VIDEO_TITLE_MISMATCH|VIDEO_DATE|VIDEO_UNAVAILABLE|MISSING_METADATA|INVALID_METADATA|UPSTREAM_\d{3})$/.test(reason) ? reason : 'OTHER';
             diagnostics.youtubeRejectReasons[safeReason] = (diagnostics.youtubeRejectReasons[safeReason] || 0) + 1;
             if (reason.startsWith('UPSTREAM_')) diagnostics.youtubeWatchStatusErrors++; }
         }
