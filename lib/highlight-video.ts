@@ -304,17 +304,18 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
             const safeReason = /^(VIDEO_IDENTITY|VIDEO_ID_MISSING|VIDEO_ID_MISMATCH|VIDEO_PUBLISHER_UNVERIFIED|VIDEO_CHANNEL_MISMATCH|VIDEO_TITLE_MISMATCH|VIDEO_DATE|VIDEO_UNAVAILABLE|MISSING_METADATA|INVALID_METADATA|UPSTREAM_\d{3})$/.test(reason) ? reason : 'OTHER';
             diagnostics.youtubeRejectReasons[safeReason] = (diagnostics.youtubeRejectReasons[safeReason] || 0) + 1;
             if (reason.startsWith('UPSTREAM_')) diagnostics.youtubeWatchStatusErrors++;
-            // Experimental open-channel mode: trust YouTube's search result
-            // only for a real video ID + named publisher channel ID + fixture
-            // title and a publication date near the fixture. Do not claim
-            // successful embedding or publisher verification from a blocked
-            // watch page. Keep positive ID mismatches rejected.
+            // Separate discovery from verification: YouTube's own search
+            // identifies the video's channel, publication age and match.
+            // A known but different handle is never overridden by a similar
+            // display name. A missing handle requires an exact official name.
+            // A blocked watch page does not prove that embedding is allowed.
             if (reason !== 'VIDEO_ID_MISSING') continue;
             const entry = searchEntries.get(id);
             if (!entry || !/^UC[\w-]{22}$/.test(entry.channelId)
               || !entry.channelName.trim() || !matchesTeams(entry.title, match)
-              || !(HIGHLIGHT_CHANNELS.includes(entry.handle as any)
-                || OFFICIAL_CHANNEL_TITLES.has(entry.channelName.trim().toLowerCase()))) {
+              || !(entry.handle
+                ? HIGHLIGHT_CHANNELS.includes(entry.handle as any)
+                : OFFICIAL_CHANNEL_TITLES.has(entry.channelName.trim().toLowerCase()))) {
               diagnostics.searchMissingIdentity++; continue;
             }
             diagnostics.searchPublisherCandidates++;
