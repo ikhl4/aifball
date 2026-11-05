@@ -1,3 +1,4 @@
+// Preview redeploy trigger: structured highlights fallback, unrestricted discovery experiment; production unchanged.
 import { verifiedSummaryStream, verifySummaryAnswer } from '../../../lib/verified-summary';
 import { posterIntent } from '../../../lib/match-card-data';
 import { buildSingleMatchHighlights } from '../../../lib/single-match-highlights';
