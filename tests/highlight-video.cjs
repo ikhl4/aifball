@@ -145,7 +145,7 @@ test('only approved publishers can be accepted from YouTube search when watch me
   });
   assert.equal(invalid.status, 'unavailable');
 });
-test('DuckDuckGo preserves an official highlight when YouTube refuses server-side access', async () => {
+test('DuckDuckGo result is not accepted without independently verified publisher', async () => {
   const page = '<div class="result results_links"><div class="result__body">'
     + '<a class="result__a" href="//duckduckgo.com/l/?uddg='
     + encodeURIComponent('https://www.youtube.com/watch?v=' + id)
@@ -163,9 +163,7 @@ test('DuckDuckGo preserves an official highlight when YouTube refuses server-sid
     return new Response('', { status: 403 });
   };
   const result = await h.findHighlightVideo(match, '', undefined, fetcher);
-  assert.equal(result.status, 'found');
-  assert.equal(result.video.url, 'https://www.youtube.com/watch?v=' + id);
-  assert.equal(result.video.embeddable, false);
+  assert.equal(result.status, 'unavailable');
   assert.ok(requests[0].includes('duckduckgo.com/html/'));
 });
 test('DuckDuckGo results parse across HTML and Lite layouts without enclosing result divs', () => {
