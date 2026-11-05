@@ -19,6 +19,21 @@ function watch({ channel = 'beinsports', date = '2026-11-03T22:30:00Z', embed = 
 function channelPage() {
   return 'var ytInitialData = ' + JSON.stringify({ metadata: { channelMetadataRenderer: { externalId: channelId, vanityChannelUrl: 'https://www.youtube.com/@beinsports' } }, contents: { lockupViewModel: { contentId: id, contentType: 'LOCKUP_CONTENT_TYPE_VIDEO', metadata: { lockupMetadataViewModel: { title: { content: title } } } } } }) + ';</script>';
 }
+test('official club and confederation channel IDs are accepted without a vanity handle', () => {
+  const ids = [
+    ['UCivJETAP4VD7rXRgjdpVwNw', 'قناة نادي الاتحاد السعودي'],
+    ['UCnj0TjaM0wyxkAWW_nz8_1g', 'The AFC Hub'],
+  ];
+  for (const [publisherId, publisher] of ids) {
+    const page = 'var ytInitialPlayerResponse = ' + JSON.stringify({
+      videoDetails: { videoId: id, channelId: publisherId, title, author: publisher },
+      playabilityStatus: { status: 'OK', playableInEmbed: false },
+      microformat: { playerMicroformatRenderer: { ownerChannelName: publisher, publishDate: '2026-11-03' } },
+    }) + ';</script>';
+    assert.equal(h.videoMetadata(page, id, match).channel, publisher);
+  }
+  assert.throws(() => h.videoMetadata(watch({ channel: 'plus90' }), id, match));
+});
 test('disabled embedding does not reject a verified official highlight', () => {
   const video = h.videoMetadata(watch(), id, match, channelId);
   assert.equal(video.embeddable, false); assert.equal(video.url, 'https://www.youtube.com/watch?v=' + id);
@@ -106,7 +121,7 @@ test('publication age and absolute date gate respects match date', () => {
   assert.equal(h.searchDateMatches('', '2026-11-02', now), false);
   assert.equal(h.searchDateMatches('2025-11-03', '2026-11-02', now), false);
 });
-test('a matching attributed YouTube fallback is shown while official publisher remains preferred', async () => {
+test('reject unofficial uploads and allow official channel search results', async () => {
   const played = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const fixture = { ...match, date: played.toISOString().slice(0, 10) };
   const otherChannel = 'UC' + 'z'.repeat(22);
@@ -124,9 +139,7 @@ test('a matching attributed YouTube fallback is shown while official publisher r
     return new Response('', { status: 403 });
   };
   const result = await h.findHighlightVideo(fixture, '', undefined, fetcher);
-  assert.equal(result.status, 'found');
-  assert.equal(result.video.channel, 'Nonlisted football channel');
-  assert.equal(result.video.embeddable, false);
+  assert.equal(result.status, 'unavailable');
 
   const official = await h.findHighlightVideo(fixture, '', undefined, async url => {
     if (url.includes('duckduckgo.com')) return new Response('', { status: 403 });
