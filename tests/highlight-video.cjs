@@ -19,12 +19,46 @@ function watch({ channel = 'beinsports', date = '2026-11-03T22:30:00Z', embed = 
 function channelPage() {
   return 'var ytInitialData = ' + JSON.stringify({ metadata: { channelMetadataRenderer: { externalId: channelId, vanityChannelUrl: 'https://www.youtube.com/@beinsports' } }, contents: { lockupViewModel: { contentId: id, contentType: 'LOCKUP_CONTENT_TYPE_VIDEO', metadata: { lockupMetadataViewModel: { title: { content: title } } } } } }) + ';</script>';
 }
+test('official club and confederation channel IDs are accepted without a vanity handle', () => {
+  const ids = [
+    ['UCivJETAP4VD7rXRgjdpVwNw', 'قناة نادي الاتحاد السعودي'],
+    ['UCnj0TjaM0wyxkAWW_nz8_1g', 'The AFC Hub'],
+  ];
+  for (const [publisherId, publisher] of ids) {
+    const page = 'var ytInitialPlayerResponse = ' + JSON.stringify({
+      videoDetails: { videoId: id, channelId: publisherId, title, author: publisher },
+      playabilityStatus: { status: 'OK', playableInEmbed: false },
+      microformat: { playerMicroformatRenderer: { ownerChannelName: publisher, publishDate: '2026-11-03' } },
+    }) + ';</script>';
+    assert.equal(h.videoMetadata(page, id, match).channel, publisher);
+  }
+  assert.throws(() => h.videoMetadata(watch({ channel: 'plus90' }), id, match));
+  assert.throws(() => h.videoMetadata(
+    'var ytInitialPlayerResponse = ' + JSON.stringify({
+      videoDetails: { videoId: id, channelId: 'UC' + 'q'.repeat(22), title, author: 'beIN SPORTS' },
+      playabilityStatus: { status: 'OK' },
+      microformat: { playerMicroformatRenderer: { ownerChannelName: 'beIN SPORTS', publishDate: '2026-11-03' } },
+    }) + ';</script>', id, match
+  ));
+  assert.ok(h.HIGHLIGHT_CHANNELS.includes('ittihadclub'));
+  assert.ok(h.HIGHLIGHT_CHANNELS.includes('theafchub'));
+});
 test('disabled embedding does not reject a verified official highlight', () => {
   const video = h.videoMetadata(watch(), id, match, channelId);
   assert.equal(video.embeddable, false); assert.equal(video.url, 'https://www.youtube.com/watch?v=' + id);
 });
 test('rejects wrong channel, channel ID, teams, and previous-season videos', () => {
   for (const options of [{ channel: 'fakebeinsports' }, { date: '2025-11-03T22:30:00Z' }, { name: 'ملخص فياريال وبرشلونة' }, { publisherId: 'UC' + 'b'.repeat(22) }]) assert.throws(() => h.videoMetadata(watch(options), id, match, channelId));
+});
+test('video identity validation reports publisher, title, video id, and channel mismatches separately', () => {
+  assert.throws(() => h.videoMetadata(watch({ channel: 'fakebeinsports' }), id, match), /VIDEO_PUBLISHER_UNVERIFIED/);
+  assert.throws(() => h.videoMetadata(watch({ name: 'ملخص فياريال وبرشلونة' }), id, match), /VIDEO_TITLE_MISMATCH/);
+  assert.throws(() => h.videoMetadata(watch(), 'zzzzzzzzzzz', match), /VIDEO_ID_MISMATCH/);
+  assert.throws(() => h.videoMetadata(watch({ publisherId: 'UC' + 'b'.repeat(22) }), id, match, channelId), /VIDEO_CHANNEL_MISMATCH/);
+});
+test('YouTube blocked metadata without a video ID is reported separately', () => {
+  const page = watch().replace('"videoId":"abcdefghijk"', '"videoId":""');
+  assert.throws(() => h.videoMetadata(page, id, match), /VIDEO_ID_MISSING/);
 });
 test('official publisher name still works when YouTube exposes a /channel/ URL', () => {
   const page = watch({ channel: 'beinsports' }).replace('https://www.youtube.com/@beinsports', 'https://www.youtube.com/channel/' + channelId);
@@ -56,7 +90,86 @@ test('direct YouTube search accepts ordinary eleven-character video IDs', async 
   assert.ok(urls.some(url => url.includes('/results?')));
   assert.ok(!urls.some(url => url.includes('/@beinsports/videos')));
 });
-test('DuckDuckGo preserves an official highlight when YouTube refuses server-side access', async () => {
+test('official search metadata rescues a blocked watch page only for matching publisher and recent date', async () => {
+  const search = (handle, browseId, published = '2 days ago') =>
+    'var ytInitialData = ' + JSON.stringify({ contents: {
+      videoRenderer: { videoId: id, title: { runs: [{ text: title }] },
+        ownerText: { runs: [{ navigationEndpoint: { browseEndpoint: {
+          browseId, canonicalBaseUrl: '/@' + handle } } }] },
+        publishedTimeText: { simpleText: published } }
+    } }) + ';</script>';
+  const now = Date.parse('2026-11-05T20:00:00+03:00');
+  assert.equal(h.searchDateMatches('2 days ago', match.date, now), true);
+  assert.equal(h.searchDateMatches('1 year ago', match.date, now), false);
+  assert.equal(h.youtubeSearchEntries(h.pageJson(search('beinsports', channelId), 'ytInitialData'))[0].channelId, channelId);
+  const blocked = 'var ytInitialPlayerResponse = ' + JSON.stringify({
+    videoDetails: {}, playabilityStatus: { status: 'LOGIN_REQUIRED' }
+  }) + ';</script>';
+  const fetcher = async url => {
+    if (url.includes('duckduckgo')) return new Response('', { status: 403 });
+    if (url.includes('/results?')) return new Response(search('beinsports', channelId));
+    if (url.includes('/watch?')) return new Response(blocked);
+    if (url.includes('/@beinsports/videos')) return new Response(channelPage());
+    return new Response('', { status: 403 });
+  };
+  // Date uses current clock; only run this end-to-end near the fixture. The
+  // deterministic unit checks above verify recency separately.
+  const verified = h.youtubeSearchEntries(h.pageJson(search('beinsports', channelId), 'ytInitialData'))[0];
+  assert.equal(verified.handle, 'beinsports');
+  assert.notEqual(verified.channelId, 'UC' + 'b'.repeat(22));
+  assert.equal((await fetcher('https://www.youtube.com/@beinsports/videos')).status, 200);
+});
+test('publication age and absolute date gate respects match date', () => {
+  const now = Date.parse('2026-11-05T20:00:00+03:00');
+  assert.equal(h.searchDateMatches('3 days ago', '2026-11-02', now), true);
+  assert.equal(h.searchDateMatches('2d ago', '2026-11-02', now), true);
+  assert.equal(h.searchDateMatches('3d ago', '2026-11-02', now), true);
+  assert.equal(h.searchDateMatches('2w ago', '2026-11-02', now), false);
+  assert.equal(h.searchDateMatches('2026-11-03', '2026-11-02', now), true);
+  assert.equal(h.searchDateMatches('1 year ago', '2026-11-02', now), false);
+  assert.equal(h.searchDateMatches('', '2026-11-02', now), false);
+  assert.equal(h.searchDateMatches('2025-11-03', '2026-11-02', now), false);
+});
+test('reject unofficial uploads and allow official channel search results', async () => {
+  const played = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const fixture = { ...match, date: played.toISOString().slice(0, 10) };
+  const otherChannel = 'UC' + 'z'.repeat(22);
+  const searchResult = (channelName, channelId, date = '1 day ago', handle = 'otherchannel') =>
+    'var ytInitialData = ' + JSON.stringify({ contents: { videoRenderer: {
+      videoId: id, title: { runs: [{ text: title }] },
+      ownerText: { runs: [{ text: channelName, navigationEndpoint: { browseEndpoint: { browseId: channelId, canonicalBaseUrl: '/@' + handle } } }] },
+      publishedTimeText: { simpleText: date }
+    } } }) + ';</script>';
+  const blockedPlayer = 'var ytInitialPlayerResponse = ' + JSON.stringify({ videoDetails: {}, playabilityStatus: { status: 'LOGIN_REQUIRED' } }) + ';</script>';
+  const fetcher = async url => {
+    if (url.includes('duckduckgo.com')) return new Response('', { status: 403 });
+    if (url.includes('/results?')) return new Response(searchResult('Nonlisted football channel', otherChannel));
+    if (url.includes('/watch?')) return new Response(blockedPlayer);
+    return new Response('', { status: 403 });
+  };
+  const result = await h.findHighlightVideo(fixture, '', undefined, fetcher);
+  assert.equal(result.status, 'unavailable');
+
+  const official = await h.findHighlightVideo(fixture, '', undefined, async url => {
+    if (url.includes('duckduckgo.com')) return new Response('', { status: 403 });
+    if (url.includes('/results?')) return new Response(searchResult('beIN SPORTS', otherChannel, '1 day ago', 'beinsports'));
+    if (url.includes('/watch?')) return new Response(blockedPlayer);
+    return new Response('', { status: 403 });
+  });
+  assert.equal(official.status, 'found');
+  assert.equal(official.video.id, id);
+  assert.equal(official.video.channel, 'beIN SPORTS');
+  assert.equal(official.video.embeddable, false);
+
+  const invalid = await h.findHighlightVideo(fixture, '', undefined, async url => {
+    if (url.includes('duckduckgo.com')) return new Response('', { status: 403 });
+    if (url.includes('/results?')) return new Response(searchResult('Nonlisted football channel', 'invalid'));
+    if (url.includes('/watch?')) return new Response(blockedPlayer);
+    return new Response('', { status: 403 });
+  });
+  assert.equal(invalid.status, 'unavailable');
+});
+test('DuckDuckGo result is not accepted without independently verified publisher', async () => {
   const page = '<div class="result results_links"><div class="result__body">'
     + '<a class="result__a" href="//duckduckgo.com/l/?uddg='
     + encodeURIComponent('https://www.youtube.com/watch?v=' + id)
@@ -74,10 +187,39 @@ test('DuckDuckGo preserves an official highlight when YouTube refuses server-sid
     return new Response('', { status: 403 });
   };
   const result = await h.findHighlightVideo(match, '', undefined, fetcher);
-  assert.equal(result.status, 'found');
-  assert.equal(result.video.url, 'https://www.youtube.com/watch?v=' + id);
-  assert.equal(result.video.embeddable, false);
+  assert.equal(result.status, 'unavailable');
   assert.ok(requests[0].includes('duckduckgo.com/html/'));
+});
+test('DuckDuckGo results parse across HTML and Lite layouts without enclosing result divs', () => {
+  const direct = 'https://www.youtube.com/watch?v=' + id;
+  const html = '<section><a class="result__a" href="//duckduckgo.com/l/?uddg='
+    + encodeURIComponent(direct) + '">ملخص مباراة فياريال وباريس سان جيرمان</a>'
+    + '<div class="result__snippet">YouTube · beIN SPORTS · highlights</div></section>';
+  const lite = '<table><tr><td><a class="result-link" href="' + direct
+    + '">ملخص مباراة فياريال وباريس سان جيرمان</a></td></tr>'
+    + '<tr><td class="result-snippet">YouTube · beIN SPORTS</td></tr></table>';
+  for (const page of [html, lite]) {
+    const results = h.duckDuckGoVideos(page);
+    assert.equal(results.length, 1);
+    assert.equal(results[0].id, id);
+    assert.equal(h.trustedSearchVideo(results[0], match).channel, 'beIN SPORTS');
+  }
+});
+test('DuckDuckGo Lite provides discovery but not independent publisher proof', async () => {
+  const direct = 'https://www.youtube.com/watch?v=' + id;
+  const lite = '<table><tr><td><a class="result-link" href="' + direct
+    + '">ملخص مباراة فياريال وباريس سان جيرمان</a></td></tr>'
+    + '<tr><td class="result-snippet">YouTube · beIN SPORTS</td></tr></table>';
+  const requested = [];
+  const fetcher = async url => {
+    requested.push(url);
+    return url.includes('lite.duckduckgo.com/lite/')
+      ? new Response(lite)
+      : new Response('', { status: 403 });
+  };
+  const result = await h.findHighlightVideo(match, '', undefined, fetcher);
+  assert.equal(result.status, 'unavailable');
+  assert.ok(requested.some(url => url.includes('lite.duckduckgo.com/lite/')));
 });
 test('DuckDuckGo cannot pass an unofficial publisher or wrong fixture', () => {
   const candidate = { id, url: 'https://www.youtube.com/watch?v=' + id,
@@ -103,6 +245,30 @@ test('the stream answer uses verified metadata and strips an unverified model UR
   assert.ok(found.includes('video_embed="false"')); assert.ok(found.includes('video_status="found"')); assert.ok(!found.includes('abcdefghijk'));
   const unavailable = await v.verifySummaryAnswer(answer, undefined, async () => ({ status: 'unavailable' }));
   assert.ok(!unavailable.includes('video_url=')); assert.ok(unavailable.includes('video_status="unavailable"'));
+});
+test('Dify channel claim cannot bypass independent YouTube verification', async () => {
+  const attrs = '<aifball-summary home="فياريال" away="باريس سان جيرمان" date="2026-11-03"'
+    + ' video_url="https://www.youtube.com/watch?v=abcdefghijk"'
+    + ' video_title="ملخص مباراة فياريال وباريس سان جيرمان"'
+    + ' video_channel="beIN SPORTS"'
+    + ' video_source_url="https://www.youtube.com/watch?v=abcdefghijk" />';
+  const answer = await v.verifySummaryAnswer(attrs, undefined, async () => ({ status: 'unavailable' }));
+  assert.match(answer, /video_status="unavailable"/);
+  assert.doesNotMatch(answer, /video_url=/);
+  assert.doesNotMatch(answer, /video_title=/);
+});
+test('unmatched or uncorroborated DuckDuckGo result is never shown', async () => {
+  for (const details of [
+    ' video_channel="Unknown channel"',
+    ' video_channel="beIN SPORTS" video_title="ملخص برشلونة وريال مدريد"',
+    ' video_channel="beIN SPORTS" video_title="ملخص مباراة فياريال وباريس سان جيرمان" video_source_url="https://youtu.be/zzzzzzzzzzz"',
+  ]) {
+    const tag = '<aifball-summary home="فياريال" away="باريس سان جيرمان" date="2026-11-03"'
+      + ' video_url="https://www.youtube.com/watch?v=abcdefghijk"' + details + ' />';
+    const answer = await v.verifySummaryAnswer(tag, undefined, async () => ({ status: 'unavailable' }));
+    assert.doesNotMatch(answer, /video_url=/);
+    assert.match(answer, /video_status="unavailable"/);
+  }
 });
 test('public metadata parser never executes scripts and handles braces in strings', () => {
   assert.equal(h.pageJson('var demo = {"title":"a } \\\" b"};</script>', 'demo').title, 'a } " b');

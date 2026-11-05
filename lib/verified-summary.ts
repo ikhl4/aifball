@@ -1,4 +1,5 @@
 import { findHighlightVideo } from './highlight-video';
+import { youtubeVideoId } from './summary-presentation';
 
 const decode = (s: string) => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -16,11 +17,34 @@ export async function verifySummaryAnswer(answer: string, signal?: AbortSignal, 
     if (!controller.signal.aborted) {
       try { result = await lookup({ home: attrs.home || '', away: attrs.away || '', date: attrs.date || '', competition: attrs.competition }, attrs.video_url || '', controller.signal); } catch { /* Keep a usable card with an honest verification status. */ }
     }
+    // Dify's supplied title/channel are untrusted hints, not publisher
+    // verification. The lookup independently validates an actual YouTube
+    // channel and the requested fixture before displaying a video.
+    const candidateId = youtubeVideoId(attrs.video_url || '');
+    const candidateTitle = attrs.video_title || '';
+    const candidateChannel = attrs.video_channel || '';
+    const candidateSource = attrs.video_source_url || '';
     delete attrs.video_url; delete attrs.video_embed; delete attrs.video_channel;
-    attrs.video_status = result.status;
-    if (result.status === 'found') {
-      attrs.video_url = result.video.url; attrs.video_embed = String(result.video.embeddable);
-      attrs.video_channel = result.video.channel; attrs.video_published = result.video.publishedAt;
+    delete attrs.video_title; delete attrs.video_source_url;
+    const video = result.status === 'found' ? result.video : null;
+    attrs.video_status = video ? 'found' : result.status;
+    if (video) {
+      attrs.video_url = video.url;
+      attrs.video_embed = String(video.embeddable);
+      attrs.video_channel = video.channel;
+      if (video.publishedAt) attrs.video_published = video.publishedAt;
+    }
+    if (process.env.VERCEL_ENV === 'preview') {
+      console.info('[AIFBALL_VIDEO_HANDOFF_DEBUG]', JSON.stringify({
+        date: attrs.date || '',
+        difyProvidedVideo: Boolean(candidateId),
+        difyProvidedTitle: Boolean(candidateTitle),
+        difyProvidedChannel: Boolean(candidateChannel),
+        difyProvidedSource: Boolean(candidateSource),
+        lookupStatus: result.status,
+        externalCandidateAccepted: false,
+        finalStatus: attrs.video_status,
+      }));
     }
     const replacement = '<aifball-summary ' + Object.entries(attrs).map(([key, value]) => `${key}="${esc(value)}"`).join(' ') + ' />';
     replacements[index] = replacement;

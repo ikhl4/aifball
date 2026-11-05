@@ -1,4 +1,6 @@
-import { verifiedSummaryStream } from '../../../lib/verified-summary';
+// Vercel preview rebuild trigger for PR #50 - 2026-11-05 rerun; no production merge.
+// Preview redeploy trigger: structured highlights fallback, unrestricted discovery experiment; production unchanged.
+import { verifiedSummaryStream, verifySummaryAnswer } from '../../../lib/verified-summary';
 import { posterIntent } from '../../../lib/match-card-data';
 import { buildSingleMatchHighlights } from '../../../lib/single-match-highlights';
 import { historyMode, FOOTBALL_HISTORY_RULES, DOCUMENTARY_REQUEST_RULES, presentHistoryAnswer } from '../../../lib/football-history';
@@ -95,7 +97,9 @@ export async function POST(req: Request) {
     const matchSummary = historical === 'none' && isMatchSummaryRequest(query) && !/(?:صم[ّ]?م|تصميم|بوستر|ملصق|إنفوجرافيك)/i.test(query);
 
     const singleReport = matchSummary && !hasImage ? await buildSingleMatchHighlights(query, req.signal).catch(() => null) : null;
-    if (singleReport) {
+    // Only short-circuit Dify when an actual official video was found.
+    // Otherwise let Dify's connected DuckDuckGo search try the same fixture.
+    if (singleReport && /\bvideo_status="found"/.test(singleReport)) {
       const events = [{ event: 'message', answer: singleReport, conversation_id }, { event: 'message_end', conversation_id }];
       return new Response(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-AiFBall-Presentation': 'match-summary' } });
     }
@@ -151,6 +155,11 @@ export async function POST(req: Request) {
         : analysis
           ? withAnalysisPresentation(query)
           : (conversation_id ? withMatchConversationContext(query) : query) + (playerCareer ? PLAYER_CAREER_RULES : '');
+    const fixtureContext = singleReport && !/\bvideo_status="found"/.test(singleReport)
+      ? '\nبيانات المباراة المؤكدة من مصدر النتائج (لا تعرض رسالة فشل الفيديو قبل تجربة DuckDuckGo المتصلة):\n'
+        + singleReport.replace(/\s+video_status="[^"]*"/, '')
+        + '\nابحث عن رابط فيديو في القنوات المحددة باستخدام أداة DuckDuckGo المتصلة في Dify. لا تفترض أن عدم وصول خادم الموقع إلى يوتيوب يعني أن الفيديو غير موجود.\n'
+      : '';
     const dailyContext = dailyReport ? `\nهذه نتائج المباريات المسترجعة من سجل النتائج. حافظ على تغطيتها، وابحث عن كل مقطع عبر DuckDuckGo وفق قواعد القنوات أدناه:\n${dailyReport}` : '';
     const fantasy = /فانتازي|فنتازي|fantasy|\bfpl\b/i.test(query);
     const regionalCompetition = /السعود|روشن|جوي|براعم|ناشئ|مصر|قطر|الإمارات|الامارات|saudi|egypt|qatar|uae/i.test(query);
@@ -165,7 +174,7 @@ export async function POST(req: Request) {
     const visualRules = (hasImage || wantsDesign) ? `\nإذا أرفق المستخدم صورة، افحص الصورة نفسها واقرأ النص والشعارات الظاهرة. ميّز بوضوح ما قرأته من الصورة وما تحققت منه خارجياً. لا تخترع هوية أو موعداً أو نتيجة من جزء غير واضح. فرّق بين موعد انطلاق المباراة وموعد الاستوديو.\nعندما يطلب المستخدم تصميم بطاقة مباراة أو جدول أو نتائج أو قرعة، أخرج الوسم التالي في سطر مستقل: <aifball-match-design kind="schedule" competition="اسم البطولة" subtitle="الجولة أو التاريخ" rows="اليوم|الفريق على اليمين|الفريق على اليسار|الموعد أو النتيجة أو ضد|الملعب والقناة إن توفرا|رابط شعار الفريق الأول|رابط شعار الفريق الثاني" />. استخدم kind من match أو schedule أو results أو draw. في حقلي الشعارات استخدم روابط HTTPS المباشرة من بيانات المصدر أو من المرفق النصي فقط، واتركهما فارغين إذا لم يتوفرا. لا تخمّن الروابط. افصل الصفوف بفاصلة منقوطة ASCII واستعمل | للفصل بين الحقول. في النتائج اكتب قيمة النتيجة من اليسار إلى اليمين بحيث الرقم الأول يخص الفريق المكتوب أولاً في البيانات، واعرض تعيين الأهداف لكل فريق كتابةً بعد الوسم لتجنب اللبس. اترك الموعد فارغاً إذا تعذر توثيق ساعة الانطلاق أو منطقتها الزمنية. اترك البيانات الناقصة فارغة ولا تضع علامات اقتباس أو وسوماً داخل القيم. في طلب تصميم جدول أو بطاقة، استخدم فقط البيانات التي كتبها المستخدم أو أرفقها أو زودك بها سابقاً. اعرض التصميم مباشرة واترك الحقول الاختيارية الناقصة فارغة. إذا لم توجد مواجهات قابلة للتصميم، اطلب منه أسماء المواجهات أو صورة الجدول. إذا كان المطلوب من الصورة فاستخدم محتواها المقروء فقط. لا تجلب بيانات من الخارج عند طلب التصميم وحده. إذا طلب المستخدم جلب البيانات صراحةً، تحقّق من المصدر أولاً. هذه القوالب لكل البطولات والمنتخبات دون حصر جغرافي. للمباراة القادمة، ابحث في جدول الفريق لجميع البطولات ما لم يحدد المستخدم بطولة. إذا طلب المستخدم صراحةً جلب مباريات الجولة، اجلبها كاملة من جدول المنظم أو ESPN أو مصدر رياضي موثوق يغطي البطولة. إذا لم يغطها ESPN استخدم موقع الاتحاد أو الرابطة أو البطولة. تحقق من الموسم ورقم الجولة وقارنها مع تاريخ الطلب. اعرض المباريات الموثقة مرتبة حسب اليوم ووقت الانطلاق، واذكر المنطقة الزمنية، وأظهر حالة التأجيل إذا كانت مؤكدة. ضع كل يوم في حقل المجموعة. إذا كانت البيانات جزئية صرّح بذلك، وأرفق رابط جدول الجولة نفسه. لا تضف صور اللاعبين إلى التصميم.\n` : '';
     const gameStart = /اختبرني|تحد[ىي] الثلاثين|تحد[ىي] 30|لغز|لعبة من اللاعب|quiz/i.test(query);
     const gameRules = `إذا طلب المستخدم لعبة كروية أو كانت المحادثة في جولة لعبة نشطة، العب داخل الشات. في لغز اللاعب اختر جواباً موثقاً وقدّم قرائن عن أنديته أو زملائه دون كشفه. اقبل الأسماء المكافئة، وأعط تلميحاً واحداً عند الخطأ. في الاختبار أو تحدي الثلاثين اسأل سؤالاً واحداً كل مرة، سجّل النقاط واذكرها بعد الإجابة. لا تدّع وجود مؤقت فعلي. حافظ على نوع اللعبة والنقاط من سياق المحادثة، وأنهِ الجولة عند طلب المستخدم. إذا انتهت اللعبة أو غيّر الموضوع، أجب كالمعتاد.\n`;
-    const guidedQuery = baseQuery + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '');
+    const guidedQuery = baseQuery + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + fixtureContext + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (!matchSummary && (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture) ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '');
 
     const apiRes = await fetch(url, {
       method: 'POST',
@@ -195,7 +204,19 @@ export async function POST(req: Request) {
     }
 
     // إرجاع الـ Stream مباشرة للواجهة الأمامية
-    return new Response(apiRes.body && historical !== 'none' && !hasImage && !wantsDesign ? verifiedSummaryStream(apiRes.body, req.signal, (answer, signal) => presentHistoryAnswer(answer, historical, signal)) : apiRes.body && matchSummary && !hasImage && !wantsDesign ? verifiedSummaryStream(apiRes.body, req.signal) : apiRes.body && !hasImage && !wantsPhoto && !wantsDesign && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
+    return new Response(apiRes.body && historical !== 'none' && !hasImage && !wantsDesign ? verifiedSummaryStream(apiRes.body, req.signal, (answer, signal) => presentHistoryAnswer(answer, historical, signal)) : apiRes.body && matchSummary && !hasImage && !wantsDesign
+      ? verifiedSummaryStream(apiRes.body, req.signal, async (answer, signal) => {
+          if (/<aifball-summary\b/i.test(answer)) return verifySummaryAnswer(answer, signal);
+          // Never fabricate structure from free prose. Use the independently
+          // confirmed fixture only when the scoreboard lookup succeeded.
+          if (process.env.VERCEL_ENV === 'preview') {
+            console.info('[AIFBALL_SUMMARY_FORMAT_DEBUG]', JSON.stringify({
+              difyEmittedTag: false, confirmedFixtureAvailable: Boolean(singleReport),
+            }));
+          }
+          return singleReport ? verifySummaryAnswer(singleReport, signal) : answer;
+        })
+      : apiRes.body && !hasImage && !wantsPhoto && !wantsDesign && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',

@@ -16,26 +16,38 @@ export function summaryDateRange(query: string, now = new Date()): [string,strin
  const end = new Date(today+'T12:00:00Z');
  if(/الامس|امس|yesterday/.test(q))end.setUTCDate(end.getUTCDate()-1);
  const last=end.toISOString().slice(0,10), start=new Date(end);
- if(!/الامس|امس|yesterday|اليوم|today/.test(q))start.setUTCDate(start.getUTCDate()-14);
+ if(!/الامس|امس|yesterday|اليوم|today/.test(q))start.setUTCDate(start.getUTCDate()-60);
  return [start.toISOString().slice(0,10),last];
 }
 /** Use source fixtures for an unambiguous named match even when search indexing misses it. */
 export async function buildSingleMatchHighlights(query: string, signal?: AbortSignal, fetcher: typeof fetch = fetch, lookup = findHighlightVideo, now = new Date()): Promise<string|null> {
  if(isDailyHighlightsRequest(query))return null;
- const [start,end]=summaryDateRange(query,now), dates=start===end?start.replace(/-/g,''):start.replace(/-/g,'')+'-'+end.replace(/-/g,'');
- const controller = new AbortController(), timer=setTimeout(()=>controller.abort(),12000), abort=()=>controller.abort();
+ const [start,end]=summaryDateRange(query,now);
+ const controller = new AbortController(), timer=setTimeout(()=>controller.abort(),45000), abort=()=>controller.abort();
  signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)abort();
  const get=async(url:string)=>{const r=await fetcher(url,{signal:controller.signal,cache:'no-store'});if(!r.ok)throw Error('SOURCE');return r.json();};
  let selected:any;
  try {
-  const results=await Promise.allSettled(leagues.map(async ([league,competition])=>({league,competition,raw:await get(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard?dates=${dates}`)})));
+  // Without an explicit date, search backwards from the latest completed
+  // fixture in successive 60-day windows, rather than assuming the last
+  // meeting occurred in the previous two weeks.
+  const explicitDate = start===end || /الامس|امس|yesterday|اليوم|today/.test(norm(query));
+  const latest = new Date(end+'T12:00:00Z');
   const candidates:any[]=[];
-  for(const r of results){if(r.status!=='fulfilled')continue;for(const event of r.value.raw.events||[]){
-   const c=event.competitions?.[0], home=c?.competitors?.find((t:any)=>t.homeAway==='home'),away=c?.competitors?.find((t:any)=>t.homeAway==='away');
-   if(!event.status?.type?.completed||!/^\d{1,12}$/.test(event.id)||!home?.team?.displayName||!away?.team?.displayName||!/^\d+$/.test(String(home.score))||!/^\d+$/.test(String(away.score)))continue;
-   const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Riyadh'}).format(new Date(event.date));if(date<start||date>end)continue;
-   if(teamMentioned(query,home.team.displayName)&&teamMentioned(query,away.team.displayName))candidates.push({event,home,away,date,league:r.value.league,competition:r.value.competition});
-  }}
+  const rounds=explicitDate?1:12; // Up to about two years for old rivalries.
+  for(let round=0;round<rounds;round++){
+   const windowEnd=explicitDate?end:new Date(latest.getTime()-round*60*86400000).toISOString().slice(0,10);
+   const windowStart=explicitDate?start:new Date(latest.getTime()-(round+1)*60*86400000).toISOString().slice(0,10);
+   const windowDates=windowStart===windowEnd?windowStart.replace(/-/g,''):windowStart.replace(/-/g,'')+'-'+windowEnd.replace(/-/g,'');
+   const results=await Promise.allSettled(leagues.map(async ([league,competition])=>({league,competition,raw:await get(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard?dates=${windowDates}`)})));
+   for(const r of results){if(r.status!=='fulfilled')continue;for(const event of r.value.raw.events||[]){
+    const c=event.competitions?.[0], home=c?.competitors?.find((t:any)=>t.homeAway==='home'),away=c?.competitors?.find((t:any)=>t.homeAway==='away');
+    if(!event.status?.type?.completed||!/^\d{1,12}$/.test(event.id)||!home?.team?.displayName||!away?.team?.displayName||!/^\d+$/.test(String(home.score))||!/^\\d+$/.test(String(away.score)))continue;
+    const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Riyadh'}).format(new Date(event.date));if(date<windowStart||date>windowEnd)continue;
+    if(teamMentioned(query,home.team.displayName)&&teamMentioned(query,away.team.displayName))candidates.push({event,home,away,date,league:r.value.league,competition:r.value.competition});
+   }}
+   if(candidates.length)break;
+  }
   candidates.sort((a,b)=>Date.parse(b.event.date)-Date.parse(a.event.date));
   if(!candidates.length)return null;
   // Distinct pairings in one question are not silently collapsed into one match.
