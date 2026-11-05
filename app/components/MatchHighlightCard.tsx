@@ -9,6 +9,8 @@ export default function MatchHighlightCard({ attrs, isDark = true }: { attrs: Re
   const goals = (attrs.goals || '').split(';').map(s => s.split('|')).filter(row => row[0]?.trim() && row[1]?.trim());
   const sources = (() => { try { const u = new URL(attrs.source_url); return u.protocol === 'https:' ? u.href : ''; } catch { return ''; } })();
   const youtubeUrl = id ? `https://www.youtube.com/watch?v=${id}` : '';
+  const searchQuery = [attrs.home, attrs.away, attrs.competition, attrs.date?.slice(0, 4), 'ملخص'].filter(Boolean).join(' ');
+  const fallbackSearchUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(searchQuery);
   const cannotEmbed = attrs.video_embed !== 'true';
   const video = <div className="mt-4">
     {id && (verified || !attrs.video_status) ? <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-white/10 bg-black' : 'border-gray-200 bg-white'}`}>
@@ -35,6 +37,9 @@ export default function MatchHighlightCard({ attrs, isDark = true }: { attrs: Re
       </div>
     </div> : <p className={`rounded-lg px-3 py-2 text-xs ${isDark ? 'bg-white/5 text-gray-400' : 'bg-gray-50 text-gray-500'}`}>
       {attrs.video_status === 'not_found' ? 'لم أعثر على مقطع مطابق ضمن القنوات المحددة وقت البحث.' : 'تعذّر التحقق من رابط المقطع الرسمي حاليًا؛ لن أضع رابطًا غير مؤكد.'}
+      <a href={fallbackSearchUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block font-bold text-emerald-400 underline">
+        البحث عن ملخص هذه المباراة في يوتيوب
+      </a>
     </p>}
   </div>;
   const written = <div className="mt-4 space-y-5 text-[15px] leading-8">
