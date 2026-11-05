@@ -87,7 +87,7 @@ test('search results produce candidates but only verified official video is acce
       { videoRenderer: { videoId: id, title: { runs: [{ text: title }] } } },
     ] } },
   }) + ';';
-  assert.deepEqual(h.searchVideoCandidates(search).map(v => v.id), ['notreally11', id]);
+  assert.equal(h.searchVideoCandidates(search).map(v => v.id).join(','), ['notreally11', id].join(','));
   const urls = [];
   const fetcher = async url => {
     urls.push(url);
