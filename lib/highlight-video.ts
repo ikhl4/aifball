@@ -164,6 +164,37 @@ export function trustedSearchVideo(item: DuckDuckGoVideoResult, match: Highlight
   return { id: item.id, url: item.url, title: item.title, channel, publishedAt: '', embeddable: false };
 }
 
+
+type YoutubeSearchEntry = { id: string; title: string; channelId: string; handle: string; published: string };
+export function youtubeSearchEntries(data: any): YoutubeSearchEntry[] {
+  const entries: YoutubeSearchEntry[] = [];
+  const visit = (node: any): void => {
+    if (!node || typeof node !== 'object') return;
+    const v = node.videoRenderer;
+    if (/^[\w-]{11}$/.test(v?.videoId || '')) {
+      const owner = v.ownerText?.runs?.[0]?.navigationEndpoint?.browseEndpoint;
+      const handle = handleOf('https://www.youtube.com' + (owner?.canonicalBaseUrl || ''));
+      entries.push({ id: v.videoId, title: text(v.title), channelId: String(owner?.browseId || ''),
+        handle, published: text(v.publishedTimeText) });
+    }
+    for (const child of Object.values(node)) {
+      if (Array.isArray(child)) child.forEach(visit);
+      else if (child && typeof child === 'object') visit(child);
+    }
+  };
+  visit(data?.contents);
+  return [...new Map(entries.map(v => [v.id, v])).values()];
+}
+export function searchDateMatches(published: string, matchDate: string, now = Date.now()): boolean {
+  const value = norm(published);
+  const age = value.match(/(\d+)\s*(hour|hours|day|days|week|weeks|month|months|ساعه|ساعات|يوم|ايام|اسبوع|اسابيع|شهر|اشهر)/i);
+  if (!age) return false;
+  const n = Number(age[1]), unit = age[2].toLowerCase();
+  const days = /hour|ساع/.test(unit) ? n / 24 : /week|اسبوع/.test(unit) ? n * 7 : /month|شهر/.test(unit) ? n * 30 : n;
+  const approximatePublish = now - days * 86400000, played = Date.parse(matchDate + 'T00:00:00+03:00');
+  return Number.isFinite(played) && approximatePublish >= played - 86400000 && approximatePublish <= played + 15 * 86400000;
+}
+
 /** Discovery starts with Dify's DDG candidates, then the selected channels' recent public uploads.
  * oEmbed failure and disabled embedding are not evidence that a video is absent. */
 export async function findHighlightVideo(match: HighlightMatch, candidate = '', signal?: AbortSignal, fetcher: typeof fetch = fetch): Promise<Result> {
@@ -177,7 +208,8 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     youtubeSearchErrors: 0, youtubeVideoEntries: 0, youtubeMatchedTitles: 0,
     youtubeWatchRejected: 0, youtubeWatchStatusErrors: 0, channelFailures: 0,
     youtubeRejectReasons: {} as Record<string, number>, channelRejectReasons: {} as Record<string, number>,
-    ddgErrorKinds: [] as string[], result: 'unknown' };
+    ddgErrorKinds: [] as string[], searchPublisherCandidates: 0,
+    searchPublisherValidated: 0, searchDateRejected: 0, result: 'unknown' };
   const logDiagnostic = () => {
     if (process.env.VERCEL_ENV === 'preview') {
       console.info('[AIFBALL_HIGHLIGHTS_DEBUG]', JSON.stringify({
@@ -236,16 +268,38 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
           }
         };
         visit(data.contents);
+        const searchEntries = new Map(youtubeSearchEntries(data).map(v => [v.id, v]));
         diagnostics.youtubeVideoEntries += videos.size;
         const matched = [...videos].filter(([, title]) => matchesTeams(title, match));
         diagnostics.youtubeMatchedTitles += matched.length;
         for (const [id] of matched.slice(0, 10)) {
           try { const video = await check(id); diagnostics.result = 'youtube_verified'; return { status: 'found', video }; }
-          catch (err) { diagnostics.youtubeWatchRejected++;
+          catch (err) {
+            diagnostics.youtubeWatchRejected++;
             const reason = err instanceof Error ? err.message : 'UNKNOWN';
             const safeReason = /^(VIDEO_IDENTITY|VIDEO_ID_MISSING|VIDEO_ID_MISMATCH|VIDEO_PUBLISHER_UNVERIFIED|VIDEO_CHANNEL_MISMATCH|VIDEO_TITLE_MISMATCH|VIDEO_DATE|VIDEO_UNAVAILABLE|MISSING_METADATA|INVALID_METADATA|UPSTREAM_\d{3})$/.test(reason) ? reason : 'OTHER';
             diagnostics.youtubeRejectReasons[safeReason] = (diagnostics.youtubeRejectReasons[safeReason] || 0) + 1;
-            if (reason.startsWith('UPSTREAM_')) diagnostics.youtubeWatchStatusErrors++; }
+            if (reason.startsWith('UPSTREAM_')) diagnostics.youtubeWatchStatusErrors++;
+            // A blocked watch page can omit metadata. In this case, verify the
+            // result's publisher by matching its channel ID against the official
+            // handle's own page; never bypass a true mismatch.
+            if (reason !== 'VIDEO_ID_MISSING') continue;
+            const entry = searchEntries.get(id);
+            if (!entry || !HIGHLIGHT_CHANNELS.includes(entry.handle as any)
+              || !/^UC[\w-]{22}$/.test(entry.channelId)) continue;
+            diagnostics.searchPublisherCandidates++;
+            if (!searchDateMatches(entry.published, match.date)) { diagnostics.searchDateRejected++; continue; }
+            try {
+              const channel = channelIndex(await html('https://www.youtube.com/@' + entry.handle + '/videos', c.signal, fetcher), entry.handle);
+              if (channel.channelId !== entry.channelId) continue;
+              diagnostics.searchPublisherValidated++;
+              diagnostics.result = 'youtube_official_search_fallback';
+              return { status: 'found', video: {
+                id: entry.id, url: 'https://www.youtube.com/watch?v=' + entry.id,
+                title: entry.title, channel: entry.handle, publishedAt: '', embeddable: false,
+              } };
+            } catch { /* Keep searching: unverified publisher is not acceptable. */ }
+          }
         }
       } catch { failed = true; diagnostics.youtubeSearchErrors++; }
     }
