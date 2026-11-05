@@ -187,13 +187,34 @@ export function youtubeSearchEntries(data: any): YoutubeSearchEntry[] {
   return [...new Map(entries.map(v => [v.id, v])).values()];
 }
 export function searchDateMatches(published: string, matchDate: string, now = Date.now()): boolean {
+  const played = Date.parse(matchDate + 'T00:00:00+03:00');
+  if (!Number.isFinite(played)) return false;
   const value = norm(published);
-  const age = value.match(/(\d+)\s*(hour|hours|day|days|week|weeks|month|months|ساعه|ساعات|يوم|ايام|اسبوع|اسابيع|شهر|اشهر)/i);
-  if (!age) return false;
-  const n = Number(age[1]), unit = age[2].toLowerCase();
-  const days = /hour|ساع/.test(unit) ? n / 24 : /week|اسبوع/.test(unit) ? n * 7 : /month|شهر/.test(unit) ? n * 30 : n;
-  const approximatePublish = now - days * 86400000, played = Date.parse(matchDate + 'T00:00:00+03:00');
-  return Number.isFinite(played) && approximatePublish >= played - 86400000 && approximatePublish <= played + 15 * 86400000;
+  let stamp: number | null = null;
+  // Relative publication ages are routinely shown instead of absolute dates
+  // on YouTube search result cards.
+  const age = value.match(/(\d+)\s*(hours?|days?|weeks?|months?|years?|ساعه|ساعات|يوم|ايام|اسبوع|اسابيع|شهر|اشهر|سنه|سنوات)/i);
+  if (age) {
+    const n = Number(age[1]), unit = age[2].toLowerCase();
+    const days = /hour|ساع/.test(unit) ? n / 24
+      : /week|اسبوع/.test(unit) ? n * 7
+      : /month|شهر/.test(unit) ? n * 30
+      : /year|سن/.test(unit) ? n * 365 : n;
+    stamp = now - days * 86400000;
+  }
+  if (stamp === null && /(?:yesterday|امس)/.test(value)) stamp = now - 86400000;
+  if (stamp === null && /(?:today|اليوم|\d+\s*minutes?|قبل دقائق)/.test(value)) stamp = now;
+  // Absolute dates supplied in result metadata are more reliable than an age.
+  if (stamp === null) {
+    const iso = published.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
+    if (iso) stamp = Date.parse([iso[1],iso[2].padStart(2,'0'),iso[3].padStart(2,'0')].join('-')+'T12:00:00Z');
+  }
+  return stamp !== null && Number.isFinite(stamp)
+    && stamp >= played - 86400000 && stamp <= played + 15 * 86400000;
+}
+export function searchPublicationReason(published: string, matchDate: string): 'matched' | 'missing' | 'outside_window' {
+  if (searchDateMatches(published, matchDate)) return 'matched';
+  return /(?:\d|yesterday|today|امس|اليوم)/i.test(published) ? 'outside_window' : 'missing';
 }
 
 /** Discovery starts with Dify's DDG candidates, then the selected channels' recent public uploads.
@@ -210,7 +231,8 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     youtubeWatchRejected: 0, youtubeWatchStatusErrors: 0, channelFailures: 0,
     youtubeRejectReasons: {} as Record<string, number>, channelRejectReasons: {} as Record<string, number>,
     ddgErrorKinds: [] as string[], searchPublisherCandidates: 0,
-    searchPublisherValidated: 0, searchDateRejected: 0, searchMissingIdentity: 0, result: 'unknown' };
+    searchPublisherValidated: 0, searchDateRejected: 0, searchDateMissing: 0,
+    searchDateOutsideWindow: 0, searchMissingIdentity: 0, result: 'unknown' };
   const logDiagnostic = () => {
     if (process.env.VERCEL_ENV === 'preview') {
       console.info('[AIFBALL_HIGHLIGHTS_DEBUG]', JSON.stringify({
@@ -294,7 +316,10 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
             }
             diagnostics.searchPublisherCandidates++;
             if (!searchDateMatches(entry.published, match.date)) {
-              diagnostics.searchDateRejected++; continue;
+              diagnostics.searchDateRejected++;
+              if (searchPublicationReason(entry.published, match.date) === 'missing') diagnostics.searchDateMissing++;
+              else diagnostics.searchDateOutsideWindow++;
+              continue;
             }
             diagnostics.searchPublisherValidated++;
             diagnostics.result = 'youtube_open_channel_search';
