@@ -12,6 +12,9 @@ export default function MatchHighlightCard({ attrs, isDark = true }: { attrs: Re
       url={attrs.video_url}
       title={attrs.video_title || (attrs.home && attrs.away ? `ملخص ${attrs.home} ضد ${attrs.away}` : 'ملخص المباراة')}
       channel={attrs.video_channel}
+      // Some search results cannot confirm embedding even when playback works.
+      // Let the player try, then fall back on YouTube's actual playback error.
+      canEmbed={attrs.video_embed === 'true' ? true : undefined}
       isDark={isDark}
     />
   ) : null;
