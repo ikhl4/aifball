@@ -158,7 +158,7 @@ function recognizedSearchPublisher(value: string): string {
 /** This is a search-verified result, not a claim YouTube confirmed embedding. */
 export function trustedSearchVideo(item: DuckDuckGoVideoResult, match: HighlightMatch): HighlightVideo | null {
   if (!matchesTeams(item.title, match)) return null;
-  const channel = recognizedSearchPublisher(item.title + ' ' + item.snippet);
+  const channel = recognizedSearchPublisher(item.snippet);
   if (!channel) return null;
   // The search result corroborates the publisher and two clubs. Without an
   // accessible watch page, do not make an unsupported embed claim.
