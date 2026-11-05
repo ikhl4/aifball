@@ -269,7 +269,9 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
           if (!fallback) diagnostics.ddgPublisherRejected++;
           if (!fallback) continue;
           try { const video = await check(item.id); diagnostics.result = 'ddg_verified'; return { status: 'found', video }; }
-          catch { diagnostics.result = 'ddg_search_corroborated'; return { status: 'found', video: fallback }; }
+          catch { /* Search snippets are discovery hints, not reliable proof
+                     of the uploading channel. Confirm via YouTube's own
+                     channel-linked search metadata below. */ }
         }
       } catch (err) { failed = true; diagnostics.ddgErrors++; const kind = err instanceof Error ? err.message : 'UNKNOWN';
         if (!diagnostics.ddgErrorKinds.includes(kind)) diagnostics.ddgErrorKinds.push(kind.slice(0, 40)); }
