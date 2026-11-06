@@ -106,7 +106,7 @@ export async function POST(req: Request) {
 
     // Daily highlights use confirmed scoreboard data first, then match-scoped videos.
     // A request for one named match continues through the existing narrative-first Dify flow.
-    const dailyReport = matchSummary ? await buildDailyHighlights(query, { includeVideos: false }) : null;
+    const dailyReport = matchSummary ? await buildDailyHighlights(query, { includeVideos: true }) : null;
     if (dailyReport && !process.env.DIFY_API_KEY) {
         const events = [
           { event: 'message', answer: dailyReport, conversation_id },
@@ -207,6 +207,12 @@ export async function POST(req: Request) {
     return new Response(apiRes.body && historical !== 'none' && !hasImage && !wantsDesign ? verifiedSummaryStream(apiRes.body, req.signal, (answer, signal) => presentHistoryAnswer(answer, historical, signal)) : apiRes.body && matchSummary && !hasImage && !wantsDesign
       ? verifiedSummaryStream(apiRes.body, req.signal, async (answer, signal) => {
           if (/<aifball-summary\b/i.test(answer)) return verifySummaryAnswer(answer, signal);
+          // When Dify returns prose only, retain its explanation and append independently
+          // verified fixture cards so the existing inline video renderer can display them.
+          if (dailyReport && /<aifball-summary\b/i.test(dailyReport)) {
+            const verifiedCards = await verifySummaryAnswer(dailyReport, signal);
+            return answer + '\n\n' + verifiedCards;
+          }
           // Never fabricate structure from free prose. Use the independently
           // confirmed fixture only when the scoreboard lookup succeeded.
           if (process.env.VERCEL_ENV === 'preview') {

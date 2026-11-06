@@ -5,7 +5,13 @@ const leagues = [['eng.1','الدوري الإنجليزي الممتاز'],['es
 const norm = (s: string) => s.normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f\u064b-\u065f\u0670ـ]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 export function teamMentioned(query: string, name: string): boolean {
- const q = ' '+norm(query)+' ', names = [name, footballNameInArabic(name) || name].map(norm);
+ const q = ' '+norm(query)+' ';
+ const aliases = new Set([name, name.replace(/[-_]/g, ' '), name.replace(/^Al[- ]/i, 'Al '), footballNameInArabic(name) || name]);
+ // ESPN sometimes spells Saudi club names with hyphens or alternative Latin transliterations.
+ const key = norm(name);
+ if (/al ?qad(?:s|i)|al ?qadsiah|al ?qadisiyah/.test(key)) aliases.add('القادسية');
+ if (/al ?hilal/.test(key)) aliases.add('الهلال');
+ const names = [...aliases].map(norm);
  if(names.includes('paris saint germain'))names.push('باريس','psg');
  return names.some(n=>n.length>=3&&(q.includes(' '+n+' ')||q.includes(' و'+n+' ')));
 }
@@ -42,7 +48,7 @@ export async function buildSingleMatchHighlights(query: string, signal?: AbortSi
    const results=await Promise.allSettled(leagues.map(async ([league,competition])=>({league,competition,raw:await get(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard?dates=${windowDates}`)})));
    for(const r of results){if(r.status!=='fulfilled')continue;for(const event of r.value.raw.events||[]){
     const c=event.competitions?.[0], home=c?.competitors?.find((t:any)=>t.homeAway==='home'),away=c?.competitors?.find((t:any)=>t.homeAway==='away');
-    if(!event.status?.type?.completed||!/^\d{1,12}$/.test(event.id)||!home?.team?.displayName||!away?.team?.displayName||!/^\d+$/.test(String(home.score))||!/^\\d+$/.test(String(away.score)))continue;
+    if(!event.status?.type?.completed||!/^\d{1,12}$/.test(event.id)||!home?.team?.displayName||!away?.team?.displayName||!/^\d+$/.test(String(home.score))||!/^\d+$/.test(String(away.score)))continue;
     const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Riyadh'}).format(new Date(event.date));if(date<windowStart||date>windowEnd)continue;
     if(teamMentioned(query,home.team.displayName)&&teamMentioned(query,away.team.displayName))candidates.push({event,home,away,date,league:r.value.league,competition:r.value.competition});
    }}
