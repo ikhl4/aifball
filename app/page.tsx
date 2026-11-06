@@ -22,6 +22,7 @@ import { COMPETITIONS, resolveStandingsRequest } from '../lib/competitions';
 import MatchReport from './components/MatchReport';
 import MatchHighlightCard from './components/MatchHighlightCard';
 import ChatVideoCard from './components/ChatVideoCard';
+import ChatImageCard from './components/ChatImageCard';
 import MatchPoster from './components/MatchPoster';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DocumentaryVideo from './components/DocumentaryVideo';
@@ -380,6 +381,7 @@ function renderFormattedText(
   const defaultLanguage = detectLanguage(userQuery);
   const summaryMode = summaryPresentationMode(userQuery || text);
   const youtubeIds = new Set<string>();
+  const imageUrls = new Set<string>();
   const summaryTags: string[] = [];
 
   // Preserve structured match-summary tags so their video URLs stay attached
@@ -399,11 +401,34 @@ function renderFormattedText(
     .replace(youtubeRegex, (_full, id: string) => {
       youtubeIds.add(id);
       return '';
+    });
+
+  // Only change presentation of returned media; structured tags are kept.
+  const imageCandidate = (raw: string) => {
+    const cleaned = raw.replace(/[.,;!?]+$/, '');
+    const parsed = safeUrl(cleaned);
+    if (!parsed) return null;
+    try {
+      return /\.(?:png|jpe?g|gif|webp|avif|svg)$/i.test(new URL(parsed).pathname) ? parsed : null;
+    } catch { return null; }
+  };
+  const withoutMedia = withoutVideos
+    .replace(/!?\[[^\]]*\]\((https?:\/\/[^\s)]+)\)|https?:\/\/[^\s<>"')\]]+/gi, (match, markdownUrl: string | undefined) => {
+      const url = imageCandidate(markdownUrl || match);
+      if (!url) return match;
+      imageUrls.add(url);
+      return '';
+    })
+    .replace(/\bimage_url\s*[:=]\s*["']?\s*(https?:\/\/[^\s"']+)/gi, (match, rawUrl: string) => {
+      const url = safeUrl(rawUrl.replace(/[.,;!?]+$/, ''));
+      if (!url) return match;
+      imageUrls.add(url);
+      return '';
     })
     .replace(/AIFBALLSUMMARYTAGTOKEN(\d+)END/g, (_token, index: string) => summaryTags[Number(index)] || '');
 
   const elements: React.ReactNode[] = [];
-  const lines = withoutVideos.replace(/\r\n/g, '\n').split('\n');
+  const lines = withoutMedia.replace(/\r\n/g, '\n').split('\n');
   const tableLine = (line: string) => /^\s*\|.+\|\s*$/.test(line);
   const isDivider = (line: string) =>
     /^\s*\|(?:\s*:?-{3,}:?\s*\|)+\s*$/.test(line);
@@ -822,6 +847,16 @@ function renderFormattedText(
       >
         <InlineText value={trimmed} isDark={isDark} />
       </p>
+    );
+  }
+
+  if (imageUrls.size) {
+    elements.push(
+      <div key="chat-images" className="my-4 space-y-3">
+        {Array.from(imageUrls).map((url) => (
+          <ChatImageCard key={url} url={url} isDark={isDark} />
+        ))}
+      </div>
     );
   }
 
