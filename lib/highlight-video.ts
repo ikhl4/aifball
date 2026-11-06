@@ -250,7 +250,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     searchDateOutsideWindow: 0, searchMissingIdentity: 0,
     searchPublicationExamples: [] as string[], result: 'unknown' };
   const logDiagnostic = () => {
-    if (process.env.VERCEL_ENV === 'preview') {
+    {
       console.info('[AIFBALL_HIGHLIGHTS_DEBUG]', JSON.stringify({
         date: match.date, diagnostics,
       }));
