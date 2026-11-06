@@ -23,6 +23,7 @@ import MatchReport from './components/MatchReport';
 import MatchHighlightCard from './components/MatchHighlightCard';
 import ChatVideoCard from './components/ChatVideoCard';
 import MatchPoster from './components/MatchPoster';
+import MatchResultCard from './components/MatchResultCard';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DocumentaryVideo from './components/DocumentaryVideo';
 import { MatchVisualDemo } from './components/MatchVisualReport';
@@ -1874,6 +1875,9 @@ export default function FootPlayChat() {
                               : 'bg-white/90 border-gray-200 text-gray-800'
                           }`}
                         >
+                          {!loading && /^(?:\s*(?:نتيج[ةه] مباراة|كم انتهت|كم نتيجة|من فاز في مباراة|what was the score|score of))/i.test(msg.userQuery || '') && !/<aifball-(?:summary|match-poster|match-design)/i.test(msg.content) && (
+                            <MatchResultCard query={msg.userQuery || ''} isDark={isDarkMode} onDetails={sendMessage} />
+                          )}
                           {renderFormattedText(
                             msg.content,
                             isDarkMode,
