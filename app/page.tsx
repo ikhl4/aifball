@@ -1417,7 +1417,7 @@ export default function FootPlayChat() {
       dir="rtl"
       className={`flex flex-col h-[100dvh] relative overflow-hidden font-cairo transition-colors duration-300 ${
         isDarkMode
-          ? 'bg-[#f4fff7] text-[#14532d]'
+          ? 'bg-[#064e3b] text-white'
           : 'bg-gray-50 text-gray-900'
       }`}
     >
@@ -1443,8 +1443,8 @@ export default function FootPlayChat() {
           className={`absolute inset-0 transition-all duration-700 ${
             isDarkMode
               ? messages.length === 0
-                ? 'bg-[#dcfce7]/45'
-                : 'bg-[#dcfce7]/85'
+                ? 'bg-[#065f46]/55'
+                : 'bg-[#064e3b]/85'
               : messages.length === 0
                 ? 'bg-white/20'
                 : 'bg-white'
@@ -1454,7 +1454,7 @@ export default function FootPlayChat() {
         <div
           className={`absolute inset-0 bg-gradient-to-b ${
             isDarkMode
-              ? 'from-white/20 via-emerald-50/20 to-emerald-100/70'
+              ? 'from-emerald-800/20 via-emerald-700/20 to-emerald-950/70'
               : 'from-white/10 via-transparent to-white/50'
           }`}
         />
@@ -1501,8 +1501,8 @@ export default function FootPlayChat() {
       <aside
         className={`fixed top-0 right-0 h-full w-72 sm:w-80 backdrop-blur-md border-l z-40 transform transition-all duration-300 flex flex-col ${
           isDarkMode
-            ? 'bg-white/95 border-emerald-300/60'
-            : 'bg-white/95 border-gray-200'
+            ? 'bg-emerald-900/95 border-emerald-500/40'
+            : 'bg-emerald-900/95 border-gray-200'
         } ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div
@@ -1574,7 +1574,7 @@ export default function FootPlayChat() {
         <div
           className={`p-4 border-t mt-auto ${
             isDarkMode
-              ? 'border-emerald-300/60 bg-white'
+              ? 'border-emerald-500/40 bg-emerald-900'
               : 'border-gray-200 bg-gray-50'
           }`}
         >
@@ -1625,7 +1625,7 @@ export default function FootPlayChat() {
       <header
         className={`flex items-center justify-between px-3.5 sm:px-6 py-2.5 border-b sticky top-0 z-20 backdrop-blur-md ${
           isDarkMode
-            ? 'border-emerald-300/60 bg-white/85'
+            ? 'border-emerald-500/40 bg-emerald-900/85'
             : 'border-gray-200 bg-white/80'
         }`}
       >
@@ -1731,7 +1731,7 @@ export default function FootPlayChat() {
           if (Math.abs(dx) > 75 && Math.abs(dx) > Math.abs(dy) * 1.5) setHomeScreen(dx < 0 ? 'analytics' : 'home');
         }}>
         {messages.length === 0 && (
-          <nav aria-label="شاشات فوتبلاي" className="sticky top-0 z-20 mx-auto mb-5 flex w-full max-w-sm gap-1 rounded-2xl border border-emerald-500/30 bg-white/95 p-1 shadow-lg backdrop-blur-lg">
+          <nav aria-label="شاشات فوتبلاي" className="sticky top-0 z-20 mx-auto mb-5 flex w-full max-w-sm gap-1 rounded-2xl border border-emerald-500/30 bg-emerald-900/95 p-1 shadow-lg backdrop-blur-lg">
             <button type="button" aria-current={homeScreen === 'home' ? 'page' : undefined} onClick={() => setHomeScreen('home')}
               className={`flex-1 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold transition ${homeScreen === 'home' ? 'bg-emerald-600 text-white' : 'text-gray-300 hover:bg-white/10'}`}>الرئيسية</button>
             <button type="button" aria-current={homeScreen === 'analytics' ? 'page' : undefined} onClick={() => setHomeScreen('analytics')}
@@ -1762,14 +1762,14 @@ export default function FootPlayChat() {
                 { title: 'FC 27', icon: 'pitch', href: 'https://www.futbin.com/' },
                 { title: 'الفانتازي', icon: 'chart', fantasy: true },
               ].map(item => {
-                const style = 'flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-emerald-300/35 p-2 text-center text-[10px] font-bold backdrop-blur-md transition focus-visible:outline focus-visible:outline-emerald-600 sm:text-sm' + (isDarkMode ? ' bg-white/75 text-emerald-900 hover:bg-emerald-900/45' : ' bg-white/60 text-gray-900 hover:bg-white/90');
+                const style = 'flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-emerald-300/35 p-2 text-center text-[10px] font-bold backdrop-blur-md transition focus-visible:outline focus-visible:outline-emerald-600 sm:text-sm' + (isDarkMode ? ' bg-emerald-800/75 text-white hover:bg-emerald-900/45' : ' bg-white/60 text-gray-900 hover:bg-emerald-900/90');
                 const label = <>{item.href ? <svg aria-hidden="true" width="27" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className={isDarkMode ? "text-emerald-300" : "text-emerald-800"}><path d="M7 7h10a4 4 0 0 1 4 3l1 5a2 2 0 0 1-3 2l-3-3H8l-3 3a2 2 0 0 1-3-2l1-5a4 4 0 0 1 4-3Z"/><path d="M7 9v4m-2-2h4m7-1h.01m3 2h.01"/></svg> : <AppIcon name={item.icon} size={23} className={isDarkMode ? "text-emerald-300" : "text-emerald-800"}/>}<span>{item.title}</span></>;
                 return item.href ? <a key={item.title} href={item.href} className={style}>{label}</a> :
                   <button key={item.title} type="button" className={style} onClick={() => { if (item.install) setShowInstallHelp(open => !open); else if (item.fantasy) setShowFantasyChoices(open => !open); else if (item.query) void sendMessage(item.query); }}>{label}</button>;
               })}
             </nav>
             {showFantasyChoices && (
-              <section aria-label="اختر مسابقة الفانتازي" className={`mb-4 rounded-2xl border border-emerald-500/30 p-4 text-right ${isDarkMode ? 'bg-white/90 text-emerald-900' : 'bg-white/90 text-gray-900'}`}>
+              <section aria-label="اختر مسابقة الفانتازي" className={`mb-4 rounded-2xl border border-emerald-500/30 p-4 text-right ${isDarkMode ? 'bg-emerald-900/90 text-white' : 'bg-emerald-900/90 text-gray-900'}`}>
                 <p className="mb-3 text-sm font-bold">أي فانتازي تبي؟</p>
                 <div className="grid grid-cols-2 gap-3">
                   {[
@@ -1784,7 +1784,7 @@ export default function FootPlayChat() {
               </section>
             )}
             {showInstallHelp && (
-              <section className={`mb-4 rounded-xl border border-emerald-500/30 p-3 text-sm leading-7 ${isDarkMode ? 'bg-white text-emerald-900' : 'bg-white text-gray-900'}`}>
+              <section className={`mb-4 rounded-xl border border-emerald-500/30 p-3 text-sm leading-7 ${isDarkMode ? 'bg-emerald-900 text-white' : 'bg-white text-gray-900'}`}>
                 <p>آيفون: من سفاري اضغط مشاركة، ثم إضافة إلى الشاشة الرئيسية.</p>
                 <p>أندرويد: من قائمة المتصفح اختر تثبيت التطبيق أو إضافة إلى الشاشة الرئيسية.</p>
                 <button type="button" onClick={() => setShowInstallHelp(false)} className="underline">إغلاق</button>
@@ -1802,7 +1802,7 @@ export default function FootPlayChat() {
                   aria-label={`${card.tag}: ${card.question}`}
                   className={`flex flex-col justify-between text-right p-3 sm:p-4 rounded-2xl border backdrop-blur-[6px] min-h-[112px] sm:min-h-[126px] transition-all duration-500 cursor-pointer hover:border-emerald-400/60 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-wait disabled:opacity-60 ${
                     isDarkMode
-                      ? 'bg-white/80 border-emerald-300 text-emerald-900 shadow-md'
+                      ? 'bg-emerald-900/80 border-emerald-500/40 text-white shadow-md'
                       : 'bg-white/35 border-white/55 text-gray-950 shadow-sm'
                   }`}
                 >
@@ -1840,8 +1840,8 @@ export default function FootPlayChat() {
                 onClick={exploreMore}
                 className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-[11px] sm:text-xs font-bold transition ${
                   isDarkMode
-                    ? 'bg-white/80 border-emerald-400 text-emerald-800 hover:bg-emerald-950/60'
-                    : 'bg-white/65 border-emerald-700/20 text-emerald-800 hover:bg-white/90'
+                    ? 'bg-emerald-800/80 border-emerald-400 text-white hover:bg-emerald-950/60'
+                    : 'bg-white/65 border-emerald-700/20 text-emerald-800 hover:bg-emerald-900/90'
                 }`}
               >
                 <AppIcon name="refresh" size={16}/>
@@ -1850,7 +1850,7 @@ export default function FootPlayChat() {
             </div>
           </div>
         ) : (
-          <div className="w-full flex-1 rounded-2xl border border-emerald-500/20 bg-white/90 p-3 sm:p-5">
+          <div className="w-full flex-1 rounded-2xl border border-emerald-500/20 bg-emerald-900/90 p-3 sm:p-5">
             <p className="mb-4 text-center text-xs text-emerald-300">الشاشة الثانية • اسحب يمينًا للعودة للرئيسية</p>
             <AnalyticsDashboard />
           </div>
@@ -1898,7 +1898,7 @@ export default function FootPlayChat() {
                               <span
                                 className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-xs ${
                                   isDarkMode
-                                    ? 'bg-white/90 border-emerald-200 text-emerald-900'
+                                    ? 'bg-emerald-900/90 border-emerald-600/40 text-white'
                                     : 'bg-gray-100 border-gray-200 text-gray-700'
                                 }`}
                               >
@@ -1917,8 +1917,8 @@ export default function FootPlayChat() {
                           }
                           className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-5 shadow-2xl text-sm sm:text-[15px] leading-relaxed break-words ${
                             isDarkMode
-                              ? 'bg-white/90 border-emerald-200 text-emerald-900'
-                              : 'bg-white/90 border-gray-200 text-gray-800'
+                              ? 'bg-emerald-900/90 border-emerald-600/40 text-white'
+                              : 'bg-emerald-900/90 border-gray-200 text-gray-800'
                           }`}
                         >
                           {renderFormattedText(
@@ -1993,7 +1993,7 @@ export default function FootPlayChat() {
                           </button>
 
                           <ReadAloudButton content={msg.content}/>
-                          <details className="relative"><summary aria-label="خيارات الرد الأخرى" title="خيارات الرد الأخرى" className="list-none cursor-pointer p-2 rounded-lg text-gray-400 hover:bg-emerald-500/10 [&::-webkit-details-marker]:hidden"><AppIcon name="more"/></summary><div className={`absolute z-30 bottom-full mb-2 start-0 rounded-xl border shadow-lg p-2 whitespace-nowrap ${isDarkMode?'bg-white border-emerald-200':'bg-white border-gray-200'}`}>
+                          <details className="relative"><summary aria-label="خيارات الرد الأخرى" title="خيارات الرد الأخرى" className="list-none cursor-pointer p-2 rounded-lg text-gray-400 hover:bg-emerald-500/10 [&::-webkit-details-marker]:hidden"><AppIcon name="more"/></summary><div className={`absolute z-30 bottom-full mb-2 start-0 rounded-xl border shadow-lg p-2 whitespace-nowrap ${isDarkMode?'bg-emerald-900 border-emerald-600/40':'bg-white border-gray-200'}`}>
                           <button
                             type="button"
                             onClick={() => {
@@ -2093,7 +2093,7 @@ export default function FootPlayChat() {
                 <div
                   className={`rounded-2xl px-4 py-3 border shadow-sm ${
                     isDarkMode
-                      ? 'bg-white/90 border-emerald-200 text-emerald-900'
+                      ? 'bg-emerald-900/90 border-emerald-600/40 text-white'
                       : 'bg-white border-gray-200 text-gray-600'
                   }`}
                 >
@@ -2141,7 +2141,7 @@ export default function FootPlayChat() {
         className={`p-3 backdrop-blur-md border-t relative z-20 ${
           isDarkMode
             ? 'bg-[#131314]/90 border-white/10'
-            : 'bg-white/90 border-gray-200'
+            : 'bg-emerald-900/90 border-gray-200'
         }`}
       >
         <div className="max-w-4xl mx-auto">
@@ -2185,7 +2185,7 @@ export default function FootPlayChat() {
           <div
             className={`flex items-center gap-2 border rounded-full px-3 py-2 shadow-xl ${
               isDarkMode
-                ? 'bg-white border-emerald-300 focus-within:border-emerald-500'
+                ? 'bg-emerald-900 border-emerald-500 focus-within:border-emerald-300'
                 : 'bg-gray-50 border-gray-300 focus-within:border-emerald-500'
             }`}
           >
@@ -2285,8 +2285,8 @@ export default function FootPlayChat() {
       {showStandings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowStandings(false)}>
           <div role="dialog" aria-modal="true" aria-label="جداول الترتيب العالمية" onClick={event => event.stopPropagation()}
-            className={`w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl ${isDarkMode ? 'bg-white border border-emerald-200' : 'bg-white border border-gray-200'}`}>
-            <div className={`sticky top-0 z-30 flex justify-between items-center p-4 border-b ${isDarkMode ? 'bg-white border-emerald-200' : 'bg-white border-gray-200'}`}>
+            className={`w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl ${isDarkMode ? 'bg-emerald-900 border border-emerald-600/40' : 'bg-white border border-gray-200'}`}>
+            <div className={`sticky top-0 z-30 flex justify-between items-center p-4 border-b ${isDarkMode ? 'bg-emerald-900 border-emerald-600/40' : 'bg-white border-gray-200'}`}>
               <h2 className="font-bold">جداول الترتيب العالمية</h2>
               <button type="button" aria-label="إغلاق جداول الترتيب" onClick={() => setShowStandings(false)} className="w-8 h-8 rounded-full"><AppIcon name="close" size={18}/></button>
             </div>
@@ -2305,14 +2305,14 @@ export default function FootPlayChat() {
             onClick={(event) => event.stopPropagation()}
             className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl shadow-2xl ${
               isDarkMode
-                ? 'bg-white border border-emerald-200'
+                ? 'bg-emerald-900 border border-emerald-600/40'
                 : 'bg-white border border-gray-200'
             }`}
           >
             <div
               className={`sticky top-0 z-10 flex items-center justify-between p-4 border-b ${
                 isDarkMode
-                  ? 'bg-white border-emerald-200'
+                  ? 'bg-emerald-900 border-emerald-600/40'
                   : 'bg-white border-gray-200'
               }`}
             >
