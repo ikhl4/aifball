@@ -7,7 +7,7 @@ export type HighlightMatch = { home: string; away: string; date: string; competi
 export type HighlightVideo = { id: string; url: string; title: string; channel: string; publishedAt: string; embeddable: boolean };
 type ChannelIndex = { channelId: string; videos: { id: string; title: string }[] };
 type Result = { status: 'found'; video: HighlightVideo } | { status: 'not_found' | 'unavailable' };
-const cache = new Map<string, { expires: number; value: Promise<ChannelIndex> }>();
+// Each request performs fresh discovery; no persistent video-search cache.
 // YouTube often uses /channel/UC... instead of a vanity handle for real publishers.
 const OFFICIAL_CHANNEL_TITLES = new Set([
   'beIN SPORTS', 'beIN SPORTS العربية', 'beIN SPORTS Türkiye',
@@ -324,7 +324,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
             // YouTube search exposes the publisher's channel ID, upload age and
             // video ID. Only known official accounts can pass when watch metadata
             // is incomplete; a matching title alone is not sufficient.
-            if (reason !== 'VIDEO_ID_MISSING') continue;
+            if (!['VIDEO_ID_MISSING', 'MISSING_METADATA', 'INVALID_METADATA'].includes(reason) && !reason.startsWith('UPSTREAM_')) continue;
             const entry = searchEntries.get(id);
             if (!entry || !/^UC[\w-]{22}$/.test(entry.channelId)
               || !entry.channelName.trim() || !matchesTeams(entry.title, match)) {
@@ -358,8 +358,6 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     if (/روشن|saudi|ksa/i.test(match.competition || '')) channels.sort((a, b) => Number(b === 'thmanyahsports') - Number(a === 'thmanyahsports'));
     for (let offset = 0; offset < channels.length && !c.signal.aborted; offset += 3) {
       const results = await Promise.allSettled(channels.slice(offset, offset + 3).map(async handle => {
-        const existing = cache.get(handle);
-        if (existing && existing.expires > Date.now()) return existing.value;
         const value = html(`https://www.youtube.com/@${handle}/videos`, c.signal, fetcher).then(async page => {
           const channel = channelIndex(page, handle);
           // The public syndication feed lists uploads independently of playback region.
@@ -370,8 +368,6 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
           } catch { /* The public videos page is still a valid discovery source. */ }
           return channel;
         });
-        cache.set(handle, { expires: Date.now() + 300000, value });
-        value.catch(() => { if (cache.get(handle)?.value === value) cache.delete(handle); });
         return value;
       }));
       for (const result of results) {
