@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import MatchSummary from './MatchSummary';
 import type { PosterMatch } from '../../lib/match-card-data';
 
 type Response = { match?: PosterMatch };
@@ -23,9 +24,11 @@ export default function MatchResultCard({ query, isDark = true, onDetails }: {
   onDetails?: (query: string) => void;
 }) {
   const [match, setMatch] = useState<PosterMatch | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   useEffect(() => {
     const abort = new AbortController();
     setMatch(null);
+    setDetailsOpen(false);
     const requested = `بطاقة ${query}`;
     fetch('/api/match-card?query=' + encodeURIComponent(requested), { signal: abort.signal, cache: 'no-store' })
       .then(async response => response.ok ? response.json() as Promise<Response> : null)
@@ -59,7 +62,8 @@ export default function MatchResultCard({ query, isDark = true, onDetails }: {
     </div>
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-emerald-700/20 pt-3 text-xs">
       <span className="opacity-75">{when ? `${when} · الرياض` : 'التوقيت غير متاح'}</span>
-      {onDetails && <button type="button" onClick={() => onDetails(`تقرير مباراة ${match.home.name} ضد ${match.away.name} بتاريخ ${match.date.slice(0,10)}`)} className="rounded-lg border border-emerald-500/30 px-3 py-1.5 font-semibold text-emerald-500 hover:bg-emerald-500/10">تفاصيل المباراة</button>}
+      <button type="button" onClick={() => setDetailsOpen(open => !open)} aria-expanded={detailsOpen} className="rounded-lg border border-emerald-500/30 px-3 py-1.5 font-semibold text-emerald-500 hover:bg-emerald-500/10">{detailsOpen ? 'إخفاء التفاصيل' : 'تفاصيل المباراة'}</button>
     </div>
+    {detailsOpen && <MatchSummary key={match.id} eventId={match.id} league={match.league} isDark={isDark} />}
   </section>;
 }
