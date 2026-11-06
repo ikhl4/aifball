@@ -862,7 +862,7 @@ function renderFormattedText(
       <p
         key={i}
         className={`my-1.5 leading-relaxed text-sm sm:text-[15px] ${
-          isDark ? 'text-gray-300' : 'text-gray-700'
+          isDark ? 'text-gray-300' : 'text-black'
         }`}
       >
         <InlineText value={trimmed} isDark={isDark} />
@@ -880,7 +880,7 @@ function renderFormattedText(
     );
   }
 
-  if (!isStreaming && imageUrls.size === 0 && /كريستيانو\s+رونالدو|cristiano\s+ronaldo|ليونيل\s+ميسي|lionel\s+messi|كيليان\s+مبابي|kylian\s+mbapp|لامين\s+يامال|lamine\s+yamal|محمد\s+صلاح|mohamed\s+salah|كريم\s+بنزيما|karim\s+benzema|نيمار|neymar/i.test(userQuery || '')) {
+  if (!isStreaming && imageUrls.size === 0 && /لاعب|مسيرة|قصة|تاريخ|ملعب|استاد|ستاد|نادي|رونالدو|ميسي|مبابي|يامال|صلاح|بنزيما|نيمار|player|stadium|club|history|career|story/i.test(userQuery || '')) {
     elements.push(<AutoChatImage key="auto-player-image" query={userQuery} isDark={isDark} />);
   }
 
@@ -1891,7 +1891,7 @@ export default function FootPlayChat() {
                     {msg.role === 'user' ? (
                       <div
                         dir={detectLanguage(msg.content) === 'en' ? 'ltr' : 'rtl'}
-                        className={`w-full rounded-3xl border p-4 sm:p-5 text-base sm:text-lg font-bold leading-relaxed break-words ${
+                        className={`w-full rounded-3xl border p-4 sm:p-5 text-sm sm:text-[15px] font-normal leading-relaxed break-words ${
                           isDarkMode
                             ? 'bg-emerald-950/50 backdrop-blur-xl border-emerald-300/20 text-white'
                             : 'bg-white border-emerald-500/70 text-black shadow-sm'
