@@ -105,6 +105,10 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
       })
     : [];
 
+  const playerImage = safeSource(details?.image_url ?? details?.photo_url ?? details?.player_image ?? details?.image);
+  const factIcons: Record<string, string> = { 'إجمالي المسيرة': '⚽', 'الألقاب': '🏆', 'أرقام الموسم المختار': '📊', 'انتهاء العقد': '📅', 'القيمة السوقية': '💶', 'الراتب المنشور': '💰' };
+  const maxStat = Math.max(1, ...stats.map(item => Number(item.value)).filter(Number.isFinite));
+
   const facts = [
     { label: 'إجمالي المسيرة', value: details?.career_summary, source: details?.career_source },
     { label: 'الألقاب', value: details?.honours, source: details?.honours_source },
@@ -121,9 +125,10 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
 
   return (
     <section dir="rtl" className={`my-5 min-w-0 space-y-4 ${isDark ? 'text-white' : 'text-black'}` }>
-      <header className="flex flex-wrap items-center justify-between gap-3">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        {playerImage && <img src={playerImage} alt={`صورة ${playerName}`} loading="lazy" referrerPolicy="no-referrer" className="h-32 w-28 rounded-2xl object-cover sm:h-40 sm:w-36" />}
         <div>
-          <p className="text-sm text-emerald-500">{season && !hasSeasonSummary ? 'أرقام الموسم · FBref' : 'ملف اللاعب'}</p>
+          <p className="text-sm text-emerald-500">⚽ {season && !hasSeasonSummary ? 'إحصائيات الموسم · FBref' : 'المسيرة الكروية'}</p>
           <h2 className="text-xl font-bold text-emerald-600">{playerName}</h2>
         </div>
         {season && (
@@ -139,8 +144,8 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
         <dl className="mt-4 divide-y divide-emerald-500/15">
           {facts.map(({ label, value, source }) => (
             <div key={label} className="py-3">
-              <dt className="text-sm opacity-75">{label}</dt>
-              <dd className="font-bold">{value}</dd>
+              <dt className="text-sm font-semibold text-emerald-500">{factIcons[label] ?? '✦'} {label}</dt>
+              <dd className="mt-1 leading-8">{value}</dd>
               <dd><a className="text-sm underline" href={source} target="_blank" rel="noreferrer">المصدر</a></dd>
             </div>
           ))}
@@ -148,7 +153,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
       )}
       {competitions.map(({ team, competition, href, numbers }, index) => (
         <section key={index} className="mt-4 border-t border-emerald-500/20 pt-4">
-          <h3 className="font-bold">{team} · {competition}</h3>
+          <h3 className="font-bold text-emerald-500">🏟️ {team} · {competition}</h3>
           <dl className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {numbers.map(({ label, value }) => (
               <div key={label}><dt className="text-sm opacity-75">{label}</dt><dd className="font-bold">{value}</dd></div>
