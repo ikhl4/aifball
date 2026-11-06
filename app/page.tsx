@@ -24,6 +24,8 @@ import MatchHighlightCard from './components/MatchHighlightCard';
 import ChatVideoCard from './components/ChatVideoCard';
 import MatchPoster from './components/MatchPoster';
 import MatchResultCard from './components/MatchResultCard';
+import SportsNewsCard from './components/SportsNewsCard';
+import SportsImageCard from './components/SportsImageCard';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DocumentaryVideo from './components/DocumentaryVideo';
 import { MatchVisualDemo } from './components/MatchVisualReport';
@@ -706,6 +708,16 @@ function renderFormattedText(
       if (name === 'aifball-documentary') {
         const decoded = Object.fromEntries(Object.entries(attrs).map(([key, value]) => [key, value.replace(/&quot;/g, '"').replace(/&amp;/g, '&')]));
         elements.push(<DocumentaryVideo key={i} attrs={decoded} />);
+        continue;
+      }
+
+      if (name === 'aifball-news') {
+        elements.push(<SportsNewsCard key={i} attrs={Object.fromEntries(Object.entries(attrs).map(([key, value]) => [key, value.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')]))} isDark={isDark} />);
+        continue;
+      }
+
+      if (name === 'aifball-sports-image') {
+        elements.push(<SportsImageCard key={i} src={attrs.src} alt={attrs.alt || ''} sourceUrl={attrs.source_url} sourceName={attrs.source_name} license={attrs.license} isDark={isDark} />);
         continue;
       }
 
