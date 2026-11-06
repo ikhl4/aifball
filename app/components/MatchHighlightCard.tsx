@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import ChatVideoCard from './ChatVideoCard';
+import MatchReport from './MatchReport';
 import { youtubeVideoId } from '../../lib/summary-presentation';
 
 type Props = { attrs: Record<string, string>; isDark?: boolean };
@@ -23,6 +25,7 @@ function TeamBadge({ name, logo }: { name: string; logo?: string }) {
 }
 
 export default function MatchHighlightCard({ attrs, isDark = true }: Props) {
+  const [expandedReport, setExpandedReport] = useState(false);
   const id = youtubeVideoId(attrs.video_url || '');
   const verified = attrs.video_status === 'found';
   const home = attrs.home || '';
@@ -109,6 +112,14 @@ export default function MatchHighlightCard({ attrs, isDark = true }: Props) {
       <h4 className="mb-1 text-sm font-bold text-emerald-500">ملخص المباراة بالفيديو</h4>
       <ChatVideoCard url={attrs.video_url} title={attrs.video_title || (home && away ? `ملخص ${home} ضد ${away}` : 'ملخص المباراة')} channel={attrs.video_channel} isDark={isDark} canEmbed={attrs.video_embed === 'true' ? true : attrs.video_embed === 'false' ? false : undefined} />
     </div>}
+    {/^[a-z]+(?:\\.[a-z0-9]+)+$/i.test(attrs.league || '') && /^\\d+$/.test(attrs.event || '') && (
+      <div className="border-t border-emerald-500/15 pt-3">
+        <button type="button" onClick={() => setExpandedReport(open => !open)} aria-expanded={expandedReport} className="rounded-xl border border-emerald-500/30 px-3 py-2 text-xs font-bold text-emerald-500 hover:bg-emerald-500/10">
+          {expandedReport ? 'إغلاق التقرير التفصيلي' : 'تقرير المباراة والإحصائيات واللاعبين'}
+        </button>
+        {expandedReport && <MatchReport key={attrs.event} matchName={attrs.match || `${home} ضد ${away}`} eventId={attrs.event} leagueCode={attrs.league} isDark={isDark} />}
+      </div>
+    )}
     {source && <a href={source} target="_blank" rel="noopener noreferrer" className="inline-block text-xs font-semibold text-emerald-500 underline">{attrs.source_name || 'مصدر تفاصيل المباراة'} ↗</a>}
   </section>;
 }
