@@ -1,6 +1,7 @@
 'use client';
 
 import SportsImageCard from './SportsImageCard';
+import SportsAutoImage from './SportsAutoImage';
 
 type Props = { attrs: Record<string, string>; isDark?: boolean };
 function verifiedUrl(value?: string) {
@@ -27,7 +28,9 @@ export default function SportsNewsCard({ attrs, isDark = true }: Props) {
       {date && <time dateTime={date} className="opacity-70">{date}</time>}
     </div>
     <h3 className="text-base font-extrabold leading-7 sm:text-lg">{title}</h3>
-    <SportsImageCard src={attrs.image_url} alt={attrs.image_alt || title} sourceUrl={attrs.image_source_url} sourceName={attrs.image_source_name} license={attrs.image_license} isDark={isDark} />
+    {attrs.image_url && attrs.image_license && attrs.image_source_url
+      ? <SportsImageCard src={attrs.image_url} alt={attrs.image_alt || title} sourceUrl={attrs.image_source_url} sourceName={attrs.image_source_name} license={attrs.image_license} isDark={isDark} />
+      : attrs.subject && attrs.subject.trim() && <SportsAutoImage subject={attrs.subject} isDark={isDark} />}
     <p className="mt-2 whitespace-pre-line text-sm leading-7">{attrs.summary}</p>
     {attrs.highlights && <ul className="mt-3 list-inside list-disc space-y-1 text-sm leading-6">
       {attrs.highlights.split(';').map(s => s.trim()).filter(Boolean).slice(0, 6).map((s, i) => <li key={i}>{s}</li>)}
