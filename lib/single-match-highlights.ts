@@ -1,7 +1,7 @@
 import { findHighlightVideo } from './highlight-video';
 import { footballNameInArabic } from './football-names-ar';
 import { isDailyHighlightsRequest } from './daily-match-highlights';
-const leagues = [['eng.1','الدوري الإنجليزي الممتاز'],['esp.1','الدوري الإسباني'],['ita.1','الدوري الإيطالي'],['ger.1','الدوري الألماني'],['fra.1','الدوري الفرنسي'],['ksa.1','دوري روشن السعودي'],['uefa.champions','دوري أبطال أوروبا'],['afc.champions','دوري أبطال آسيا للنخبة'],['usa.1','الدوري الأمريكي']];
+const leagues = [['eng.1','الدوري الإنجليزي الممتاز'],['esp.1','الدوري الإسباني'],['ita.1','الدوري الإيطالي'],['ger.1','الدوري الألماني'],['fra.1','الدوري الفرنسي'],['ksa.1','دوري روشن السعودي'],['uefa.champions','دوري أبطال أوروبا'],['uefa.europa','الدوري الأوروبي'],['uefa.europa.conf','دوري المؤتمر الأوروبي'],['afc.champions','دوري أبطال آسيا للنخبة'],['usa.1','الدوري الأمريكي']];
 const norm = (s: string) => s.normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f\u064b-\u065f\u0670ـ]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 export function teamMentioned(query: string, name: string): boolean {
