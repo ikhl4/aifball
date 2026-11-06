@@ -60,13 +60,16 @@ export async function GET(req: Request) {
       /^CC BY-SA \d\.\d$/i.test(license) ? license :
       /^CC BY \d\.\d$/i.test(license) ? license :
       /^(?:Public domain|PD)$/i.test(license) ? 'Public Domain' : '';
+    const artist = String(info?.extmetadata?.Artist?.value || '')
+      .replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ').trim().slice(0, 160);
     const imageUrl = safeHttps(info?.url);
     const sourceUrl = safeHttps(info?.descriptionurl);
-    if (!canonicalLicense || !imageUrl || !sourceUrl || !new URL(sourceUrl).hostname.endsWith('wikimedia.org')) {
+    if (!canonicalLicense || !imageUrl || !sourceUrl || !new URL(sourceUrl).hostname.endsWith('wikimedia.org') || (!artist && canonicalLicense !== 'CC0' && canonicalLicense !== 'Public Domain')) {
       return NextResponse.json({ image: null, reason: 'license_not_verified' });
     }
     return NextResponse.json({
-      image: { url: imageUrl, sourceUrl, sourceName: 'Wikimedia Commons', license: canonicalLicense, alt: `صورة تعريفية لـ ${subject} — ليست صورة الحدث الحالي` },
+      image: { url: imageUrl, sourceUrl, sourceName: 'Wikimedia Commons', license: canonicalLicense, artist, alt: `صورة تعريفية لـ ${subject} — ليست صورة الحدث الحالي` },
       wikidataId: id,
     }, { headers: { 'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=43200' } });
   } catch {
