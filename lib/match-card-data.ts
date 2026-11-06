@@ -4,7 +4,8 @@ import { normalizeMatchSearch } from './live-match-filters';
 export const POSTER_LEAGUES = [
   ['ksa.1', 'دوري روشن السعودي'], ['eng.1', 'الدوري الإنجليزي'], ['esp.1', 'الدوري الإسباني'],
   ['ita.1', 'الدوري الإيطالي'], ['ger.1', 'الدوري الألماني'], ['fra.1', 'الدوري الفرنسي'],
-  ['uefa.champions', 'دوري أبطال أوروبا'], ['afc.champions', 'دوري أبطال آسيا للنخبة'],
+  ['uefa.champions', 'دوري أبطال أوروبا'], ['uefa.europa', 'الدوري الأوروبي'],
+  ['uefa.europa.conf', 'دوري المؤتمر الأوروبي'], ['afc.champions', 'دوري أبطال آسيا للنخبة'],
   ['usa.1', 'الدوري الأمريكي'], ['fifa.world', 'كأس العالم'],
 ] as const;
 

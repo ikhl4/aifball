@@ -144,6 +144,7 @@ export const COMPETITIONS: Record<string, Competition> = {
     "en": "UEFA Europa League",
     "kind": "club",
     "seasonFormat": "split",
+    "fotmobId": 73,
     "aliases": [
       "الدوري الاوروبي",
       "يوروبا ليغ",
