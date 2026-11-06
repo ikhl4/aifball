@@ -1871,7 +1871,7 @@ export default function FootPlayChat() {
             {messages.map((msg, index) =>
               msg.content.trim() || (msg.imageUrls?.length ?? 0) > 0 ? (
                 <div key={index} className="flex items-start gap-4 w-full">
-                  <div className="flex-shrink-0 mt-1 hidden sm:block">
+                  <div className={`flex-shrink-0 mt-1 ${msg.role === 'assistant' ? 'block' : 'hidden sm:block'}`}>
                     {msg.role === 'assistant' ? (
                       <OriginalBrandLogo size="sm" />
                     ) : (
@@ -2098,7 +2098,7 @@ export default function FootPlayChat() {
 
             {loading && (
               <div className="flex items-start gap-4 w-full mt-4">
-                <div className="flex-shrink-0 mt-1 hidden sm:block">
+                <div className="flex-shrink-0 mt-1 block">
                   <OriginalBrandLogo size="sm" />
                 </div>
 
