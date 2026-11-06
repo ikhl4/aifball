@@ -31,7 +31,7 @@ export default function ChatVideoCard({
   useEffect(() => {
     if (!playing || !id) return;
     const handlePlayerMessage = (event: MessageEvent) => {
-      if (event.origin !== 'https://www.youtube.com') return;
+      if (!['https://www.youtube.com', 'https://www.youtube-nocookie.com'].includes(event.origin)) return;
       if (event.source !== playerRef.current?.contentWindow) return;
       let data: { event?: string; info?: unknown };
       try { data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; }
@@ -47,7 +47,9 @@ export default function ChatVideoCard({
 
   if (!id) return null;
   const watch = `https://www.youtube.com/watch?v=${id}`;
-  const restricted = canEmbed === false || blocked;
+  // Search metadata may not establish embed permission. Try the official player first;
+  // only a player error confirms that the viewer must use YouTube.
+  const restricted = blocked;
 
   return (
     <section dir="rtl" className={`my-4 w-full min-w-0 overflow-hidden rounded-2xl border ${isDark ? 'border-emerald-500/30 bg-[#131b17] text-gray-100' : 'border-emerald-600/25 bg-white text-gray-900'}`}>
@@ -63,7 +65,7 @@ export default function ChatVideoCard({
           <iframe
             ref={playerRef}
             className="absolute inset-0 h-full w-full border-0"
-            src={`https://www.youtube.com/embed/${id}?autoplay=1&rel=0&playsinline=1&enablejsapi=1`}
+            src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`}
             title={title}
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
             allowFullScreen
@@ -72,7 +74,7 @@ export default function ChatVideoCard({
               // iframe load means only that a YouTube page loaded, not that
               // playback works. The official player API reports restrictions.
               const win = playerRef.current?.contentWindow;
-              win?.postMessage(JSON.stringify({ event: 'listening', id: 'aifball-video' }), 'https://www.youtube.com');
+              win?.postMessage(JSON.stringify({ event: 'listening', id: 'aifball-video' }), 'https://www.youtube-nocookie.com');
               win?.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onError'] }), 'https://www.youtube.com');
             }}
           />
