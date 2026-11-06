@@ -9,6 +9,8 @@ import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 
 // 🌟 استيراد المكونات الخاصة بك (تأكد من صحة المسارات)
+import ChatImageCard from '../ChatImageCard'
+import ChatVideoCard from '../ChatVideoCard'
 import MatchSummary from '../MatchSummary' 
 // import MatchReport from '../MatchReport'
 // import Standings from '../Standings'
@@ -72,13 +74,9 @@ export function Markdown(props: { content: string }) {
           },
           
           img({ node, ...props }: any) {
-            return (
-              <img 
-                {...props} 
-                className="w-full max-h-[500px] object-contain rounded-xl my-4 shadow-md"
-                loading="lazy"
-              />
-            )
+            return typeof props.src === 'string' ? (
+              <ChatImageCard url={props.src} alt={props.alt || 'صورة'} />
+            ) : null
           },
           
           a({ node, href, children, ...props }: any) {
@@ -88,25 +86,7 @@ export function Markdown(props: { content: string }) {
             const ytMatch = href.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
             
             if (ytMatch && ytMatch[1]) {
-              const vidId = ytMatch[1];
-              return (
-                <div className="my-5 rounded-2xl overflow-hidden border border-emerald-500/30 bg-[#131314] shadow-xl w-full">
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-[#1D6B35]/20 border-b border-gray-800/80">
-                    <span className="text-xs sm:text-sm font-bold text-emerald-400">🎥 مشاهدة الملخص المباشر</span>
-                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-300 hover:text-white underline transition">
-                      فتح في تطبيق يوتيوب ↗
-                    </a>
-                  </div>
-                  <div className="relative w-full aspect-video">
-                    <iframe 
-                      src={`https://www.youtube.com/embed/${vidId}`} 
-                      title="YouTube video player" 
-                      className="w-full h-full border-0" 
-                      allowFullScreen 
-                    />
-                  </div>
-                </div>
-              );
+              return <ChatVideoCard url={href} title={String(children || 'ملخص المباراة')} />;
             }
 
             // 2. هل الرابط صورة أو لوحة تكتيكية؟ (عرض الصور مفرودة)
@@ -116,17 +96,7 @@ export function Markdown(props: { content: string }) {
                                   /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(href);
 
             if (isVisualAsset) {
-              return (
-                <div className="my-4 rounded-xl overflow-hidden border border-gray-200 shadow-md bg-[#f8f9fa] dark:bg-[#131415] dark:border-gray-800">
-                  <div className="bg-gray-100 dark:bg-emerald-900/20 px-3 py-2 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-                     <span className="text-xs font-bold text-gray-700 dark:text-emerald-400">📊 اللوحة التكتيكية</span>
-                     <a href={href} target="_blank" rel="noopener noreferrer" className="text-[10px] text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white underline">تكبير ↗</a>
-                  </div>
-                  <div className="p-2 flex justify-center">
-                    <img src={href} alt={String(children)} className="w-full object-contain max-h-[500px] rounded-lg" />
-                  </div>
-                </div>
-              );
+              return <ChatImageCard url={href} alt={String(children || 'صورة')} />;
             }
 
             // 3. للروابط العادية (مواقع إحصائيات خارجية مثلاً)
