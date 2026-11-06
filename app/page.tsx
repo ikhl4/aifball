@@ -215,7 +215,7 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
 // Use the original uploaded image without redrawing or visual effects.
 function OriginalBrandLogo({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
   return <img
-    src="https://raw.githubusercontent.com/ikhl4/aifball/main/app/IMG_1276.png"
+    src="https://raw.githubusercontent.com/ikhl4/aifball/main/app/IMG_1280.png"
     alt="شعار فوتبلاي"
     width={size === 'lg' ? 112 : 32}
     height={size === 'lg' ? 112 : 32}
