@@ -1433,7 +1433,7 @@ export default function FootPlayChat() {
               : 'opacity-45 scale-[1.03]'
           }`}
           style={{
-            backgroundImage: isDarkMode ? "url('/IMG_0091.jpeg')" : messages.length === 0 ? "linear-gradient(90deg, transparent 49.8%, #e2e8f0 50%, transparent 50.2%), radial-gradient(circle at center, transparent 13%, #e2e8f0 13.2%, transparent 13.5%)" : 'none',
+            backgroundImage: isDarkMode ? "url('/IMG_0091.jpeg')" : messages.length === 0 ? "linear-gradient(90deg, transparent 49.8%, #16a34a 50%, transparent 50.2%), radial-gradient(circle at center, transparent 13%, #16a34a 13.2%, transparent 13.5%)" : 'none',
             backgroundColor: isDarkMode ? undefined : '#fff',
             backgroundSize: 'cover',
           }}
