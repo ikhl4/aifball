@@ -146,7 +146,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
             <div key={label} className="py-3">
               <dt className="text-sm font-semibold text-emerald-500">{factIcons[label] ?? '✦'} {label}</dt>
               <dd className="mt-1 leading-8">{value}</dd>
-              <dd><a className="text-sm underline" href={source} target="_blank" rel="noreferrer">المصدر</a></dd>
+
             </div>
           ))}
         </dl>
@@ -159,15 +159,15 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
               <div key={label}><dt className="text-sm opacity-75">{label}</dt><dd className="font-bold">{value}</dd></div>
             ))}
           </dl>
-          <a className="text-sm underline" href={href} target="_blank" rel="noreferrer">مصدر أرقام البطولة</a>
+
         </section>
       ))}
       {stats.length ? (
         <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {stats.map(({ label, value }) => (
-            <div key={label} className="rounded-xl border border-gray-500/30 p-3">
+            <div key={label} className="border-b border-emerald-500/20 py-3">
               <dt className="text-sm opacity-75">{label}</dt>
-              <dd className="text-xl font-bold">{value}</dd>
+              <dd className="text-2xl font-bold text-emerald-500">{value}</dd>
             </div>
           ))}
         </dl>
