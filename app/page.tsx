@@ -1655,7 +1655,7 @@ export default function FootPlayChat() {
             <AppIcon name="menu"/>
           </button>
 
-          <AiFBallLogo size="md" />
+          <OriginalBrandLogo size="sm" />
 
           <div>
             <h1 className="text-base font-bold leading-tight">فوتبلاي</h1>
