@@ -1430,7 +1430,7 @@ export default function FootPlayChat() {
       className={`flex flex-col h-[100dvh] relative overflow-hidden font-cairo transition-colors duration-300 ${
         isDarkMode
           ? 'bg-[#022c22] text-white'
-          : 'bg-gray-50 text-gray-900'
+          : 'bg-white text-black'
       }`}
     >
       {/* خلفية الملعب */}
@@ -1481,6 +1481,12 @@ export default function FootPlayChat() {
           font-family: 'Cairo', sans-serif !important;
           font-feature-settings: 'calt' 1, 'liga' 1;
         }
+
+        .aifball-day-reply h1, .aifball-day-reply h2, .aifball-day-reply h3,
+        .aifball-day-reply h4, .aifball-day-reply h5, .aifball-day-reply h6 {
+          color: #1D6B35 !important;
+        }
+        .aifball-day-reply p, .aifball-day-reply li { color: #000; }
 
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
@@ -1927,10 +1933,10 @@ export default function FootPlayChat() {
                               ? 'ltr'
                               : 'rtl'
                           }
-                          className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-5 shadow-2xl text-sm sm:text-[15px] leading-relaxed break-words ${
+                          className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-5 shadow-sm text-sm sm:text-[15px] leading-relaxed break-words ${!isDarkMode ? 'aifball-day-reply ' : ''}${
                             isDarkMode
                               ? 'bg-emerald-950/50 backdrop-blur-xl border-emerald-300/20 text-white'
-                              : 'bg-emerald-950/50 backdrop-blur-xl border-gray-200 text-gray-800'
+                              : 'bg-white border-emerald-500/70 text-black shadow-sm'
                           }`}
                         >
                           {renderFormattedText(
@@ -2153,7 +2159,7 @@ export default function FootPlayChat() {
         className={`p-3 backdrop-blur-md border-t relative z-20 ${
           isDarkMode
             ? 'bg-[#131314]/90 border-white/10'
-            : 'bg-emerald-950/50 backdrop-blur-xl border-gray-200'
+            : 'bg-white border-emerald-200'
         }`}
       >
         <div className="max-w-4xl mx-auto">
@@ -2198,7 +2204,7 @@ export default function FootPlayChat() {
             className={`flex items-center gap-2 border rounded-full px-3 py-2 shadow-xl ${
               isDarkMode
                 ? 'bg-emerald-950/60 backdrop-blur-xl border-emerald-500 focus-within:border-emerald-300'
-                : 'bg-gray-50 border-gray-300 focus-within:border-emerald-500'
+                : 'bg-white border-emerald-500/70 focus-within:border-emerald-600'
             }`}
           >
             <input
