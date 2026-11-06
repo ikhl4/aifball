@@ -1655,7 +1655,7 @@ export default function FootPlayChat() {
             <AppIcon name="menu"/>
           </button>
 
-          <OriginalBrandLogo size="sm" />
+          <img src="https://raw.githubusercontent.com/ikhl4/aifball/main/app/IMG_1280.png" alt="شعار فوتبلاي" width={48} height={48} className="h-12 w-12 shrink-0 object-contain" decoding="async" />
 
           <div>
             <h1 className="text-base font-bold leading-tight">فوتبلاي</h1>
