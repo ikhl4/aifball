@@ -8,6 +8,7 @@ type LicensedPhoto = {
   sourceUrl: string;
   sourceName: string;
   license: string;
+  artist?: string;
   alt: string;
 };
 
@@ -33,6 +34,7 @@ export default function SportsAutoImage({ subject, isDark = true }: { subject: s
     sourceUrl={image.sourceUrl}
     sourceName={image.sourceName}
     license={image.license}
+    artist={image.artist}
     isDark={isDark}
   />;
 }
