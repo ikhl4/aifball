@@ -20,11 +20,12 @@ export default function SportsNewsCard({ attrs, isDark = true }: Props) {
   const publisher = attrs.source_name?.trim();
   const date = /^\d{4}-\d{2}-\d{2}$/.test(attrs.date || '') ? attrs.date : '';
   // Confirmed status must be supplied by the trusted news verification step.
-  const confirmed = attrs.verified === 'true' && Boolean(source && publisher && date);
+  // A client-supplied verified flag is not independent confirmation.
+  // Source verification must be completed upstream before a confirmation badge is introduced.
   if (!title || !attrs.summary?.trim() || !source) return null;
   return <article dir="rtl" className={`my-4 min-w-0 overflow-hidden rounded-2xl border p-3 sm:p-4 ${isDark ? 'border-emerald-600/25 bg-[#101913] text-gray-100' : 'border-gray-200 bg-white text-gray-900'}`}>
     <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-      <span className="font-semibold text-emerald-500">{confirmed ? 'خبر رسمي موثق' : 'خبر رياضي · راجع المصدر'}</span>
+      <span className="font-semibold text-emerald-500">خبر رياضي · المصدر مرفق</span>
       {date && <time dateTime={date} className="opacity-70">{date}</time>}
     </div>
     <h3 className="text-base font-extrabold leading-7 sm:text-lg">{title}</h3>
