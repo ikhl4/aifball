@@ -1891,7 +1891,11 @@ export default function FootPlayChat() {
                     {msg.role === 'user' ? (
                       <div
                         dir={detectLanguage(msg.content) === 'en' ? 'ltr' : 'rtl'}
-                        className="text-base sm:text-lg font-bold leading-relaxed break-words"
+                        className={`w-full rounded-3xl border p-4 sm:p-5 text-base sm:text-lg font-bold leading-relaxed break-words ${
+                          isDarkMode
+                            ? 'bg-emerald-950/50 backdrop-blur-xl border-emerald-300/20 text-white'
+                            : 'bg-white border-emerald-500/70 text-black shadow-sm'
+                        }`}
                       >
                         {msg.content}
 
