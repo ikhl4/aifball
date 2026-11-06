@@ -5,7 +5,13 @@ const leagues = [['eng.1','الدوري الإنجليزي الممتاز'],['es
 const norm = (s: string) => s.normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f\u064b-\u065f\u0670ـ]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 export function teamMentioned(query: string, name: string): boolean {
- const q = ' '+norm(query)+' ', names = [name, footballNameInArabic(name) || name].map(norm);
+ const q = ' '+norm(query)+' ';
+ const aliases = new Set([name, name.replace(/[-_]/g, ' '), name.replace(/^Al[- ]/i, 'Al '), footballNameInArabic(name) || name]);
+ // ESPN sometimes spells Saudi club names with hyphens or alternative Latin transliterations.
+ const key = norm(name);
+ if (/al ?qad(?:s|i)|al ?qadsiah|al ?qadisiyah/.test(key)) aliases.add('القادسية');
+ if (/al ?hilal/.test(key)) aliases.add('الهلال');
+ const names = [...aliases].map(norm);
  if(names.includes('paris saint germain'))names.push('باريس','psg');
  return names.some(n=>n.length>=3&&(q.includes(' '+n+' ')||q.includes(' و'+n+' ')));
 }
