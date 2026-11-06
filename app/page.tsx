@@ -386,8 +386,9 @@ function renderFormattedText(
 
   // Preserve structured match-summary tags so their video URLs stay attached
   // to the correct match instead of being collected as unrelated page videos.
+  // Shield all structured components before extracting prose media URLs.
   const protectedSummaryTags = text.replace(
-    /<aifball-(?:summary|documentary)\b[^>]*\/?>/gi,
+    /<aifball-[\w-]+\b[^>]*\/?>/gi,
     (tag) => {
       const index = summaryTags.push(tag) - 1;
       return `AIFBALLSUMMARYTAGTOKEN${index}END`;
@@ -395,15 +396,21 @@ function renderFormattedText(
   );
 
   const youtubeRegex =
-    /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/g;
+    /(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com\/(?:watch\?[^\s)]*?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/gi;
 
-  const withoutVideos = protectedSummaryTags
+  const removeYoutube = protectedSummaryTags
+    .replace(/\[([^\]]*)\]\((https?:\/\/(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\/[^\s)]+)\)/gi, (full, _label: string, url: string) => {
+      const id = youtubeVideoId(url);
+      if (!id) return full;
+      youtubeIds.add(id);
+      return '';
+    })
     .replace(youtubeRegex, (_full, id: string) => {
       youtubeIds.add(id);
       return '';
     });
 
-  // Only change presentation of returned media; structured tags are kept.
+  // Display images already returned by the assistant; no image search.
   const imageCandidate = (raw: string) => {
     const cleaned = raw.replace(/[.,;!?]+$/, '');
     const parsed = safeUrl(cleaned);
@@ -412,15 +419,15 @@ function renderFormattedText(
       return /\.(?:png|jpe?g|gif|webp|avif|svg)$/i.test(new URL(parsed).pathname) ? parsed : null;
     } catch { return null; }
   };
-  const withoutMedia = withoutVideos
-    .replace(/!?\[[^\]]*\]\((https?:\/\/[^\s)]+)\)|https?:\/\/[^\s<>"')\]]+/gi, (match, markdownUrl: string | undefined) => {
-      const url = imageCandidate(markdownUrl || match);
+  const withoutMedia = removeYoutube
+    .replace(/\bimage_url\s*[:=]\s*["']?\s*(https?:\/\/[^\s"']+)/gi, (match, rawUrl: string) => {
+      const url = safeUrl(rawUrl.replace(/[.,;!?]+$/, ''));
       if (!url) return match;
       imageUrls.add(url);
       return '';
     })
-    .replace(/\bimage_url\s*[:=]\s*["']?\s*(https?:\/\/[^\s"']+)/gi, (match, rawUrl: string) => {
-      const url = safeUrl(rawUrl.replace(/[.,;!?]+$/, ''));
+    .replace(/!?\[[^\]]*\]\((https?:\/\/[^\s)]+)\)|https?:\/\/[^\s<>"')\]]+/gi, (match, markdownUrl: string | undefined) => {
+      const url = imageCandidate(markdownUrl || match);
       if (!url) return match;
       imageUrls.add(url);
       return '';
