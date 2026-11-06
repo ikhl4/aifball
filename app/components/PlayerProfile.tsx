@@ -120,11 +120,11 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   if (!facts.length && !competitions.length && (!season || (current && !stats.length && available.length === 1))) return null;
 
   return (
-    <section dir="rtl" className={`rounded-3xl border p-5 ${isDark ? 'bg-[#101714] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
+    <section dir="rtl" className={`my-5 min-w-0 space-y-4 ${isDark ? 'text-white' : 'text-black'}` }>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-emerald-500">{season && !hasSeasonSummary ? 'أرقام الموسم · FBref' : 'ملف اللاعب'}</p>
-          <h2 className="text-2xl font-bold">{playerName}</h2>
+          <h2 className="text-xl font-bold text-emerald-600">{playerName}</h2>
         </div>
         {season && (
           <label className="flex items-center gap-2 text-sm">
@@ -136,9 +136,9 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
         )}
       </header>
       {facts.length > 0 && (
-        <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+        <dl className="mt-4 divide-y divide-emerald-500/15">
           {facts.map(({ label, value, source }) => (
-            <div key={label} className="rounded-xl border border-gray-500/30 p-3">
+            <div key={label} className="py-3">
               <dt className="text-sm opacity-75">{label}</dt>
               <dd className="font-bold">{value}</dd>
               <dd><a className="text-sm underline" href={source} target="_blank" rel="noreferrer">المصدر</a></dd>
@@ -147,7 +147,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
         </dl>
       )}
       {competitions.map(({ team, competition, href, numbers }, index) => (
-        <section key={index} className="mt-4 rounded-xl border border-gray-500/30 p-3">
+        <section key={index} className="mt-4 border-t border-emerald-500/20 pt-4">
           <h3 className="font-bold">{team} · {competition}</h3>
           <dl className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {numbers.map(({ label, value }) => (
