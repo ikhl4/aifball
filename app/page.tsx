@@ -212,6 +212,18 @@ function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
+// Use the original uploaded image without redrawing or visual effects.
+function OriginalBrandLogo({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
+  return <img
+    src="https://raw.githubusercontent.com/ikhl4/aifball/main/app/IMG_1276.png"
+    alt="شعار فوتبلاي"
+    width={size === 'lg' ? 112 : 32}
+    height={size === 'lg' ? 112 : 32}
+    className={size === 'lg' ? 'h-28 w-28 object-contain' : 'h-8 w-8 shrink-0 object-contain'}
+    decoding="async"
+  />;
+}
+
 function safeUrl(value: string): string | null {
   try {
     const url = new URL(value);
@@ -1713,7 +1725,7 @@ export default function FootPlayChat() {
             })}
           </span>
           <span className="relative flex flex-col items-center gap-6">
-            <span className="my-4 scale-150 sm:scale-[1.8]"><AiFBallLogo size="lg" /></span>
+            <span className="my-4 scale-150 sm:scale-[1.8]"><OriginalBrandLogo size="lg" /></span>
             <span className="text-sm font-normal text-white/80">من الرياض إلى العالم</span>
           </span>
         </button>
@@ -1861,7 +1873,7 @@ export default function FootPlayChat() {
                 <div key={index} className="flex items-start gap-4 w-full">
                   <div className="flex-shrink-0 mt-1 hidden sm:block">
                     {msg.role === 'assistant' ? (
-                      <AiFBallLogo size="sm" />
+                      <OriginalBrandLogo size="sm" />
                     ) : (
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold bg-emerald-700">
                         أنت
@@ -2087,7 +2099,7 @@ export default function FootPlayChat() {
             {loading && (
               <div className="flex items-start gap-4 w-full mt-4">
                 <div className="flex-shrink-0 mt-1 hidden sm:block">
-                  <AiFBallLogo size="sm" />
+                  <OriginalBrandLogo size="sm" />
                 </div>
 
                 <div
