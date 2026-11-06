@@ -96,7 +96,12 @@ export async function POST(req: Request) {
     const historical = historyMode(query, documentaryContext);
     const matchSummary = historical === 'none' && isMatchSummaryRequest(query) && !/(?:صم[ّ]?م|تصميم|بوستر|ملصق|إنفوجرافيك)/i.test(query);
 
+    if (matchSummary) console.info('[AIFBALL_SUMMARY_ROUTE]', JSON.stringify({ mode: 'match-summary', hasImage, historical, isDetailedMatch: detailedMatch }));
     const singleReport = matchSummary && !hasImage ? await buildSingleMatchHighlights(query, req.signal).catch(() => null) : null;
+    if (matchSummary) console.info('[AIFBALL_FIXTURE_LOOKUP]', JSON.stringify({
+      fixtureAvailable: Boolean(singleReport),
+      verifiedVideoTagPresent: Boolean(singleReport && /\\bvideo_status="found"/.test(singleReport)),
+    }));
     // Only short-circuit Dify when an actual official video was found.
     // Otherwise let Dify's connected DuckDuckGo search try the same fixture.
     if (singleReport && /\bvideo_status="found"/.test(singleReport)) {
@@ -107,6 +112,10 @@ export async function POST(req: Request) {
     // Daily highlights use confirmed scoreboard data first, then match-scoped videos.
     // A request for one named match continues through the existing narrative-first Dify flow.
     const dailyReport = matchSummary ? await buildDailyHighlights(query, { includeVideos: true }) : null;
+    if (matchSummary) console.info('[AIFBALL_DAILY_LOOKUP]', JSON.stringify({
+      reportAvailable: Boolean(dailyReport),
+      structuredCardsAvailable: Boolean(dailyReport && /<aifball-summary\\b/i.test(dailyReport)),
+    }));
     if (dailyReport && !process.env.DIFY_API_KEY) {
         const events = [
           { event: 'message', answer: dailyReport, conversation_id },
