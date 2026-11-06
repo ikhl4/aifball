@@ -23,6 +23,7 @@ import MatchReport from './components/MatchReport';
 import MatchHighlightCard from './components/MatchHighlightCard';
 import ChatVideoCard from './components/ChatVideoCard';
 import ChatImageCard from './components/ChatImageCard';
+import AutoChatImage from './components/AutoChatImage';
 import MatchPoster from './components/MatchPoster';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DocumentaryVideo from './components/DocumentaryVideo';
@@ -865,6 +866,10 @@ function renderFormattedText(
         ))}
       </div>
     );
+  }
+
+  if (!isStreaming && imageUrls.size === 0 && /كريستيانو\s+رونالدو|cristiano\s+ronaldo|ليونيل\s+ميسي|lionel\s+messi|كيليان\s+مبابي|kylian\s+mbapp|لامين\s+يامال|lamine\s+yamal|محمد\s+صلاح|mohamed\s+salah|كريم\s+بنزيما|karim\s+benzema|نيمار|neymar/i.test(userQuery || '')) {
+    elements.push(<AutoChatImage key="auto-player-image" query={userQuery} isDark={isDark} />);
   }
 
   if (youtubeIds.size) {
