@@ -22,6 +22,8 @@ import { COMPETITIONS, resolveStandingsRequest } from '../lib/competitions';
 import MatchReport from './components/MatchReport';
 import MatchHighlightCard from './components/MatchHighlightCard';
 import ChatVideoCard from './components/ChatVideoCard';
+import ChatImageCard from './components/ChatImageCard';
+import AutoChatImage from './components/AutoChatImage';
 import MatchPoster from './components/MatchPoster';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import DocumentaryVideo from './components/DocumentaryVideo';
@@ -380,12 +382,14 @@ function renderFormattedText(
   const defaultLanguage = detectLanguage(userQuery);
   const summaryMode = summaryPresentationMode(userQuery || text);
   const youtubeIds = new Set<string>();
+  const imageUrls = new Set<string>();
   const summaryTags: string[] = [];
 
   // Preserve structured match-summary tags so their video URLs stay attached
   // to the correct match instead of being collected as unrelated page videos.
+  // Shield all structured components before extracting prose media URLs.
   const protectedSummaryTags = text.replace(
-    /<aifball-(?:summary|documentary)\b[^>]*\/?>/gi,
+    /<aifball-[\w-]+\b[^>]*\/?>/gi,
     (tag) => {
       const index = summaryTags.push(tag) - 1;
       return `AIFBALLSUMMARYTAGTOKEN${index}END`;
@@ -393,17 +397,46 @@ function renderFormattedText(
   );
 
   const youtubeRegex =
-    /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/g;
+    /(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com\/(?:watch\?[^\s)]*?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/gi;
 
-  const withoutVideos = protectedSummaryTags
+  const removeYoutube = protectedSummaryTags
+    .replace(/\[([^\]]*)\]\((https?:\/\/(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\/[^\s)]+)\)/gi, (full, _label: string, url: string) => {
+      const id = youtubeVideoId(url);
+      if (!id) return full;
+      youtubeIds.add(id);
+      return '';
+    })
     .replace(youtubeRegex, (_full, id: string) => {
       youtubeIds.add(id);
+      return '';
+    });
+
+  // Display images already returned by the assistant; no image search.
+  const imageCandidate = (raw: string) => {
+    const cleaned = raw.replace(/[.,;!?]+$/, '');
+    const parsed = safeUrl(cleaned);
+    if (!parsed) return null;
+    try {
+      return /\.(?:png|jpe?g|gif|webp|avif|svg)$/i.test(new URL(parsed).pathname) ? parsed : null;
+    } catch { return null; }
+  };
+  const withoutMedia = removeYoutube
+    .replace(/\bimage_url\s*[:=]\s*["']?\s*(https?:\/\/[^\s"']+)/gi, (match, rawUrl: string) => {
+      const url = safeUrl(rawUrl.replace(/[.,;!?]+$/, ''));
+      if (!url) return match;
+      imageUrls.add(url);
+      return '';
+    })
+    .replace(/!?\[[^\]]*\]\((https?:\/\/[^\s)]+)\)|https?:\/\/[^\s<>"')\]]+/gi, (match, markdownUrl: string | undefined) => {
+      const url = imageCandidate(markdownUrl || match);
+      if (!url) return match;
+      imageUrls.add(url);
       return '';
     })
     .replace(/AIFBALLSUMMARYTAGTOKEN(\d+)END/g, (_token, index: string) => summaryTags[Number(index)] || '');
 
   const elements: React.ReactNode[] = [];
-  const lines = withoutVideos.replace(/\r\n/g, '\n').split('\n');
+  const lines = withoutMedia.replace(/\r\n/g, '\n').split('\n');
   const tableLine = (line: string) => /^\s*\|.+\|\s*$/.test(line);
   const isDivider = (line: string) =>
     /^\s*\|(?:\s*:?-{3,}:?\s*\|)+\s*$/.test(line);
@@ -823,6 +856,20 @@ function renderFormattedText(
         <InlineText value={trimmed} isDark={isDark} />
       </p>
     );
+  }
+
+  if (imageUrls.size) {
+    elements.push(
+      <div key="chat-images" className="my-4 space-y-3">
+        {Array.from(imageUrls).map((url) => (
+          <ChatImageCard key={url} url={url} isDark={isDark} />
+        ))}
+      </div>
+    );
+  }
+
+  if (!isStreaming && imageUrls.size === 0 && /كريستيانو\s+رونالدو|cristiano\s+ronaldo|ليونيل\s+ميسي|lionel\s+messi|كيليان\s+مبابي|kylian\s+mbapp|لامين\s+يامال|lamine\s+yamal|محمد\s+صلاح|mohamed\s+salah|كريم\s+بنزيما|karim\s+benzema|نيمار|neymar/i.test(userQuery || '')) {
+    elements.push(<AutoChatImage key="auto-player-image" query={userQuery} isDark={isDark} />);
   }
 
   if (youtubeIds.size) {
