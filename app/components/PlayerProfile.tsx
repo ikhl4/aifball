@@ -254,10 +254,11 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
                 const value = stats.find(item => item.label === label)?.value;
                 return (
                 <div key={label} className="min-w-0 rounded-xl bg-emerald-500/10 p-3 text-center">
-                  <dd className="text-xl font-extrabold tabular-nums text-white">{value}</dd>
+                  <dd className="text-xl font-extrabold tabular-nums text-white">{value ?? '—'}</dd>
                   <dt className="mt-1 text-[11px] leading-5 opacity-75">{label}</dt>
                 </div>
-              ))}
+                );
+              })}
             </dl>
           ) : hasSeasonSummary ? (
             <p className="text-sm opacity-75">{seasonSummary}</p>
