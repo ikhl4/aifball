@@ -859,6 +859,19 @@ function renderFormattedText(
       continue;
     }
 
+    // Promote only explicitly supplied, short numeric facts into compact cards.
+    // Never synthesize statistics or change the model's numbers.
+    const stat = trimmed.match(/^(?:[-•]\s*)?([^:：|]{2,26})\s*[:：]\s*(\d[\d,.٬٫]*\s*(?:%|٪|دقيقة|مباراة|هدف|تمريرة حاسمة)?)\s*$/);
+    if (stat && !isStreaming) {
+      elements.push(
+        <div key={i} className={`inline-flex items-center justify-between gap-4 rounded-xl border px-3 py-2 my-1 mx-1 min-w-[135px] max-w-full align-top ${isDark ? 'bg-[#242625] border-white/10' : 'bg-gray-100 border-gray-200'}`}>
+          <span className="text-xs text-gray-500 dark:text-gray-400"><InlineText value={stat[1].trim()} isDark={isDark} /></span>
+          <strong dir="auto" className={`text-base font-extrabold tabular-nums ${isDark ? 'text-white' : 'text-gray-900'}`}>{stat[2].trim()}</strong>
+        </div>
+      );
+      continue;
+    }
+
     elements.push(
       <p
         key={i}
@@ -1236,7 +1249,11 @@ export default function FootPlayChat() {
     activeRequestSession.current = id;
 
     const timeoutId = window.setTimeout(() => controller.abort(), 240000);
-    const started = Date.now();
+    const started = performance.now();
+    let firstByteMs: number | null = null;
+    let firstAnswerMs: number | null = null;
+    let streamedChunks = 0;
+    let responseDone = false;
 
     let answer = '';
     let conv = conversationId;
@@ -1315,8 +1332,6 @@ export default function FootPlayChat() {
       const decoder = new TextDecoder();
 
       let buffer = '';
-      let responseDone = false;
-
       const handleFrame = (frame: string) => {
         const event = parseSSEFrame(frame);
         if (!event) return;
@@ -1346,11 +1361,12 @@ export default function FootPlayChat() {
           typeof event.answer === 'string'
         ) {
           answer += event.answer;
+          if (firstAnswerMs === null && event.answer.length > 0) firstAnswerMs = performance.now() - started;
           receivedAnswer = true;
 
           update(
             answer,
-            Math.max(1, Math.floor((Date.now() - started) / 1000))
+            Math.max(1, Math.floor((performance.now() - started) / 1000))
           );
         }
       };
@@ -1358,6 +1374,8 @@ export default function FootPlayChat() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        streamedChunks++;
+        if (firstByteMs === null) firstByteMs = performance.now() - started;
 
         buffer += decoder.decode(value, { stream: true });
         const frames = buffer.split(/\r?\n\r?\n/);
@@ -1407,6 +1425,16 @@ export default function FootPlayChat() {
       }
 
       saveSession(id, conv, latest);
+      // Opt-in, local-only diagnostics. No query, response or personal data logged.
+      if (typeof window !== 'undefined' && window.localStorage.getItem('aifball_debug_performance') === '1') {
+        console.info('[AiFBall chat performance]', {
+          firstByteMs: firstByteMs === null ? null : Math.round(firstByteMs),
+          firstAnswerMs: firstAnswerMs === null ? null : Math.round(firstAnswerMs),
+          totalMs: Math.round(performance.now() - started),
+          streamedChunks,
+          completed: responseDone,
+        });
+      }
     }
   };
 
