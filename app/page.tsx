@@ -279,9 +279,12 @@ function InlineText({ value, isDark }: { value: string; isDark: boolean }) {
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-emerald-500 underline break-all"
+              className="inline-flex max-w-full items-center gap-1 rounded-md border border-emerald-500/20 px-2 py-0.5 text-sm text-emerald-500 underline-offset-2 hover:underline"
+              title={href}
+              aria-label={`فتح المصدر: ${new URL(href).hostname.replace(/^www\\./, '')}`}
             >
-              {part}
+              <span aria-hidden="true">↗</span>
+              <span className="truncate" dir="ltr">{new URL(href).hostname.replace(/^www\\./, '')}</span>
             </a>
           ) : <span key={index}>{part}</span>;
         }
