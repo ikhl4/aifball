@@ -999,15 +999,6 @@ export default function FootPlayChat() {
     const preference: ThemePreference = stored === 'light' || stored === 'dark' ? stored : 'system';
     setThemePreference(preference);
     setIsDarkMode(preference === 'system' ? media.matches : preference === 'dark');
-    const handleSystemTheme = (event: MediaQueryListEvent) => {
-      if (localStorage.getItem(THEME_KEY) !== 'light' && localStorage.getItem(THEME_KEY) !== 'dark') {
-        setIsDarkMode(event.matches);
-      }
-    };
-    media.addEventListener('change', handleSystemTheme);
-    // The cleanup is registered separately to preserve the existing session initialization effect.
-
-
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
