@@ -62,8 +62,8 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   const competitions = (details?.[seasonKey + '_competitions'] ?? '').split(';').flatMap(line => {
     const [team, competition, source, ...values] = line.split('|').map(value => value.trim());
     const href = safeSource(source);
-    if (!team || !competition || !href || values.length !== competitionLabels.length) return [];
-    const numbers = values.flatMap((value, index) =>
+    if (!team || !competition || !href || !values.length) return [];
+    const numbers = values.slice(0, competitionLabels.length).flatMap((value, index) =>
       /^\d+$/.test(value) ? [{ label: competitionLabels[index], value }] : []);
     return numbers.length ? [{ team, competition, href, numbers }] : [];
   });
@@ -130,12 +130,33 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   const trophyValue = details?.trophies_count || details?.honours_count;
   const trophyCount = trophySource && trophyValue && /^\\d+$/.test(normalizeDigits(trophyValue))
     ? normalizeDigits(trophyValue) : undefined;
-  const contractDate = safeSource(details?.contract_source) && /^\\d{4}-\\d{2}-\\d{2}$/.test(details?.contract_end || '')
+  const contractDate = safeSource(details?.contract_source) && (/^\d{4}-\d{2}-\d{2}$/.test(details?.contract_end || '') || /^\d{4}$/.test(details?.contract_end || ''))
     ? details?.contract_end : undefined;
   const currentClub = details?.club || 'النادي الحالي غير متاح';
 
   const photo = safeSource(details?.image_url || details?.photo_url || details?.portrait_url);
+  const [wikiPhoto, setWikiPhoto] = useState<string>();
   const [photoFailed, setPhotoFailed] = useState(false);
+  useEffect(() => {
+    setWikiPhoto(undefined);
+    setPhotoFailed(false);
+    if (photo) return;
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      action: 'query', generator: 'search', gssearch: playerName + ' footballer',
+      gsrlimit: '3', prop: 'pageimages', piprop: 'thumbnail', pithumbsize: '420',
+      format: 'json', origin: '*',
+    });
+    fetch('https://en.wikipedia.org/w/api.php?' + params, { signal: controller.signal })
+      .then(response => response.ok ? response.json() : null)
+      .then(payload => {
+        const pages = Object.values(payload?.query?.pages ?? {}) as Array<{ thumbnail?: { source?: string } }>;
+        const source = pages.map(page => safeSource(page.thumbnail?.source)).find(Boolean);
+        if (!controller.signal.aborted && source) setWikiPhoto(source);
+      }).catch(() => {});
+    return () => controller.abort();
+  }, [playerName, photo]);
+  const visiblePhoto = photo && !photoFailed ? photo : wikiPhoto;
 
   const facts = [
     { label: 'إجمالي المسيرة', value: details?.career_summary, source: details?.career_source },
@@ -154,8 +175,8 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   return (
     <section dir="rtl" className={`w-full min-w-0 overflow-hidden rounded-3xl border ${isDark ? 'bg-[#101714] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
       <header className="flex items-center gap-4 border-b border-white/10 p-4 sm:p-5">
-        {photo && !photoFailed ? (
-          <img src={photo} alt={`صورة ${playerName}`} loading="lazy" referrerPolicy="no-referrer"
+        {visiblePhoto ? (
+          <img src={visiblePhoto} alt={`صورة ${playerName}`} loading="lazy" referrerPolicy="no-referrer"
             onError={() => setPhotoFailed(true)}
             className="h-24 w-24 shrink-0 rounded-2xl object-cover bg-white/5" />
         ) : (
