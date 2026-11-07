@@ -1489,7 +1489,7 @@ export default function FootPlayChat() {
         .aifball-day-reply h4, .aifball-day-reply h5, .aifball-day-reply h6 {
           color: #1D6B35 !important;
         }
-        .aifball-day-reply p, .aifball-day-reply li { color: #000; }
+        .aifball-day-reply p, .aifball-day-reply li { color: #111827; }
 
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
@@ -1940,7 +1940,7 @@ export default function FootPlayChat() {
                               ? 'ltr'
                               : 'rtl'
                           }
-                          className={`text-sm sm:text-[15px] leading-relaxed break-words min-w-0 ${!isDarkMode ? 'aifball-day-reply text-black' : 'text-white'}`}
+                          className={`rounded-3xl border p-4 sm:p-5 shadow-sm text-sm sm:text-[15px] leading-relaxed break-words min-w-0 ${!isDarkMode ? 'aifball-day-reply bg-[#F3F4F6] border-[#D1D5DB] text-[#111827]' : 'bg-[#252B2B]/95 border-[#66736C]/65 text-[#F5F7F6] backdrop-blur-md'}`}
                         >
                           {renderFormattedText(
                             msg.content,
