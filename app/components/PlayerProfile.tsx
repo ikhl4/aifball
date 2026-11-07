@@ -145,6 +145,10 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     const value = candidate && normalizeDigits(candidate).replace(/,/g, '');
     return value && /^\d+$/.test(value) ? [{ label, value: Number(value).toLocaleString('en-US') }] : [];
   }) : [];
+  const careerHeadline = careerFields.map(({ label }) => ({
+    label,
+    value: careerTotals.find(item => item.label === label)?.value ?? '—',
+  }));
   const trophySource = safeSource(details?.trophies_source || details?.honours_source);
   const trophyValue = details?.trophies_count || details?.honours_count;
   const trophyCount = trophySource && trophyValue && /^\\d+$/.test(normalizeDigits(trophyValue))
@@ -219,14 +223,14 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
           {contractDate && <div className="rounded-xl bg-emerald-500/10 p-3 text-center"><p className="text-base font-extrabold text-white" dir="ltr">{contractDate}</p><p className="mt-1 text-xs opacity-75">نهاية عقد {currentClub}</p></div>}
         </div>
       )}
-      {careerTotals.length > 0 && (
+      {careerSource && (
         <div className="p-4 sm:p-5">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h3 className="font-bold">إجمالي المسيرة</h3>
             
           </div>
           <dl className="grid grid-cols-3 gap-2">
-            {careerTotals.map(({ label, value }) => (
+            {careerHeadline.map(({ label, value }) => (
               <div key={label} className="min-w-0 rounded-xl bg-emerald-500/10 p-3 text-center">
                 <dd className="text-xl font-extrabold tabular-nums text-white">{value}</dd>
                 <dt className="mt-1 text-[11px] leading-5 opacity-75">{label}</dt>
