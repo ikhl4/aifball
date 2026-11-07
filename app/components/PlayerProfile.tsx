@@ -203,7 +203,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
           <dl className="grid grid-cols-3 gap-2">
             {careerTotals.map(({ label, value }) => (
               <div key={label} className="min-w-0 rounded-xl bg-emerald-500/10 p-3 text-center">
-                <dd className="text-xl font-extrabold tabular-nums text-emerald-400">{value}</dd>
+                <dd className="text-xl font-extrabold tabular-nums text-white">{value}</dd>
                 <dt className="mt-1 text-[11px] leading-5 opacity-75">{label}</dt>
               </div>
             ))}
@@ -214,7 +214,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
       {season && (
         <div className="px-4 pb-4 sm:px-5">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className="font-bold">إحصائيات الموسم</h3>
+            <h3 className="font-bold">أرقام الموسم الحالي</h3>
             <label className="flex items-center gap-2 text-xs">الموسم
               <select disabled={available.length < 2} className="max-w-32 rounded-lg border border-gray-500 bg-transparent p-2" value={season}
                 onChange={event => setSelection(event.target.value)}>
@@ -223,18 +223,25 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
             </label>
           </div>
           {competitions.length > 0 ? competitions.map(({ team, competition, numbers }, index) => (
-            <div key={index} className="mb-3 rounded-xl border border-gray-500/20 p-3">
-              <div className="flex items-start justify-between gap-2">
-                <h4 className="text-sm font-semibold">{team} · {competition}</h4>
-                
-              </div>
-              <dl className="mt-3 grid grid-cols-3 gap-3">
-                {numbers.map(({ label, value }) => <div key={label}><dd className="text-lg font-bold tabular-nums">{value}</dd><dt className="text-xs opacity-65">{label}</dt></div>)}
+            <div key={index} className="mb-4">
+              <p className="mb-3 text-xs opacity-70">{team} · {competition}</p>
+              <dl className="grid grid-cols-3 gap-2">
+                {numbers.map(({ label, value }) => (
+                  <div key={label} className="min-w-0 rounded-xl bg-emerald-500/10 p-3 text-center">
+                    <dd className="text-xl font-extrabold tabular-nums text-white">{value}</dd>
+                    <dt className="mt-1 text-[11px] leading-5 opacity-75">{label}</dt>
+                  </div>
+                ))}
               </dl>
             </div>
           )) : stats.length ? (
             <dl className="grid grid-cols-3 gap-2">
-              {stats.map(({ label, value }) => <div key={label} className="rounded-xl border border-gray-500/20 p-3"><dd className="text-lg font-bold">{value}</dd><dt className="text-xs opacity-65">{label}</dt></div>)}
+              {stats.map(({ label, value }) => (
+                <div key={label} className="min-w-0 rounded-xl bg-emerald-500/10 p-3 text-center">
+                  <dd className="text-xl font-extrabold tabular-nums text-white">{value}</dd>
+                  <dt className="mt-1 text-[11px] leading-5 opacity-75">{label}</dt>
+                </div>
+              ))}
             </dl>
           ) : hasSeasonSummary ? (
             <p className="text-sm opacity-75">{seasonSummary}</p>
