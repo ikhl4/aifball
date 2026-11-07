@@ -448,6 +448,11 @@ function renderFormattedText(
     .replace(/AIFBALLSUMMARYTAGTOKEN(\d+)END/g, (_token, index: string) => summaryTags[Number(index)] || '');
 
   const elements: React.ReactNode[] = [];
+  // Lead relevant player, club and stadium answers with a sourced visual when available.
+  // Never display a placeholder if the lookup fails.
+  if (!isStreaming && imageUrls.size === 0 && /لاعب|مسيرة|قصة|تاريخ|ملعب|استاد|ستاد|نادي|رونالدو|ميسي|مبابي|يامال|صلاح|بنزيما|نيمار|player|stadium|club|history|career|story/i.test(userQuery || '')) {
+    elements.push(<AutoChatImage key="auto-player-image" query={userQuery} isDark={isDark} />);
+  }
   const lines = withoutMedia.replace(/\r\n/g, '\n').split('\n');
   const tableLine = (line: string) => /^\s*\|.+\|\s*$/.test(line);
   const isDivider = (line: string) =>
@@ -880,9 +885,7 @@ function renderFormattedText(
     );
   }
 
-  if (!isStreaming && imageUrls.size === 0 && /لاعب|مسيرة|قصة|تاريخ|ملعب|استاد|ستاد|نادي|رونالدو|ميسي|مبابي|يامال|صلاح|بنزيما|نيمار|player|stadium|club|history|career|story/i.test(userQuery || '')) {
-    elements.push(<AutoChatImage key="auto-player-image" query={userQuery} isDark={isDark} />);
-  }
+
 
   if (youtubeIds.size) {
     const matchLabels = lines
@@ -1937,11 +1940,7 @@ export default function FootPlayChat() {
                               ? 'ltr'
                               : 'rtl'
                           }
-                          className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-5 shadow-sm text-sm sm:text-[15px] leading-relaxed break-words ${!isDarkMode ? 'aifball-day-reply ' : ''}${
-                            isDarkMode
-                              ? 'bg-emerald-950/50 backdrop-blur-xl border-emerald-300/20 text-white'
-                              : 'bg-white border-emerald-500/70 text-black shadow-sm'
-                          }`}
+                          className={`text-sm sm:text-[15px] leading-relaxed break-words min-w-0 ${!isDarkMode ? 'aifball-day-reply text-black' : 'text-white'}`}
                         >
                           {renderFormattedText(
                             msg.content,
