@@ -1318,6 +1318,7 @@ export default function FootPlayChat() {
     let firstAnswerMs: number | null = null;
     let streamedChunks = 0;
     let responseDone = false;
+    let durableHandled = false;
 
     let answer = '';
     let conv = conversationId;
@@ -1361,6 +1362,7 @@ export default function FootPlayChat() {
             durableJobRef.current = pending;
             localStorage.setItem(DURABLE_JOB_KEY, JSON.stringify(pending));
             // Polling is independent of the original request and resumes after reload.
+            durableHandled = true;
             await pollDurableJob(job.id, id, controller.signal);
             return;
           }
@@ -1511,13 +1513,14 @@ export default function FootPlayChat() {
       }
 
       if (renderFrame) window.cancelAnimationFrame(renderFrame);
-      if (activeRequestSession.current === id) {
-        setMessages(latest);
-        activeRequestSession.current = null;
-        setLoading(false);
+      if (!durableHandled) {
+        if (activeRequestSession.current === id) {
+          setMessages(latest);
+          activeRequestSession.current = null;
+          setLoading(false);
+        }
+        saveSession(id, conv, latest);
       }
-
-      saveSession(id, conv, latest);
       // Opt-in, local-only diagnostics. No query, response or personal data logged.
       if (typeof window !== 'undefined' && window.localStorage.getItem('aifball_debug_performance') === '1') {
         console.info('[AiFBall chat performance]', {
