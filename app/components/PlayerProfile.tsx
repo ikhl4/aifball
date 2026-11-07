@@ -156,8 +156,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
         <div className="p-4 sm:p-5">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h3 className="font-bold">إجمالي المسيرة</h3>
-            <a href={careerSource} target="_blank" rel="noopener noreferrer" title="مصدر أرقام المسيرة"
-              aria-label="فتح مصدر أرقام المسيرة" className="rounded-lg border border-emerald-500/30 px-2 py-1 text-emerald-400">↗</a>
+            
           </div>
           <dl className="grid grid-cols-3 gap-2">
             {careerTotals.map(({ label, value }) => (
@@ -181,11 +180,11 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
               </select>
             </label>
           </div>
-          {competitions.length > 0 ? competitions.map(({ team, competition, href, numbers }, index) => (
+          {competitions.length > 0 ? competitions.map(({ team, competition, numbers }, index) => (
             <div key={index} className="mb-3 rounded-xl border border-gray-500/20 p-3">
               <div className="flex items-start justify-between gap-2">
                 <h4 className="text-sm font-semibold">{team} · {competition}</h4>
-                <a href={href} target="_blank" rel="noopener noreferrer" aria-label="مصدر إحصائيات البطولة" title="مصدر إحصائيات البطولة" className="text-emerald-400">↗</a>
+                
               </div>
               <dl className="mt-3 grid grid-cols-3 gap-3">
                 {numbers.map(({ label, value }) => <div key={label}><dd className="text-lg font-bold tabular-nums">{value}</dd><dt className="text-xs opacity-65">{label}</dt></div>)}
@@ -202,10 +201,10 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
       )}
       {facts.filter(f => f.label !== 'إجمالي المسيرة' && f.label !== 'أرقام الموسم المختار').length > 0 && (
         <div className="grid grid-cols-2 gap-2 border-t border-white/10 p-4 sm:p-5">
-          {facts.filter(f => f.label !== 'إجمالي المسيرة' && f.label !== 'أرقام الموسم المختار').map(({ label, value, source }) => (
+          {facts.filter(f => f.label !== 'إجمالي المسيرة' && f.label !== 'أرقام الموسم المختار').map(({ label, value }) => (
             <div key={label} className="min-w-0 rounded-xl border border-gray-500/20 p-3">
               <div className="flex items-start justify-between gap-2"><h4 className="text-xs opacity-65">{label}</h4>
-                <a href={source} target="_blank" rel="noopener noreferrer" title="المصدر" aria-label={`مصدر ${label}`} className="text-emerald-400">↗</a></div>
+                </div>
               <p className="mt-2 break-words text-sm font-semibold leading-6">{value}</p>
             </div>
           ))}
