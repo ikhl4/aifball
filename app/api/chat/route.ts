@@ -263,10 +263,10 @@ export async function POST(req: Request) {
           // Inspect only Dify SSE event types, never log content, queries or identifiers.
           if (!firstAnswerLogged || !firstToolLogged) {
             eventBuffer = (eventBuffer + decoder.decode(chunk, { stream: true })).slice(-16384);
-            const events = eventBuffer.split(/\\r?\\n\\r?\\n/);
+            const events = eventBuffer.split(/\r?\n\r?\n/);
             eventBuffer = events.pop() ?? '';
             for (const eventText of events) {
-              const kind = eventText.match(/"event"\\s*:\\s*"([^"]+)"/)?.[1];
+              const kind = eventText.match(/"event"\s*:\s*"([^"]+)"/)?.[1];
               if (!kind) continue;
               if (!firstToolLogged && (kind === 'agent_thought' || kind === 'node_started')) {
                 firstToolLogged = true;
