@@ -105,6 +105,10 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
       })
     : [];
 
+  const playerImage = safeSource(details?.image_url ?? details?.photo_url ?? details?.player_image ?? details?.image);
+  const factIcons: Record<string, string> = { 'إجمالي المسيرة': '⚽', 'الألقاب': '🏆', 'أرقام الموسم المختار': '📊', 'انتهاء العقد': '📅', 'القيمة السوقية': '💶', 'الراتب المنشور': '💰' };
+  const maxStat = Math.max(1, ...stats.map(item => Number(item.value)).filter(Number.isFinite));
+
   const facts = [
     { label: 'إجمالي المسيرة', value: details?.career_summary, source: details?.career_source },
     { label: 'الألقاب', value: details?.honours, source: details?.honours_source },
@@ -120,11 +124,12 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   if (!facts.length && !competitions.length && (!season || (current && !stats.length && available.length === 1))) return null;
 
   return (
-    <section dir="rtl" className={`rounded-3xl border p-5 ${isDark ? 'bg-[#101714] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <section dir="rtl" className={`my-5 min-w-0 space-y-4 ${isDark ? 'text-white' : 'text-black'}` }>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        {playerImage && <img src={playerImage} alt={`صورة ${playerName}`} loading="lazy" referrerPolicy="no-referrer" className="h-32 w-28 rounded-2xl object-cover sm:h-40 sm:w-36" />}
         <div>
-          <p className="text-sm text-emerald-500">{season && !hasSeasonSummary ? 'أرقام الموسم · FBref' : 'ملف اللاعب'}</p>
-          <h2 className="text-2xl font-bold">{playerName}</h2>
+          <p className="text-sm text-emerald-500">⚽ {season && !hasSeasonSummary ? 'إحصائيات الموسم · FBref' : 'المسيرة الكروية'}</p>
+          <h2 className="text-xl font-bold text-emerald-600">{playerName}</h2>
         </div>
         {season && (
           <label className="flex items-center gap-2 text-sm">
@@ -136,33 +141,33 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
         )}
       </header>
       {facts.length > 0 && (
-        <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+        <dl className="mt-4 divide-y divide-emerald-500/15">
           {facts.map(({ label, value, source }) => (
-            <div key={label} className="rounded-xl border border-gray-500/30 p-3">
-              <dt className="text-sm opacity-75">{label}</dt>
-              <dd className="font-bold">{value}</dd>
-              <dd><a className="text-sm underline" href={source} target="_blank" rel="noreferrer">المصدر</a></dd>
+            <div key={label} className="py-3">
+              <dt className="text-sm font-semibold text-emerald-500">{factIcons[label] ?? '✦'} {label}</dt>
+              <dd className="mt-1 leading-8">{value}</dd>
+
             </div>
           ))}
         </dl>
       )}
       {competitions.map(({ team, competition, href, numbers }, index) => (
-        <section key={index} className="mt-4 rounded-xl border border-gray-500/30 p-3">
-          <h3 className="font-bold">{team} · {competition}</h3>
+        <section key={index} className="mt-4 border-t border-emerald-500/20 pt-4">
+          <h3 className="font-bold text-emerald-500">🏟️ {team} · {competition}</h3>
           <dl className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {numbers.map(({ label, value }) => (
               <div key={label}><dt className="text-sm opacity-75">{label}</dt><dd className="font-bold">{value}</dd></div>
             ))}
           </dl>
-          <a className="text-sm underline" href={href} target="_blank" rel="noreferrer">مصدر أرقام البطولة</a>
+
         </section>
       ))}
       {stats.length ? (
         <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {stats.map(({ label, value }) => (
-            <div key={label} className="rounded-xl border border-gray-500/30 p-3">
+            <div key={label} className="border-b border-emerald-500/20 py-3">
               <dt className="text-sm opacity-75">{label}</dt>
-              <dd className="text-xl font-bold">{value}</dd>
+              <dd className="text-2xl font-bold text-emerald-500">{value}</dd>
             </div>
           ))}
         </dl>
