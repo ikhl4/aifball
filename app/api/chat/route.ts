@@ -95,6 +95,7 @@ const CLUB_NEWS_RULES = `
 `;
 
 export async function POST(req: Request) {
+  const requestStarted = performance.now();
   try {
     const body = await req.json();
     const hasImage = Array.isArray(body?.files) && body.files.some((file: { type?: string } | null) => file?.type === 'image');
@@ -171,6 +172,8 @@ export async function POST(req: Request) {
     console.log('Sending to Dify:', { query, conversation_id, hasFiles: files.length > 0 });
 
     const playerCareer = /مسير|لاعب|بطاق|راتب|عقد|سوقي|career|player|profile|salary|contract/i.test(query) || /^(?:[\p{L}\p{M}]+[ \t]+){1,4}[\p{L}\p{M}]+[؟?]?$/u.test(query.trim());
+    const nameOnlyPlayer = !conversation_id && !hasImage && /^[\\p{L}\\p{M}]+(?:[ \\t]+[\\p{L}\\p{M}]+){1,3}[؟?]?$/u.test(query.trim()) && !/^(?:متى|كيف|لماذا|وين|من|هل|كم|وش|ايش|ما|أين|where|when|how|who|what)\\b/i.test(query.trim());
+    const fastPlayerInstruction = '\\nابدأ بإرسال بطاقة اللاعب فور تأكيد هويته وصورته الأساسية. لا تنتظر جمع جميع الأرقام والبطولات قبل إرسال أول محتوى مفيد؛ استكمل التفاصيل الموثقة بعد البطاقة في نفس الرد. ابحث عن المصادر المستقلة الضرورية فقط، ولا تكرر البحث عن معلومة تم التحقق منها. لا تخترع أرقامًا أو سنوات.\\n';
     const wantsTweet = /(?:اكتب|جهز|صغ|سو|اعطني|أعطني|ابي|أبي|ابغى|أبغى|اريد|أريد|write|draft|compose).{0,50}(?:تغريد|بوست|منشور|tweet|post)|(?:تغريد|بوست|منشور|tweet|post).{0,50}(?:عن|حول|بشأن|for|about)|(?:اغرد|أغرد|غرد|غردلي|tweet about|post about)/i.test(query);
     const baseQuery = /انتقالات|ميركاتو|سوق الانتقال|صفقات|transfers|transfer window/i.test(query)
       ? query + TRANSFER_REPORT_RULES
@@ -182,7 +185,7 @@ export async function POST(req: Request) {
         ? withMatchReportPresentation(query)
         : analysis
           ? withAnalysisPresentation(query)
-          : (conversation_id ? withMatchConversationContext(query) : query) + (playerCareer ? PLAYER_CAREER_RULES : '');
+          : (conversation_id ? withMatchConversationContext(query) : query) + (playerCareer ? PLAYER_CAREER_RULES + (nameOnlyPlayer ? fastPlayerInstruction : '') : '');
     const fixtureContext = singleReport && !/\bvideo_status="found"/.test(singleReport)
       ? '\nبيانات المباراة المؤكدة من مصدر النتائج (لا تعرض رسالة فشل الفيديو قبل تجربة DuckDuckGo المتصلة):\n'
         + singleReport.replace(/\s+video_status="[^"]*"/, '')
@@ -204,6 +207,7 @@ export async function POST(req: Request) {
     const gameRules = `إذا طلب المستخدم لعبة كروية أو كانت المحادثة في جولة لعبة نشطة، العب داخل الشات. في لغز اللاعب اختر جواباً موثقاً وقدّم قرائن عن أنديته أو زملائه دون كشفه. اقبل الأسماء المكافئة، وأعط تلميحاً واحداً عند الخطأ. في الاختبار أو تحدي الثلاثين اسأل سؤالاً واحداً كل مرة، سجّل النقاط واذكرها بعد الإجابة. لا تدّع وجود مؤقت فعلي. حافظ على نوع اللعبة والنقاط من سياق المحادثة، وأنهِ الجولة عند طلب المستخدم. إذا انتهت اللعبة أو غيّر الموضوع، أجب كالمعتاد.\n`;
     const guidedQuery = baseQuery + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + fixtureContext + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (!matchSummary && (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture) ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '');
 
+    const difyStarted = performance.now();
     const apiRes = await fetch(url, {
       method: 'POST',
       headers: {
@@ -230,6 +234,9 @@ export async function POST(req: Request) {
         { status: apiRes.status }
       );
     }
+
+    // Measure Dify time-to-headers without logging the query or answer.
+    if (process.env.VERCEL_ENV === 'preview') console.info('[AiFBall latency]', JSON.stringify({ stage: 'dify_headers', preDifyMs: Math.round(difyStarted - requestStarted), difyHeadersMs: Math.round(performance.now() - difyStarted) }));
 
     // إرجاع الـ Stream مباشرة للواجهة الأمامية
     return new Response(apiRes.body && historical !== 'none' && !hasImage && !wantsDesign ? verifiedSummaryStream(apiRes.body, req.signal, (answer, signal) => presentHistoryAnswer(answer, historical, signal)) : apiRes.body && matchSummary && !hasImage && !wantsDesign
