@@ -143,7 +143,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     const controller = new AbortController();
     const params = new URLSearchParams({
       action: 'query', generator: 'search', gssearch: playerName + ' footballer',
-      gsrlimit: '3', prop: 'pageimages', piprop: 'thumbnail', pithumbsize: '420',
+      gsrlimit: '5', prop: 'pageimages', piprop: 'thumbnail', pithumbsize: '420',
       format: 'json', origin: '*',
     });
     fetch('https://en.wikipedia.org/w/api.php?' + params, { signal: controller.signal })
@@ -156,6 +156,12 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     return () => controller.abort();
   }, [playerName, photo]);
   const visiblePhoto = photo && !photoFailed ? photo : wikiPhoto;
+  const individualHonours = details?.individual_awards || details?.individual_honours || details?.individual_achievements;
+  const teamHonours = details?.trophies_detail || details?.team_honours || details?.honours;
+  const honours = [
+    ...(teamHonours ? [{ label: 'البطولات الجماعية', value: teamHonours }] : []),
+    ...(individualHonours ? [{ label: 'الإنجازات الفردية', value: individualHonours }] : []),
+  ];
 
   const facts = [
     { label: 'إجمالي المسيرة', value: details?.career_summary, source: details?.career_source },
@@ -169,7 +175,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     const href = safeSource(source);
     return value?.trim() && href ? [{ label, value, source: href }] : [];
   });
-  if (!facts.length && !competitions.length && !careerTotals.length && !trophyCount && !contractDate && !season) return null;
+  if (!facts.length && !competitions.length && !careerTotals.length && !trophyCount && !contractDate && !season && !honours.length) return null;
 
   return (
     <section dir="rtl" className={`w-full min-w-0 overflow-hidden rounded-3xl border ${isDark ? 'bg-[#101714] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
@@ -177,7 +183,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
         {visiblePhoto ? (
           <img src={visiblePhoto} alt={`صورة ${playerName}`} loading="lazy" referrerPolicy="no-referrer"
             onError={() => setPhotoFailed(true)}
-            className="h-24 w-24 shrink-0 rounded-2xl object-cover bg-white/5" />
+            className="h-28 w-24 shrink-0 rounded-2xl object-cover bg-white/5" />
         ) : (
           <div aria-label="صورة اللاعب غير متاحة" className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/10 text-3xl text-emerald-400">⚽</div>
         )}
@@ -190,8 +196,8 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
       </header>
       {(trophyCount || contractDate) && (
         <div className="grid grid-cols-2 gap-2 px-4 pt-4 sm:px-5">
-          {trophyCount && <div className="rounded-xl bg-emerald-500/10 p-3 text-center"><p className="text-2xl font-extrabold text-emerald-400">{trophyCount}</p><p className="mt-1 text-xs opacity-75">البطولات الجماعية</p></div>}
-          {contractDate && <div className="rounded-xl bg-emerald-500/10 p-3 text-center"><p className="text-base font-extrabold text-emerald-400" dir="ltr">{contractDate}</p><p className="mt-1 text-xs opacity-75">نهاية عقد {currentClub}</p></div>}
+          {trophyCount && <div className="rounded-xl bg-[#242625] p-3 text-center"><p className="text-2xl font-extrabold text-white">{trophyCount}</p><p className="mt-1 text-xs opacity-75">البطولات الجماعية</p></div>}
+          {contractDate && <div className="rounded-xl bg-emerald-500/10 p-3 text-center"><p className="text-base font-extrabold text-white" dir="ltr">{contractDate}</p><p className="mt-1 text-xs opacity-75">نهاية عقد {currentClub}</p></div>}
         </div>
       )}
       {careerTotals.length > 0 && (
@@ -248,7 +254,20 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
           ) : <p role="status" className="text-sm opacity-65">{current ? 'أرقام هذا الموسم غير متاحة من المصدر.' : 'جاري التحقق من أرقام الموسم…'}</p>}
         </div>
       )}
-      {facts.filter(f => f.label !== 'إجمالي المسيرة' && f.label !== 'أرقام الموسم المختار').length > 0 && (
+      {honours.length > 0 && (
+        <div className="border-t border-white/10 px-4 py-4 sm:px-5">
+          <h3 className="mb-3 font-bold">البطولات والإنجازات</h3>
+          <div className="grid gap-2">
+            {honours.map(({ label, value }) => (
+              <div key={label} className="rounded-xl bg-[#242625] p-3">
+                <h4 className="mb-1 text-sm font-bold text-white">{label}</h4>
+                <p className="whitespace-pre-line break-words text-sm leading-6 text-white/85">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {facts.filter(f => f.label !== 'إجمالي المسيرة' && f.label !== 'أرقام الموسم المختار' && f.label !== 'الألقاب').length > 0 && (
         <div className="grid grid-cols-2 gap-2 border-t border-white/10 p-4 sm:p-5">
           {facts.filter(f => f.label !== 'إجمالي المسيرة' && f.label !== 'أرقام الموسم المختار').map(({ label, value }) => (
             <div key={label} className="min-w-0 rounded-xl border border-gray-500/20 p-3">
