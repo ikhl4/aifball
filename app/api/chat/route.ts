@@ -172,8 +172,8 @@ export async function POST(req: Request) {
     console.log('Sending to Dify:', { query, conversation_id, hasFiles: files.length > 0 });
 
     const playerCareer = /مسير|لاعب|بطاق|راتب|عقد|سوقي|career|player|profile|salary|contract/i.test(query) || /^(?:[\p{L}\p{M}]+[ \t]+){1,4}[\p{L}\p{M}]+[؟?]?$/u.test(query.trim());
-    const nameOnlyPlayer = !conversation_id && !hasImage && /^[\\p{L}\\p{M}]+(?:[ \\t]+[\\p{L}\\p{M}]+){1,3}[؟?]?$/u.test(query.trim()) && !/^(?:متى|كيف|لماذا|وين|من|هل|كم|وش|ايش|ما|أين|where|when|how|who|what)\\b/i.test(query.trim());
-    const fastPlayerInstruction = '\\nابدأ بإرسال بطاقة اللاعب فور تأكيد هويته وصورته الأساسية. لا تنتظر جمع جميع الأرقام والبطولات قبل إرسال أول محتوى مفيد؛ استكمل التفاصيل الموثقة بعد البطاقة في نفس الرد. ابحث عن المصادر المستقلة الضرورية فقط، ولا تكرر البحث عن معلومة تم التحقق منها. لا تخترع أرقامًا أو سنوات.\\n';
+    const nameOnlyPlayer = !conversation_id && !hasImage && /^[\p{L}\p{M}]+(?:[ \t]+[\p{L}\p{M}]+){1,3}[؟?]?$/u.test(query.trim()) && !/^(?:متى|كيف|لماذا|وين|من|هل|كم|وش|ايش|ما|أين|where|when|how|who|what)(?:\s|$)/i.test(query.trim());
+    const fastPlayerInstruction = '\nابدأ بإرسال بطاقة اللاعب فور تأكيد هويته وصورته الأساسية. لا تنتظر جمع جميع الأرقام والبطولات قبل إرسال أول محتوى مفيد؛ استكمل التفاصيل الموثقة بعد البطاقة في نفس الرد. ابحث عن المصادر المستقلة الضرورية فقط، ولا تكرر البحث عن معلومة تم التحقق منها. لا تخترع أرقامًا أو سنوات.\n';
     const wantsTweet = /(?:اكتب|جهز|صغ|سو|اعطني|أعطني|ابي|أبي|ابغى|أبغى|اريد|أريد|write|draft|compose).{0,50}(?:تغريد|بوست|منشور|tweet|post)|(?:تغريد|بوست|منشور|tweet|post).{0,50}(?:عن|حول|بشأن|for|about)|(?:اغرد|أغرد|غرد|غردلي|tweet about|post about)/i.test(query);
     const baseQuery = /انتقالات|ميركاتو|سوق الانتقال|صفقات|transfers|transfer window/i.test(query)
       ? query + TRANSFER_REPORT_RULES
