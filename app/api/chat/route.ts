@@ -246,6 +246,10 @@ export async function POST(req: Request) {
     if (observedBody && traceLatency) {
       let firstChunk = true;
       let chunkCount = 0;
+      let firstAnswerLogged = false;
+      let firstToolLogged = false;
+      const decoder = new TextDecoder();
+      let eventBuffer = '';
       observedBody = observedBody.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
         transform(chunk, controller) {
           chunkCount++;
@@ -255,6 +259,24 @@ export async function POST(req: Request) {
               stage: 'dify_first_chunk', msFromRequest: Math.round(performance.now() - requestStarted),
               msAfterHeaders: Math.round(performance.now() - difyStarted - difyHeadersMs),
             }));
+          }
+          // Inspect only Dify SSE event types, never log content, queries or identifiers.
+          if (!firstAnswerLogged || !firstToolLogged) {
+            eventBuffer = (eventBuffer + decoder.decode(chunk, { stream: true })).slice(-16384);
+            const events = eventBuffer.split(/\\r?\\n\\r?\\n/);
+            eventBuffer = events.pop() ?? '';
+            for (const eventText of events) {
+              const kind = eventText.match(/"event"\\s*:\\s*"([^"]+)"/)?.[1];
+              if (!kind) continue;
+              if (!firstToolLogged && (kind === 'agent_thought' || kind === 'node_started')) {
+                firstToolLogged = true;
+                console.info('[AiFBall latency]', JSON.stringify({ stage: 'first_tool_or_node_event', msFromRequest: Math.round(performance.now() - requestStarted) }));
+              }
+              if (!firstAnswerLogged && (kind === 'message' || kind === 'agent_message')) {
+                firstAnswerLogged = true;
+                console.info('[AiFBall latency]', JSON.stringify({ stage: 'first_answer_event', msFromRequest: Math.round(performance.now() - requestStarted) }));
+              }
+            }
           }
           controller.enqueue(chunk);
         },
