@@ -140,7 +140,6 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   useEffect(() => {
     setWikiPhoto(undefined);
     setPhotoFailed(false);
-    if (photo) return;
     const controller = new AbortController();
     const params = new URLSearchParams({
       action: 'query', generator: 'search', gssearch: playerName + ' footballer',
