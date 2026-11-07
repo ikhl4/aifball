@@ -1253,6 +1253,7 @@ export default function FootPlayChat() {
     let firstByteMs: number | null = null;
     let firstAnswerMs: number | null = null;
     let streamedChunks = 0;
+    let responseDone = false;
 
     let answer = '';
     let conv = conversationId;
@@ -1331,8 +1332,6 @@ export default function FootPlayChat() {
       const decoder = new TextDecoder();
 
       let buffer = '';
-      let responseDone = false;
-
       const handleFrame = (frame: string) => {
         const event = parseSSEFrame(frame);
         if (!event) return;
