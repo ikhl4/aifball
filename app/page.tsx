@@ -1242,6 +1242,8 @@ export default function FootPlayChat() {
     ];
 
     setMessages(initial);
+    // Persist the question immediately so iOS page suspension cannot erase it.
+    saveSession(id, conversationId, initial);
     setLoading(true);
 
     const controller = new AbortController();
@@ -1259,6 +1261,12 @@ export default function FootPlayChat() {
     let conv = conversationId;
     let receivedAnswer = false;
     let latest = initial;
+    // Save the latest received tokens before Safari is backgrounded.
+    const persistOnBackground = () => {
+      if (activeRequestSession.current === id) saveSession(id, conv, latest);
+    };
+    window.addEventListener('pagehide', persistOnBackground);
+    document.addEventListener('visibilitychange', persistOnBackground);
     let renderFrame = 0;
     const paintAnswer = () => {
       renderFrame = 0;
@@ -1411,6 +1419,8 @@ export default function FootPlayChat() {
 
       console.error('AiFBall chat error:', error);
     } finally {
+      window.removeEventListener('pagehide', persistOnBackground);
+      document.removeEventListener('visibilitychange', persistOnBackground);
       window.clearTimeout(timeoutId);
 
       if (activeRequest.current === controller) {
