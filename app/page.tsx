@@ -284,7 +284,6 @@ function InlineText({ value, isDark }: { value: string; isDark: boolean }) {
               aria-label={`فتح المصدر: ${new URL(href).hostname.replace(/^www\\./, '')}`}
             >
               <span aria-hidden="true">↗</span>
-              <span className="truncate" dir="ltr">{new URL(href).hostname.replace(/^www\\./, '')}</span>
             </a>
           ) : <span key={index}>{part}</span>;
         }
