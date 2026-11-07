@@ -125,14 +125,22 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     const value = candidate && normalizeDigits(candidate).replace(/,/g, '');
     return value && /^\d+$/.test(value) ? [{ label, value: Number(value).toLocaleString('en-US') }] : [];
   }) : [];
+  const trophySource = safeSource(details?.trophies_source || details?.honours_source);
+  const trophyValue = details?.trophies_count || details?.honours_count;
+  const trophyCount = trophySource && trophyValue && /^\\d+$/.test(normalizeDigits(trophyValue))
+    ? normalizeDigits(trophyValue) : undefined;
+  const contractDate = safeSource(details?.contract_source) && /^\\d{4}-\\d{2}-\\d{2}$/.test(details?.contract_end || '')
+    ? details?.contract_end : undefined;
+  const currentClub = details?.club || 'النادي الحالي غير متاح';
+
   const photo = safeSource(details?.image_url || details?.photo_url || details?.portrait_url);
   const [photoFailed, setPhotoFailed] = useState(false);
 
   const facts = [
     { label: 'إجمالي المسيرة', value: details?.career_summary, source: details?.career_source },
-    { label: 'الألقاب', value: details?.honours, source: details?.honours_source },
+    { label: 'الألقاب', value: trophyCount ? undefined : details?.honours, source: details?.honours_source },
     { label: 'أرقام الموسم المختار', value: competitions.length ? undefined : seasonSummary, source: seasonSource },
-    { label: 'انتهاء العقد', value: details?.contract_end, source: details?.contract_source },
+    { label: 'انتهاء العقد', value: undefined, source: details?.contract_source },
     { label: 'القيمة السوقية', value: details?.market_date && details?.market_value
       ? `${details.market_value} · ${details.market_date}` : undefined, source: details?.market_source },
     { label: 'الراتب المنشور', value: details?.salary, source: details?.salary_source },
@@ -159,6 +167,12 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
           {details?.nationality && <p className="text-xs opacity-60">{details.nationality}</p>}
         </div>
       </header>
+      {(trophyCount || contractDate) && (
+        <div className="grid grid-cols-2 gap-2 px-4 pt-4 sm:px-5">
+          {trophyCount && <div className="rounded-xl bg-emerald-500/10 p-3 text-center"><p className="text-2xl font-extrabold text-emerald-400">{trophyCount}</p><p className="mt-1 text-xs opacity-75">البطولات الجماعية</p></div>}
+          {contractDate && <div className="rounded-xl bg-emerald-500/10 p-3 text-center"><p className="text-base font-extrabold text-emerald-400" dir="ltr">{contractDate}</p><p className="mt-1 text-xs opacity-75">نهاية عقد {currentClub}</p></div>}
+        </div>
+      )}
       {careerTotals.length > 0 && (
         <div className="p-4 sm:p-5">
           <div className="mb-3 flex items-center justify-between gap-2">
