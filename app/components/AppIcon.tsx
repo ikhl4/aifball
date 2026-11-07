@@ -1,5 +1,6 @@
 import React from 'react';
 const paths:Record<string,React.ReactNode>={
+ user:<><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></>,
  copy:<><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></>,
  share:<><path d="M12 16V3m-5 5 5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></>,
  like:<path d="M7 10H3v11h4m0-11 5-7a2 2 0 0 1 2 2l-1 5h5a3 3 0 0 1 3 3l-2 7a2 2 0 0 1-2 1H7V10Z"/>,
