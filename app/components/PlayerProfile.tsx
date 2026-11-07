@@ -213,7 +213,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
         {visiblePhoto ? (
           <img src={visiblePhoto} alt={`صورة ${playerName}`} loading="lazy" referrerPolicy="no-referrer"
             onError={() => setPhotoFailed(true)}
-            className="h-52 w-full rounded-2xl object-cover object-top sm:h-64" />
+            className="mx-auto max-h-80 w-full rounded-2xl bg-black/10 object-contain sm:max-h-96" />
         ) : null}
         <div>
           <h2 className="text-xl font-extrabold">{playerName}</h2>
