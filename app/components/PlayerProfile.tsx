@@ -66,10 +66,24 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     const [team, competition, source, ...values] = line.split('|').map(value => value.trim());
     const href = safeSource(source);
     if (!team || !competition || !href || values.length !== competitionLabels.length) return [];
-    const numbers = values.flatMap((value, index) =>
-      /^\\d+$/.test(value) ? [{ label: competitionLabels[index], value }] : []);
-    // A verified season must provide at least one of the three headline statistics.
-    if (!numbers.some(item => primaryLabels.includes(item.label))) return [];
+
+    // Fixed-position schema: GP | GS | SUB | MIN | G | A | YC | RC.
+    // Blank means unknown, not zero. Reject malformed or impossible records.
+    const parsed = values.map(value => /^\d+$/.test(value) ? Number(value) : null);
+    if (values.some((value, index) => value !== '' && parsed[index] === null)) return [];
+    const [matches, starts, substitutes, minutes, goals, assists, yellows, reds] = parsed;
+    if (parsed.some(value => value !== null && (!Number.isSafeInteger(value) || value > 100000))) return [];
+    if (matches !== null && (matches > 100 || (starts !== null && starts > matches) ||
+      (substitutes !== null && substitutes > matches) ||
+      (starts !== null && substitutes !== null && starts + substitutes > matches) ||
+      (minutes !== null && minutes > matches * 130) ||
+      (goals !== null && goals > matches * 8) ||
+      (assists !== null && assists > matches * 8))) return [];
+    if (minutes !== null && matches === null && minutes > 12000) return [];
+    if (yellows !== null && yellows > 100 || reds !== null && reds > 100) return [];
+    if (matches === null && goals === null && assists === null) return [];
+    const numbers = parsed.flatMap((value, index) =>
+      value === null ? [] : [{ label: competitionLabels[index], value: String(value) }]);
     return [{ team, competition, href, numbers }];
   });
   const hasSeasonSummary = competitions.length > 0 || Boolean(seasonSummary?.trim() && safeSource(seasonSource));
