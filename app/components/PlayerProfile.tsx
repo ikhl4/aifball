@@ -50,7 +50,8 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   const available = [...new Set((seasons ?? '').split(',').map(value => value.trim())
     .filter(value => /^\d{4}(?:-\d{4})?$/.test(value)))].sort().reverse();
   const [selection, setSelection] = useState(selectedSeason ?? '');
-  const season = available.includes(selection) ? selection : available[0];
+  const inferredSeason = details?.current_season && /^\d{4}(?:-\d{4})?$/.test(details.current_season) ? details.current_season : undefined;
+  const season = available.includes(selection) ? selection : (available[0] || inferredSeason);
   const [result, setResult] = useState<{ name: string; season: string; row?: StatRow }>();
   const current = result?.name === playerName && result.season === season ? result : undefined;
 
@@ -148,7 +149,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     const href = safeSource(source);
     return value?.trim() && href ? [{ label, value, source: href }] : [];
   });
-  if (!facts.length && !competitions.length && (!season || (current && !stats.length && available.length === 1))) return null;
+  if (!facts.length && !competitions.length && !careerTotals.length && !trophyCount && !contractDate && !season) return null;
 
   return (
     <section dir="rtl" className={`w-full min-w-0 overflow-hidden rounded-3xl border ${isDark ? 'bg-[#101714] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
@@ -195,9 +196,9 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
           <div className="mb-3 flex items-center justify-between gap-2">
             <h3 className="font-bold">إحصائيات الموسم</h3>
             <label className="flex items-center gap-2 text-xs">الموسم
-              <select className="max-w-32 rounded-lg border border-gray-500 bg-transparent p-2" value={season}
+              <select disabled={available.length < 2} className="max-w-32 rounded-lg border border-gray-500 bg-transparent p-2" value={season}
                 onChange={event => setSelection(event.target.value)}>
-                {available.map(value => <option className="text-gray-900" key={value} value={value}>{value}</option>)}
+                {(available.length ? available : [season]).map(value => <option className="text-gray-900" key={value} value={value}>{value}</option>)}
               </select>
             </label>
           </div>
