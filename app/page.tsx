@@ -1242,22 +1242,19 @@ export default function FootPlayChat() {
     let conv = conversationId;
     let receivedAnswer = false;
     let latest = initial;
-
+    let renderFrame = 0;
+    const paintAnswer = () => {
+      renderFrame = 0;
+      if (activeRequestSession.current === id) setMessages(latest);
+    };
     const update = (content: string, elapsed?: number) => {
       latest = [
         ...latest.slice(0, -1),
-        {
-          ...latest[latest.length - 1],
-          content,
-          thinkingTime: elapsed,
-        },
+        { ...latest[latest.length - 1], content, thinkingTime: elapsed },
       ];
-
-      if (activeRequestSession.current === id) {
-        setMessages(latest);
-      }
-
-      saveSession(id, conv, latest);
+      // Keep the answer streaming while avoiding a React render and
+      // localStorage write for every incoming token.
+      if (!renderFrame) renderFrame = window.requestAnimationFrame(paintAnswer);
     };
 
     try {
@@ -1402,7 +1399,9 @@ export default function FootPlayChat() {
         activeRequest.current = null;
       }
 
+      if (renderFrame) window.cancelAnimationFrame(renderFrame);
       if (activeRequestSession.current === id) {
+        setMessages(latest);
         activeRequestSession.current = null;
         setLoading(false);
       }
