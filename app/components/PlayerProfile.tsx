@@ -105,6 +105,22 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
       })
     : [];
 
+  // Career totals come only from the explicitly sourced career summary.
+  // Do not combine them with single-season figures or invent missing values.
+  const careerSource = safeSource(details?.career_source);
+  const careerText = careerSource ? (details?.career_summary ?? '') : '';
+  const careerPatterns = [
+    { label: 'المباريات', pattern: /(?:^|\\s)([\\d,]+)\\s*(?:مباراة|مباريات)/i },
+    { label: 'الأهداف', pattern: /(?:^|\\s)([\\d,]+)\\s*هدف(?:ًا|ا|اً)?/i },
+    { label: 'التمريرات الحاسمة', pattern: /(?:^|\\s)([\\d,]+)\\s*(?:صناعة|صناعات|تمريرة حاسمة|تمريرات حاسمة)/i },
+  ];
+  const careerTotals = careerPatterns.flatMap(({ label, pattern }) => {
+    const value = careerText.match(pattern)?.[1];
+    return value ? [{ label, value }] : [];
+  });
+  const photo = safeSource(details?.image_url || details?.photo_url || details?.portrait_url);
+  const [photoFailed, setPhotoFailed] = useState(false);
+
   const facts = [
     { label: 'إجمالي المسيرة', value: details?.career_summary, source: details?.career_source },
     { label: 'الألقاب', value: details?.honours, source: details?.honours_source },
@@ -120,57 +136,81 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   if (!facts.length && !competitions.length && (!season || (current && !stats.length && available.length === 1))) return null;
 
   return (
-    <section dir="rtl" className={`rounded-3xl border p-5 ${isDark ? 'bg-[#101714] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-emerald-500">{season && !hasSeasonSummary ? 'أرقام الموسم · FBref' : 'ملف اللاعب'}</p>
-          <h2 className="text-2xl font-bold">{playerName}</h2>
-        </div>
-        {season && (
-          <label className="flex items-center gap-2 text-sm">
-            الموسم
-            <select className="rounded-lg border border-gray-500 bg-transparent p-2" value={season} onChange={event => setSelection(event.target.value)}>
-              {available.map(value => <option className="text-gray-900" key={value} value={value}>{value}</option>)}
-            </select>
-          </label>
+    <section dir="rtl" className={`w-full min-w-0 overflow-hidden rounded-3xl border ${isDark ? 'bg-[#101714] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
+      <header className="flex items-center gap-4 border-b border-white/10 p-4 sm:p-5">
+        {photo && !photoFailed ? (
+          <img src={photo} alt={`صورة ${playerName}`} loading="lazy" referrerPolicy="no-referrer"
+            onError={() => setPhotoFailed(true)}
+            className="h-24 w-24 shrink-0 rounded-2xl object-cover bg-white/5" />
+        ) : (
+          <div aria-label="صورة اللاعب غير متاحة" className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/10 text-3xl text-emerald-400">⚽</div>
         )}
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-emerald-400">بطاقة اللاعب</p>
+          <h2 className="mt-1 break-words text-xl font-extrabold sm:text-2xl">{playerName}</h2>
+          {details?.club && <p className="mt-1 text-sm opacity-70">{details.club}</p>}
+          {details?.nationality && <p className="text-xs opacity-60">{details.nationality}</p>}
+        </div>
       </header>
-      {facts.length > 0 && (
-        <dl className="mt-4 grid gap-3 sm:grid-cols-3">
-          {facts.map(({ label, value, source }) => (
-            <div key={label} className="rounded-xl border border-gray-500/30 p-3">
-              <dt className="text-sm opacity-75">{label}</dt>
-              <dd className="font-bold">{value}</dd>
-              <dd><a className="text-sm underline" href={source} target="_blank" rel="noreferrer">المصدر</a></dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      {competitions.map(({ team, competition, href, numbers }, index) => (
-        <section key={index} className="mt-4 rounded-xl border border-gray-500/30 p-3">
-          <h3 className="font-bold">{team} · {competition}</h3>
-          <dl className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {numbers.map(({ label, value }) => (
-              <div key={label}><dt className="text-sm opacity-75">{label}</dt><dd className="font-bold">{value}</dd></div>
+      {careerTotals.length > 0 && (
+        <div className="p-4 sm:p-5">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h3 className="font-bold">إجمالي المسيرة</h3>
+            <a href={careerSource} target="_blank" rel="noopener noreferrer" title="مصدر أرقام المسيرة"
+              aria-label="فتح مصدر أرقام المسيرة" className="rounded-lg border border-emerald-500/30 px-2 py-1 text-emerald-400">↗</a>
+          </div>
+          <dl className="grid grid-cols-3 gap-2">
+            {careerTotals.map(({ label, value }) => (
+              <div key={label} className="min-w-0 rounded-xl bg-emerald-500/10 p-3 text-center">
+                <dd className="text-xl font-extrabold tabular-nums text-emerald-400">{value}</dd>
+                <dt className="mt-1 text-[11px] leading-5 opacity-75">{label}</dt>
+              </div>
             ))}
           </dl>
-          <a className="text-sm underline" href={href} target="_blank" rel="noreferrer">مصدر أرقام البطولة</a>
-        </section>
-      ))}
-      {stats.length ? (
-        <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {stats.map(({ label, value }) => (
-            <div key={label} className="rounded-xl border border-gray-500/30 p-3">
-              <dt className="text-sm opacity-75">{label}</dt>
-              <dd className="text-xl font-bold">{value}</dd>
+          <p className="mt-2 text-xs opacity-60">الأرقام حسب نطاق المصدر المذكور، وليست إحصاءات الموسم الحالي.</p>
+        </div>
+      )}
+      {season && (
+        <div className="px-4 pb-4 sm:px-5">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h3 className="font-bold">إحصائيات الموسم</h3>
+            <label className="flex items-center gap-2 text-xs">الموسم
+              <select className="max-w-32 rounded-lg border border-gray-500 bg-transparent p-2" value={season}
+                onChange={event => setSelection(event.target.value)}>
+                {available.map(value => <option className="text-gray-900" key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+          </div>
+          {competitions.length > 0 ? competitions.map(({ team, competition, href, numbers }, index) => (
+            <div key={index} className="mb-3 rounded-xl border border-gray-500/20 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="text-sm font-semibold">{team} · {competition}</h4>
+                <a href={href} target="_blank" rel="noopener noreferrer" aria-label="مصدر إحصائيات البطولة" title="مصدر إحصائيات البطولة" className="text-emerald-400">↗</a>
+              </div>
+              <dl className="mt-3 grid grid-cols-3 gap-3">
+                {numbers.map(({ label, value }) => <div key={label}><dd className="text-lg font-bold tabular-nums">{value}</dd><dt className="text-xs opacity-65">{label}</dt></div>)}
+              </dl>
+            </div>
+          )) : stats.length ? (
+            <dl className="grid grid-cols-3 gap-2">
+              {stats.map(({ label, value }) => <div key={label} className="rounded-xl border border-gray-500/20 p-3"><dd className="text-lg font-bold">{value}</dd><dt className="text-xs opacity-65">{label}</dt></div>)}
+            </dl>
+          ) : hasSeasonSummary ? (
+            <p className="text-sm opacity-75">{seasonSummary}</p>
+          ) : <p role="status" className="text-sm opacity-65">{current ? 'أرقام هذا الموسم غير متاحة من المصدر.' : 'جاري التحقق من أرقام الموسم…'}</p>}
+        </div>
+      )}
+      {facts.filter(f => f.label !== 'إجمالي المسيرة' && f.label !== 'أرقام الموسم المختار').length > 0 && (
+        <div className="grid grid-cols-2 gap-2 border-t border-white/10 p-4 sm:p-5">
+          {facts.filter(f => f.label !== 'إجمالي المسيرة' && f.label !== 'أرقام الموسم المختار').map(({ label, value, source }) => (
+            <div key={label} className="min-w-0 rounded-xl border border-gray-500/20 p-3">
+              <div className="flex items-start justify-between gap-2"><h4 className="text-xs opacity-65">{label}</h4>
+                <a href={source} target="_blank" rel="noopener noreferrer" title="المصدر" aria-label={`مصدر ${label}`} className="text-emerald-400">↗</a></div>
+              <p className="mt-2 break-words text-sm font-semibold leading-6">{value}</p>
             </div>
           ))}
-        </dl>
-      ) : season && !hasSeasonSummary ? (
-        <p className="mt-4 text-sm opacity-75" role="status">
-          {current ? 'أرقام هذا الموسم غير متاحة.' : 'جاري جلب أرقام الموسم…'}
-        </p>
-      ) : null}
+        </div>
+      )}
     </section>
   );
 }
