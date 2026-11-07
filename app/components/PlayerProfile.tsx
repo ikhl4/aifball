@@ -119,11 +119,11 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   ];
   const careerTotals = careerSource ? careerFields.flatMap(({ label, explicit, terms }) => {
     const cleanText = normalizeDigits(careerText);
-    const before = new RegExp('([0-9][0-9,]*)\\\\s*' + terms, 'i');
-    const after = new RegExp(terms + '\\\\s*[:：]?\\\\s*([0-9][0-9,]*)', 'i');
+    const before = new RegExp('([0-9][0-9,]*)\\s*' + terms, 'i');
+    const after = new RegExp(terms + '\\s*[:：]?\\s*([0-9][0-9,]*)', 'i');
     const candidate = explicit || cleanText.match(before)?.[1] || cleanText.match(after)?.[1];
     const value = candidate && normalizeDigits(candidate).replace(/,/g, '');
-    return value && /^\\d+$/.test(value) ? [{ label, value: Number(value).toLocaleString('en-US') }] : [];
+    return value && /^\d+$/.test(value) ? [{ label, value: Number(value).toLocaleString('en-US') }] : [];
   }) : [];
   const photo = safeSource(details?.image_url || details?.photo_url || details?.portrait_url);
   const [photoFailed, setPhotoFailed] = useState(false);
