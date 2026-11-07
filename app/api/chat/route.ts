@@ -31,20 +31,20 @@ const PLAYER_CAREER_RULES = `
 عند سؤال المستخدم عن لاعب أو كتابة اسمه فقط: تحقق أولاً من هوية اللاعب ومن مصادر حديثة مناسبة للاعب والموسم، ولا تخمن أي رقم أو صورة.
 
 قالب الإجابة الإلزامي للاعب (بهذا الترتيب دون مقدمات طويلة):
-1) بطاقة واحدة فقط عبر <aifball-player ... />، تتضمن الاسم والنادي والجنسية وصورة حقيقية متحققاً منها عند توفر رابط صورة مباشر صالح، وأبرز إجماليات المسيرة الموثقة. لا ترسل بطاقة فيها ألقاب فقط إذا عثرت على أرقام مسيرة موثقة: أدرج career_matches وcareer_goals وcareer_assists كلٌّ في حقل مستقل مع career_source، واكتب career_summary بالأرقام نفسها مع نطاقها. إذا تعذر إثبات الأرقام، اذكر عدم توفرها بوضوح ولا تخترعها. مرر image_url وclub وnationality عند التحقق منها. لا تستخدم صوراً عشوائية أو روابط صفحات بدلاً من الصورة.
-2) بعد البطاقة مباشرة عنوان «قصة المسيرة»؛ اسرد 2 إلى 4 فقرات عربية ممتعة ومختصرة عن النشأة، الانطلاقة، الانتقالات، اللحظات الحاسمة والمنتخب. لا تكرر أرقام البطاقة ولا تحوّل القصة إلى جدول.
-3) عنوان «أرقام صنعت التاريخ»؛ اعرض الأرقام والإنجازات المؤكدة التي لم تظهر في البطاقة على هيئة نقاط قصيرة ومشوقة، مع سياق الفترة والنادي أو المنتخب، دون جداول Markdown.
+1) صورة اللاعب ثم مربعات معلومات قصيرة ضمن الإجابة نفسها عبر <aifball-player ... />، وليس بطاقة كبيرة مستقلة. المكوّن يعرض الصورة والأرقام والإنجازات بمربعات رمادية سهلة القراءة.  تتضمن الاسم والنادي والجنسية وصورة حقيقية متحققاً منها عند توفر رابط صورة مباشر صالح، وأبرز إجماليات المسيرة الموثقة. لا ترسل بطاقة فيها ألقاب فقط إذا عثرت على أرقام مسيرة موثقة: أدرج career_matches وcareer_goals وcareer_assists كلٌّ في حقل مستقل مع career_source، واكتب career_summary بالأرقام نفسها مع نطاقها. إذا تعذر إثبات الأرقام، اذكر عدم توفرها بوضوح ولا تخترعها. مرر image_url وclub وnationality عند التحقق منها. لا تستخدم صوراً عشوائية أو روابط صفحات بدلاً من الصورة.
+2) بعد الصورة والمربعات مباشرة عنوان «قصة المسيرة»؛ اسرد 2 إلى 4 فقرات عربية ممتعة ومختصرة عن النشأة، الانطلاقة، الانتقالات، اللحظات الحاسمة والمنتخب. لا تكرر أرقام البطاقة ولا تحوّل القصة إلى جدول.
+3) عنوان «أرقام صنعت التاريخ»؛ اعرض الأرقام والإنجازات المؤكدة التي لم تظهر في المربعات على هيئة نقاط قصيرة ومشوقة، مع سياق الفترة والنادي أو المنتخب، دون جداول Markdown.
 4) يمكن إضافة فقرة «لحظة لا تُنسى» عند وجود واقعة موثقة ومهمة.
 
-ممنوع في النص المرئي: أي روابط URL، أو أسهم مصادر، أو قائمة مراجع، أو جدول مصادر، أو جداول Markdown، أو فواصل ---، أو عبارات «نطاق التحقق» و«المصدر:». استخدم الروابط داخلياً للتحقق فقط، ومررها في حقول source داخل وسم البطاقة إن احتاج المكوّن إليها؛ لا تعرضها في النص. لا تكرر بطاقة اللاعب في النص. إذا كانت البيانات غير متاحة، اذكر ذلك باختصار في موضعها ولا تملأها بصفر.
+ممنوع في النص المرئي: أي روابط URL، أو أسهم مصادر، أو قائمة مراجع، أو جدول مصادر، أو جداول Markdown، أو فواصل ---، أو عبارات «نطاق التحقق» و«المصدر:». استخدم الروابط داخلياً للتحقق فقط، ومررها في حقول source داخل وسم البطاقة إن احتاج المكوّن إليها؛ لا تعرضها في النص. لا تكرر الأرقام أو الإنجازات المعروضة في المربعات ضمن النص. إذا كانت البيانات غير متاحة، اذكر ذلك باختصار في موضعها ولا تملأها بصفر.
 
 للمواسم: إذا طلب المستخدم موسماً محدداً فاعرضه أولاً في البطاقة. خلاف ذلك اعرض الموسم الحالي الموثق، مع اختيار المواسم المتاحة. افصل أرقام الأندية عن المنتخب، ولا تجمع البطولات المتداخلة أو أرقام المصادر مختلفة النطاق. اعرض المشاركات والأساسي والبديل والدقائق والأهداف والصناعات والإنذارات والطرد المتوفرة فقط. لا تُدخل أي رقم في البطاقة إلا إذا تأكدت من اللاعب والبطولة والفترة.
 
-صيغة بيانات الموسم: <aifball-player name="اسم اللاعب" club="النادي" nationality="الجنسية" image_url="https://example.com/actual-player-photo.jpg" seasons="2026-2027" selected_season="2026-2027" career_matches="1181" career_goals="936" career_assists="408" trophies_count="46" trophies_source="https://example.com/verified-trophies" contract_end="2028-12-31" contract_source="https://example.com/verified-contract" career_summary="1181 مباراة، 936 هدفا، 408 صناعات" career_source="https://example.com/verified-career" season_2026_2027_competitions="الفريق|البطولة|https://example.com/verified-season|10|||783|7|0||" />.
+صيغة توضيحية للحقول فقط (لا تنسخ أرقامًا من المثال): <aifball-player name="اسم اللاعب" club="النادي" nationality="الجنسية" image_url="https://example.com/player.jpg" current_season="2026" seasons="2026" career_matches="عدد موثق" career_goals="عدد موثق" career_assists="عدد موثق" career_source="https://example.com/career-statistics" season_2026_competitions="الفريق|البطولة|https://example.com/season-statistics|المباريات|أساسي|بديل|الدقائق|الأهداف|الصناعات|الإنذارات|الطرد" />. احذف أي حقل لم تثبت قيمته، ولا تمرر كلمات المثال كأرقام.
 هذه قيم شكلية توضيحية فقط، لا تنقلها إلى أي لاعب؛ اترك الحقول غير المثبتة تماماً. مصدر الصورة يجب أن يكون صورة مباشرة للاعب نفسه، وليس صفحة HTML. ابحث عبر DuckDuckGo أو مصادر الدوري/النادي/المنتخب أو مصادر صور موثوقة، وتحقق من صلاحية رابط الصورة.
 
 عند ذكر نهاية العقد: إذا أعلن النادي «حتى نهاية موسم 2028» ولا يوجد تاريخ يوم وشهر مؤكد، مرر contract_end="2028" مع رابط بيان النادي في contract_source؛ لا تفترض 31 ديسمبر. لا تترك العقد فارغاً بسبب غياب اليوم والشهر. بالنسبة لميسي، بيان إنتر ميامي الرسمي يثبت الاستمرار حتى نهاية موسم MLS 2028.
-إحصائيات MLS: اعتمد جدول اللاعب الرسمي MLSsoccer (players/lionel-messi/stats/) مثالاً على حقول GP, GS, Mins, G, A, YC, RC لموسم 2026. يجب البحث عن الصفحة الخاصة بكل لاعب، ثم ملء الموسم حتى لو كان المصدر لا يوفر كل الحقول. لا تعتمد على FBref وحده؛ إذا فشل انتقل إلى MLSsoccer ثم FotMob ثم SofaScore ثم موقع النادي. صيغة season_2026_competitions تتطلب 8 خانات إحصائية بعد رابط المصدر مرتبة: المشاركات|أساسي|دخل بديلاً|الدقائق|الأهداف|الصناعات|الإنذارات|الطرد؛ اترك القيمة الفارغة بين الفواصل ولا تحذف الفواصل.
+الأولوية القصوى في بطاقة أي لاعب: المباريات والأهداف والصناعات للموسم الحالي ثم إجمالي المسيرة، مع تحديد نطاق المصدر (الدوري فقط أو جميع البطولات). لا تعتبر جدول ويكيبيديا الذي يورد المباريات والأهداف دليلًا على الصناعات؛ استخرج الصناعات من مصدر يذكر A أو Assists صراحةً. إذا لم يقدم المصدر الصناعات، جرّب مصدر إحصائيات آخر بدل إعلان عدم توفرها فورًا. لا تجمع أرقام مصادر ذات نطاقات مختلفة ولا تستنتج الصناعات من المساهمات التهديفية. عند اختلاف مصدرين، اذكر النطاق واترك الرقم غير المحسوم فارغًا. لا تستخدم أرقام الأمثلة في التعليمات كبيانات حقيقية.\nإحصائيات MLS: اعتمد جدول اللاعب الرسمي MLSsoccer (players/lionel-messi/stats/) مثالاً على حقول GP, GS, Mins, G, A, YC, RC لموسم 2026. يجب البحث عن الصفحة الخاصة بكل لاعب، ثم ملء الموسم حتى لو كان المصدر لا يوفر كل الحقول. لا تعتمد على FBref وحده؛ إذا فشل انتقل إلى MLSsoccer ثم FotMob ثم SofaScore ثم موقع النادي. صيغة season_2026_competitions تتطلب 8 خانات إحصائية بعد رابط المصدر مرتبة: المشاركات|أساسي|دخل بديلاً|الدقائق|الأهداف|الصناعات|الإنذارات|الطرد؛ اترك القيمة الفارغة بين الفواصل ولا تحذف الفواصل.
 بطاقة اللاعب يجب أن تتضمن صورة فوتوغرافية حقيقية: ابحث عن رابط صورة مباشر من Wikimedia Commons أو Wikipedia أو FotMob، ومرره في image_url أو photo_url، لا تستخدم رمز كرة القدم بديلاً إذا وجدت صورة. اعرض البطولات الجماعية بالتفصيل في team_honours والجوائز الفردية في individual_awards، لا تكتفِ بعدد البطولات أو بذكر الكرة الذهبية وحدها. اعرض المعلومات على شكل نصوص قصيرة مفصولة بأسطر، ولا تكرر قسم الإنجازات مرة أخرى خارج البطاقة. إذا كان عدد البطولات مؤكداً مرره في trophies_count وtrophies_source. اعرض أرقام الموسم في season_YYYY_competitions بصيغة الحقول الموثقة وليس فقط في سرد الرسالة. لا تضع روابط خام في النص الظاهر.
 لا تُنهِ إجابة اللاعب قبل محاولة استرجاع نهاية عقده الحالي وإحصائيات موسمه الحالي. ابحث بشكل مستقل عن العقد في إعلان النادي الرسمي ثم Transfermarkt أو Capology، وعن إحصائيات الموسم الحالي في FotMob أو SofaScore أو 365Scores أو موقع الدوري أو النادي. الموسم الجاري 2026-2027 للدوريات الأوروبية والسعودية، و2026 للمسابقات ذات الموسم السنوي مثل MLS. لا تفترض أن كل الدوريات تتبع تقويم 2026-2027. في الوسم مرر current_season="2026" للموسم السنوي أو current_season="2026-2027" للموسم الممتد، وseasons بالقيم المتحققة، مع season_2026_competitions أو season_2026_2027_competitions بحسب البطولة. إذا وجدت رقماً موثقاً واحداً فقط مثل المشاركات أو الأهداف، مرره في صف البطولة حتى يظهر ولا تحذف صف الموسم بسبب نقص بقية الأرقام. إذا توفر تاريخ انتهاء العقد موثقاً فمرره بصيغة YYYY-MM-DD مع contract_source، وتحقق من أن العقد يخص النادي الحالي لا فريقاً سابقاً. لا تجعل أي رابط ظاهر للمستخدم.
 
@@ -235,12 +235,40 @@ export async function POST(req: Request) {
       );
     }
 
-    // Measure Dify time-to-headers without logging the query or answer.
-    if (process.env.VERCEL_ENV === 'preview') console.info('[AiFBall latency]', JSON.stringify({ stage: 'dify_headers', preDifyMs: Math.round(difyStarted - requestStarted), difyHeadersMs: Math.round(performance.now() - difyStarted) }));
+    // Preview-only stage timings: no user text, Dify content or credentials.
+    const traceLatency = process.env.VERCEL_ENV === 'preview';
+    const preDifyMs = Math.round(difyStarted - requestStarted);
+    const difyHeadersMs = Math.round(performance.now() - difyStarted);
+    if (traceLatency) console.info('[AiFBall latency]', JSON.stringify({
+      stage: 'dify_headers', preDifyMs, difyHeadersMs, guidedQueryChars: guidedQuery.length,
+    }));
+    let observedBody = apiRes.body;
+    if (observedBody && traceLatency) {
+      let firstChunk = true;
+      let chunkCount = 0;
+      observedBody = observedBody.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+        transform(chunk, controller) {
+          chunkCount++;
+          if (firstChunk) {
+            firstChunk = false;
+            console.info('[AiFBall latency]', JSON.stringify({
+              stage: 'dify_first_chunk', msFromRequest: Math.round(performance.now() - requestStarted),
+              msAfterHeaders: Math.round(performance.now() - difyStarted - difyHeadersMs),
+            }));
+          }
+          controller.enqueue(chunk);
+        },
+        flush() {
+          console.info('[AiFBall latency]', JSON.stringify({
+            stage: 'dify_stream_end', totalMs: Math.round(performance.now() - requestStarted), chunkCount,
+          }));
+        },
+      }));
+    }
 
     // إرجاع الـ Stream مباشرة للواجهة الأمامية
-    return new Response(apiRes.body && historical !== 'none' && !hasImage && !wantsDesign ? verifiedSummaryStream(apiRes.body, req.signal, (answer, signal) => presentHistoryAnswer(answer, historical, signal)) : apiRes.body && matchSummary && !hasImage && !wantsDesign
-      ? verifiedSummaryStream(apiRes.body, req.signal, async (answer, signal) => {
+    return new Response(observedBody && historical !== 'none' && !hasImage && !wantsDesign ? verifiedSummaryStream(observedBody, req.signal, (answer, signal) => presentHistoryAnswer(answer, historical, signal)) : observedBody && matchSummary && !hasImage && !wantsDesign
+      ? verifiedSummaryStream(observedBody, req.signal, async (answer, signal) => {
           if (/<aifball-summary\b/i.test(answer)) return verifySummaryAnswer(answer, signal);
           // When Dify returns prose only, retain its explanation and append independently
           // verified fixture cards so the existing inline video renderer can display them.
@@ -257,12 +285,13 @@ export async function POST(req: Request) {
           }
           return singleReport ? verifySummaryAnswer(singleReport, signal) : answer;
         })
-      : apiRes.body && !hasImage && !wantsPhoto && !wantsDesign && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
+      : observedBody && !hasImage && !wantsPhoto && !wantsDesign && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(observedBody,query,req.signal) : observedBody, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
         'X-Accel-Buffering': 'no',
+        ...(traceLatency ? { 'Server-Timing': `pre_dify;dur=${preDifyMs}, dify_headers;dur=${difyHeadersMs}` } : {}),
         'X-AiFBall-Presentation': detailedMatch ? 'match-report' : analysis ? 'analysis-story' : 'standard',
       },
     });
