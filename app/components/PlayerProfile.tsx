@@ -253,10 +253,13 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
             <dl className="grid grid-cols-3 gap-2">
               {primaryLabels.map(label => metric(label, stats.find(item => item.label === label)?.value))}
             </dl>
-          ) : hasSeasonSummary ? (
-            <p className="text-sm opacity-75">{seasonSummary}</p>
           ) : (
-            <p role="status" className="text-sm opacity-65">{current ? 'لم تتوفر أرقام موثقة لهذا الموسم.' : 'جاري التحقق من أرقام الموسم…'}</p>
+            <div className="space-y-2">
+              <dl className="grid grid-cols-3 gap-2">
+                {primaryLabels.map(label => metric(label, undefined))}
+              </dl>
+              <p role="status" className="text-xs opacity-65">{hasSeasonSummary ? seasonSummary : current ? 'لم يتم التحقق من إحصائيات الموسم بعد.' : 'جاري التحقق من أرقام الموسم…'}</p>
+            </div>
           )}
         </div>
       )}
