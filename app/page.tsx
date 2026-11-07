@@ -1914,12 +1914,16 @@ export default function FootPlayChat() {
             {messages.map((msg, index) =>
               msg.content.trim() || (msg.imageUrls?.length ?? 0) > 0 ? (
                 <div key={index} className="flex items-start gap-4 w-full">
-                  <div className={`flex-shrink-0 mt-1 ${msg.role === 'assistant' ? 'block' : 'hidden sm:block'}`}>
+                  <div className="flex-shrink-0 mt-1" aria-hidden="true">
                     {msg.role === 'assistant' ? (
                       <OriginalBrandLogo size="sm" />
                     ) : (
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold bg-emerald-700">
-                        أنت
+                      <div className={`w-8 h-8 rounded-full border flex items-center justify-center ${
+                        isDarkMode
+                          ? 'bg-[#343638] border-white/15 text-gray-100'
+                          : 'bg-gray-200 border-gray-300 text-gray-700'
+                      }`}>
+                        <AppIcon name="user" size={17} />
                       </div>
                     )}
                   </div>
