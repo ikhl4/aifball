@@ -235,12 +235,40 @@ export async function POST(req: Request) {
       );
     }
 
-    // Measure Dify time-to-headers without logging the query or answer.
-    if (process.env.VERCEL_ENV === 'preview') console.info('[AiFBall latency]', JSON.stringify({ stage: 'dify_headers', preDifyMs: Math.round(difyStarted - requestStarted), difyHeadersMs: Math.round(performance.now() - difyStarted) }));
+    // Preview-only stage timings: no user text, Dify content or credentials.
+    const traceLatency = process.env.VERCEL_ENV === 'preview';
+    const preDifyMs = Math.round(difyStarted - requestStarted);
+    const difyHeadersMs = Math.round(performance.now() - difyStarted);
+    if (traceLatency) console.info('[AiFBall latency]', JSON.stringify({
+      stage: 'dify_headers', preDifyMs, difyHeadersMs, guidedQueryChars: guidedQuery.length,
+    }));
+    let observedBody = apiRes.body;
+    if (observedBody && traceLatency) {
+      let firstChunk = true;
+      let chunkCount = 0;
+      observedBody = observedBody.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+        transform(chunk, controller) {
+          chunkCount++;
+          if (firstChunk) {
+            firstChunk = false;
+            console.info('[AiFBall latency]', JSON.stringify({
+              stage: 'dify_first_chunk', msFromRequest: Math.round(performance.now() - requestStarted),
+              msAfterHeaders: Math.round(performance.now() - difyStarted - difyHeadersMs),
+            }));
+          }
+          controller.enqueue(chunk);
+        },
+        flush() {
+          console.info('[AiFBall latency]', JSON.stringify({
+            stage: 'dify_stream_end', totalMs: Math.round(performance.now() - requestStarted), chunkCount,
+          }));
+        },
+      }));
+    }
 
     // إرجاع الـ Stream مباشرة للواجهة الأمامية
-    return new Response(apiRes.body && historical !== 'none' && !hasImage && !wantsDesign ? verifiedSummaryStream(apiRes.body, req.signal, (answer, signal) => presentHistoryAnswer(answer, historical, signal)) : apiRes.body && matchSummary && !hasImage && !wantsDesign
-      ? verifiedSummaryStream(apiRes.body, req.signal, async (answer, signal) => {
+    return new Response(observedBody && historical !== 'none' && !hasImage && !wantsDesign ? verifiedSummaryStream(observedBody, req.signal, (answer, signal) => presentHistoryAnswer(answer, historical, signal)) : observedBody && matchSummary && !hasImage && !wantsDesign
+      ? verifiedSummaryStream(observedBody, req.signal, async (answer, signal) => {
           if (/<aifball-summary\b/i.test(answer)) return verifySummaryAnswer(answer, signal);
           // When Dify returns prose only, retain its explanation and append independently
           // verified fixture cards so the existing inline video renderer can display them.
@@ -257,12 +285,13 @@ export async function POST(req: Request) {
           }
           return singleReport ? verifySummaryAnswer(singleReport, signal) : answer;
         })
-      : apiRes.body && !hasImage && !wantsPhoto && !wantsDesign && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(apiRes.body,query,req.signal) : apiRes.body, {
+      : observedBody && !hasImage && !wantsPhoto && !wantsDesign && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(observedBody,query,req.signal) : observedBody, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
         'X-Accel-Buffering': 'no',
+        ...(traceLatency ? { 'Server-Timing': `pre_dify;dur=${preDifyMs}, dify_headers;dur=${difyHeadersMs}` } : {}),
         'X-AiFBall-Presentation': detailedMatch ? 'match-report' : analysis ? 'analysis-story' : 'standard',
       },
     });
