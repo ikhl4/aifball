@@ -70,6 +70,7 @@ interface SuggestionCard {
 
 const STORAGE_KEY = 'aifball_chat_history_v12';
 const THEME_KEY = 'aifball_theme';
+type ThemePreference = 'system' | 'light' | 'dark';
 
 const GREETING =
   'مرحبا، الله حيه، أنا فوتبلاي مساعدك الرياضي. ماذا تريد أن تعرف؟';
@@ -948,6 +949,7 @@ export default function FootPlayChat() {
   const [isListening, setIsListening] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [themePreference, setThemePreference] = useState<ThemePreference>('system');
   const [showLiveScores, setShowLiveScores] = useState(false);
   const [homeScreen, setHomeScreen] = useState<'home' | 'analytics'>('home');
   const homeSwipe = useRef<{x:number;y:number} | null>(null);
@@ -992,9 +994,11 @@ export default function FootPlayChat() {
   }, []);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem(THEME_KEY);
-    setIsDarkMode(savedTheme !== 'light');
-
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const stored = localStorage.getItem(THEME_KEY);
+    const preference: ThemePreference = stored === 'light' || stored === 'dark' ? stored : 'system';
+    setThemePreference(preference);
+    setIsDarkMode(preference === 'system' ? media.matches : preference === 'dark');
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
@@ -1238,22 +1242,19 @@ export default function FootPlayChat() {
     let conv = conversationId;
     let receivedAnswer = false;
     let latest = initial;
-
+    let renderFrame = 0;
+    const paintAnswer = () => {
+      renderFrame = 0;
+      if (activeRequestSession.current === id) setMessages(latest);
+    };
     const update = (content: string, elapsed?: number) => {
       latest = [
         ...latest.slice(0, -1),
-        {
-          ...latest[latest.length - 1],
-          content,
-          thinkingTime: elapsed,
-        },
+        { ...latest[latest.length - 1], content, thinkingTime: elapsed },
       ];
-
-      if (activeRequestSession.current === id) {
-        setMessages(latest);
-      }
-
-      saveSession(id, conv, latest);
+      // Keep the answer streaming while avoiding a React render and
+      // localStorage write for every incoming token.
+      if (!renderFrame) renderFrame = window.requestAnimationFrame(paintAnswer);
     };
 
     try {
@@ -1398,7 +1399,9 @@ export default function FootPlayChat() {
         activeRequest.current = null;
       }
 
+      if (renderFrame) window.cancelAnimationFrame(renderFrame);
       if (activeRequestSession.current === id) {
+        setMessages(latest);
         activeRequestSession.current = null;
         setLoading(false);
       }
@@ -1407,10 +1410,20 @@ export default function FootPlayChat() {
     }
   };
 
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = (event: MediaQueryListEvent) => {
+      if (themePreference === 'system') setIsDarkMode(event.matches);
+    };
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, [themePreference]);
+
   const toggleTheme = () => {
-    const next = !isDarkMode;
-    setIsDarkMode(next);
-    localStorage.setItem(THEME_KEY, next ? 'dark' : 'light');
+    const next: ThemePreference = themePreference === 'system' ? 'light' : themePreference === 'light' ? 'dark' : 'system';
+    setThemePreference(next);
+    setIsDarkMode(next === 'system' ? window.matchMedia('(prefers-color-scheme: dark)').matches : next === 'dark');
+    localStorage.setItem(THEME_KEY, next);
   };
 
   const openSession = (session: ChatSession) => {
@@ -1693,14 +1706,10 @@ export default function FootPlayChat() {
                 ? 'bg-white/5 border-white/10 text-yellow-400'
                 : 'bg-gray-100 border-gray-200 text-gray-600'
             }`}
-            aria-label="تغيير المظهر"
-            title={
-              isDarkMode
-                ? 'الانتقال للوضع النهاري'
-                : 'الانتقال للوضع الليلي'
-            }
+            aria-label={`المظهر: ${themePreference === 'system' ? 'تلقائي حسب الجوال' : themePreference === 'light' ? 'نهاري' : 'ليلي'}. اضغط للتبديل`}
+            title={`المظهر: ${themePreference === 'system' ? 'تلقائي حسب الجوال' : themePreference === 'light' ? 'نهاري' : 'ليلي'}`}
           >
-            <AppIcon name={isDarkMode ? 'sun' : 'moon'}/>
+            <AppIcon name={themePreference === 'system' ? 'smartphone' : themePreference === 'dark' ? 'moon' : 'sun'}/>
           </button>
 
           <button
