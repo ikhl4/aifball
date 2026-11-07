@@ -109,15 +109,22 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   // Do not combine them with single-season figures or invent missing values.
   const careerSource = safeSource(details?.career_source);
   const careerText = careerSource ? (details?.career_summary ?? '') : '';
-  const careerPatterns = [
-    { label: 'المباريات', pattern: /(?:^|\\s)([\\d,]+)\\s*(?:مباراة|مباريات)/i },
-    { label: 'الأهداف', pattern: /(?:^|\\s)([\\d,]+)\\s*هدف(?:ًا|ا|اً)?/i },
-    { label: 'التمريرات الحاسمة', pattern: /(?:^|\\s)([\\d,]+)\\s*(?:صناعة|صناعات|تمريرة حاسمة|تمريرات حاسمة)/i },
+  // Accept verified numeric fields first, then extract totals from the sourced summary.
+  // Both Arabic- and Latin-digit spellings and either word order are supported.
+  const normalizeDigits = (value: string) => value.replace(/[٠-٩]/g, digit => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit))).replace(/[۰-۹]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)));
+  const careerFields = [
+    { label: 'المباريات', explicit: details?.career_matches, terms: '(?:مباراة|مباريات|المباريات|المشاركات)' },
+    { label: 'الأهداف', explicit: details?.career_goals, terms: '(?:هدف(?:ًا|ا|اً)?|أهداف|الأهداف)' },
+    { label: 'التمريرات الحاسمة', explicit: details?.career_assists, terms: '(?:صناعة|صناعات|الصناعات|تمريرة حاسمة|تمريرات حاسمة)' },
   ];
-  const careerTotals = careerPatterns.flatMap(({ label, pattern }) => {
-    const value = careerText.match(pattern)?.[1];
-    return value ? [{ label, value }] : [];
-  });
+  const careerTotals = careerSource ? careerFields.flatMap(({ label, explicit, terms }) => {
+    const cleanText = normalizeDigits(careerText);
+    const before = new RegExp('([0-9][0-9,]*)\\\\s*' + terms, 'i');
+    const after = new RegExp(terms + '\\\\s*[:：]?\\\\s*([0-9][0-9,]*)', 'i');
+    const candidate = explicit || cleanText.match(before)?.[1] || cleanText.match(after)?.[1];
+    const value = candidate && normalizeDigits(candidate).replace(/,/g, '');
+    return value && /^\\d+$/.test(value) ? [{ label, value: Number(value).toLocaleString('en-US') }] : [];
+  }) : [];
   const photo = safeSource(details?.image_url || details?.photo_url || details?.portrait_url);
   const [photoFailed, setPhotoFailed] = useState(false);
 
