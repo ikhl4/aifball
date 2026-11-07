@@ -996,6 +996,68 @@ export default function FootPlayChat() {
   const sessionsRef = useRef<ChatSession[]>([]);
   const activeRequest = useRef<AbortController | null>(null);
   const activeRequestSession = useRef<string | null>(null);
+  // A server job survives iOS suspension; its identifier survives a full reload.
+  const durableJobRef = useRef<{ jobId: string; sessionId: string } | null>(null);
+  const DURABLE_JOB_KEY = 'aifball-active-durable-job';
+  const pollDurableJob = useCallback(async (jobId: string, sessionId: string, signal: AbortSignal) => {
+    while (!signal.aborted) {
+      try {
+        const response = await fetch('/api/chat/jobs/' + encodeURIComponent(jobId), { signal, cache: 'no-store' });
+        if (!response.ok) throw new Error('Job polling failed');
+        const job: { status: string; answer: string; conversation_id: string; error?: string } = await response.json();
+        const stored = sessionsRef.current.find(item => item.id === sessionId);
+        if (stored) {
+          const msgs = [...stored.messages];
+          if (msgs.length && msgs[msgs.length - 1].role === 'assistant') {
+            msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: job.answer ||
+              (job.status === 'failed' ? job.error || 'تعذر إكمال البحث.' : 'جاري البحث…') };
+            const entry = { ...stored, messages: msgs, conversationId: job.conversation_id || stored.conversationId,
+              updatedAt: new Date().toISOString() };
+            sessionsRef.current = [entry, ...sessionsRef.current.filter(item => item.id !== sessionId)];
+            setSessions([...sessionsRef.current]);
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionsRef.current)); } catch {}
+            if (activeRequestSession.current === sessionId) {
+              setMessages(msgs);
+              setConversationId(entry.conversationId);
+            }
+          }
+        }
+        if (job.status === 'completed' || job.status === 'failed') {
+          try { localStorage.removeItem(DURABLE_JOB_KEY); } catch {}
+          durableJobRef.current = null;
+          if (activeRequestSession.current === sessionId) {
+            activeRequestSession.current = null;
+            setLoading(false);
+          }
+          return;
+        }
+      } catch (error) {
+        if (signal.aborted) return;
+        // Transient network loss: keep the job identifier and retry.
+      }
+      await new Promise(resolve => setTimeout(resolve, 2500));
+    }
+  }, []);
+
+  useEffect(() => {
+    let saved: { jobId: string; sessionId: string } | null = null;
+    try { saved = JSON.parse(localStorage.getItem(DURABLE_JOB_KEY) || 'null'); } catch {}
+    if (!saved?.jobId || !saved?.sessionId) return;
+    durableJobRef.current = saved;
+    const controller = new AbortController();
+    // Restore the last session when the page was terminated while searching.
+    const session = sessionsRef.current.find(item => item.id === saved.sessionId);
+    if (session) {
+      activeRequestSession.current = saved.sessionId;
+      setCurrentSessionId(saved.sessionId);
+      setConversationId(session.conversationId);
+      setMessages(session.messages);
+      setLoading(true);
+    }
+    void pollDurableJob(saved.jobId, saved.sessionId, controller.signal);
+    return () => controller.abort();
+  }, [pollDurableJob]);
+
 
   const suggestionCards = getDiscoveryQuestions(discoveryPage);
 
@@ -1256,6 +1318,7 @@ export default function FootPlayChat() {
     let firstAnswerMs: number | null = null;
     let streamedChunks = 0;
     let responseDone = false;
+    let durableHandled = false;
 
     let answer = '';
     let conv = conversationId;
@@ -1283,6 +1346,28 @@ export default function FootPlayChat() {
     };
 
     try {
+      // Signed-in text requests use the durable Render worker when configured.
+      // If not configured, preserve the existing streaming Dify behavior.
+      if (user?.id && files.length === 0) {
+        const key = crypto.randomUUID();
+        const durable = await fetch('/api/chat/jobs', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, conversation_id: conversationId, idempotency_key: key }),
+          signal: controller.signal,
+        }).catch(() => null);
+        if (durable?.ok) {
+          const job: { id: string } = await durable.json();
+          if (job.id) {
+            const pending = { jobId: job.id, sessionId: id };
+            durableJobRef.current = pending;
+            localStorage.setItem(DURABLE_JOB_KEY, JSON.stringify(pending));
+            // Polling is independent of the original request and resumes after reload.
+            durableHandled = true;
+            await pollDurableJob(job.id, id, controller.signal);
+            return;
+          }
+        }
+      }
       const difyFiles: {
         type: string;
         transfer_method: string;
@@ -1428,13 +1513,14 @@ export default function FootPlayChat() {
       }
 
       if (renderFrame) window.cancelAnimationFrame(renderFrame);
-      if (activeRequestSession.current === id) {
-        setMessages(latest);
-        activeRequestSession.current = null;
-        setLoading(false);
+      if (!durableHandled) {
+        if (activeRequestSession.current === id) {
+          setMessages(latest);
+          activeRequestSession.current = null;
+          setLoading(false);
+        }
+        saveSession(id, conv, latest);
       }
-
-      saveSession(id, conv, latest);
       // Opt-in, local-only diagnostics. No query, response or personal data logged.
       if (typeof window !== 'undefined' && window.localStorage.getItem('aifball_debug_performance') === '1') {
         console.info('[AiFBall chat performance]', {
