@@ -58,14 +58,19 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   const seasonKey = season ? 'season_' + season.replace('-', '_') : '';
   const seasonSummary = seasonKey ? details?.[seasonKey] : undefined;
   const seasonSource = seasonKey ? details?.[seasonKey + '_source'] : undefined;
-  const competitionLabels = ['المشاركات', 'أساسي', 'دخل بديلاً', 'الدقائق', 'الأهداف', 'الصناعات', 'الإنذارات', 'الطرد'];
+  // Provider schema: matches | starts | substitute appearances | minutes | goals | assists | yellow | red.
+  // Never shift fields when a value is blank, and never promote minutes/subs to appearances.
+  const competitionLabels = ['المباريات', 'أساسي', 'دخل بديلاً', 'الدقائق', 'الأهداف', 'الصناعات', 'الإنذارات', 'الطرد'];
+  const primaryLabels = ['المباريات', 'الأهداف', 'الصناعات'];
   const competitions = (details?.[seasonKey + '_competitions'] ?? '').split(';').flatMap(line => {
     const [team, competition, source, ...values] = line.split('|').map(value => value.trim());
     const href = safeSource(source);
-    if (!team || !competition || !href || !values.length) return [];
-    const numbers = values.slice(0, competitionLabels.length).flatMap((value, index) =>
-      /^\d+$/.test(value) ? [{ label: competitionLabels[index], value }] : []);
-    return numbers.length ? [{ team, competition, href, numbers }] : [];
+    if (!team || !competition || !href || values.length !== competitionLabels.length) return [];
+    const numbers = values.flatMap((value, index) =>
+      /^\\d+$/.test(value) ? [{ label: competitionLabels[index], value }] : []);
+    // A verified season must provide at least one of the three headline statistics.
+    if (!numbers.some(item => primaryLabels.includes(item.label))) return [];
+    return [{ team, competition, href, numbers }];
   });
   const hasSeasonSummary = competitions.length > 0 || Boolean(seasonSummary?.trim() && safeSource(seasonSource));
 
@@ -232,11 +237,14 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
             <div key={index} className="mb-4">
               <p className="mb-3 text-xs opacity-70">{team} · {competition}</p>
               <dl className="grid grid-cols-3 gap-2">
-                {numbers.map(({ label, value }) => (
-                  <div key={label} className="min-w-0 rounded-xl bg-emerald-500/10 p-3 text-center">
-                    <dd className="text-xl font-extrabold tabular-nums text-white">{value}</dd>
+                {primaryLabels.map(label => {
+                  const value = numbers.find(item => item.label === label)?.value;
+                  return (
+                  <div key={label} className="min-w-0 rounded-xl bg-[#242625] p-3 text-center">
+                    <dd className="text-xl font-extrabold tabular-nums text-white">{value ?? '—'}</dd>
                     <dt className="mt-1 text-[11px] leading-5 opacity-75">{label}</dt>
-                  </div>
+                  </div>);
+                }
                 ))}
               </dl>
             </div>
