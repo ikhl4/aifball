@@ -38,37 +38,46 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Invalid player or season' }, { status: 400 });
   }
 
-  const provider = (params.get('provider') || 'fbref').toLowerCase();
-  if (provider === 'fotmob') {
-    const playerId = (params.get('playerId') || '').trim();
-    if (!/^\\d{1,9}$/.test(playerId)) {
-      return NextResponse.json({ error: 'A verified FotMob player ID is required' }, { status: 400 });
-    }
+  const provider = (params.get('provider') || 'auto').toLowerCase();
+  if (!['auto', 'fotmob', 'fbref'].includes(provider)) {
+    return NextResponse.json({ error: 'Provider not connected' }, { status: 400 });
+  }
+  const playerId = (params.get('playerId') || '').trim();
+  const diagnostics: Array<{ provider: string; status: string }> = [];
+  if ((provider === 'auto' || provider === 'fotmob') && /^\d{1,9}$/.test(playerId)) {
     const base = process.env.LANUS_API_URL || 'https://aifball-python-api.onrender.com';
     const endpoint = new URL('/fotmob/player-season', base);
     endpoint.searchParams.set('player_id', playerId);
     endpoint.searchParams.set('season', season);
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20000);
+    const timer = setTimeout(() => controller.abort(), 12000);
     try {
-      const response = await fetch(endpoint, {
-        signal: controller.signal,
-        headers: process.env.LANUS_API_SECRET ? { 'X-API-Key': process.env.LANUS_API_SECRET } : {},
-        cache: 'no-store',
-      });
-      if (!response.ok) return NextResponse.json({ found: false, provider: 'fotmob', status: response.status });
-      const payload = await response.json();
-      if (!payload?.found || !['all_competitions', 'competition'].includes(payload.scope)) {
-        return NextResponse.json({ found: false, provider: 'fotmob' });
+      const response = await fetch(endpoint, { signal: controller.signal, cache: 'no-store' });
+      if (response.ok) {
+        const payload = await response.json();
+        if (payload?.found && ['all_competitions', 'competition'].includes(payload.scope) && payload.stats) {
+          const stats = {
+            matches: numeric(payload.stats, keys.matches),
+            goals: numeric(payload.stats, keys.goals),
+            assists: numeric(payload.stats, keys.assists),
+          };
+          if (Object.values(stats).some(value => value !== null)) {
+            return NextResponse.json({ found: true, provider: 'fotmob', scope: payload.scope, season, playerName, stats });
+          }
+        }
+        diagnostics.push({ provider: 'fotmob', status: 'unavailable_or_unverified' });
+      } else {
+        diagnostics.push({ provider: 'fotmob', status: response.status === 503 ? 'disabled' : 'unavailable' });
       }
-      return NextResponse.json(payload, { headers: { 'Cache-Control': 'private, no-store' } });
     } catch {
-      return NextResponse.json({ found: false, provider: 'fotmob' });
+      diagnostics.push({ provider: 'fotmob', status: 'request_failed' });
     } finally {
       clearTimeout(timer);
     }
+  } else if (provider === 'fotmob') {
+    return NextResponse.json({ found: false, provider: 'fotmob', reason: 'verified_player_id_required' });
   }
-  if (provider !== 'fbref') return NextResponse.json({ error: 'Provider not connected' }, { status: 400 });
+  if (provider === 'fotmob') return NextResponse.json({ found: false, diagnostics });
 
   // First working adapter: existing internal FBref backend. This is LEAGUE-ONLY,
   // never an all-competitions total. More adapters can be added without changing UI.
@@ -82,14 +91,14 @@ export async function GET(request: Request) {
   const timer = setTimeout(() => controller.abort(), 45000);
   try {
     const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-    if (!response.ok) return NextResponse.json({ scope: 'league', provider: 'fbref', found: false });
+    if (!response.ok) return NextResponse.json({ scope: 'league', provider: 'fbref', found: false, diagnostics });
     const body = await response.json();
     const rows = Array.isArray(body?.data) ? body.data : [];
     const matching = rows.filter((row: unknown): row is Row => Boolean(row) && typeof row === 'object' && !Array.isArray(row))
       .map(normalize)
       .filter((row: Row) => ['player', 'Player', 'player_name'].some(key =>
         String(row[key] ?? '').trim().toLocaleLowerCase() === playerName.toLocaleLowerCase()));
-    if (matching.length !== 1) return NextResponse.json({ scope: 'league', provider: 'fbref', found: false });
+    if (matching.length !== 1) return NextResponse.json({ scope: 'league', provider: 'fbref', found: false, diagnostics });
     const row = matching[0];
     const stats = {
       matches: numeric(row, keys.matches),
@@ -103,9 +112,10 @@ export async function GET(request: Request) {
       season,
       playerName,
       stats,
+      diagnostics,
     }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch {
-    return NextResponse.json({ found: false, provider: 'fbref', scope: 'league' });
+    return NextResponse.json({ found: false, provider: 'fbref', scope: 'league', diagnostics });
   } finally {
     clearTimeout(timer);
   }
