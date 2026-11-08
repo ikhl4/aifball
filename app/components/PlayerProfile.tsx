@@ -200,34 +200,34 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   });
   if (!facts.length && !competitions.length && !careerTotals.length && !trophyCount && !contractDate && !season && !honours.length) return null;
 
-  const surface = isDark ? 'bg-[#242625] border-white/10 text-white' : 'bg-gray-100 border-gray-200 text-gray-900';
+  const surface = isDark ? 'bg-[#183b2b] border-emerald-700/40 text-white' : 'bg-[#f0f7f2] border-emerald-800/15 text-[#153c29]';
   const metric = (label: string, value: string | number | undefined) => (
-    <div key={label} className={`min-w-0 rounded-xl border p-3 text-center ${surface}`}>
-      <dd className="text-xl font-extrabold tabular-nums">{value ?? '—'}</dd>
-      <dt className="mt-1 text-[11px] leading-5 opacity-75">{label}</dt>
+    <div key={label} className={`min-w-0 rounded-xl border px-1.5 py-2 sm:p-3 text-center ${surface}`}>
+      <dd className="text-base sm:text-xl font-extrabold tabular-nums">{value ?? '—'}</dd>
+      <dt className="mt-1 text-[10px] sm:text-[11px] leading-4 sm:leading-5 opacity-80 break-words">{label}</dt>
     </div>
   );
   return (
-    <section dir="rtl" className="w-full min-w-0 space-y-4 text-inherit">
-      <div className="space-y-2">
+    <section dir="rtl" className="w-full min-w-0 max-w-full overflow-hidden space-y-3 sm:space-y-4 text-inherit">
+      <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-700/20 bg-emerald-800/5 p-2.5 sm:p-3">
         {visiblePhoto ? (
           <img src={visiblePhoto} alt={`صورة ${playerName}`} loading="lazy" referrerPolicy="no-referrer"
             onError={() => setPhotoFailed(true)}
-            className="mx-auto max-h-80 w-full rounded-2xl bg-black/10 object-contain sm:max-h-96" />
+            className="h-24 w-20 sm:h-36 sm:w-28 shrink-0 rounded-xl bg-black/10 object-cover object-top" />
         ) : null}
-        <div>
-          <h2 className="text-xl font-extrabold">{playerName}</h2>
-          <p className="mt-1 text-sm opacity-70">{[details?.club, details?.nationality].filter(Boolean).join(' · ')}</p>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base sm:text-xl font-extrabold leading-snug break-words">{playerName}</h2>
+          <p className="mt-1 text-xs sm:text-sm opacity-80 break-words">{[details?.club, details?.nationality].filter(Boolean).join(' · ')}</p>
         </div>
       </div>
 
       {careerSource && (
         <div className="space-y-2">
           <h3 className="font-bold">إحصائيات المسيرة</h3>
-          <dl className="grid grid-cols-3 gap-2">
+          <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
             {careerHeadline.map(({ label, value }) => metric(label, value))}
           </dl>
-          <p className="text-xs opacity-60">حسب نطاق المصدر الموثق، ولا تُجمع إحصائيات الدوريات مع جميع المسابقات.</p>
+          <p className="text-[11px] leading-5 opacity-75">حسب نطاق المصدر الموثق، ولا تُجمع إحصائيات الدوريات مع جميع المسابقات.</p>
         </div>
       )}
 
@@ -245,17 +245,17 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
           {competitions.length ? competitions.map(({ team, competition, numbers }, index) => (
             <div key={index} className="space-y-2">
               <p className="text-xs opacity-70">{team} · {competition}</p>
-              <dl className="grid grid-cols-3 gap-2">
+              <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
                 {primaryLabels.map(label => metric(label, numbers.find(item => item.label === label)?.value))}
               </dl>
             </div>
           )) : stats.length ? (
-            <dl className="grid grid-cols-3 gap-2">
+            <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
               {primaryLabels.map(label => metric(label, stats.find(item => item.label === label)?.value))}
             </dl>
           ) : (
             <div className="space-y-2">
-              <dl className="grid grid-cols-3 gap-2">
+              <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
                 {primaryLabels.map(label => metric(label, undefined))}
               </dl>
               <p role="status" className="text-xs opacity-65">{hasSeasonSummary ? seasonSummary : current ? 'لم يتم التحقق من إحصائيات الموسم بعد.' : 'جاري التحقق من أرقام الموسم…'}</p>
