@@ -38,6 +38,38 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Invalid player or season' }, { status: 400 });
   }
 
+  const provider = (params.get('provider') || 'fbref').toLowerCase();
+  if (provider === 'fotmob') {
+    const playerId = (params.get('playerId') || '').trim();
+    if (!/^\\d{1,9}$/.test(playerId)) {
+      return NextResponse.json({ error: 'A verified FotMob player ID is required' }, { status: 400 });
+    }
+    const base = process.env.LANUS_API_URL || 'https://aifball-python-api.onrender.com';
+    const endpoint = new URL('/fotmob/player-season', base);
+    endpoint.searchParams.set('player_id', playerId);
+    endpoint.searchParams.set('season', season);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(endpoint, {
+        signal: controller.signal,
+        headers: process.env.LANUS_API_SECRET ? { 'X-API-Key': process.env.LANUS_API_SECRET } : {},
+        cache: 'no-store',
+      });
+      if (!response.ok) return NextResponse.json({ found: false, provider: 'fotmob', status: response.status });
+      const payload = await response.json();
+      if (!payload?.found || !['all_competitions', 'competition'].includes(payload.scope)) {
+        return NextResponse.json({ found: false, provider: 'fotmob' });
+      }
+      return NextResponse.json(payload, { headers: { 'Cache-Control': 'private, no-store' } });
+    } catch {
+      return NextResponse.json({ found: false, provider: 'fotmob' });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  if (provider !== 'fbref') return NextResponse.json({ error: 'Provider not connected' }, { status: 400 });
+
   // First working adapter: existing internal FBref backend. This is LEAGUE-ONLY,
   // never an all-competitions total. More adapters can be added without changing UI.
   const origin = new URL(request.url).origin;
