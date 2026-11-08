@@ -13,22 +13,22 @@ const knownTitles: Record<string, string> = {
 };
 
 function clean(input: string): string {
-  return input.replace(/<sup\\b[^>]*>[\\s\\S]*?<\\/sup>/gi, '')
+  return input.replace(/<sup\b[^>]*>[\s\S]*?<\/sup>/gi, '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;|&#160;/gi, ' ')
     .replace(/&ndash;|&mdash;/gi, '-')
     .replace(/&amp;/gi, '&')
-    .replace(/\\s+/g, ' ').trim();
+    .replace(/\s+/g, ' ').trim();
 }
 function number(input: string): number | null {
-  const value = clean(input).replace(/,/g, '').replace(/\\[[^\\]]*\\]/g, '');
-  return /^\\d{1,5}$/.test(value) ? Number(value) : null;
+  const value = clean(input).replace(/,/g, '').replace(/\[[^\]]*\]/g, '');
+  return /^\d{1,5}$/.test(value) ? Number(value) : null;
 }
 function cells(row: string): string[] {
-  return [...row.matchAll(/<t[dh]\\b[^>]*>([\\s\\S]*?)<\\/t[dh]>/gi)].map(m => clean(m[1]));
+  return [...row.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(m => clean(m[1]));
 }
 function extract(html: string, season: string) {
-  const tables = [...html.matchAll(/<table\\b[^>]*>[\\s\\S]*?<\\/table>/gi)].map(m => m[0]);
+  const tables = [...html.matchAll(/<table\b[^>]*>[\s\S]*?<\/table>/gi)].map(m => m[0]);
   const start = season.slice(0, 4);
   const end = String(Number(start) + 1);
   const matches: Array<{ matches: number; goals: number; source: string }> = [];
@@ -36,7 +36,7 @@ function extract(html: string, season: string) {
     const text = clean(table).toLowerCase();
     if (!text.includes('season') || !text.includes('total') ||
         (!text.includes('league') && !text.includes('appearances'))) continue;
-    const rows = [...table.matchAll(/<tr\\b[^>]*>([\\s\\S]*?)<\\/tr>/gi)].map(m => cells(m[1]));
+    const rows = [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map(m => cells(m[1]));
     const seasonRows = rows.filter(row => row.some(c => c === season || c === start + '-' + end.slice(-2) || c === start + '–' + end.slice(-2)));
     for (const row of seasonRows) {
       // Only accept a clearly labelled Total pair in a simple table.
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const playerName = (params.get('playerName') || '').trim();
   const season = (params.get('season') || '').trim();
-  if (!playerName || playerName.length > 100 || !/^\\d{4}-\\d{4}$/.test(season)) {
+  if (!playerName || playerName.length > 100 || !/^\d{4}-\d{4}$/.test(season)) {
     return NextResponse.json({ found: false, reason: 'invalid_input' }, { status: 400 });
   }
   const title = knownTitles[playerName.toLocaleLowerCase()];
