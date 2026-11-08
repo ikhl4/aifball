@@ -96,6 +96,14 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     if (!season) return;
     const controller = new AbortController();
     const params = new URLSearchParams({ playerName, season });
+    // Never query the European leagues for a Saudi-league player.
+    const club = (details?.club || '').trim();
+    const league = (details?.league || details?.league_name || '').trim();
+    if (/النصر|الهلال|الاتحاد|الأهلي|دوري روشن|saudi|al.nassr|al.hilal|al.ittihad|al.ahli/i.test(club + ' ' + league)) {
+      params.set('league', 'Saudi Pro League');
+    } else if (league) {
+      params.set('league', league);
+    }
     async function load() {
       let row: StatRow | undefined;
       let scope: string | undefined;
@@ -121,7 +129,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     }
     void load();
     return () => controller.abort();
-  }, [playerName, season, details?.fotmob_player_id, details?.sofascore_player_id, details?.scores365_player_id]);
+  }, [playerName, season, details?.fotmob_player_id, details?.sofascore_player_id, details?.scores365_player_id, details?.club, details?.league, details?.league_name]);
 
   const stats = current?.row
     ? fields.flatMap(([label, keys]) => {
