@@ -86,6 +86,10 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
       value === null ? [] : [{ label: competitionLabels[index], value: String(value) }]);
     return [{ team, competition, href, numbers }];
   });
+  // Only a provider-verified all-competitions row may be used as the headline total.
+  // League-only rows must never be presented as the entire club season.
+  const allCompetitionRows = competitions.filter(item => /(?:جميع المسابقات|كل البطولات|all competitions|all comps|overall)/i.test(item.competition));
+  const verifiedSeasonTotal = allCompetitionRows.length === 1 ? allCompetitionRows[0] : undefined;
   const hasSeasonSummary = competitions.length > 0 || Boolean(seasonSummary?.trim() && safeSource(seasonSource));
 
   useEffect(() => {
@@ -128,6 +132,10 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   // Career totals come only from the explicitly sourced career summary.
   // Do not combine them with single-season figures or invent missing values.
   const careerSource = safeSource(details?.career_source);
+  const retired = ['retired', 'معتزل', 'اعتزل'].includes((details?.status || details?.career_status || '').trim().toLowerCase());
+  // Superstar cards emphasize career totals; other active players lead with their season.
+  const careerFirst = retired || /(?:cristiano|ronaldo|رونالدو|messi|ميسي|neymar|نيمار)/i.test(playerName) || details?.default_view === 'career';
+  const [view, setView] = useState<'career' | 'season' | null>(null);
   const careerText = careerSource ? (details?.career_summary ?? '') : '';
   // Accept verified numeric fields first, then extract totals from the sourced summary.
   // Both Arabic- and Latin-digit spellings and either word order are supported.
@@ -157,7 +165,10 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     ? details?.contract_end : undefined;
   const currentClub = details?.club || 'النادي الحالي غير متاح';
 
-  const photo = safeSource(details?.image_url || details?.photo_url || details?.portrait_url);
+  const photo = [details?.image_url, details?.photo_url, details?.portrait_url].map(safeSource).find(Boolean);
+  const knownWikipediaTitle = /(?:cristiano|ronaldo|رونالدو)/i.test(playerName) ? 'Cristiano_Ronaldo'
+    : /(?:lionel|messi|ميسي)/i.test(playerName) ? 'Lionel_Messi'
+    : /(?:neymar|نيمار)/i.test(playerName) ? 'Neymar' : undefined;
   const [wikiPhoto, setWikiPhoto] = useState<string>();
   const [photoFailed, setPhotoFailed] = useState(false);
   useEffect(() => {
@@ -176,6 +187,14 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
         const source = pages.map(page => safeSource(page.thumbnail?.source)).find(Boolean);
         if (!controller.signal.aborted && source) setWikiPhoto(source);
       }).catch(() => {});
+    if (knownWikipediaTitle) {
+      fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + knownWikipediaTitle, { signal: controller.signal })
+        .then(response => response.ok ? response.json() : null)
+        .then(payload => {
+          const source = safeSource(payload?.thumbnail?.source);
+          if (!controller.signal.aborted && source) setWikiPhoto(previous => previous || source);
+        }).catch(() => {});
+    }
     return () => controller.abort();
   }, [playerName, photo]);
   const visiblePhoto = photo && !photoFailed ? photo : wikiPhoto;
@@ -200,41 +219,47 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   });
   if (!facts.length && !competitions.length && !careerTotals.length && !trophyCount && !contractDate && !season && !honours.length) return null;
 
-  const surface = isDark ? 'bg-[#242625] border-white/10 text-white' : 'bg-gray-100 border-gray-200 text-gray-900';
+  const showCareer = view === 'career' || (view === null && (careerFirst || !season));
+  const showSeason = view === 'season' || (view === null && !showCareer);
+  const surface = isDark ? 'bg-[#183b2b] border-emerald-700/40 text-white' : 'bg-[#f0f7f2] border-emerald-800/15 text-[#153c29]';
   const metric = (label: string, value: string | number | undefined) => (
-    <div key={label} className={`min-w-0 rounded-xl border p-3 text-center ${surface}`}>
-      <dd className="text-xl font-extrabold tabular-nums">{value ?? '—'}</dd>
-      <dt className="mt-1 text-[11px] leading-5 opacity-75">{label}</dt>
+    <div key={label} className={`min-w-0 rounded-xl border px-1.5 py-2 sm:p-3 text-center ${surface}`}>
+      <dd className="text-base sm:text-xl font-extrabold tabular-nums">{value ?? '—'}</dd>
+      <dt className="mt-1 text-[10px] sm:text-[11px] leading-4 sm:leading-5 opacity-80 break-words">{label}</dt>
     </div>
   );
   return (
-    <section dir="rtl" className="w-full min-w-0 space-y-4 text-inherit">
-      <div className="space-y-2">
+    <section dir="rtl" className="w-full min-w-0 max-w-full overflow-hidden space-y-3 sm:space-y-4 text-inherit">
+      <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-700/20 bg-emerald-800/5 p-2.5 sm:p-3">
         {visiblePhoto ? (
           <img src={visiblePhoto} alt={`صورة ${playerName}`} loading="lazy" referrerPolicy="no-referrer"
             onError={() => setPhotoFailed(true)}
-            className="mx-auto max-h-80 w-full rounded-2xl bg-black/10 object-contain sm:max-h-96" />
+            className="h-24 w-20 sm:h-36 sm:w-28 shrink-0 rounded-xl bg-black/10 object-cover object-top" />
         ) : null}
-        <div>
-          <h2 className="text-xl font-extrabold">{playerName}</h2>
-          <p className="mt-1 text-sm opacity-70">{[details?.club, details?.nationality].filter(Boolean).join(' · ')}</p>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base sm:text-xl font-extrabold leading-snug break-words">{playerName}</h2>
+          <p className="mt-1 text-xs sm:text-sm opacity-80 break-words">{[details?.club, details?.nationality].filter(Boolean).join(' · ')}</p>
         </div>
       </div>
 
-      {careerSource && (
+      <div className="flex gap-1.5 rounded-xl border border-emerald-700/20 p-1" role="group" aria-label="نطاق إحصائيات اللاعب">
+        <button type="button" aria-pressed={showCareer} onClick={() => setView('career')} className={`flex-1 rounded-lg px-2 py-2 text-xs sm:text-sm font-bold ${showCareer ? 'bg-emerald-700 text-white' : 'hover:bg-emerald-700/10'}`}>كل المواسم</button>
+        <button type="button" aria-pressed={showSeason} onClick={() => setView('season')} className={`flex-1 rounded-lg px-2 py-2 text-xs sm:text-sm font-bold ${showSeason ? 'bg-emerald-700 text-white' : 'hover:bg-emerald-700/10'}`}>الموسم الحالي</button>
+      </div>
+      {showCareer && (
         <div className="space-y-2">
           <h3 className="font-bold">إحصائيات المسيرة</h3>
-          <dl className="grid grid-cols-3 gap-2">
+          <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
             {careerHeadline.map(({ label, value }) => metric(label, value))}
           </dl>
-          <p className="text-xs opacity-60">حسب نطاق المصدر الموثق، ولا تُجمع إحصائيات الدوريات مع جميع المسابقات.</p>
+          <p className="text-[11px] leading-5 opacity-75">حسب نطاق المصدر الموثق، ولا تُجمع إحصائيات الدوريات مع جميع المسابقات.</p>
         </div>
       )}
 
-      {season && (
+      {showSeason && (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-bold">أرقام الموسم الحالي</h3>
+            <h3 className="font-bold">إحصائيات موسم <bdi dir="ltr" className="inline-block">{season}</bdi></h3>
             <label className="flex items-center gap-2 text-xs">الموسم
               <select disabled={available.length < 2} className="max-w-32 rounded-lg border border-gray-500 bg-transparent p-2" value={season}
                 onChange={event => setSelection(event.target.value)}>
@@ -242,20 +267,32 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
               </select>
             </label>
           </div>
-          {competitions.length ? competitions.map(({ team, competition, numbers }, index) => (
+          {verifiedSeasonTotal && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold opacity-80">{verifiedSeasonTotal.team} · جميع البطولات الرسمية هذا الموسم</p>
+              <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                {primaryLabels.map(label => metric(label, verifiedSeasonTotal.numbers.find(item => item.label === label)?.value))}
+              </dl>
+            </div>
+          )}
+          {!verifiedSeasonTotal && competitions.length > 0 && <p className="text-[11px] opacity-75">إجمالي الموسم بجميع البطولات غير متاح بعد. التفاصيل أدناه تخص كل بطولة منفردة، وليست إجمالي الموسم.</p>}
+          {competitions.length ? competitions.filter(item => item !== verifiedSeasonTotal).map(({ team, competition, numbers }, index) => (
             <div key={index} className="space-y-2">
-              <p className="text-xs opacity-70">{team} · {competition}</p>
-              <dl className="grid grid-cols-3 gap-2">
+              <p className="text-xs opacity-70">{team} · {competition} (هذه البطولة فقط)</p>
+              <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
                 {primaryLabels.map(label => metric(label, numbers.find(item => item.label === label)?.value))}
               </dl>
             </div>
-          )) : stats.length ? (
-            <dl className="grid grid-cols-3 gap-2">
-              {primaryLabels.map(label => metric(label, stats.find(item => item.label === label)?.value))}
-            </dl>
+          )) : verifiedSeasonTotal ? null : stats.length ? (
+            <div className="space-y-2">
+              <p className="text-xs opacity-75">إحصائيات الدوري فقط من المصدر الاحتياطي؛ إجمالي الموسم بجميع البطولات غير متاح بعد.</p>
+              <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                {primaryLabels.map(label => metric(label, stats.find(item => item.label === label)?.value))}
+              </dl>
+            </div>
           ) : (
             <div className="space-y-2">
-              <dl className="grid grid-cols-3 gap-2">
+              <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
                 {primaryLabels.map(label => metric(label, undefined))}
               </dl>
               <p role="status" className="text-xs opacity-65">{hasSeasonSummary ? seasonSummary : current ? 'لم يتم التحقق من إحصائيات الموسم بعد.' : 'جاري التحقق من أرقام الموسم…'}</p>
