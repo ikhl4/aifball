@@ -52,7 +52,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   const [selection, setSelection] = useState(selectedSeason ?? '');
   const inferredSeason = details?.current_season && /^\d{4}(?:-\d{4})?$/.test(details.current_season) ? details.current_season : undefined;
   const season = available.includes(selection) ? selection : (available[0] || inferredSeason);
-  const [result, setResult] = useState<{ name: string; season: string; row?: StatRow }>();
+  const [result, setResult] = useState<{ name: string; season: string; row?: StatRow; scope?: string; provider?: string }>();
   const current = result?.name === playerName && result.season === season ? result : undefined;
 
   const seasonKey = season ? 'season_' + season.replace('-', '_') : '';
@@ -98,21 +98,41 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     const params = new URLSearchParams({ playerName, season });
     async function load() {
       let row: StatRow | undefined;
-      try {
-        const response = await fetch('/api/player-stats?' + params, { signal: controller.signal });
-        if (!response.ok) throw new Error('Player statistics unavailable');
-        const payload = await response.json();
-        if (payload?.found && payload?.scope === 'league' && payload?.stats) {
-          row = payload.stats as StatRow;
-        }
-      } catch {
-        // No verified fallback; retain the structured competition rows.
+      let scope: string | undefined;
+      let provider: string | undefined;
+      const playerId = details?.fotmob_player_id;
+      if (playerId && /^\\d{1,9}$/.test(playerId)) {
+        try {
+          const fmParams = new URLSearchParams({ playerName, season, provider: 'fotmob', playerId });
+          const response = await fetch('/api/player-stats?' + fmParams, { signal: controller.signal });
+          if (response.ok) {
+            const payload = await response.json();
+            if (payload?.found && payload?.stats && ['all_competitions', 'competition'].includes(payload.scope)) {
+              row = payload.stats as StatRow;
+              scope = payload.scope;
+              provider = 'fotmob';
+            }
+          }
+        } catch { /* Proceed to league fallback. */ }
       }
-      if (!controller.signal.aborted) setResult({ name: playerName, season, row });
+      if (!row) {
+        try {
+          const response = await fetch('/api/player-stats?' + params, { signal: controller.signal });
+          if (response.ok) {
+            const payload = await response.json();
+            if (payload?.found && payload?.scope === 'league' && payload?.stats) {
+              row = payload.stats as StatRow;
+              scope = 'league';
+              provider = 'fbref';
+            }
+          }
+        } catch { /* Keep unavailable fields blank. */ }
+      }
+      if (!controller.signal.aborted) setResult({ name: playerName, season, row, scope, provider });
     }
     void load();
     return () => controller.abort();
-  }, [playerName, season]);
+  }, [playerName, season, details?.fotmob_player_id]);
 
   const stats = current?.row
     ? fields.flatMap(([label, keys]) => {
@@ -259,6 +279,14 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
               </select>
             </label>
           </div>
+          {!verifiedSeasonTotal && current?.scope === 'all_competitions' && stats.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold opacity-80">جميع البطولات الرسمية · FotMob</p>
+              <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                {primaryLabels.map(label => metric(label, stats.find(item => item.label === label)?.value))}
+              </dl>
+            </div>
+          )}
           {verifiedSeasonTotal && (
             <div className="space-y-2">
               <p className="text-xs font-semibold opacity-80">{verifiedSeasonTotal.team} · جميع البطولات الرسمية هذا الموسم</p>
@@ -275,9 +303,9 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
                 {primaryLabels.map(label => metric(label, numbers.find(item => item.label === label)?.value))}
               </dl>
             </div>
-          )) : verifiedSeasonTotal ? null : stats.length ? (
+          )) : verifiedSeasonTotal || current?.scope === 'all_competitions' ? null : stats.length ? (
             <div className="space-y-2">
-              <p className="text-xs opacity-75">إحصائيات الدوري فقط من المصدر الاحتياطي؛ إجمالي الموسم بجميع البطولات غير متاح بعد.</p>
+              <p className="text-xs opacity-75">إحصائيات بطولة واحدة من المصدر الاحتياطي؛ إجمالي الموسم بجميع البطولات غير متاح بعد.</p>
               <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
                 {primaryLabels.map(label => metric(label, stats.find(item => item.label === label)?.value))}
               </dl>
