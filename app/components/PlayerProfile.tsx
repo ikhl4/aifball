@@ -93,39 +93,31 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   const hasSeasonSummary = competitions.length > 0 || Boolean(seasonSummary?.trim() && safeSource(seasonSource));
 
   useEffect(() => {
-    if (!season || hasSeasonSummary) return;
+    if (!season) return;
     const controller = new AbortController();
-    const params = new URLSearchParams({ source: 'fbref', action: 'player-stats', playerName, season });
+    const params = new URLSearchParams({ playerName, season });
     async function load() {
       let row: StatRow | undefined;
       try {
-        const response = await fetch('/api/advanced?' + params, { signal: controller.signal });
+        const response = await fetch('/api/player-stats?' + params, { signal: controller.signal });
         if (!response.ok) throw new Error('Player statistics unavailable');
         const payload = await response.json();
-        if (Array.isArray(payload.data)) {
-          const matches = payload.data
-            .filter((entry: unknown): entry is StatRow =>
-              entry !== null && typeof entry === 'object' && !Array.isArray(entry)
-            )
-            .map(normalizeSourceRow)
-            .filter((entry: StatRow) => String(read(entry, ['player', 'Player', 'player_name']) ?? '')
-              .trim().toLowerCase() === playerName.trim().toLowerCase()
-          );
-          if (matches.length === 1) row = matches[0];
+        if (payload?.found && payload?.scope === 'league' && payload?.stats) {
+          row = payload.stats as StatRow;
         }
       } catch {
-        // Missing source data is displayed as unavailable.
+        // No verified fallback; retain the structured competition rows.
       }
       if (!controller.signal.aborted) setResult({ name: playerName, season, row });
     }
     void load();
     return () => controller.abort();
-  }, [playerName, season, hasSeasonSummary]);
+  }, [playerName, season]);
 
   const stats = current?.row
     ? fields.flatMap(([label, keys]) => {
         const value = read(current.row!, keys);
-        return value === undefined ? [] : [{ label, value }];
+        return value === undefined || value === null ? [] : [{ label, value }];
       })
     : [];
 
