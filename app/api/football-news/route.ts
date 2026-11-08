@@ -15,6 +15,17 @@ export async function GET(req: NextRequest) {
   }
   const category = (categoryParam || undefined) as NewsCategory | undefined;
   const sources = activeNewsSources(category);
+  const mode = req.nextUrl.searchParams.get('provider') || 'duckduckgo';
+  if (mode !== 'duckduckgo' && mode !== 'x') return NextResponse.json({ error: 'invalid_provider' }, { status: 400 });
+  if (mode === 'duckduckgo') {
+    try {
+      const { searchXNewsWithDuckDuckGo } = await import('../../../lib/duckduckgo-x-news');
+      const result = await searchXNewsWithDuckDuckGo(sources);
+      return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
+    } catch {
+      return NextResponse.json({ status: 'upstream_unavailable', provider: 'duckduckgo', posts: [], message: 'DuckDuckGo search is unavailable; no posts were verified.' }, { status: 502, headers: { 'Cache-Control': 'no-store' } });
+    }
+  }
   const token = process.env.X_BEARER_TOKEN?.trim();
   // No token means no fake data. The list of configured sources remains inspectable.
   if (!token) return NextResponse.json({
