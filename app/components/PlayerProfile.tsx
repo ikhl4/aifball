@@ -165,7 +165,10 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     ? details?.contract_end : undefined;
   const currentClub = details?.club || 'النادي الحالي غير متاح';
 
-  const photo = safeSource(details?.image_url || details?.photo_url || details?.portrait_url);
+  const photo = [details?.image_url, details?.photo_url, details?.portrait_url].map(safeSource).find(Boolean);
+  const knownWikipediaTitle = /(?:cristiano|ronaldo|رونالدو)/i.test(playerName) ? 'Cristiano_Ronaldo'
+    : /(?:lionel|messi|ميسي)/i.test(playerName) ? 'Lionel_Messi'
+    : /(?:neymar|نيمار)/i.test(playerName) ? 'Neymar' : undefined;
   const [wikiPhoto, setWikiPhoto] = useState<string>();
   const [photoFailed, setPhotoFailed] = useState(false);
   useEffect(() => {
@@ -184,6 +187,14 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
         const source = pages.map(page => safeSource(page.thumbnail?.source)).find(Boolean);
         if (!controller.signal.aborted && source) setWikiPhoto(source);
       }).catch(() => {});
+    if (knownWikipediaTitle) {
+      fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + knownWikipediaTitle, { signal: controller.signal })
+        .then(response => response.ok ? response.json() : null)
+        .then(payload => {
+          const source = safeSource(payload?.thumbnail?.source);
+          if (!controller.signal.aborted && source) setWikiPhoto(previous => previous || source);
+        }).catch(() => {});
+    }
     return () => controller.abort();
   }, [playerName, photo]);
   const visiblePhoto = photo && !photoFailed ? photo : wikiPhoto;
