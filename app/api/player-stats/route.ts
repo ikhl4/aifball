@@ -78,6 +78,7 @@ export async function GET(request: Request) {
   }
   const playerId = (params.get('playerId') || '').trim();
   const diagnostics: Array<{ provider: string; status: string }> = [];
+  let partial: { provider: string; scope: 'competition' | 'league'; stats: Row } | null = null;
   if ((provider === 'auto' || provider === 'fotmob') && /^\d{1,9}$/.test(playerId)) {
     const base = process.env.LANUS_API_URL || 'https://aifball-python-api.onrender.com';
     const endpoint = new URL('/fotmob/player-season', base);
@@ -96,7 +97,10 @@ export async function GET(request: Request) {
             assists: numeric(payload.stats, keys.assists),
           };
           if (Object.values(stats).some(value => value !== null)) {
-            return NextResponse.json({ found: true, provider: 'fotmob', scope: payload.scope, season, playerName, stats });
+            if (payload.scope === 'all_competitions') {
+              return NextResponse.json({ found: true, provider: 'fotmob', scope: payload.scope, season, playerName, stats });
+            }
+            partial = { provider: 'fotmob', scope: 'competition', stats };
           }
         }
         diagnostics.push({ provider: 'fotmob', status: 'unavailable_or_unverified' });
@@ -116,15 +120,21 @@ export async function GET(request: Request) {
     if (provider !== 'auto' && provider !== source) continue;
     const id = (params.get(source === 'sofascore' ? 'sofascoreId' : 'scores365Id') || '').trim();
     const resolved = await externalSeason(source, id, season);
-    if (resolved) return NextResponse.json({
-      found: true, provider: source, scope: resolved.scope, season, playerName, stats: resolved.stats,
-    }, { headers: { 'Cache-Control': 'private, no-store' } });
+    if (resolved) {
+      if (resolved.scope === 'all_competitions') {
+        return NextResponse.json({ found: true, provider: source, scope: resolved.scope,
+          season, playerName, stats: resolved.stats },
+          { headers: { 'Cache-Control': 'private, no-store' } });
+      }
+      if (!partial) partial = { provider: source, scope: 'competition', stats: resolved.stats };
+    }
     diagnostics.push({ provider: source, status: id ? 'unavailable_or_unconfigured' : 'player_id_missing' });
   }
   if (provider === 'sofascore' || provider === '365scores') {
     return NextResponse.json({ found: false, diagnostics });
   }
 
+  // A verified overall season takes priority over single-competition results.
   // First working adapter: existing internal FBref backend. This is LEAGUE-ONLY,
   // never an all-competitions total. More adapters can be added without changing UI.
   const origin = new URL(request.url).origin;
@@ -137,20 +147,21 @@ export async function GET(request: Request) {
   const timer = setTimeout(() => controller.abort(), 45000);
   try {
     const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-    if (!response.ok) return NextResponse.json({ scope: 'league', provider: 'fbref', found: false, diagnostics });
+    if (!response.ok) return NextResponse.json(partial ? { found: true, ...partial, season, playerName, diagnostics } : { scope: 'league', provider: 'fbref', found: false, diagnostics });
     const body = await response.json();
     const rows = Array.isArray(body?.data) ? body.data : [];
     const matching = rows.filter((row: unknown): row is Row => Boolean(row) && typeof row === 'object' && !Array.isArray(row))
       .map(normalize)
       .filter((row: Row) => ['player', 'Player', 'player_name'].some(key =>
         String(row[key] ?? '').trim().toLocaleLowerCase() === playerName.toLocaleLowerCase()));
-    if (matching.length !== 1) return NextResponse.json({ scope: 'league', provider: 'fbref', found: false, diagnostics });
+    if (matching.length !== 1) return NextResponse.json(partial ? { found: true, ...partial, season, playerName, diagnostics } : { scope: 'league', provider: 'fbref', found: false, diagnostics });
     const row = matching[0];
     const stats = {
       matches: numeric(row, keys.matches),
       goals: numeric(row, keys.goals),
       assists: numeric(row, keys.assists),
     };
+    if (partial) return NextResponse.json({ found: true, ...partial, season, playerName, diagnostics });
     return NextResponse.json({
       found: Object.values(stats).some(value => value !== null),
       provider: 'fbref',
@@ -161,7 +172,7 @@ export async function GET(request: Request) {
       diagnostics,
     }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch {
-    return NextResponse.json({ found: false, provider: 'fbref', scope: 'league', diagnostics });
+    return NextResponse.json(partial ? { found: true, ...partial, season, playerName, diagnostics } : { found: false, provider: 'fbref', scope: 'league', diagnostics });
   } finally {
     clearTimeout(timer);
   }
