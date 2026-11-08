@@ -23,6 +23,7 @@ import MatchReport from './components/MatchReport';
 import MatchHighlightCard from './components/MatchHighlightCard';
 import ChatVideoCard from './components/ChatVideoCard';
 import ChatImageCard from './components/ChatImageCard';
+import FootballNewsCards from './components/FootballNewsCards';
 import AutoChatImage from './components/AutoChatImage';
 import MatchPoster from './components/MatchPoster';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
@@ -2044,6 +2045,13 @@ export default function FootPlayChat() {
                             msg.userQuery,
                             loading && index === messages.length - 1
                           )}
+                          {!(loading && index === messages.length - 1) &&
+                            /(?:آخر|اخر|أبرز|ابرز|جديد|عاجل|اخبار|أخبار|مستجدات|شائعات|انتقالات|صفقات|news|transfers)/i.test(msg.userQuery || '') && (
+                              <FootballNewsCards
+                                category={/(?:انتقالات|صفقات|ميركاتو|transfers)/i.test(msg.userQuery || '') ? 'transfers' : 'general'}
+                                isDark={isDarkMode}
+                              />
+                            )}
                         </div>
 
                         {!loading && index === messages.length - 1 && msg.content.trim() && (
