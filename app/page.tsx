@@ -162,12 +162,12 @@ function asRecord(value: unknown): DataRecord | null {
 
 function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const dimensions = size === 'sm' ? 'h-8 w-8' : size === 'lg' ? 'h-14 w-14' : 'h-10 w-10';
-  return <img src="/IMG_1414.png" alt="شعار فوتبلاي" className={`${dimensions} shrink-0 object-contain`} decoding="async" />;
+  return <img src="/IMG_1417.png" alt="شعار فوتبلاي" className={`${dimensions} shrink-0 object-contain`} decoding="async" />;
 }
 
 // Keep the uploaded artwork unchanged in the intro and chat.
 function OriginalBrandLogo({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
-  return <img src="/IMG_1414.png" alt="شعار فوتبلاي" width={size === 'lg' ? 112 : 40} height={size === 'lg' ? 112 : 40} className={size === 'lg' ? 'h-28 w-28 object-contain' : 'h-10 w-10 shrink-0 object-contain'} decoding="async" />;
+  return <img src="/IMG_1417.png" alt="شعار فوتبلاي" width={size === 'lg' ? 112 : 40} height={size === 'lg' ? 112 : 40} className={size === 'lg' ? 'h-28 w-28 object-contain' : 'h-10 w-10 shrink-0 object-contain'} decoding="async" />;
 }
 
 function safeUrl(value: string): string | null {
@@ -1752,7 +1752,7 @@ export default function FootPlayChat() {
             <AppIcon name="menu"/>
           </button>
 
-          <img src="/IMG_1414.png" alt="شعار فوتبلاي" width={48} height={48} className="h-12 w-12 shrink-0 object-contain" decoding="async" />
+          <img src="/IMG_1417.png" alt="شعار فوتبلاي" width={48} height={48} className="h-12 w-12 shrink-0 object-contain" decoding="async" />
 
           <div>
             <h1 className="text-base font-bold leading-tight">فوتبلاي</h1>
