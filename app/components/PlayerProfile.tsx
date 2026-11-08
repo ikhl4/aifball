@@ -86,6 +86,10 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
       value === null ? [] : [{ label: competitionLabels[index], value: String(value) }]);
     return [{ team, competition, href, numbers }];
   });
+  // Only a provider-verified all-competitions row may be used as the headline total.
+  // League-only rows must never be presented as the entire club season.
+  const allCompetitionRows = competitions.filter(item => /(?:جميع المسابقات|كل البطولات|all competitions|all comps|overall)/i.test(item.competition));
+  const verifiedSeasonTotal = allCompetitionRows.length === 1 ? allCompetitionRows[0] : undefined;
   const hasSeasonSummary = competitions.length > 0 || Boolean(seasonSummary?.trim() && safeSource(seasonSource));
 
   useEffect(() => {
@@ -254,14 +258,23 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
               </select>
             </label>
           </div>
-          {competitions.length ? competitions.map(({ team, competition, numbers }, index) => (
+          {verifiedSeasonTotal && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold opacity-80">{verifiedSeasonTotal.team} · جميع البطولات الرسمية هذا الموسم</p>
+              <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                {primaryLabels.map(label => metric(label, verifiedSeasonTotal.numbers.find(item => item.label === label)?.value))}
+              </dl>
+            </div>
+          )}
+          {!verifiedSeasonTotal && competitions.length > 0 && <p className="text-[11px] opacity-75">إجمالي جميع البطولات غير مؤكد بعد؛ الأرقام التالية تخص البطولات المذكورة فقط.</p>}
+          {competitions.length ? competitions.filter(item => item !== verifiedSeasonTotal).map(({ team, competition, numbers }, index) => (
             <div key={index} className="space-y-2">
-              <p className="text-xs opacity-70">{team} · {competition}</p>
+              <p className="text-xs opacity-70">{team} · {competition} (هذه البطولة فقط)</p>
               <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
                 {primaryLabels.map(label => metric(label, numbers.find(item => item.label === label)?.value))}
               </dl>
             </div>
-          )) : stats.length ? (
+          )) : verifiedSeasonTotal ? null : stats.length ? (
             <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
               {primaryLabels.map(label => metric(label, stats.find(item => item.label === label)?.value))}
             </dl>
