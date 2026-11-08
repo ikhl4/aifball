@@ -2296,7 +2296,7 @@ export default function FootPlayChat() {
           )}
 
           <div
-            className={`flex items-center gap-2 border rounded-full px-3 py-2 shadow-xl ${
+            className={`flex items-end gap-1.5 sm:gap-2 border rounded-[24px] px-2.5 sm:px-3 py-2 shadow-lg transition-colors ${
               isDarkMode
                 ? 'bg-emerald-950/60 backdrop-blur-xl border-emerald-500 focus-within:border-emerald-300'
                 : 'bg-white border-emerald-500/70 focus-within:border-emerald-600'
@@ -2315,7 +2315,7 @@ export default function FootPlayChat() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               title="إرفاق ملف"
-              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl text-gray-400 hover:text-emerald-500"
+              className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full flex items-center justify-center font-bold text-xl ${isDarkMode ? 'text-emerald-200 hover:text-white' : 'text-emerald-800 hover:text-emerald-600'}`}
             >
               +
             </button>
@@ -2324,10 +2324,10 @@ export default function FootPlayChat() {
               type="button"
               onClick={handleVoiceSearch}
               title="بحث صوتي"
-              className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full flex items-center justify-center ${
                 isListening
                   ? 'bg-emerald-600 text-white animate-pulse'
-                  : 'text-gray-400 hover:text-emerald-500'
+                  : (isDarkMode ? 'text-emerald-200 hover:text-white' : 'text-emerald-800 hover:text-emerald-600')
               }`}
             >
               <svg
@@ -2351,7 +2351,7 @@ export default function FootPlayChat() {
               onChange={(event) => {
                 setInput(event.target.value);
                 event.currentTarget.style.height = 'auto';
-                event.currentTarget.style.height = Math.min(event.currentTarget.scrollHeight, 144) + 'px';
+                event.currentTarget.style.height = Math.min(event.currentTarget.scrollHeight, 104) + 'px';
               }}
               onKeyDown={(event) => {
                 // Enter inserts a newline on iPhone, Android and desktop.
@@ -2367,7 +2367,7 @@ export default function FootPlayChat() {
                   ? 'جاري الاستماع لصوتك...'
                   : 'اسأل عن أي مباراة، تحليل، أو إحصائية...'
               }
-              className={`flex-1 min-w-0 max-h-36 resize-none overflow-y-auto bg-transparent px-3 py-2 text-sm leading-6 focus:outline-none ${
+              className={`flex-1 min-w-0 max-h-[104px] resize-none overflow-y-auto bg-transparent px-2 sm:px-3 py-2 text-sm leading-6 focus:outline-none ${
                 isDarkMode
                   ? 'text-white placeholder-gray-500'
                   : 'text-gray-900 placeholder-gray-400'
@@ -2378,7 +2378,7 @@ export default function FootPlayChat() {
               type="button"
               onClick={() => sendMessage()}
               disabled={loading || (!input.trim() && !attachedFiles.length)}
-              className="w-10 h-10 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:bg-gray-500 flex items-center justify-center text-white flex-shrink-0"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:bg-emerald-950/30 disabled:text-emerald-700 flex items-center justify-center text-white flex-shrink-0"
               aria-label="إرسال الرسالة"
             >
               ➤
