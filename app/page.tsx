@@ -1609,7 +1609,7 @@ export default function FootPlayChat() {
         className={`fixed top-0 right-0 h-full w-72 sm:w-80 backdrop-blur-md border-l z-40 transform transition-all duration-300 flex flex-col ${
           isDarkMode
             ? 'bg-emerald-950/55 backdrop-blur-2xl border-emerald-300/20'
-            : 'bg-emerald-950/60 backdrop-blur-2xl border-gray-200'
+            : 'bg-[#f7faf8] text-slate-900 border-emerald-900/15 shadow-2xl'
         } ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div
@@ -1644,7 +1644,7 @@ export default function FootPlayChat() {
             <span>بدء محادثة جديدة</span>
           </button>
           <div className="mt-4 space-y-1.5">
-            <p className={`px-2 pb-1 text-[10px] font-bold ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>مراكز فوتبلاي</p>
+            <p className={`px-2 pb-1 text-[10px] font-bold ${isDarkMode ? 'text-gray-500' : 'text-slate-600'}`}>مراكز فوتبلاي</p>
             <button type="button" onClick={() => { setSidebarOpen(false); void sendMessage('اعرض مكتبة التمارين'); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}>
               <AppIcon name="activity" size={19} className="text-emerald-500"/><span>التمارين</span>
@@ -1662,7 +1662,7 @@ export default function FootPlayChat() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5 custom-scrollbar">
-          <input aria-label="البحث في المحادثات" placeholder="ابحث في المحادثات…" value={historySearch} onChange={event => setHistorySearch(event.target.value)} className="w-full rounded-lg border border-emerald-700/30 bg-transparent px-3 py-2 text-sm mb-3 outline-none focus:border-emerald-500" />
+          <input aria-label="البحث في المحادثات" placeholder="ابحث في المحادثات…" value={historySearch} onChange={event => setHistorySearch(event.target.value)} className={`w-full rounded-lg border px-3 py-2 text-sm mb-3 outline-none focus:border-emerald-600 ${isDarkMode ? 'border-emerald-700/30 bg-transparent text-white placeholder:text-gray-400' : 'border-emerald-900/20 bg-white text-slate-900 placeholder:text-slate-500'}` } />
           {sessions.filter(session => session.title.toLocaleLowerCase().includes(historySearch.trim().toLocaleLowerCase())).map((session) => (
             <button
               type="button"
@@ -1835,9 +1835,9 @@ export default function FootPlayChat() {
           if (Math.abs(dx) > 75 && Math.abs(dx) > Math.abs(dy) * 1.5) setHomeScreen(dx < 0 ? 'analytics' : 'home');
         }}>
         {messages.length === 0 && (
-          <nav aria-label="شاشات فوتبلاي" className="sticky top-0 z-20 mx-auto mb-5 flex w-full max-w-sm gap-1 rounded-2xl border border-emerald-500/30 bg-emerald-950/60 backdrop-blur-2xl p-1 shadow-lg backdrop-blur-lg">
+          <nav aria-label="شاشات فوتبلاي" className={`sticky top-0 z-20 mx-auto mb-5 flex w-full max-w-sm gap-1 rounded-2xl border p-1 shadow-lg backdrop-blur-lg ${isDarkMode ? "border-emerald-500/30 bg-emerald-950/60" : "border-emerald-900/15 bg-[#e8f2ec] shadow-emerald-950/10"}`}>
             <button type="button" aria-current={homeScreen === 'home' ? 'page' : undefined} onClick={() => setHomeScreen('home')}
-              className={`flex-1 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold transition ${homeScreen === 'home' ? 'bg-emerald-600 text-white' : 'text-gray-300 hover:bg-white/10'}`}>الرئيسية</button>
+              className={`flex-1 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold transition ${homeScreen === 'home' ? 'bg-emerald-600 text-white' : (isDarkMode ? 'text-gray-300 hover:bg-white/10' : 'text-emerald-950 hover:bg-white/70')}`}>الرئيسية</button>
             <button type="button" aria-current={homeScreen === 'analytics' ? 'page' : undefined} onClick={() => setHomeScreen('analytics')}
               className={`flex-1 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold transition ${homeScreen === 'analytics' ? 'bg-emerald-600 text-white' : 'text-gray-300 hover:bg-white/10'}`}><span className="inline-flex items-center justify-center gap-2">التحليلات <svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7 16v-3m5 3V8m5 8v-5"/><path d="M6 19h12"/></svg></span></button>
           </nav>
@@ -1873,7 +1873,7 @@ export default function FootPlayChat() {
               })}
             </nav>
             {showFantasyChoices && (
-              <section aria-label="اختر مسابقة الفانتازي" className={`mb-4 rounded-2xl border border-emerald-500/30 p-4 text-right ${isDarkMode ? 'bg-emerald-950/50 backdrop-blur-xl text-white' : 'bg-emerald-950/50 backdrop-blur-xl text-gray-900'}`}>
+              <section aria-label="اختر مسابقة الفانتازي" className={`mb-4 rounded-2xl border border-emerald-500/30 p-4 text-right ${isDarkMode ? 'bg-emerald-950/50 backdrop-blur-xl text-white' : 'bg-white text-slate-900'}`}>
                 <p className="mb-3 text-sm font-bold">أي فانتازي تبي؟</p>
                 <div className="grid grid-cols-2 gap-3">
                   {[
@@ -1954,8 +1954,8 @@ export default function FootPlayChat() {
             </div>
           </div>
         ) : (
-          <div className="w-full flex-1 rounded-2xl border border-emerald-500/20 bg-emerald-950/50 backdrop-blur-xl p-3 sm:p-5">
-            <p className="mb-4 text-center text-xs text-emerald-300">الشاشة الثانية • اسحب يمينًا للعودة للرئيسية</p>
+          <div className={`w-full flex-1 rounded-2xl border backdrop-blur-xl p-3 sm:p-5 ${isDarkMode ? "border-emerald-500/20 bg-emerald-950/50" : "border-emerald-900/15 bg-[#f3f8f5] text-slate-900"}`}>
+            <p className={`mb-4 text-center text-xs ${isDarkMode ? "text-emerald-300" : "text-emerald-900"}`}>الشاشة الثانية • اسحب يمينًا للعودة للرئيسية</p>
             <AnalyticsDashboard />
           </div>
         )) : (
