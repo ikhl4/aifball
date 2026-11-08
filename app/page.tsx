@@ -1649,6 +1649,10 @@ export default function FootPlayChat() {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
               <AppIcon name="activity" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>التمارين</span>
             </button>
+            <button type="button" onClick={() => { setSidebarOpen(false); void sendMessage('اعرض مركز الانتقالات لكرة القدم للموسم الحالي 2026-2027، مع أحدث الانتقالات الرسمية والشائعات موضحة كلٌ على حدة، وصور اللاعبين والأندية وقيمة الصفقة إن توفرت، وأظهر النتائج في تنسيق مركز الانتقالات المعتمد دون اختلاق بيانات.'); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
+              <AppIcon name="activity" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>مركز الانتقالات</span>
+            </button>
             <button type="button" onClick={() => { setSidebarOpen(false); setShowStandings(true); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
               <AppIcon name="chart" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>الترتيب</span>
