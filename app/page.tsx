@@ -1647,15 +1647,15 @@ export default function FootPlayChat() {
             <p className={`px-2 pb-1 text-[10px] font-bold ${isDarkMode ? 'text-gray-500' : 'text-white'}`}>مراكز فوتبلاي</p>
             <button type="button" onClick={() => { setSidebarOpen(false); void sendMessage('اعرض مكتبة التمارين'); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
-              <AppIcon name="activity" size={19} className="text-emerald-500"/><span>التمارين</span>
+              <AppIcon name="activity" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>التمارين</span>
             </button>
             <button type="button" onClick={() => { setSidebarOpen(false); setShowStandings(true); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}>
-              <AppIcon name="chart" size={19} className="text-emerald-500"/><span>الترتيب</span>
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
+              <AppIcon name="chart" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>الترتيب</span>
             </button>
             <button type="button" onClick={() => { setSidebarOpen(false); setShowLiveScores(true); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}>
-              <AppIcon name="pitch" size={19} className="text-emerald-500"/><span>النتائج المباشرة</span>
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
+              <AppIcon name="pitch" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>النتائج المباشرة</span>
               <span className="mr-auto w-1.5 h-1.5 rounded-full bg-red-500" aria-hidden="true"/>
             </button>
           </div>
