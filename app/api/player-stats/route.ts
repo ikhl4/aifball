@@ -143,16 +143,18 @@ export async function GET(request: Request) {
   url.searchParams.set('action', 'player-stats');
   url.searchParams.set('playerName', playerName);
   url.searchParams.set('season', season);
+  const league = (params.get('league') || '').trim();
+  if (league && league.length <= 80) url.searchParams.set('league', league);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 45000);
   try {
     const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
     if (!response.ok) return NextResponse.json(partial ? { found: true, ...partial, season, playerName, diagnostics } : { scope: 'league', provider: 'fbref', found: false, diagnostics });
     const body = await response.json();
-    const rows = Array.isArray(body?.data) ? body.data : [];
+    const rows = Array.isArray(body?.data) ? body.data : (Array.isArray(body) ? body : []);
     const matching = rows.filter((row: unknown): row is Row => Boolean(row) && typeof row === 'object' && !Array.isArray(row))
       .map(normalize)
-      .filter((row: Row) => ['player', 'Player', 'player_name'].some(key =>
+      .filter((row: Row) => ['player', 'Player', 'player_name', 'Player Name', 'Unnamed: 0 level_0 Player'].some(key =>
         String(row[key] ?? '').trim().toLocaleLowerCase() === playerName.toLocaleLowerCase()));
     if (matching.length !== 1) return NextResponse.json(partial ? { found: true, ...partial, season, playerName, diagnostics } : { scope: 'league', provider: 'fbref', found: false, diagnostics });
     const row = matching[0];
