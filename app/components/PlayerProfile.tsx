@@ -275,9 +275,12 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
               </dl>
             </div>
           )) : verifiedSeasonTotal ? null : stats.length ? (
-            <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
-              {primaryLabels.map(label => metric(label, stats.find(item => item.label === label)?.value))}
-            </dl>
+            <div className="space-y-2">
+              <p className="text-xs opacity-75">إحصائيات الدوري فقط من المصدر الاحتياطي؛ إجمالي الموسم بجميع البطولات غير متاح بعد.</p>
+              <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                {primaryLabels.map(label => metric(label, stats.find(item => item.label === label)?.value))}
+              </dl>
+            </div>
           ) : (
             <div className="space-y-2">
               <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
