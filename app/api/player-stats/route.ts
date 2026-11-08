@@ -73,7 +73,7 @@ export async function GET(request: Request) {
   }
 
   const provider = (params.get('provider') || 'auto').toLowerCase();
-  if (!['auto', 'fotmob', 'fbref', 'sofascore', '365scores'].includes(provider)) {
+  if (!['auto', 'fotmob', 'fbref', 'sofascore', '365scores', 'wikipedia'].includes(provider)) {
     return NextResponse.json({ error: 'Provider not connected' }, { status: 400 });
   }
   const playerId = (params.get('playerId') || '').trim();
@@ -133,6 +133,29 @@ export async function GET(request: Request) {
   if (provider === 'sofascore' || provider === '365scores') {
     return NextResponse.json({ found: false, diagnostics });
   }
+
+  if (provider === 'auto' || provider === 'wikipedia') {
+    const wiki = new URL('/api/wikipedia-player-stats', new URL(request.url).origin);
+    wiki.searchParams.set('playerName', playerName);
+    wiki.searchParams.set('season', season);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 11000);
+    try {
+      const response = await fetch(wiki, { signal: controller.signal, cache: 'no-store' });
+      if (response.ok) {
+        const data = await response.json();
+        if (data?.found && data?.scope === 'all_competitions' && data?.stats) {
+          return NextResponse.json(data);
+        }
+      }
+      diagnostics.push({ provider: 'wikipedia', status: 'no_verified_total' });
+    } catch {
+      diagnostics.push({ provider: 'wikipedia', status: 'request_failed' });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  if (provider === 'wikipedia') return NextResponse.json({ found: false, diagnostics });
 
   // A verified overall season takes priority over single-competition results.
   // First working adapter: existing internal FBref backend. This is LEAGUE-ONLY,
