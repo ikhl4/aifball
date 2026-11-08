@@ -18,3 +18,8 @@ The endpoint returns original X post URLs, dates, text and media URLs when the X
 3. With valid credentials, verify author allowlisting, date sorting, image presence where available, and upstream failures.
 4. Verify the X account identities and source suitability before treating any account as trusted.
 5. Only after successful testing should the feed be integrated into the news UI.
+
+## DuckDuckGo mode (default; no X token required)
+`GET /api/football-news` or `?provider=duckduckgo&category=transfers` searches public DuckDuckGo HTML results for direct post URLs from the curated accounts. It **does not** scrape X itself or pretend search snippets are verified tweets. Returned results have `publishedAt: null`, `images: []`, and `classification: unverified_search_result`. A search result is only a lead; confirm post content and date from an accessible primary source before displaying as news. DuckDuckGo can rate-limit, return incomplete results, or omit fresh posts.
+
+Use `?provider=x` only when the optional X bearer token and relevant API access are available. This initial backend work does not automatically update the frontend news cards.
