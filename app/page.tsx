@@ -949,8 +949,13 @@ export default function FootPlayChat() {
     while (!signal.aborted) {
       try {
         const response = await fetch('/api/chat/jobs/' + encodeURIComponent(jobId), { signal, cache: 'no-store' });
+        if (response.status === 401 || response.status === 403 || response.status === 404) {
+          setChatNotice('تعذر استعادة البحث. سجّل الدخول بالحساب نفسه ثم أعد فتح المحادثة.');
+          return;
+        }
         if (!response.ok) throw new Error('Job polling failed');
         const job: { status: string; answer: string; conversation_id: string; error?: string } = await response.json();
+        setChatNotice('');
         const stored = sessionsRef.current.find(item => item.id === sessionId);
         if (stored) {
           const msgs = [...stored.messages];
@@ -980,29 +985,12 @@ export default function FootPlayChat() {
       } catch (error) {
         if (signal.aborted) return;
         // Transient network loss: keep the job identifier and retry.
+        setChatNotice('انقطع الاتصال مؤقتًا. نحاول استعادة نتيجة البحث تلقائيًا…');
       }
       await new Promise(resolve => setTimeout(resolve, 2500));
     }
   }, []);
 
-  useEffect(() => {
-    let saved: { jobId: string; sessionId: string } | null = null;
-    try { saved = JSON.parse(localStorage.getItem(DURABLE_JOB_KEY) || 'null'); } catch {}
-    if (!saved?.jobId || !saved?.sessionId) return;
-    durableJobRef.current = saved;
-    const controller = new AbortController();
-    // Restore the last session when the page was terminated while searching.
-    const session = sessionsRef.current.find(item => item.id === saved.sessionId);
-    if (session) {
-      activeRequestSession.current = saved.sessionId;
-      setCurrentSessionId(saved.sessionId);
-      setConversationId(session.conversationId);
-      setMessages(session.messages);
-      setLoading(true);
-    }
-    void pollDurableJob(saved.jobId, saved.sessionId, controller.signal);
-    return () => controller.abort();
-  }, [pollDurableJob]);
 
 
   const suggestionCards = getDiscoveryQuestions(discoveryPage);
@@ -1032,7 +1020,24 @@ export default function FootPlayChat() {
     } catch {
       // تجاهل سجل غير صالح.
     }
-  }, []);
+    // Restore the job only after the conversation list has been hydrated.
+    // Starting the poll before hydration can discard the completed response.
+    let savedJob: { jobId: string; sessionId: string } | null = null;
+    try { savedJob = JSON.parse(localStorage.getItem(DURABLE_JOB_KEY) || 'null'); } catch {}
+    if (!savedJob?.jobId || !savedJob?.sessionId) return;
+    durableJobRef.current = savedJob;
+    const storedSession = sessionsRef.current.find(item => item.id === savedJob!.sessionId);
+    if (storedSession) {
+      activeRequestSession.current = savedJob.sessionId;
+      setCurrentSessionId(savedJob.sessionId);
+      setConversationId(storedSession.conversationId);
+      setMessages(storedSession.messages);
+      setLoading(true);
+    }
+    const controller = new AbortController();
+    void pollDurableJob(savedJob.jobId, savedJob.sessionId, controller.signal);
+    return () => controller.abort();
+  }, [pollDurableJob]);
 
   useEffect(() => {
     if (messages.length > 0) return;
@@ -1310,6 +1315,8 @@ export default function FootPlayChat() {
             localStorage.setItem(DURABLE_JOB_KEY, JSON.stringify(pending));
             // Polling is independent of the original request and resumes after reload.
             durableHandled = true;
+            // A background job must not inherit the legacy four-minute streaming timeout.
+            window.clearTimeout(timeoutId);
             await pollDurableJob(job.id, id, controller.signal);
             return;
           }
