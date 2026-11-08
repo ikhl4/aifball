@@ -128,6 +128,10 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   // Career totals come only from the explicitly sourced career summary.
   // Do not combine them with single-season figures or invent missing values.
   const careerSource = safeSource(details?.career_source);
+  const retired = ['retired', 'معتزل', 'اعتزل'].includes((details?.status || details?.career_status || '').trim().toLowerCase());
+  // Superstar cards emphasize career totals; other active players lead with their season.
+  const careerFirst = retired || /(?:cristiano|ronaldo|رونالدو|messi|ميسي|neymar|نيمار)/i.test(playerName) || details?.default_view === 'career';
+  const [view, setView] = useState<'career' | 'season' | null>(null);
   const careerText = careerSource ? (details?.career_summary ?? '') : '';
   // Accept verified numeric fields first, then extract totals from the sourced summary.
   // Both Arabic- and Latin-digit spellings and either word order are supported.
@@ -200,6 +204,8 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   });
   if (!facts.length && !competitions.length && !careerTotals.length && !trophyCount && !contractDate && !season && !honours.length) return null;
 
+  const showCareer = Boolean(careerSource) && (view === 'career' || (view === null && (careerFirst || !season)));
+  const showSeason = Boolean(season) && (view === 'season' || (view === null && !showCareer));
   const surface = isDark ? 'bg-[#183b2b] border-emerald-700/40 text-white' : 'bg-[#f0f7f2] border-emerald-800/15 text-[#153c29]';
   const metric = (label: string, value: string | number | undefined) => (
     <div key={label} className={`min-w-0 rounded-xl border px-1.5 py-2 sm:p-3 text-center ${surface}`}>
@@ -221,7 +227,13 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
         </div>
       </div>
 
-      {careerSource && (
+      {careerSource && season && (
+        <div className="flex gap-1.5 rounded-xl border border-emerald-700/20 p-1" role="group" aria-label="نطاق إحصائيات اللاعب">
+          <button type="button" aria-pressed={showCareer} onClick={() => setView('career')} className={`flex-1 rounded-lg px-2 py-2 text-xs font-bold ${showCareer ? 'bg-emerald-700 text-white' : 'hover:bg-emerald-700/10'}`}>المسيرة كاملة</button>
+          <button type="button" aria-pressed={showSeason} onClick={() => setView('season')} className={`flex-1 rounded-lg px-2 py-2 text-xs font-bold ${showSeason ? 'bg-emerald-700 text-white' : 'hover:bg-emerald-700/10'}`}>المواسم</button>
+        </div>
+      )}
+      {showCareer && (
         <div className="space-y-2">
           <h3 className="font-bold">إحصائيات المسيرة</h3>
           <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
@@ -231,10 +243,10 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
         </div>
       )}
 
-      {season && (
+      {showSeason && (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-bold">أرقام الموسم الحالي</h3>
+            <h3 className="font-bold">إحصائيات موسم {season}</h3>
             <label className="flex items-center gap-2 text-xs">الموسم
               <select disabled={available.length < 2} className="max-w-32 rounded-lg border border-gray-500 bg-transparent p-2" value={season}
                 onChange={event => setSelection(event.target.value)}>
