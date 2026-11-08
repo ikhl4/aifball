@@ -13,7 +13,7 @@ const keys = {
 
 function normalize(row: Row): Row {
   return Object.fromEntries(Object.entries(row).map(([key, value]) => {
-    const match = key.match(/^\\('([^']*)', '([^']*)'\\)$/);
+    const match = key.match(/^\('([^']*)', '([^']*)'\)$/);
     return [match ? [match[1], match[2]].filter(Boolean).join(' ') : key, value];
   }));
 }
@@ -23,7 +23,7 @@ function numeric(row: Row, aliases: readonly string[]): number | null {
     const raw = row[key];
     if (typeof raw !== 'number' && typeof raw !== 'string') continue;
     const value = String(raw).replace(/,/g, '').trim();
-    if (!/^\\d+$/.test(value)) continue;
+    if (!/^\d+$/.test(value)) continue;
     const n = Number(value);
     if (Number.isSafeInteger(n) && n >= 0) return n;
   }
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const playerName = (params.get('playerName') || '').trim();
   const season = (params.get('season') || '').trim();
-  if (!playerName || playerName.length > 100 || !/^\\d{4}(?:-\\d{4})?$/.test(season)) {
+  if (!playerName || playerName.length > 100 || !/^\d{4}(?:-\d{4})?$/.test(season)) {
     return NextResponse.json({ error: 'Invalid player or season' }, { status: 400 });
   }
 
