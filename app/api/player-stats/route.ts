@@ -30,6 +30,40 @@ function numeric(row: Row, aliases: readonly string[]): number | null {
   return null;
 }
 
+
+async function externalSeason(provider: 'sofascore' | '365scores', playerId: string, season: string) {
+  const base = provider === 'sofascore' ? process.env.SOFASCORE_PLAYER_STATS_URL : process.env.SCORES365_PLAYER_STATS_URL;
+  const token = provider === 'sofascore' ? process.env.SOFASCORE_PLAYER_STATS_TOKEN : process.env.SCORES365_PLAYER_STATS_TOKEN;
+  if (!base || !/^[0-9]{1,12}$/.test(playerId)) return null;
+  let url: URL;
+  try {
+    url = new URL(base);
+    if (url.protocol !== 'https:') return null;
+  } catch { return null; }
+  url.searchParams.set('player_id', playerId);
+  url.searchParams.set('season', season);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(url, { cache: 'no-store', signal: controller.signal,
+      headers: token ? { Authorization: 'Bearer ' + token } : {} });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data?.found !== true || data?.season !== season ||
+        (data?.playerId != null && String(data.playerId) !== playerId) ||
+        !['all_competitions', 'competition'].includes(data?.scope) ||
+        !data?.stats || typeof data.stats !== 'object' || Array.isArray(data.stats)) return null;
+    const stats = {
+      matches: numeric(data.stats, keys.matches),
+      goals: numeric(data.stats, keys.goals),
+      assists: numeric(data.stats, keys.assists),
+    };
+    if (Object.values(stats).every(value => value === null)) return null;
+    return { stats, scope: data.scope as 'all_competitions' | 'competition' };
+  } catch { return null; }
+  finally { clearTimeout(timer); }
+}
+
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const playerName = (params.get('playerName') || '').trim();
@@ -39,7 +73,7 @@ export async function GET(request: Request) {
   }
 
   const provider = (params.get('provider') || 'auto').toLowerCase();
-  if (!['auto', 'fotmob', 'fbref'].includes(provider)) {
+  if (!['auto', 'fotmob', 'fbref', 'sofascore', '365scores'].includes(provider)) {
     return NextResponse.json({ error: 'Provider not connected' }, { status: 400 });
   }
   const playerId = (params.get('playerId') || '').trim();
@@ -78,6 +112,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ found: false, provider: 'fotmob', reason: 'verified_player_id_required' });
   }
   if (provider === 'fotmob') return NextResponse.json({ found: false, diagnostics });
+  for (const source of ['sofascore', '365scores'] as const) {
+    if (provider !== 'auto' && provider !== source) continue;
+    const id = (params.get(source === 'sofascore' ? 'sofascoreId' : 'scores365Id') || '').trim();
+    const resolved = await externalSeason(source, id, season);
+    if (resolved) return NextResponse.json({
+      found: true, provider: source, scope: resolved.scope, season, playerName, stats: resolved.stats,
+    }, { headers: { 'Cache-Control': 'private, no-store' } });
+    diagnostics.push({ provider: source, status: id ? 'unavailable_or_unconfigured' : 'player_id_missing' });
+  }
+  if (provider === 'sofascore' || provider === '365scores') {
+    return NextResponse.json({ found: false, diagnostics });
+  }
 
   // First working adapter: existing internal FBref backend. This is LEAGUE-ONLY,
   // never an all-competitions total. More adapters can be added without changing UI.
