@@ -1321,10 +1321,16 @@ export default function FootPlayChat() {
             return;
           }
         }
-        if (durable && !durable.ok && durable.status !== 503) {
-          setChatNotice('تعذر بدء البحث بالخلفية. سنستخدم الاتصال المباشر مؤقتًا؛ أبقِ الصفحة مفتوحة.');
+        if (durable && !durable.ok) {
+          const reason = durable.status === 401 ? 'انتهت جلسة الدخول. سجّل الدخول مرة أخرى.'
+            : durable.status === 503 ? 'خدمة البحث بالخلفية غير مهيأة حاليًا.'
+            : durable.status === 502 || durable.status === 504 ? 'خدمة البحث بالخلفية لا تستجيب حاليًا.'
+            : durable.status >= 500 ? 'واجه خادم البحث بالخلفية مشكلة مؤقتة.'
+            : 'تعذر بدء البحث بالخلفية.';
+          setChatNotice(reason + ' سنستخدم الاتصال المباشر؛ أبقِ الصفحة مفتوحة حتى اكتمال الإجابة.');
+          console.warn('[AiFBall durable chat] submission failed', { status: durable.status });
         } else if (!durable) {
-          setChatNotice('تعذر الوصول إلى خدمة البحث بالخلفية. سنحاول الاتصال المباشر.');
+          setChatNotice('تعذر الوصول إلى خدمة البحث بالخلفية. سنستخدم الاتصال المباشر؛ أبقِ الصفحة مفتوحة.');
         }
       }
       const difyFiles: {
