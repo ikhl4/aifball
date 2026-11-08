@@ -250,7 +250,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
       {showSeason && (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-bold">إحصائيات موسم {season}</h3>
+            <h3 className="font-bold">إحصائيات موسم <bdi dir="ltr" className="inline-block">{season}</bdi></h3>
             <label className="flex items-center gap-2 text-xs">الموسم
               <select disabled={available.length < 2} className="max-w-32 rounded-lg border border-gray-500 bg-transparent p-2" value={season}
                 onChange={event => setSelection(event.target.value)}>
@@ -266,7 +266,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
               </dl>
             </div>
           )}
-          {!verifiedSeasonTotal && competitions.length > 0 && <p className="text-[11px] opacity-75">إجمالي جميع البطولات غير مؤكد بعد؛ الأرقام التالية تخص البطولات المذكورة فقط.</p>}
+          {!verifiedSeasonTotal && competitions.length > 0 && <p className="text-[11px] opacity-75">إجمالي الموسم بجميع البطولات غير متاح بعد. التفاصيل أدناه تخص كل بطولة منفردة، وليست إجمالي الموسم.</p>}
           {competitions.length ? competitions.filter(item => item !== verifiedSeasonTotal).map(({ team, competition, numbers }, index) => (
             <div key={index} className="space-y-2">
               <p className="text-xs opacity-70">{team} · {competition} (هذه البطولة فقط)</p>
