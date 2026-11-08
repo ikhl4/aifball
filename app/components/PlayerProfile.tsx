@@ -101,33 +101,18 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
       let scope: string | undefined;
       let provider: string | undefined;
       const playerId = details?.fotmob_player_id;
-      if (playerId && /^\\d{1,9}$/.test(playerId)) {
-        try {
-          const fmParams = new URLSearchParams({ playerName, season, provider: 'fotmob', playerId });
-          const response = await fetch('/api/player-stats?' + fmParams, { signal: controller.signal });
-          if (response.ok) {
-            const payload = await response.json();
-            if (payload?.found && payload?.stats && ['all_competitions', 'competition'].includes(payload.scope)) {
-              row = payload.stats as StatRow;
-              scope = payload.scope;
-              provider = 'fotmob';
-            }
+      if (playerId && /^\d{1,9}$/.test(playerId)) params.set('playerId', playerId);
+      try {
+        const response = await fetch('/api/player-stats?' + params, { signal: controller.signal });
+        if (response.ok) {
+          const payload = await response.json();
+          if (payload?.found && payload?.stats && ['all_competitions', 'competition', 'league'].includes(payload.scope)) {
+            row = payload.stats as StatRow;
+            scope = payload.scope;
+            provider = payload.provider;
           }
-        } catch { /* Proceed to league fallback. */ }
-      }
-      if (!row) {
-        try {
-          const response = await fetch('/api/player-stats?' + params, { signal: controller.signal });
-          if (response.ok) {
-            const payload = await response.json();
-            if (payload?.found && payload?.scope === 'league' && payload?.stats) {
-              row = payload.stats as StatRow;
-              scope = 'league';
-              provider = 'fbref';
-            }
-          }
-        } catch { /* Keep unavailable fields blank. */ }
-      }
+        }
+      } catch { /* Keep unavailable fields blank when all sources fail. */ }
       if (!controller.signal.aborted) setResult({ name: playerName, season, row, scope, provider });
     }
     void load();
@@ -295,7 +280,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
               </dl>
             </div>
           )}
-          {!verifiedSeasonTotal && competitions.length > 0 && <p className="text-[11px] opacity-75">إجمالي الموسم بجميع البطولات غير متاح بعد. التفاصيل أدناه تخص كل بطولة منفردة، وليست إجمالي الموسم.</p>}
+          {!verifiedSeasonTotal && current?.scope !== 'all_competitions' && competitions.length > 0 && <p className="text-[11px] opacity-75">إجمالي الموسم بجميع البطولات غير متاح بعد. التفاصيل أدناه تخص كل بطولة منفردة، وليست إجمالي الموسم.</p>}
           {competitions.length ? competitions.filter(item => item !== verifiedSeasonTotal).map(({ team, competition, numbers }, index) => (
             <div key={index} className="space-y-2">
               <p className="text-xs opacity-70">{team} · {competition} (هذه البطولة فقط)</p>
