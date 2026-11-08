@@ -161,68 +161,13 @@ function asRecord(value: unknown): DataRecord | null {
 }
 
 function AiFBallLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  const dimensions =
-    size === 'sm'
-      ? 'w-8 h-8 rounded-[9px]'
-      : size === 'lg'
-        ? 'w-14 h-14 rounded-[16px]'
-        : 'w-10 h-10 rounded-[11px]';
-
-  return (
-    <div className={`${dimensions} bg-[#1D6B35] flex items-center justify-center shadow-md flex-shrink-0 select-none overflow-hidden`}>
-      <svg viewBox="0 0 200 200" className="w-full h-full" aria-hidden="true">
-        <rect width="200" height="200" rx="42" fill="#1D6B35" />
-        <g transform="translate(100, 74)">
-          <circle r="48" fill="#FFFFFF" />
-          <polygon
-            points="0,-19 18,-6 11,15 -11,15 -18,-6"
-            fill="#FFFFFF"
-            stroke="#1D6B35"
-            strokeWidth="5.5"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M0,-19 L0,-37 M18,-6 L35,-12 M11,15 L22,31 M-11,15 L-22,31 M-18,-6 L-35,-12"
-            stroke="#1D6B35"
-            strokeWidth="5.5"
-            strokeLinecap="round"
-          />
-          <path
-            d="M-19,-35 L0,-37 L19,-35 M19,-35 L35,-12 L37,8 M37,8 L22,31 L0,38 M0,38 L-22,31 L-37,8 M-37,8 L-35,-12 L-19,-35"
-            fill="none"
-            stroke="#1D6B35"
-            strokeWidth="5"
-            strokeLinejoin="round"
-          />
-          <circle r="47" fill="none" stroke="#1D6B35" strokeWidth="4" />
-        </g>
-        <text
-          x="100"
-          y="168"
-          textAnchor="middle"
-          fill="#FFFFFF"
-          fontSize="43"
-          fontWeight="900"
-          fontStyle="italic"
-          fontFamily="system-ui, sans-serif"
-        >
-          AiFBall
-        </text>
-      </svg>
-    </div>
-  );
+  const dimensions = size === 'sm' ? 'h-8 w-8' : size === 'lg' ? 'h-14 w-14' : 'h-10 w-10';
+  return <img src="/IMG_1414.png" alt="شعار فوتبلاي" className={`${dimensions} shrink-0 object-contain`} decoding="async" />;
 }
 
-// Use the original uploaded image without redrawing or visual effects.
+// Keep the uploaded artwork unchanged in the intro and chat.
 function OriginalBrandLogo({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
-  return <img
-    src="https://raw.githubusercontent.com/ikhl4/aifball/main/app/IMG_1280.png"
-    alt="شعار فوتبلاي"
-    width={size === 'lg' ? 112 : 32}
-    height={size === 'lg' ? 112 : 32}
-    className={size === 'lg' ? 'h-28 w-28 object-contain' : 'h-8 w-8 shrink-0 object-contain'}
-    decoding="async"
-  />;
+  return <img src="/IMG_1414.png" alt="شعار فوتبلاي" width={size === 'lg' ? 112 : 40} height={size === 'lg' ? 112 : 40} className={size === 'lg' ? 'h-28 w-28 object-contain' : 'h-10 w-10 shrink-0 object-contain'} decoding="async" />;
 }
 
 function safeUrl(value: string): string | null {
@@ -1807,7 +1752,7 @@ export default function FootPlayChat() {
             <AppIcon name="menu"/>
           </button>
 
-          <img src="https://raw.githubusercontent.com/ikhl4/aifball/main/app/IMG_1280.png" alt="شعار فوتبلاي" width={48} height={48} className="h-12 w-12 shrink-0 object-contain" decoding="async" />
+          <img src="/IMG_1414.png" alt="شعار فوتبلاي" width={48} height={48} className="h-12 w-12 shrink-0 object-contain" decoding="async" />
 
           <div>
             <h1 className="text-base font-bold leading-tight">فوتبلاي</h1>
