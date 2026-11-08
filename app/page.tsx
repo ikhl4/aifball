@@ -955,6 +955,8 @@ export default function FootPlayChat() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingSeconds, setLoadingSeconds] = useState(0);
+  const [chatNotice, setChatNotice] = useState('');
+  const [historySearch, setHistorySearch] = useState('');
   const [conversationId, setConversationId] = useState('');
   const [currentSessionId, setCurrentSessionId] = useState('');
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -1307,6 +1309,7 @@ export default function FootPlayChat() {
     // Persist the question immediately so iOS page suspension cannot erase it.
     saveSession(id, conversationId, initial);
     setLoading(true);
+    setChatNotice('');
 
     const controller = new AbortController();
     activeRequest.current = controller;
@@ -1366,6 +1369,11 @@ export default function FootPlayChat() {
             await pollDurableJob(job.id, id, controller.signal);
             return;
           }
+        }
+        if (durable && !durable.ok && durable.status !== 503) {
+          setChatNotice('تعذر بدء البحث بالخلفية. سنستخدم الاتصال المباشر مؤقتًا؛ أبقِ الصفحة مفتوحة.');
+        } else if (!durable) {
+          setChatNotice('تعذر الوصول إلى خدمة البحث بالخلفية. سنحاول الاتصال المباشر.');
         }
       }
       const difyFiles: {
@@ -1493,8 +1501,8 @@ export default function FootPlayChat() {
       const aborted = controller.signal.aborted;
 
       const message = aborted
-        ? 'عذراً، انتهت مهلة البحث أو تم إيقاف الطلب.'
-        : 'عذراً، تعذر إكمال الاتصال بالخادم. حاول مرة أخرى.';
+        ? 'توقف الاتصال قبل اكتمال البحث. يمكنك إعادة إرسال السؤال.'
+        : 'تعذر إكمال الاتصال. تحقق من الإنترنت، ثم اضغط إعادة المحاولة.';
 
       update(
         answer
@@ -1710,7 +1718,8 @@ export default function FootPlayChat() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5 custom-scrollbar">
-          {sessions.map((session) => (
+          <input aria-label="البحث في المحادثات" placeholder="ابحث في المحادثات…" value={historySearch} onChange={event => setHistorySearch(event.target.value)} className="w-full rounded-lg border border-emerald-700/30 bg-transparent px-3 py-2 text-sm mb-3 outline-none focus:border-emerald-500" />
+          {sessions.filter(session => session.title.toLocaleLowerCase().includes(historySearch.trim().toLocaleLowerCase())).map((session) => (
             <button
               type="button"
               key={session.id}
@@ -2279,7 +2288,7 @@ export default function FootPlayChat() {
                     </svg>
 
                     <span className="font-bold text-xs sm:text-sm text-emerald-500">
-                      جاري البحث والتحليل... ({formatSeconds(loadingSeconds)})
+                      {loadingSeconds < 8 ? 'جاري بدء البحث' : loadingSeconds < 25 ? 'جاري جمع البيانات والتحقق من المصادر' : 'جاري تجهيز الإجابة'}... ({formatSeconds(loadingSeconds)})
                     </span>
                   </div>
 
@@ -2290,6 +2299,7 @@ export default function FootPlayChat() {
               </div>
             )}
 
+            {chatNotice && <div role="status" className="mx-auto my-2 max-w-xl rounded-lg border border-amber-500/30 px-3 py-2 text-xs text-amber-400">{chatNotice}</div>}
             <div ref={messagesEndRef} />
           </div>
         )}
