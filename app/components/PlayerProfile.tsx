@@ -101,7 +101,11 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
       let scope: string | undefined;
       let provider: string | undefined;
       const playerId = details?.fotmob_player_id;
-      if (playerId && /^\d{1,9}$/.test(playerId)) params.set('playerId', playerId);
+      if (playerId && /^[0-9]{1,9}$/.test(playerId)) params.set('playerId', playerId);
+      const sofascoreId = details?.sofascore_player_id;
+      const scores365Id = details?.scores365_player_id;
+      if (sofascoreId && /^[0-9]{1,12}$/.test(sofascoreId)) params.set('sofascoreId', sofascoreId);
+      if (scores365Id && /^[0-9]{1,12}$/.test(scores365Id)) params.set('scores365Id', scores365Id);
       try {
         const response = await fetch('/api/player-stats?' + params, { signal: controller.signal });
         if (response.ok) {
@@ -117,7 +121,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     }
     void load();
     return () => controller.abort();
-  }, [playerName, season, details?.fotmob_player_id]);
+  }, [playerName, season, details?.fotmob_player_id, details?.sofascore_player_id, details?.scores365_player_id]);
 
   const stats = current?.row
     ? fields.flatMap(([label, keys]) => {
@@ -266,7 +270,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
           </div>
           {!verifiedSeasonTotal && current?.scope === 'all_competitions' && stats.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold opacity-80">جميع البطولات الرسمية · FotMob</p>
+              <p className="text-xs font-semibold opacity-80">جميع البطولات الرسمية · مصدر موثق</p>
               <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
                 {primaryLabels.map(label => metric(label, stats.find(item => item.label === label)?.value))}
               </dl>
