@@ -219,8 +219,8 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   });
   if (!facts.length && !competitions.length && !careerTotals.length && !trophyCount && !contractDate && !season && !honours.length) return null;
 
-  const showCareer = Boolean(careerSource) && (view === 'career' || (view === null && (careerFirst || !season)));
-  const showSeason = Boolean(season) && (view === 'season' || (view === null && !showCareer));
+  const showCareer = view === 'career' || (view === null && (careerFirst || !season));
+  const showSeason = view === 'season' || (view === null && !showCareer);
   const surface = isDark ? 'bg-[#183b2b] border-emerald-700/40 text-white' : 'bg-[#f0f7f2] border-emerald-800/15 text-[#153c29]';
   const metric = (label: string, value: string | number | undefined) => (
     <div key={label} className={`min-w-0 rounded-xl border px-1.5 py-2 sm:p-3 text-center ${surface}`}>
@@ -242,12 +242,10 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
         </div>
       </div>
 
-      {careerSource && season && (
-        <div className="flex gap-1.5 rounded-xl border border-emerald-700/20 p-1" role="group" aria-label="نطاق إحصائيات اللاعب">
-          <button type="button" aria-pressed={showCareer} onClick={() => setView('career')} className={`flex-1 rounded-lg px-2 py-2 text-xs font-bold ${showCareer ? 'bg-emerald-700 text-white' : 'hover:bg-emerald-700/10'}`}>المسيرة كاملة</button>
-          <button type="button" aria-pressed={showSeason} onClick={() => setView('season')} className={`flex-1 rounded-lg px-2 py-2 text-xs font-bold ${showSeason ? 'bg-emerald-700 text-white' : 'hover:bg-emerald-700/10'}`}>المواسم</button>
-        </div>
-      )}
+      <div className="flex gap-1.5 rounded-xl border border-emerald-700/20 p-1" role="group" aria-label="نطاق إحصائيات اللاعب">
+        <button type="button" aria-pressed={showCareer} onClick={() => setView('career')} className={`flex-1 rounded-lg px-2 py-2 text-xs sm:text-sm font-bold ${showCareer ? 'bg-emerald-700 text-white' : 'hover:bg-emerald-700/10'}`}>كل المواسم</button>
+        <button type="button" aria-pressed={showSeason} onClick={() => setView('season')} className={`flex-1 rounded-lg px-2 py-2 text-xs sm:text-sm font-bold ${showSeason ? 'bg-emerald-700 text-white' : 'hover:bg-emerald-700/10'}`}>الموسم الحالي</button>
+      </div>
       {showCareer && (
         <div className="space-y-2">
           <h3 className="font-bold">إحصائيات المسيرة</h3>
