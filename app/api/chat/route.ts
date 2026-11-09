@@ -90,79 +90,18 @@ const OFFICIAL_COMPETITION_SOURCES = `
 `;
 
 
-// Ground the club-news match lines in actual ESPN event records, never article snippets.
-// The lookup is deliberately bounded and optional: missing coverage is not a negative fixture claim.
-async function clubNewsFixtures(query: string): Promise<string> {
-  const clubs: Record<string, string[]> = {
-    'الهلال': ['al hilal', 'al-hilal', 'الهلال'],
-    'الاتحاد': ['al ittihad', 'al-ittihad', 'الاتحاد'],
-    'النصر': ['al nassr', 'al-nassr', 'النصر'],
-    'الأهلي': ['al ahli', 'al-ahli', 'الأهلي'],
-    'الشباب': ['al shabab', 'al-shabab', 'الشباب'],
-  };
-  const club = Object.keys(clubs).find(name => query.includes(name));
-  if (!club) return '';
-  const now = new Date();
-  const from = new Date(now.getTime() - 45 * 86400000);
-  const to = new Date(now.getTime() + 45 * 86400000);
-  const dateKey = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
-  const dates = dateKey(from) + '-' + dateKey(to);
-  const leagues = ['ksa.1', 'afc.champions'];
-  const found: Array<{ date: string; status: string; home: string; away: string; score: string; league: string }> = [];
-  await Promise.all(leagues.map(async league => {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 2400);
-      try {
-        const response = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard?dates=${dates}&limit=400`, {
-          signal: controller.signal, next: { revalidate: 300 }
-        });
-        if (!response.ok) return;
-        const payload = await response.json();
-        for (const event of Array.isArray(payload?.events) ? payload.events : []) {
-          const competitors = event?.competitions?.[0]?.competitors;
-          if (!Array.isArray(competitors)) continue;
-          const hasClub = competitors.some((p: any) => {
-            const t = p?.team;
-            const names = [t?.displayName, t?.name, t?.shortDisplayName].filter(Boolean).join(' ').toLowerCase();
-            return clubs[club].some(alias => names.includes(alias));
-          });
-          if (!hasClub) continue;
-          const home = competitors.find((p: any) => p.homeAway === 'home');
-          const away = competitors.find((p: any) => p.homeAway === 'away');
-          if (!home || !away || !Number.isFinite(Date.parse(event.date))) continue;
-          const status = String(event?.status?.type?.state || '');
-          const detail = String(event?.status?.type?.name || '');
-          if (/postpon|cancel|abandon/i.test(detail) || !['post', 'pre'].includes(status)) continue;
-          const score = status === 'post' && Number.isFinite(Number(home.score)) && Number.isFinite(Number(away.score))
-            ? `${home.score}-${away.score}` : '';
-          found.push({ date: event.date, status, home: String(home.team?.displayName || ''), away: String(away.team?.displayName || ''), score, league });
-        }
-      } finally { clearTimeout(timer); }
-    } catch { /* Other sources may still be used; never invent fixtures. */ }
-  }));
-  const ordered = found.sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
-  const last = ordered.filter(x => x.status === 'post' && x.score && Date.parse(x.date) <= now.getTime()).at(-1);
-  const next = ordered.find(x => x.status === 'pre' && Date.parse(x.date) >= now.getTime());
-  if (!last && !next) return '';
-  return '\nبيانات مباريات مسترجعة آليًا من ESPN (تغطية جزئية، لا تشمل بالضرورة كأس الملك أو كل المسابقات؛ يجب مراجعة جدول النادي الرسمي للمباراة الأقرب):\n'
-    + (last ? `آخر مباراة مرصودة: ${last.home} ${last.score} ${last.away} | ${last.date.slice(0,10)} | ${last.league}\n` : '')
-    + (next ? `أقرب مباراة مرصودة: ${next.home} ضد ${next.away} | ${next.date} | ${next.league}\n` : '')
-    + 'لا تنسب أهدافاً للاعبين من هذه البيانات، ولا تزعم أنها شاملة لجميع البطولات. إذا لم يتحقق أن هذه آخر مباراة أو الأقرب في جميع البطولات، صفها بأنها آخر/أقرب مباراة مرصودة في المصادر المتاحة فقط.\n';
-}
-
 const CLUB_NEWS_MATCH_FIRST_RULES = `
-عند سؤال «أخبار الهلال» أو «آخر أخبار [نادي]» كن محرراً رياضياً موجزاً، لا لوحة نتائج ولا قائمة اعتذارات. أخرج عنواناً خفيفاً وشعار النادي الرسمي الموثق بوسم <aifball-club-news club="اسم النادي" logo="رابط ملف شعار HTTPS متحقق منه" /> في سطر مستقل، أو logo="" إن تعذر التحقق. لا تضع رمز كرة بدلاً من شعار النادي بوصفه شعاراً رسمياً.
-لا تكتب عنوان «آخر أخبار [النادي]» في نص الإجابة لأن وسم الواجهة يعرض العنوان بالفعل. لا تضع سطرًا فارغًا كبيرًا بعد الوسم.
-لا تذكر أي مباراة بوصفها الأخيرة ما لم تؤكد من جدول مكتمل حديث؛ ولا تستبدل المباراة الأخيرة بخبر تدريبات بعد مباراة أقدم. افحص المباراة الأخيرة والمقبلة أولاً، ثم الأخبار المؤرخة. لا تستخدم مثالاً تاريخياً من التعليمات باعتباره بيانات حالية.
-ثم اسرد أخبار الفريق الأول في فقرات طبيعية قصيرة (سطر أو سطران لكل موضوع)، دون بطاقات مباريات أو جداول:
-- آخر مباراة مكتملة: «فاز/خسر/تعادل [النادي] أمام [الخصم] [النتيجة] في [البطولة]، وسجل [الهداف]...» بعد تحقق رسمي.
-- المباراة المقبلة: «ويواجه [الخصم] يوم [التاريخ]...» مع الساعة فقط إن كانت مؤكدة؛ لا تعتبر المباراة المؤجلة مباراة مقبلة.
-- وضع الفريق: فترة الراحة وتاريخ استئناف التدريبات، وغيابات اللاعبين الدوليين وعددهم إن تأكد؛ فرق بين موعد العودة المخطط وبين عودة حدثت بالفعل.
-- الإصابات: أسماء اللاعبين، حالة الإصابة والتأهيل والعودة المتوقعة إن توثقت؛ ميز بين تقرير صحفي وإعلان رسمي.
-- الانتقالات: أحدث صفقة أو مفاوضات مؤكدة المصدر والتاريخ، أو عبارة قصيرة «لا توجد مستجدات انتقالات موثقة حاليًا» إن لم توجد أخبار حديثة.
-اجعل المحتوى كله نحو 90–140 كلمة عند توفر أخبار كافية، وقدم ما يفيد المستخدم دون حشو أو أقسام فارغة. مصادر المعلومات مختصرة في نهاية الأخبار أو بجوار خبر حساس. ابدأ البحث عن التطورات بآخر 48 ساعة ثم 7 أيام. لا تستدعِ مؤتمرات أو تصريحات ما قبل مباراة انتهت؛ ولا تعرض تصريحاً قديماً كأنه حديث. تحقق من كل معلومة زمنية ومن مصدرها؛ لا تخمن نتائج أو مواعيد أو حالات طبية.
-عند نقص البيانات لا تكرر «تعذر التأكد» خمس مرات: قل ذلك مرة واحدة في سطر قصير، ثم اعرض المعلومات المتحققة. الصور اختيارية، وتحمل كسولاً ولا تعطل النص. إذا طلب المستخدم تفاصيل أكثر، وسع الموضوع المطلوب فقط.
+مهمة موجز أخبار النادي: استخدم أدوات البحث المتصلة في Dify (DuckDuckGo أو Google Search) لجلب معلومات حقيقية، ولا تعتمد على ESPN وحده ولا تكتفِ بعبارة «لا توجد أخبار». لا تتظاهر بأن البحث نجح إذا فشلت الأدوات.
+نفذ بحد أقصى بحثين أو ثلاثة مركّزة ومتوازية إن أمكن: (1) «[النادي] آخر مباراة نتيجة آخر مباراة موعد المباراة القادمة» مع موقع النادي الرسمي وجدول المباريات، (2) «[النادي] آخر أخبار التدريبات الراحة الدوليين الإصابات» خلال آخر 7 أيام، (3) «[النادي] انتقالات مفاوضات آخر أخبار» خلال آخر 7 أيام. فضّل موقع النادي الرسمي وFotMob وSofaScore للمباريات، ثم الصحف الموثوقة للأخبار؛ لا تتطلب فتح عشرات الصفحات ولا تكرر البحث بلا نهاية.
+المباراة السابقة هي آخر مواجهة مكتملة للفريق الأول في جميع البطولات، لا أقدم مباراة وردت في خبر. المباراة القادمة هي الأقرب زمنيًا غير المؤجلة عبر جميع البطولات. افحص التاريخ وحالة المباراة؛ لا تعتمد على مصدر واحد عند تعارض الجدول. استبعد مؤتمرات ما قبل مباريات انتهت.
+أخرج وسمًا واحدًا للشعار في سطر مستقل <aifball-club-news club="اسم النادي" logo="رابط صورة HTTPS مباشر متحقق منه" />، وإذا لم تتأكد من الرابط ضع logo="" ولا تخترع رابطًا. لا تكرر عنوان «آخر أخبار النادي» بعد الوسم.
+اكتب نحو 90–140 كلمة بأسلوب صحفي سريع، لا جداول ولا بطاقات للمباريات:
+⚽ آخر مباراة: النتيجة والخصم والهدافون فقط إن ثبتوا، في 1–3 أسطر.
+📅 المباراة القادمة: الخصم والتاريخ والوقت إن تأكد؛ استبعد المؤجلة.
+🏃 وضع الفريق: الراحة والعودة للتدريبات والدوليون، بتاريخ موثق.
+🚑 الإصابات: المصابون والتطورات المؤكدة، ولا تخمن مدة الغياب.
+🔄 الانتقالات: الجديد الرسمي والمفاوضات الموثقة، أو «لا توجد مستجدات انتقالات موثقة حديثًا».
+إذا نقص قسم واحد لا تعتذر في كل قسم؛ اعرض المعلومات المتاحة واذكر حدود التحقق مرة واحدة فقط. إذا تعذر البحث كليًا، قل إن البحث لم ينجح بدل الادعاء بعدم وجود أخبار. لا تؤخر النص بسبب الشعار أو الصور.
 `;
 
 const CLUB_NEWS_RULES = `
@@ -290,8 +229,7 @@ export async function POST(req: Request) {
     const gameStart = /اختبرني|تحد[ىي] الثلاثين|تحد[ىي] 30|لغز|لعبة من اللاعب|quiz/i.test(query);
     const gameRules = `إذا طلب المستخدم لعبة كروية أو كانت المحادثة في جولة لعبة نشطة، العب داخل الشات. في لغز اللاعب اختر جواباً موثقاً وقدّم قرائن عن أنديته أو زملائه دون كشفه. اقبل الأسماء المكافئة، وأعط تلميحاً واحداً عند الخطأ. في الاختبار أو تحدي الثلاثين اسأل سؤالاً واحداً كل مرة، سجّل النقاط واذكرها بعد الإجابة. لا تدّع وجود مؤقت فعلي. حافظ على نوع اللعبة والنقاط من سياق المحادثة، وأنهِ الجولة عند طلب المستخدم. إذا انتهت اللعبة أو غيّر الموضوع، أجب كالمعتاد.\n`;
     const OUTPUT_LANGUAGE_RULES = '\nبروتوكول اللغة: اتبع طلب اللغة الصريح أولاً، وإلا لغة السؤال الحالي، وإلا سياق المحادثة، وإلا العربية. الأسماء الأجنبية لا تغيّر لغة الرد. إذا أخرجت aifball-standings فاستخدم lang=\"ar\" أو lang=\"en\" بحسب لغة الرد؛ لا تضف lang لوسم آخر. لا تختلق إحصائيات أو روابط أو ألقاب. إذا تعذّر المكوّن لكن البيانات موثقة، استخدم جدول Markdown دون تكرار.\n';
-    const verifiedClubFixtures = clubNews ? await clubNewsFixtures(query) : '';
-    const guidedQuery = baseQuery + verifiedClubFixtures + OUTPUT_LANGUAGE_RULES + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + fixtureContext + dailyContext + (clubNews ? CLUB_NEWS_MATCH_FIRST_RULES + (/(?:انتقالات|إصابات|اصابات|تصريحات|تفاصيل|شائعات|منشورات|تغريدات|ملكية|تدريبات)/i.test(query) ? CLUB_NEWS_RULES : '') + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (!matchSummary && (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture) ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '');
+    const guidedQuery = baseQuery + OUTPUT_LANGUAGE_RULES + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + fixtureContext + dailyContext + (clubNews ? CLUB_NEWS_MATCH_FIRST_RULES + (/(?:انتقالات|إصابات|اصابات|تصريحات|تفاصيل|شائعات|منشورات|تغريدات|ملكية|تدريبات)/i.test(query) ? CLUB_NEWS_RULES : '') + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (!matchSummary && (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture) ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '');
 
     const difyStarted = performance.now();
     const apiRes = await fetch(url, {
