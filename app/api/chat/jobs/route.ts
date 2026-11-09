@@ -28,11 +28,14 @@ export async function POST(req: Request) {
       body: JSON.stringify({ owner: userId, idempotency_key: body.idempotency_key,
         query: body.query.trim(), conversation_id: body.conversation_id || '' }),
       cache: 'no-store',
-      signal: AbortSignal.timeout(15000),
+      // Render free instances may need over 50 seconds to wake after inactivity.
+      signal: AbortSignal.timeout(90000),
     });
     const payload = await response.json();
+    if (!response.ok) console.error('[chat-jobs] submit rejected', { status: response.status });
     return NextResponse.json(payload, { status: response.status });
-  } catch {
-    return NextResponse.json({ error: 'Background service unreachable' }, { status: 502 });
+  } catch (error) {
+    console.error('[chat-jobs] submit upstream failed', error instanceof Error ? error.name : 'unknown');
+    return NextResponse.json({ error: 'Background service unreachable', code: 'UPSTREAM_UNREACHABLE' }, { status: 502 });
   }
 }
