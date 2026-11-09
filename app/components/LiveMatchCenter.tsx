@@ -13,6 +13,8 @@ const LEAGUES = [
   { id: 'ger.1', name: 'الدوري الألماني', flag: '🇩🇪' },
   { id: 'fra.1', name: 'الدوري الفرنسي', flag: '🇫🇷' },
   { id: 'uefa.champions', name: 'دوري أبطال أوروبا', flag: '🏆' },
+  { id: 'uefa.europa', name: 'الدوري الأوروبي', flag: '🏆' },
+  { id: 'uefa.europa.conf', name: 'دوري المؤتمر الأوروبي', flag: '🏆' },
   { id: 'afc.champions', name: 'دوري أبطال آسيا للنخبة', flag: '🏆' },
   { id: 'fifa.world', name: 'كأس العالم', flag: '🌍' },
   { id: 'fifa.worldq.afc', name: 'تصفيات كأس العالم — آسيا', flag: '🌏' },
