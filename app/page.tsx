@@ -607,19 +607,14 @@ function renderFormattedText(
         const logo = safeUrl(attrs.logo);
         if (!club) continue;
         elements.push(
-          <section key={i} dir="rtl" className={`my-3 flex items-center gap-3 rounded-2xl border px-3 py-3 shadow-sm ${isDark ? 'border-emerald-400/25 bg-emerald-900/20 text-white' : 'border-emerald-600/20 bg-emerald-50/70 text-gray-950'}`}>
-            {logo?.startsWith('https://') ? (
-              <img src={logo} alt={`شعار ${club}`} loading="lazy" decoding="async" referrerPolicy="no-referrer" width={56} height={56}
-                className="h-14 w-14 shrink-0 rounded-xl object-contain"
+          <div key={i} dir="rtl" className="my-2 flex items-center gap-2.5">
+            {logo?.startsWith('https://') && (
+              <img src={logo} alt={`شعار ${club}`} loading="lazy" decoding="async" referrerPolicy="no-referrer" width={42} height={42}
+                className="h-10 w-10 shrink-0 object-contain"
                 onError={event => { event.currentTarget.style.display = 'none'; }} />
-            ) : (
-              <div aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-emerald-600/10 text-2xl">⚽</div>
             )}
-            <div className="min-w-0">
-              <h3 className="text-base font-extrabold leading-7">آخر أخبار {club}</h3>
-              <p className={`text-xs ${isDark ? 'text-emerald-100/70' : 'text-emerald-800/70'}`}>المباريات · الإصابات · الانتقالات</p>
-            </div>
-          </section>
+            <strong className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>آخر أخبار {club}</strong>
+          </div>
         );
         continue;
       }
