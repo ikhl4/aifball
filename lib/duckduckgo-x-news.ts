@@ -48,7 +48,7 @@ function parseResults(html: string, allowed: Set<string>): DiscoveredPost[] {
 export async function searchXNewsWithDuckDuckGo(sources: NewsSource[]) {
   const allowed = new Set(sources.map(source => source.handle.toLowerCase()));
   const results = await Promise.allSettled(sources.map(async source => {
-    const query = 'site:x.com/' + source.handle + '/status/ football OR transfer';
+    const query = 'site:x.com/' + source.handle + '/status ' + (source.categories.includes('transfers') ? 'transfer' : 'football');
     const url = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query);
     const response = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AiFBallNews/1.0)', Accept: 'text/html' },
@@ -62,7 +62,7 @@ export async function searchXNewsWithDuckDuckGo(sources: NewsSource[]) {
   const posts = [...new Map(results.flatMap(result => result.status === 'fulfilled' ? result.value : []).map(post => [post.id, post])).values()];
   const failed = results.filter(result => result.status === 'rejected').length;
   return {
-    status: failed === sources.length ? 'upstream_unavailable' : failed ? 'partial' : 'ok',
+    status: failed === sources.length ? 'upstream_unavailable' : failed ? 'partial' : posts.length ? 'ok' : 'no_indexed_posts',
     provider: 'duckduckgo',
     posts,
     accounts: sources.map(source => source.handle),
