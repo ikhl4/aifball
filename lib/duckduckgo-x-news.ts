@@ -22,7 +22,7 @@ function decodeHtml(raw: string): string {
 
 function parseResults(html: string, allowed: Set<string>): DiscoveredPost[] {
   const found = new Map<string, DiscoveredPost>();
-  const anchors = [...html.matchAll(/<a\b[^>]*class=["'][^"']*\b(?:result__a|result-link)\b[^"']*["'][^>]*>[\s\S]*?<\/a>/gi)];
+  const anchors = [...html.matchAll(/<a\b(?=[^>]*\bclass=["'][^"']*\b(?:result__a|result-link)\b[^"']*["'][^>]*>[\s\S]*?<\/a>/gi)];
   for (const anchor of anchors.slice(0, 70)) {
     const raw = anchor[0].match(/\bhref=["']([^"']+)["']/i)?.[1];
     if (!raw) continue;
@@ -52,14 +52,21 @@ export async function searchXNewsWithDuckDuckGo(sources: NewsSource[]) {
     const url = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query);
     const response = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AiFBallNews/1.0)', Accept: 'text/html' },
-      signal: AbortSignal.timeout(8000), cache: 'no-store',
+      signal: AbortSignal.timeout(5500), cache: 'no-store',
     });
     if (!response.ok) throw new Error('DDG_HTTP_' + response.status);
     const html = await response.text();
     if (html.length > 2_000_000) throw new Error('DDG_RESPONSE_TOO_LARGE');
     return parseResults(html, allowed).filter(post => post.author.toLowerCase() === source.handle.toLowerCase());
   }));
-  const posts = [...new Map(results.flatMap(result => result.status === 'fulfilled' ? result.value : []).map(post => [post.id, post])).values()];
+  const discovered = [...new Map(results.flatMap(result => result.status === 'fulfilled' ? result.value : []).map(post => [post.id, post])).values()];
+  const seen = new Set<string>();
+  const posts = discovered.filter(post => {
+    const key = post.text.toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 100);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   const failed = results.filter(result => result.status === 'rejected').length;
   return {
     status: failed === sources.length ? 'upstream_unavailable' : failed ? 'partial' : posts.length ? 'ok' : 'no_indexed_posts',
