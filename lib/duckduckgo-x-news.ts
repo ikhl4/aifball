@@ -22,7 +22,7 @@ function decodeHtml(raw: string): string {
 
 function parseResults(html: string, allowed: Set<string>): DiscoveredPost[] {
   const found = new Map<string, DiscoveredPost>();
-  const anchors = [...html.matchAll(/<a\b(?=[^>]*\bclass=["'][^"']*\b(?:result__a|result-link)\b[^"']*["'][^>]*>[\s\S]*?<\/a>/gi)];
+  const anchors = [...html.matchAll(/<a\b(?=[^>]*\bclass=["'][^"']*\b(?:result__a|result-link)\b[^"']*["'])[^>]*>[\s\S]*?<\/a>/gi)];
   for (const anchor of anchors.slice(0, 70)) {
     const raw = anchor[0].match(/\bhref=["']([^"']+)["']/i)?.[1];
     if (!raw) continue;
