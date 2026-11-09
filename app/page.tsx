@@ -602,6 +602,28 @@ function renderFormattedText(
         continue;
       }
 
+      if (name === 'aifball-club-news') {
+        const club = (attrs.club || '').trim().slice(0, 90);
+        const logo = safeUrl(attrs.logo);
+        if (!club) continue;
+        elements.push(
+          <section key={i} dir="rtl" className={`my-3 flex items-center gap-3 rounded-2xl border px-3 py-3 shadow-sm ${isDark ? 'border-emerald-400/25 bg-emerald-900/20 text-white' : 'border-emerald-600/20 bg-emerald-50/70 text-gray-950'}`}>
+            {logo?.startsWith('https://') ? (
+              <img src={logo} alt={`شعار ${club}`} loading="lazy" decoding="async" referrerPolicy="no-referrer" width={56} height={56}
+                className="h-14 w-14 shrink-0 rounded-xl object-contain"
+                onError={event => { event.currentTarget.style.display = 'none'; }} />
+            ) : (
+              <div aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-emerald-600/10 text-2xl">⚽</div>
+            )}
+            <div className="min-w-0">
+              <h3 className="text-base font-extrabold leading-7">آخر أخبار {club}</h3>
+              <p className={`text-xs ${isDark ? 'text-emerald-100/70' : 'text-emerald-800/70'}`}>المباريات · الإصابات · الانتقالات</p>
+            </div>
+          </section>
+        );
+        continue;
+      }
+
       if (name === 'aifball-photo') {
         const photo = safeUrl(attrs.image);
         const source = safeUrl(attrs.source);
