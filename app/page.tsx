@@ -602,6 +602,23 @@ function renderFormattedText(
         continue;
       }
 
+      if (name === 'aifball-club-news') {
+        const club = (attrs.club || '').trim().slice(0, 90);
+        const logo = safeUrl(attrs.logo);
+        if (!club) continue;
+        elements.push(
+          <div key={i} dir="rtl" className="my-2 flex items-center gap-2.5">
+            {logo?.startsWith('https://') && (
+              <img src={logo} alt={`شعار ${club}`} loading="lazy" decoding="async" referrerPolicy="no-referrer" width={42} height={42}
+                className="h-10 w-10 shrink-0 object-contain"
+                onError={event => { event.currentTarget.style.display = 'none'; }} />
+            )}
+            <strong className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>آخر أخبار {club}</strong>
+          </div>
+        );
+        continue;
+      }
+
       if (name === 'aifball-photo') {
         const photo = safeUrl(attrs.image);
         const source = safeUrl(attrs.source);
@@ -2053,36 +2070,6 @@ export default function FootPlayChat() {
                               />
                             )}
                         </div>
-
-                        {!loading && index === messages.length - 1 && msg.content.trim() && (
-                          <section dir="rtl" aria-label="أسئلة مقترحة" className="mt-3">
-                            <p className="mb-2 text-sm font-bold text-emerald-500">أسئلة مقترحة</p>
-                            <div className="flex flex-wrap gap-2">
-                              {((msg.content.includes('<aifball-player') || /اللاعب|مسير|راتب|عقد|قيمة سوقية|player|career/i.test(msg.userQuery ?? '')) ? [
-                                'ما أرقام هذا اللاعب في الموسم الحالي؟',
-                                'ما أبرز بطولاته ومحطات مسيرته؟',
-                                'متى ينتهي عقده وكم راتبه وقيمته السوقية؟',
-                               ] : /مبار|إحصا|احصا|نتائج|تشكيل|match|stats/i.test(msg.userQuery ?? '') ? [
-                                'أعطني ملخص المباريات المذكورة في الرد.',
-                                'ما المباريات القادمة للفرق المذكورة؟',
-                                'من أبرز لاعب في المباراة؟ اعرض أداءه بالأرقام.',
-                                'ما آخر تغريدة من الحساب الرسمي للنادي عن المباراة؟',
-                              ] : /نادي|فريق|club|team/i.test(msg.userQuery ?? '') ? [
-                                'ما مباريات الفريق القادمة؟',
-                                'لخّص آخر مباراة للفريق.',
-                                'ما آخر تغريدة في حساب النادي الرسمي؟',
-                              ] : [
-                                'ما أهم التفاصيل الإضافية عن هذا الموضوع؟',
-                                'هل فيه أرقام أو أمثلة موثقة توضح الإجابة؟',
-                              ]).map(question => (
-                                <button key={question} type="button" onClick={() => void sendMessage(question)}
-                                  className="rounded-full border border-emerald-500/40 px-3 py-1.5 text-sm hover:border-emerald-500">
-                                  {question}
-                                </button>
-                              ))}
-                            </div>
-                          </section>
-                        )}
 
                         {/* أدوات الرسالة */}
                         <div
