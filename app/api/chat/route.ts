@@ -296,7 +296,7 @@ export async function POST(req: Request) {
         const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
         const answer = latestMatchText(directTeam, found.match);
         const events = [{event:'message',answer,conversation_id},{event:'message_end',conversation_id}];
-        return new Response(events.map(event => 'data: '+JSON.stringify(event)+'\\n\\n').join(''), {
+        return new Response(events.map(event => 'data: '+JSON.stringify(event)+'\n\n').join(''), {
           headers: {'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform'}
         });
       }
