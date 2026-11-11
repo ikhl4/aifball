@@ -23,6 +23,21 @@ async function rssFallback(term:string):Promise<SearchHit[]>{
  }
  return results;
 }
+async function arabicHeadline(title:string):Promise<string>{
+ if(/[\u0600-\u06ff]/.test(title))return title;
+ try{
+  const url='https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ar&dt=t&q='+encodeURIComponent(title);
+  const response=await fetch(url,{signal:AbortSignal.timeout(2200),cache:'no-store'});
+  if(!response.ok)return title;
+  const data=await response.json() as unknown;
+  if(!Array.isArray(data)||!Array.isArray(data[0]))return title;
+  const translated=(data[0] as unknown[]).map(part=>Array.isArray(part)&&typeof part[0]==='string'?part[0]:'').join('').trim();
+  return /[\u0600-\u06ff]/.test(translated)?translated:title;
+ }catch{return title;}
+}
+async function translateHits(hits:SearchHit[]):Promise<SearchHit[]>{
+ return Promise.all(hits.slice(0,10).map(async hit=>({...hit,title:await arabicHeadline(hit.title)})));
+}
 export async function GET(request: NextRequest) {
  const term = (request.nextUrl.searchParams.get('q') || '').trim();
  if (term.length < 2 || term.length > 80) return NextResponse.json({error:'query_length',results:[]},{status:400});
@@ -50,7 +65,7 @@ export async function GET(request: NextRequest) {
    if (hits.length >= 18) break;
   }
   const results=hits.length?hits:await rssFallback(term);
-  return NextResponse.json({provider:hits.length?'duckduckgo':'news_fallback',results,verified:false},{headers:{'Cache-Control':'no-store'}});
+  return NextResponse.json({provider:hits.length?'duckduckgo':'news_fallback',results:await translateHits(results),verified:false},{headers:{'Cache-Control':'no-store'}});
  }catch{
   try {const results=await rssFallback(term);return NextResponse.json({provider:'news_fallback',results,verified:false},{headers:{'Cache-Control':'no-store'}});}catch{return NextResponse.json({results:[],status:'unavailable'},{headers:{'Cache-Control':'no-store'}});}
  }
