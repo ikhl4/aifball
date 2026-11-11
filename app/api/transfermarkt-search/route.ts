@@ -9,7 +9,7 @@ function clean(value: string) {
 export async function GET(request: NextRequest) {
  const term = (request.nextUrl.searchParams.get('q') || '').trim();
  if (term.length < 2 || term.length > 80) return NextResponse.json({error:'query_length',results:[]},{status:400});
- const search = 'site:transfermarkt.com ' + term + ' transfer 2026';
+ const search = 'site:transfermarkt.com ' + term;
  try {
   const response = await fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(search),{
    headers:{'User-Agent':'Mozilla/5.0 (compatible; AiFBall/1.0)','Accept':'text/html'},
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     if (!title || hits.some(item=>item.url===url.href)) continue;
     hits.push({title,url:url.href,snippet:'نتيجة بحث من فهرس DuckDuckGo، راجع صفحة ترانسفير ماركت للتحقق من تفاصيل الصفقة وقيمتها.',source:'Transfermarkt',status:'search_result_unverified'});
    } catch { /* ignore malformed search links */ }
-   if (hits.length >= 12) break;
+   if (hits.length >= 18) break;
   }
   return NextResponse.json({provider:'duckduckgo',results:hits,verified:false,note:'Search index results only. Not an official Transfermarkt API, and fees or completed transfers are not inferred.'},{headers:{'Cache-Control':'no-store'}});
  }catch{
