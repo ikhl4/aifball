@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import TacticalLesson from '../components/TacticalLesson';
+import FreeTacticalBoard from '../components/FreeTacticalBoard';
 import { categories, drills, type Drill } from '../../lib/academy/drills';
 
 function Pitch({ drill }: { drill: Drill }) {
@@ -98,7 +99,7 @@ export default function AcademyPage() {
         <p className="text-sm text-emerald-200 mb-3">المدة المقترحة: {dailyPlan.exercises.reduce((sum,item)=>sum+item[1],0)} دقيقة، مع فترات راحة حسب جاهزية اللاعبين.</p>
         <div className="space-y-2">{dailyPlan.exercises.map(([title,minutes,note],i)=><div key={i} className="rounded-xl border border-white/15 p-3"><div className="flex justify-between gap-2"><p className="font-bold">{i+1}. {title}</p><span className="shrink-0 text-emerald-200 text-sm">{minutes} دقيقة</span></div><p className="text-xs text-emerald-200 mt-1">{note}</p></div>)}</div>
         <p className="text-xs text-emerald-200 mt-4">هذه خطط توضيحية مختلفة بحسب العمر واليوم وليست توصية بحمل تدريبي يومي متتالٍ؛ عدّل الشدة والراحة بحسب جدول المباريات وحالة اللاعبين.</p>
-      </section> : <section aria-label="التمارين التفاعلية" className="rounded-2xl border border-emerald-400/30 bg-emerald-900/30 p-2 sm:p-4"><h2 className="text-xl font-bold mb-2">السبورة التفاعلية</h2><p className="text-sm text-emerald-100 mb-3">اختر التمرين، ثم أضف اللاعبين وحرّكهم وشغّل المراحل.</p><TacticalLesson name="" isDark trainingFirst={false}/></section>}
+      </section> : <section aria-label="التمارين التفاعلية" className="rounded-2xl border border-emerald-400/30 bg-emerald-900/30 p-2 sm:p-4"><h2 className="text-xl font-bold mb-2">السبورة التفاعلية</h2><p className="text-sm text-emerald-100 mb-3">اختر التمرين، ثم أضف اللاعبين وحرّكهم وشغّل المراحل.</p><FreeTacticalBoard/><details className="mt-5 rounded-xl border border-emerald-400/30 p-3"><summary className="cursor-pointer font-bold text-emerald-200">التمارين التفاعلية الجاهزة ومراجع FIFA</summary><TacticalLesson name="" isDark trainingFirst={false}/></details></section>}
     </div>
   </main>;
 }
