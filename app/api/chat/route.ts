@@ -106,45 +106,82 @@ const CLUB_NEWS_RULES = `
 
 function latestClubMatchIntent(query: string): string | null {
   const q = query.replace(/[؟?!.,،]/g, ' ').replace(/\s+/g, ' ').trim();
-  if (!/(?:آخر|اخر|أحدث|احدث|last|latest|recent|السابقة|الاخيرة|الأخيرة)/i.test(q) ||
-      !/(?:مباراة|مباريات|مواجهات|لقاء|نتيجة|match|game|result)/i.test(q) ||
+  if (!/(?:آخر|اخر|أحدث|احدث|last|latest|recent)/i.test(q) ||
+      !/(?:مباراة|مباريات|لقاء|نتيجة|match|game|result)/i.test(q) ||
       /(?:ملخص|تحليل|تشكيل|إحصائيات|احصائيات|فيديو|هدف|أهداف|اهداف|موعد|القادمة|القادم|next|highlights)/i.test(q)) return null;
   const clubs: Array<[RegExp, string]> = [
     [/(?:الاتحاد|الإتحاد|ittihad|al[ -]?ittihad)/i, 'al ittihad'],
     [/(?:الهلال|hilal|al[ -]?hilal)/i, 'al hilal'],
+    [/(?:برشلونة|برشلونه|barcelona|barca|barça)/i, 'barcelona'],
   ];
   const found = clubs.filter(([pattern]) => pattern.test(q));
   return found.length === 1 ? found[0][1] : null;
 }
 
+type LatestMatch = {
+  date_utc: string; competition: string; home_team: string; away_team: string;
+  home_score: number; away_score: number; verification: string; source: string;
+};
+
+function espnEventToMatch(event: any, competition: string, club: string): LatestMatch | null {
+  const fixture = event?.competitions?.[0];
+  const sides = fixture?.competitors;
+  if (!Array.isArray(sides) || sides.length !== 2) return null;
+  const home = sides.find((x: any) => x.homeAway === 'home');
+  const away = sides.find((x: any) => x.homeAway === 'away');
+  if (!home || !away || fixture?.status?.type?.completed !== true) return null;
+  const homeName = String(home.team?.displayName || home.team?.name || '');
+  const awayName = String(away.team?.displayName || away.team?.name || '');
+  const teamMatches = (side: any) => {
+    const names = [side.team?.displayName, side.team?.name, side.team?.shortDisplayName, side.team?.abbreviation]
+      .map((n: unknown) => String(n || '').toLowerCase());
+    return club === 'barcelona'
+      ? names.some(n => /barcelona|barça|barca/.test(n))
+      : club === 'al hilal'
+        ? names.some(n => /hilal/.test(n))
+        : names.some(n => /ittihad/.test(n));
+  };
+  if (!teamMatches(home) && !teamMatches(away)) return null;
+  const score = (side: any): number => Number(typeof side.score === 'object' ? side.score?.displayValue ?? side.score?.value : side.score);
+  const hs = score(home), as = score(away);
+  const date = String(event?.date || '');
+  if (!Number.isInteger(hs) || !Number.isInteger(as) || !/^\d{4}-\d{2}-\d{2}T/.test(date) ||
+      new Date(date).getTime() > Date.now()) return null;
+  return { date_utc: date, competition, home_team: homeName, away_team: awayName,
+    home_score: hs, away_score: as, verification: 'espn_only_unverified', source: 'ESPN scoreboard' };
+}
+
 async function espnLatestMatchAnswer(club: string): Promise<string | null> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 6000);
+  const timeout = setTimeout(() => controller.abort(), 6500);
   try {
-    // Preview must use the isolated Python test service. Never send test traffic to production.
-    const pythonOrigin = process.env.VERCEL_ENV === 'production'
-      ? 'https://aifball-python-api.onrender.com'
-      : 'https://aifball-python-test.onrender.com';
-    const endpoint = new URL('/research/live/club-latest-match', pythonOrigin);
-    endpoint.searchParams.set('club', club);
-    endpoint.searchParams.set('days', '30');
-    const res = await fetch(endpoint, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const m = data?.latest_match;
-    if (data?.status !== 'found' || !m || m.completed !== true ||
-        typeof m.home_team !== 'string' || typeof m.away_team !== 'string' ||
-        !/^\d+$/.test(String(m.home_score)) || !/^\d+$/.test(String(m.away_score)) ||
-        typeof m.date_utc !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(m.date_utc)) return null;
-    const date = m.date_utc.slice(0, 10);
-    const competition = typeof m.competition === 'string' ? m.competition : 'بطولة غير محددة';
-    const verified = m.verification === 'verified_independent';
+    const leagues: Array<[string, string]> = club === 'barcelona'
+      ? [['esp.1', 'La Liga'], ['uefa.champions', 'UEFA Champions League'], ['esp.copa_del_rey', 'Copa del Rey']]
+      : [['ksa.1', 'Saudi Pro League'], ['afc.champions', 'AFC Champions League Elite'], ['ksa.kings.cup', 'King Cup'], ['fifa.cwc', 'FIFA Club World Cup']];
+    const end = new Date();
+    const begin = new Date(end.getTime() - 45 * 86400000);
+    const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
+    const results = await Promise.allSettled(leagues.map(async ([code, label]) => {
+      const url = new URL('https://site.api.espn.com/apis/site/v2/sports/soccer/' + code + '/scoreboard');
+      url.searchParams.set('dates', fmt(begin) + '-' + fmt(end));
+      url.searchParams.set('limit', '200');
+      const response = await fetch(url, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error('scoreboard_unavailable');
+      const data = await response.json();
+      if (!Array.isArray(data?.events)) throw new Error('scoreboard_invalid');
+      return data.events.map((event: any) => espnEventToMatch(event, label, club)).filter((m: LatestMatch | null): m is LatestMatch => m !== null);
+    }));
+    const matches = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    matches.sort((a, b) => Date.parse(b.date_utc) - Date.parse(a.date_utc));
+    const m = matches[0];
+    if (!m) return null;
+    const clubName = club === 'barcelona' ? 'برشلونة' : club === 'al ittihad' ? 'الاتحاد' : 'الهلال';
     return [
-      '### آخر مباراة — ' + (club === 'al ittihad' ? 'الاتحاد' : 'الهلال'),
+      '### آخر مباراة — ' + clubName,
       '**' + m.home_team + ' ' + m.home_score + ' – ' + m.away_score + ' ' + m.away_team + '**',
-      '**البطولة:** ' + competition,
-      '**التاريخ:** ' + date,
-      verified ? 'المصدر: ESPN، مع تحقق مستقل.' : 'المصدر: ESPN — النتيجة لم تُتحقق من مصدر مستقل بعد.',
+      '**البطولة:** ' + m.competition,
+      '**التاريخ:** ' + m.date_utc.slice(0, 10),
+      'المصدر: ESPN — النتيجة من مصدر واحد ولم تُتحقق بشكل مستقل.',
     ].join('\n\n');
   } catch {
     return null;
@@ -162,11 +199,11 @@ export async function POST(req: Request) {
     // Direct, bounded ESPN lookup for explicit latest-match questions. Fallback to Dify on failure.
     const latestClub = !hasImage ? latestClubMatchIntent(query) : null;
     // Experimental ESPN path is isolated by default; ordinary questions continue to Dify.
-    if (process.env.ENABLE_EXPERIMENTAL_ESPN_LATEST_MATCH === 'true' && latestClub) {
+    if (latestClub && (process.env.VERCEL_ENV !== 'production' || process.env.ENABLE_EXPERIMENTAL_ESPN_LATEST_MATCH === 'true')) {
       const answer = await espnLatestMatchAnswer(latestClub);
       {
         // Explicit match requests must not fall through to a long, ungrounded Dify answer.
-        const safeAnswer = answer ?? 'تعذر جلب آخر مباراة من محرك النتائج الآن. لم يتم التحقق من النتيجة، ويمكن إعادة المحاولة لاحقًا.';
+        const safeAnswer = answer ?? 'تعذر تأكيد آخر مباراة من مصدر النتائج الآن. يرجى إعادة المحاولة لاحقًا.';
         const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
         const events = [
           { event: 'message', answer: safeAnswer, conversation_id },
