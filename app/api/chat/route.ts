@@ -129,7 +129,10 @@ function espnEventToMatch(event: any, competition: string, club: string): Latest
   if (!Array.isArray(sides) || sides.length !== 2) return null;
   const home = sides.find((x: any) => x.homeAway === 'home');
   const away = sides.find((x: any) => x.homeAway === 'away');
-  if (!home || !away || fixture?.status?.type?.completed !== true) return null;
+  // ESPN may report completion on either the competition or event status.
+  // Never treat scheduled, postponed, or live fixtures as final results.
+  const completed = fixture?.status?.type?.completed === true || event?.status?.type?.completed === true;
+  if (!home || !away || !completed) return null;
   const homeName = String(home.team?.displayName || home.team?.name || '');
   const awayName = String(away.team?.displayName || away.team?.name || '');
   const teamMatches = (side: any) => {
@@ -180,8 +183,9 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
       '### آخر مباراة — ' + clubName,
       '**' + m.home_team + ' ' + m.home_score + ' – ' + m.away_score + ' ' + m.away_team + '**',
       '**البطولة:** ' + m.competition,
-      '**التاريخ:** ' + m.date_utc.slice(0, 10),
-      'المصدر: ESPN — النتيجة من مصدر واحد ولم تُتحقق بشكل مستقل.',
+      '**التاريخ (UTC):** ' + m.date_utc.slice(0, 10),
+      '**حالة المعلومة:** نتيجة منشورة في ESPN، ولم تُطابق بعد مع مصدر مستقل.',
+      'هذه آخر مباراة مكتملة وجدتها ضمن البطولات التي شملها البحث، وليست تأكيدًا على شمول جميع البطولات.',
     ].join('\n\n');
   } catch {
     return null;
@@ -203,7 +207,7 @@ export async function POST(req: Request) {
       const answer = await espnLatestMatchAnswer(latestClub);
       {
         // Explicit match requests must not fall through to a long, ungrounded Dify answer.
-        const safeAnswer = answer ?? 'تعذر تأكيد آخر مباراة من مصدر النتائج الآن. يرجى إعادة المحاولة لاحقًا.';
+        const safeAnswer = answer ?? 'لم أجد مباراة مكتملة يمكن عرض نتيجتها بثقة ضمن مصادر البطولات التي فُحصت. هذا لا يعني أن النادي لم يلعب؛ قد تكون تغطية المصدر ناقصة أو غير متاحة الآن.';
         const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
         const events = [
           { event: 'message', answer: safeAnswer, conversation_id },
