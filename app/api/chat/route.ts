@@ -165,14 +165,14 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
       ? [['esp.1', 'La Liga'], ['uefa.champions', 'UEFA Champions League'], ['esp.copa_del_rey', 'Copa del Rey']]
       : [['ksa.1', 'Saudi Pro League'], ['afc.champions', 'AFC Champions League Elite'], ['ksa.kings.cup', 'King Cup'], ['fifa.cwc', 'FIFA Club World Cup']];
     const end = new Date();
-    const begin = new Date(end.getTime() - 90 * 86400000);
+    const begin = new Date(end.getTime() - 42 * 86400000);
     const fromBackend = async (): Promise<LatestMatch[]> => {
       const base = (process.env.AIFBALL_PYTHON_API_URL || 'https://aifball-python-api.onrender.com').replace(/\/$/, '');
       // Keep outbound requests limited to our Render services.
       if (!/^https:\/\/aifball-python-(?:api|test)\.onrender\.com$/.test(base)) return [];
       const url = new URL(base + '/research/live/club-latest-match');
       url.searchParams.set('club', club);
-      url.searchParams.set('days', '90');
+      url.searchParams.set('days', '42');
       const response = await fetch(url, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
       if (!response.ok) return [];
       const data = await response.json();
@@ -193,22 +193,21 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
       }).filter((m: LatestMatch | null): m is LatestMatch => m !== null);
     };
     const fromEspn = async (): Promise<LatestMatch[]> => {
-      // ESPN retired the YYYYMMDD-YYYYMMDD scoreboard range. Request calendar
-      // months instead, and inspect the full rolling window before choosing a match.
-      const months: string[] = [];
-      const cursor = new Date(Date.UTC(begin.getUTCFullYear(), begin.getUTCMonth(), 1));
-      while (cursor.getTime() <= end.getTime()) {
-        months.push(cursor.toISOString().slice(0, 7).replace('-', ''));
-        cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+      // ESPN's documented date filter accepts explicit YYYYMMDD ranges.
+      // The previous YYYYMM month request was not supported by the evidence.
+      const windows: Array<[string, string]> = [];
+      const day = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
+      for (let cursor = begin.getTime(); cursor <= end.getTime(); cursor += 14 * 86400000) {
+        windows.push([day(new Date(cursor)), day(new Date(Math.min(cursor + 14 * 86400000 - 1, end.getTime())))]);
       }
-      const requests = leagues.flatMap(([code, label]) => months.map(async month => {
+      const requests = leagues.flatMap(([code, label]) => windows.map(async ([first, last]) => {
         const url = new URL('https://site.api.espn.com/apis/site/v2/sports/soccer/' + code + '/scoreboard');
-        url.searchParams.set('dates', month);
+        url.searchParams.set('dates', first + '-' + last);
         url.searchParams.set('limit', '500');
         const response = await fetch(url, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
-        if (!response.ok) throw new Error('ESPN scoreboard HTTP ' + response.status + ' for ' + code + '/' + month);
+        if (!response.ok) throw new Error('ESPN scoreboard HTTP ' + response.status + ' for ' + code);
         const data = await response.json();
-        if (!Array.isArray(data?.events)) throw new Error('ESPN scoreboard missing events for ' + code + '/' + month);
+        if (!Array.isArray(data?.events)) throw new Error('ESPN scoreboard missing events for ' + code);
         return data.events.map((event: any) => espnEventToMatch(event, label, club))
           .filter((m: LatestMatch | null): m is LatestMatch => m !== null && Date.parse(m.date_utc) >= begin.getTime() && Date.parse(m.date_utc) <= end.getTime());
       }));
@@ -227,10 +226,11 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
     // window must not hide a newer match from another competition.
     const [backendResult, espnResult] = await Promise.allSettled([fromBackend(), fromEspn()]);
     const backendMatches = backendResult.status === 'fulfilled' ? backendResult.value : [];
+    if (backendMatches.length && !directMatches.length) console.warn('[AIFBALL_BACKEND_ONLY_UNVERIFIED]', JSON.stringify({ club, count: backendMatches.length }));
     const directMatches = espnResult.status === 'fulfilled' ? espnResult.value : [];
     // Backend results alone cannot establish recency across all competitions.
     // Let Dify search its other providers if ESPN coverage is incomplete.
-    const matches = directMatches.length ? [...backendMatches, ...directMatches] : [];
+    const matches = directMatches.length ? directMatches : [];
     const unique = new Set<string>();
     const deduped = matches.filter(m => {
       const key = [m.date_utc.slice(0, 10), m.home_team.toLowerCase(), m.away_team.toLowerCase(), m.home_score, m.away_score].join('|');
