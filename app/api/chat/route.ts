@@ -292,15 +292,17 @@ export async function POST(req: Request) {
     const directTeam = !hasImage ? requestedTeam(query) : null;
     if (directTeam) {
       const found = await latestVerifiedMatch(directTeam, req.signal);
-      if (found.complete && found.match) {
-        const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
-        const answer = latestMatchText(directTeam, found.match);
-        const events = [{event:'message',answer,conversation_id},{event:'message_end',conversation_id}];
-        return new Response(events.map(event => 'data: '+JSON.stringify(event)+'\n\n').join(''), {
-          headers: {'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform'}
-        });
-      }
-      console.warn('[AIFBALL_LATEST_DIRECT_INCOMPLETE]', JSON.stringify({team:directTeam,complete:found.complete,hasMatch:Boolean(found.match)}));
+      const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
+      // Never send a recognized latest-match question to a second, slow Dify
+      // discovery path after a provider failure.
+      const answer = found.match
+        ? latestMatchText(directTeam, found.match) + (found.complete ? '' : '\\n\\n**تنبيه:** بعض البطولات لم تستجب؛ هذه أحدث نتيجة عُثر عليها، وليست بالضرورة آخر مباراة في جميع البطولات.')
+        : 'تعذر استرجاع نتيجة مكتملة حديثة لـ' + directTeam + ' من مصدر المباريات حالياً. لا توجد نتيجة مؤكدة يمكن عرضها.';
+      console.info('[AIFBALL_LATEST_DIRECT]', JSON.stringify({team:directTeam,complete:found.complete,hasMatch:Boolean(found.match)}));
+      const events = [{event:'message',answer,conversation_id},{event:'message_end',conversation_id}];
+      return new Response(events.map(event => 'data: '+JSON.stringify(event)+'\\n\\n').join(''), {
+        headers: {'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform'}
+      });
     }
     // Direct, bounded ESPN lookup for explicit latest-match questions. Fallback to Dify on failure.
     const latestClub = !hasImage ? latestClubMatchIntent(query) : null;
