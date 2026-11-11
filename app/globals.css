@@ -1,13 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* استدعاء خط كايرو من جوجل */
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
 
 @layer base {
   /* تطبيق الخط على جميع العناصر */
-  body, input, button, textarea, h1, h2, h3, p, span {
+  html, body, input, button, textarea, select, option, h1, h2, h3, h4, p, span, label, a, li {
     font-family: 'Cairo', sans-serif !important;
     font-feature-settings: "calt" 1, "liga" 1;
   }
