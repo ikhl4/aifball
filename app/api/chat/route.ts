@@ -5,6 +5,7 @@ import { posterIntent } from '../../../lib/match-card-data';
 import { buildSingleMatchHighlights } from '../../../lib/single-match-highlights';
 import { historyMode, FOOTBALL_HISTORY_RULES, DOCUMENTARY_REQUEST_RULES, presentHistoryAnswer } from '../../../lib/football-history';
 import { groundedMatchStream } from '../../../lib/grounded-match-answer';
+import { requestedTeam, latestVerifiedMatch, latestMatchText } from '../../../lib/latest-match';
 import { NextResponse } from 'next/server';
 import { isDetailedMatchQuery, withMatchReportPresentation, withMatchConversationContext } from '../../../lib/match-report-prompt';
 import { isAnalysisRequest } from '../../../lib/analysis-story';
@@ -286,6 +287,21 @@ export async function POST(req: Request) {
     const body = await req.json();
     const hasImage = Array.isArray(body?.files) && body.files.some((file: { type?: string } | null) => file?.type === 'image');
     const query = (typeof body?.query === 'string' ? body.query.trim() : '') || (hasImage ? 'اقرأ الصورة المرفقة ووضح ما يظهر فيها.' : '');
+    // Fast path: same ESPN scoreboard data family used by the live match center.
+    // Never claim a latest result when one of the relevant competitions failed.
+    const directTeam = !hasImage ? requestedTeam(query) : null;
+    if (directTeam) {
+      const found = await latestVerifiedMatch(directTeam, req.signal);
+      if (found.complete && found.match) {
+        const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
+        const answer = latestMatchText(directTeam, found.match);
+        const events = [{event:'message',answer,conversation_id},{event:'message_end',conversation_id}];
+        return new Response(events.map(event => 'data: '+JSON.stringify(event)+'\\n\\n').join(''), {
+          headers: {'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform'}
+        });
+      }
+      console.warn('[AIFBALL_LATEST_DIRECT_INCOMPLETE]', JSON.stringify({team:directTeam,complete:found.complete,hasMatch:Boolean(found.match)}));
+    }
     // Direct, bounded ESPN lookup for explicit latest-match questions. Fallback to Dify on failure.
     const latestClub = !hasImage ? latestClubMatchIntent(query) : null;
     const anyLatestMatch = !hasImage && anyTeamLatestMatchIntent(query);
