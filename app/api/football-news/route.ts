@@ -48,8 +48,22 @@ export async function GET(req: NextRequest) {
       });
     }));
     const posts = [...new Map(feeds.flatMap(result => result.status === 'fulfilled' ? result.value : []).map(post => [post.text.toLowerCase().replace(/[^\p{L}\p{N}]/gu,''),post])).values()].sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt)).slice(0, 60);
+    // Prefer Arabic-language reporting and translate English headlines only when translation succeeds.
+    const translateHeadline = async (headline: string): Promise<string> => {
+      if (/[\u0600-\u06FF]/.test(headline)) return headline;
+      try {
+        const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ar&dt=t&q=' + encodeURIComponent(headline);
+        const response = await fetch(url, { signal: AbortSignal.timeout(2500), cache: 'no-store' });
+        if (!response.ok) return headline;
+        const data = await response.json() as unknown;
+        if (!Array.isArray(data) || !Array.isArray(data[0])) return headline;
+        const translated = (data[0] as unknown[]).map(part => Array.isArray(part) && typeof part[0] === 'string' ? part[0] : '').join('').trim();
+        return translated && /[\u0600-\u06FF]/.test(translated) ? translated : headline;
+      } catch { return headline; }
+    };
+    const translatedPosts = await Promise.all(posts.slice(0, 24).map(async post => ({ ...post, text: await translateHeadline(post.text) })));
     const failed = feeds.filter(f => f.status === 'rejected').length;
-    return NextResponse.json({ status: failed === topics.length ? 'upstream_unavailable' : failed ? 'partial' : 'ok', provider: 'google_news_rss', windowHours: 24, posts, failedSearches: failed, note: 'Headlines and publisher dates from Google News RSS. Publication date is not independent verification of claims; images are omitted when not supplied.' }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ status: failed === topics.length ? 'upstream_unavailable' : failed ? 'partial' : 'ok', provider: 'google_news_rss', windowHours: 24, posts: translatedPosts, failedSearches: failed, note: 'Headlines and publisher dates from Google News RSS. Publication date is not independent verification of claims; images are omitted when not supplied.' }, { headers: { 'Cache-Control': 'no-store' } });
   }
   const mode = req.nextUrl.searchParams.get('provider') || 'auto';
   if (mode !== 'duckduckgo' && mode !== 'x' && mode !== 'auto') return NextResponse.json({ error: 'invalid_provider' }, { status: 400 });
