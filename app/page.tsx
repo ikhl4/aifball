@@ -1867,7 +1867,7 @@ export default function FootPlayChat() {
             <nav aria-label="اختصارات فوتبلاي" className="mb-6 grid grid-cols-4 gap-2">
               {[
                 { title: 'إضافة التطبيق للرئيسية', icon: 'plus', install: true },
-                { title: 'نماذج تمرين', icon: 'activity', query: 'اعرض مكتبة التمارين' },
+                { title: 'الأكاديمية التدريبية', icon: 'activity', href: '/academy' },
                 { title: 'FC 27', icon: 'pitch', href: 'https://www.futbin.com/' },
                 { title: 'الفانتازي', icon: 'chart', fantasy: true },
               ].map(item => {
