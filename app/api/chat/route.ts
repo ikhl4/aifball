@@ -166,7 +166,6 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
       : [['ksa.1', 'Saudi Pro League'], ['afc.champions', 'AFC Champions League Elite'], ['ksa.kings.cup', 'King Cup'], ['fifa.cwc', 'FIFA Club World Cup']];
     const end = new Date();
     const begin = new Date(end.getTime() - 90 * 86400000);
-    const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
     const fromBackend = async (): Promise<LatestMatch[]> => {
       const base = (process.env.AIFBALL_PYTHON_API_URL || 'https://aifball-python-api.onrender.com').replace(/\/$/, '');
       // Keep outbound requests limited to our Render services.
@@ -194,17 +193,34 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
       }).filter((m: LatestMatch | null): m is LatestMatch => m !== null);
     };
     const fromEspn = async (): Promise<LatestMatch[]> => {
-      const results = await Promise.allSettled(leagues.map(async ([code, label]) => {
+      // ESPN retired the YYYYMMDD-YYYYMMDD scoreboard range. Request calendar
+      // months instead, and inspect the full rolling window before choosing a match.
+      const months: string[] = [];
+      const cursor = new Date(Date.UTC(begin.getUTCFullYear(), begin.getUTCMonth(), 1));
+      while (cursor.getTime() <= end.getTime()) {
+        months.push(cursor.toISOString().slice(0, 7).replace('-', ''));
+        cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+      }
+      const requests = leagues.flatMap(([code, label]) => months.map(async month => {
         const url = new URL('https://site.api.espn.com/apis/site/v2/sports/soccer/' + code + '/scoreboard');
-        url.searchParams.set('dates', fmt(begin) + '-' + fmt(end));
-        url.searchParams.set('limit', '200');
+        url.searchParams.set('dates', month);
+        url.searchParams.set('limit', '500');
         const response = await fetch(url, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
-        if (!response.ok) return [];
+        if (!response.ok) throw new Error('ESPN scoreboard HTTP ' + response.status + ' for ' + code + '/' + month);
         const data = await response.json();
-        if (!Array.isArray(data?.events)) return [];
+        if (!Array.isArray(data?.events)) throw new Error('ESPN scoreboard missing events for ' + code + '/' + month);
         return data.events.map((event: any) => espnEventToMatch(event, label, club))
           .filter((m: LatestMatch | null): m is LatestMatch => m !== null && Date.parse(m.date_utc) >= begin.getTime() && Date.parse(m.date_utc) <= end.getTime());
       }));
+      const results = await Promise.allSettled(requests);
+      // A failed month/competition means the search is incomplete. Never
+      // advertise an older fixture as the latest on the strength of partial data.
+      if (results.some(r => r.status === 'rejected')) {
+        console.warn('[AIFBALL_ESPN_INCOMPLETE]', JSON.stringify({
+          club, total: results.length, failed: results.filter(r => r.status === 'rejected').length,
+        }));
+        return [];
+      }
       return results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
     };
     // Run the backend and direct ESPN discovery concurrently. A partial backend
@@ -212,7 +228,9 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
     const [backendResult, espnResult] = await Promise.allSettled([fromBackend(), fromEspn()]);
     const backendMatches = backendResult.status === 'fulfilled' ? backendResult.value : [];
     const directMatches = espnResult.status === 'fulfilled' ? espnResult.value : [];
-    const matches = [...backendMatches, ...directMatches];
+    // Backend results alone cannot establish recency across all competitions.
+    // Let Dify search its other providers if ESPN coverage is incomplete.
+    const matches = directMatches.length ? [...backendMatches, ...directMatches] : [];
     const unique = new Set<string>();
     const deduped = matches.filter(m => {
       const key = [m.date_utc.slice(0, 10), m.home_team.toLowerCase(), m.away_team.toLowerCase(), m.home_score, m.away_score].join('|');
