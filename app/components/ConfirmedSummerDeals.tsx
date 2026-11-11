@@ -52,7 +52,7 @@ export default function ConfirmedSummerDeals(){
    <div className="flex justify-between items-center gap-2"><span className="text-xs text-lime-300 font-bold">انتقال رسمي · {d.league}</span><span className="text-xs text-emerald-100/70">{d.kind||'صيف 2026'}</span></div>
    <h3 className="text-lg font-black mt-3">{d.player}</h3>
    <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center mt-4 text-center"><div className="rounded-xl bg-emerald-950 p-3"><small className="block text-emerald-200/60">من</small><strong>{d.from}</strong></div><span className="text-lime-300 text-xl">←</span><div className="rounded-xl bg-emerald-950 p-3"><small className="block text-emerald-200/60">إلى</small><strong>{d.to}</strong></div></div>
-   <a href={d.source} target="_blank" rel="noopener noreferrer" className="inline-block mt-4 text-sm text-emerald-300 underline underline-offset-4">تفاصيل الصفقة</a>
+   <div className="mt-4 flex flex-wrap gap-4 text-sm"><a href={d.source} target="_blank" rel="noopener noreferrer" className="text-emerald-300 underline underline-offset-4">تفاصيل الصفقة</a><a href={"https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query="+encodeURIComponent(d.player)} target="_blank" rel="noopener noreferrer" className="text-lime-300 underline underline-offset-4">القيمة السوقية · ترانسفير ماركت</a></div>
   </article>)}</div>
   {filtered.length>8&&<div className="flex justify-center items-center gap-4 mt-5"><button disabled={page===1} onClick={()=>setPage(p=>p-1)} className="disabled:opacity-30">السابق</button><span>صفحة {page} من {Math.ceil(filtered.length/8)}</span><button disabled={page*8>=filtered.length} onClick={()=>setPage(p=>p+1)} className="disabled:opacity-30">التالي</button></div>}
  </section>;
