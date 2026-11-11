@@ -2714,7 +2714,7 @@ export const TACTICAL_LESSONS: Record<LessonId, TacticalLessonData> = {
     "url": "https://www.fifatrainingcentre.com/en/practice/elite-sessions/goalkeeper/in_and_out_of_possession.php"
   }
 },
-};
+} as Record<LessonId, TacticalLessonData>;
 
 // Additional authored AiFBall academy scenarios. FIFA references are related reading, not claims of identical drills.
 const ACADEMY_INTERACTIVE_SEEDS = [
