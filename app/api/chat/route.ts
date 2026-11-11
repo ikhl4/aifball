@@ -158,7 +158,7 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
   // Query the isolated backend first. ESPN remains a bounded fallback when that
   // service is unavailable; neither feed is described as independently verified.
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8500);
+  const timeout = setTimeout(() => controller.abort(), 18000);
   try {
     const clubName = club === 'barcelona' ? 'برشلونة' : club === 'al ittihad' ? 'الاتحاد' : 'الهلال';
     const leagues: Array<[string, string]> = club === 'barcelona'
@@ -173,7 +173,7 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
       if (!/^https:\/\/aifball-python-(?:api|test)\.onrender\.com$/.test(base)) return [];
       const url = new URL(base + '/research/live/club-latest-match');
       url.searchParams.set('club', club);
-      url.searchParams.set('days', '31');
+      url.searchParams.set('days', '90');
       const response = await fetch(url, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
       if (!response.ok) return [];
       const data = await response.json();
@@ -207,12 +207,21 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
       }));
       return results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
     };
-    const backendMatches = await fromBackend().catch(() => []);
-    // A successful backend result is already sourced from ESPN and avoids a
-    // second costly discovery pass. Use ESPN directly only if backend is empty.
-    const matches = backendMatches.length ? backendMatches : await fromEspn();
-    matches.sort((a, b) => Date.parse(b.date_utc) - Date.parse(a.date_utc));
-    const m = matches[0];
+    // Run the backend and direct ESPN discovery concurrently. A partial backend
+    // window must not hide a newer match from another competition.
+    const [backendResult, espnResult] = await Promise.allSettled([fromBackend(), fromEspn()]);
+    const backendMatches = backendResult.status === 'fulfilled' ? backendResult.value : [];
+    const directMatches = espnResult.status === 'fulfilled' ? espnResult.value : [];
+    const matches = [...backendMatches, ...directMatches];
+    const unique = new Set<string>();
+    const deduped = matches.filter(m => {
+      const key = [m.date_utc.slice(0, 10), m.home_team.toLowerCase(), m.away_team.toLowerCase(), m.home_score, m.away_score].join('|');
+      if (unique.has(key)) return false;
+      unique.add(key);
+      return true;
+    });
+    deduped.sort((a, b) => Date.parse(b.date_utc) - Date.parse(a.date_utc));
+    const m = deduped[0];
     if (!m) return null;
     return [
       '### آخر مباراة — ' + clubName,
