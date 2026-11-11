@@ -155,37 +155,72 @@ function espnEventToMatch(event: any, competition: string, club: string): Latest
 }
 
 async function espnLatestMatchAnswer(club: string): Promise<string | null> {
+  // Query the isolated backend first. ESPN remains a bounded fallback when that
+  // service is unavailable; neither feed is described as independently verified.
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 6500);
+  const timeout = setTimeout(() => controller.abort(), 8500);
   try {
+    const clubName = club === 'barcelona' ? 'برشلونة' : club === 'al ittihad' ? 'الاتحاد' : 'الهلال';
     const leagues: Array<[string, string]> = club === 'barcelona'
       ? [['esp.1', 'La Liga'], ['uefa.champions', 'UEFA Champions League'], ['esp.copa_del_rey', 'Copa del Rey']]
       : [['ksa.1', 'Saudi Pro League'], ['afc.champions', 'AFC Champions League Elite'], ['ksa.kings.cup', 'King Cup'], ['fifa.cwc', 'FIFA Club World Cup']];
     const end = new Date();
-    const begin = new Date(end.getTime() - 45 * 86400000);
+    const begin = new Date(end.getTime() - 90 * 86400000);
     const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
-    const results = await Promise.allSettled(leagues.map(async ([code, label]) => {
-      const url = new URL('https://site.api.espn.com/apis/site/v2/sports/soccer/' + code + '/scoreboard');
-      url.searchParams.set('dates', fmt(begin) + '-' + fmt(end));
-      url.searchParams.set('limit', '200');
+    const fromBackend = async (): Promise<LatestMatch[]> => {
+      if (club === 'barcelona') return [];
+      const base = (process.env.AIFBALL_PYTHON_API_URL || 'https://aifball-python-api.onrender.com').replace(/\/$/, '');
+      // Keep outbound requests limited to our Render services.
+      if (!/^https:\/\/aifball-python-(?:api|test)\.onrender\.com$/.test(base)) return [];
+      const url = new URL(base + '/research/espn/club-latest');
+      url.searchParams.set('club', club);
       const response = await fetch(url, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
-      if (!response.ok) throw new Error('scoreboard_unavailable');
+      if (!response.ok) return [];
       const data = await response.json();
-      if (!Array.isArray(data?.events)) throw new Error('scoreboard_invalid');
-      return data.events.map((event: any) => espnEventToMatch(event, label, club)).filter((m: LatestMatch | null): m is LatestMatch => m !== null);
-    }));
-    const matches = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+      const rows = Array.isArray(data?.matches) ? data.matches : data?.latest_match ? [data.latest_match] : [];
+      return rows.map((row: any): LatestMatch | null => {
+        if (row?.completed !== true) return null;
+        const date = String(row.date_utc || '');
+        const home = String(row.home_team || ''), away = String(row.away_team || '');
+        const hs = Number(row.home_score), as = Number(row.away_score);
+        if (!/^\d{4}-\d{2}-\d{2}T/.test(date) || !Number.isFinite(Date.parse(date)) ||
+            Date.parse(date) > Date.now() || Date.parse(date) < begin.getTime() ||
+            !Number.isInteger(hs) || !Number.isInteger(as) || !home || !away) return null;
+        const names = (home + ' ' + away).toLowerCase();
+        if (!(club === 'al hilal' ? /hilal/.test(names) : /ittihad/.test(names))) return null;
+        return { date_utc: date, competition: String(row.competition || ''),
+          home_team: home, away_team: away, home_score: hs, away_score: as,
+          verification: 'espn_only_unverified', source: 'ESPN scoreboard' };
+      }).filter((m: LatestMatch | null): m is LatestMatch => m !== null);
+    };
+    const fromEspn = async (): Promise<LatestMatch[]> => {
+      const results = await Promise.allSettled(leagues.map(async ([code, label]) => {
+        const url = new URL('https://site.api.espn.com/apis/site/v2/sports/soccer/' + code + '/scoreboard');
+        url.searchParams.set('dates', fmt(begin) + '-' + fmt(end));
+        url.searchParams.set('limit', '200');
+        const response = await fetch(url, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
+        if (!response.ok) return [];
+        const data = await response.json();
+        if (!Array.isArray(data?.events)) return [];
+        return data.events.map((event: any) => espnEventToMatch(event, label, club))
+          .filter((m: LatestMatch | null): m is LatestMatch => m !== null);
+      }));
+      return results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    };
+    const backendMatches = await fromBackend().catch(() => []);
+    // A successful backend result is already sourced from ESPN and avoids a
+    // second costly discovery pass. Use ESPN directly only if backend is empty.
+    const matches = backendMatches.length ? backendMatches : await fromEspn();
     matches.sort((a, b) => Date.parse(b.date_utc) - Date.parse(a.date_utc));
     const m = matches[0];
     if (!m) return null;
-    const clubName = club === 'barcelona' ? 'برشلونة' : club === 'al ittihad' ? 'الاتحاد' : 'الهلال';
     return [
       '### آخر مباراة — ' + clubName,
       '**' + m.home_team + ' ' + m.home_score + ' – ' + m.away_score + ' ' + m.away_team + '**',
       '**البطولة:** ' + m.competition,
       '**التاريخ (UTC):** ' + m.date_utc.slice(0, 10),
       '**حالة المعلومة:** نتيجة منشورة في ESPN، ولم تُطابق بعد مع مصدر مستقل.',
-      'هذه آخر مباراة مكتملة وجدتها ضمن البطولات التي شملها البحث، وليست تأكيدًا على شمول جميع البطولات.',
+      'هذه أحدث مباراة مكتملة عُثر عليها ضمن البطولات التي شملها البحث، وقد تكون التغطية غير مكتملة.',
     ].join('\n\n');
   } catch {
     return null;
