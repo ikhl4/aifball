@@ -104,6 +104,30 @@ const CLUB_NEWS_RULES = `
 `;
 
 
+function anyTeamLatestMatchIntent(query: string): boolean {
+  const q = query.replace(/[؟?!.,،]/g, ' ').replace(/\s+/g, ' ').trim();
+  return /(?:آخر|اخر|أحدث|احدث|last|latest|most recent)/i.test(q)
+    && /(?:مباراة|مباريات|لقاء|مواجهة|نتيجة|match|game|result)/i.test(q)
+    && !/(?:ملخص|تحليل|تشكيل|إحصائيات|احصائيات|فيديو|موعد|القادمة|القادم|next|highlights)/i.test(q);
+}
+
+// Fail closed on clearly stale answers for ANY team, not only hard-coded clubs.
+// This is a safety net; it does not replace independently verified fixture discovery.
+function rejectStaleLatestMatch(answer: string): string {
+  const dates = [...answer.matchAll(/\b(20\d{2})[-\/]([01]?\d)[-\/]([0-3]?\d)\b/g)]
+    .map(m => Date.parse(`${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}T00:00:00Z`))
+    .filter(Number.isFinite);
+  const arabicMonths: Record<string, number> = { يناير:1, فبراير:2, مارس:3, أبريل:4, ابريل:4, مايو:5, يونيو:6, يوليو:7, أغسطس:8, اغسطس:8, سبتمبر:9, أكتوبر:10, اكتوبر:10, نوفمبر:11, ديسمبر:12 };
+  for (const m of answer.matchAll(/\b([0-3]?\d)\s+(يناير|فبراير|مارس|أبريل|ابريل|مايو|يونيو|يوليو|أغسطس|اغسطس|سبتمبر|أكتوبر|اكتوبر|نوفمبر|ديسمبر)\s+(20\d{2})\b/g)) {
+    dates.push(Date.UTC(Number(m[3]), arabicMonths[m[2]] - 1, Number(m[1])));
+  }
+  const recent = dates.filter(d => d <= Date.now() + 86400000);
+  if (recent.length && Math.max(...recent) < Date.now() - 60 * 86400000) {
+    return 'لم أتمكن من تأكيد آخر مباراة مكتملة للفريق من بيانات حديثة. النتيجة التي وصلت من البحث قديمة، ولذلك لن أعرضها على أنها آخر مباراة. يرجى إعادة المحاولة عند توفر مصدر مباريات محدث.';
+  }
+  return answer;
+}
+
 function latestClubMatchIntent(query: string): string | null {
   const q = query.replace(/[؟?!.,،]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!/(?:آخر|اخر|أحدث|احدث|last|latest|recent)/i.test(q) ||
@@ -264,6 +288,7 @@ export async function POST(req: Request) {
     const query = (typeof body?.query === 'string' ? body.query.trim() : '') || (hasImage ? 'اقرأ الصورة المرفقة ووضح ما يظهر فيها.' : '');
     // Direct, bounded ESPN lookup for explicit latest-match questions. Fallback to Dify on failure.
     const latestClub = !hasImage ? latestClubMatchIntent(query) : null;
+    const anyLatestMatch = !hasImage && anyTeamLatestMatchIntent(query);
     // Experimental ESPN path is isolated by default; ordinary questions continue to Dify.
     if (latestClub && (process.env.VERCEL_ENV !== 'production' || process.env.ENABLE_EXPERIMENTAL_ESPN_LATEST_MATCH === 'true')) {
       const answer = await espnLatestMatchAnswer(latestClub);
@@ -497,6 +522,7 @@ export async function POST(req: Request) {
           }
           return singleReport ? verifySummaryAnswer(singleReport, signal) : answer;
         })
+      : observedBody && anyLatestMatch && !wantsDesign && !wantsPhoto ? verifiedSummaryStream(observedBody, req.signal, async (answer) => rejectStaleLatestMatch(answer))
       : observedBody && !hasImage && !wantsPhoto && !wantsDesign && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(observedBody,query,req.signal) : observedBody, {
       headers: {
         'Content-Type': 'text/event-stream',
