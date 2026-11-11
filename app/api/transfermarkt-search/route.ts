@@ -6,6 +6,23 @@ type SearchHit = { title: string; url: string; snippet: string; source: 'Transfe
 function clean(value: string) {
  return value.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
 }
+async function rssFallback(term:string):Promise<SearchHit[]>{
+ const rss='https://news.google.com/rss/search?q='+encodeURIComponent(term+' football transfers when:30d')+'&hl=en-US&gl=US&ceid=US:en';
+ const response=await fetch(rss,{signal:AbortSignal.timeout(6500),cache:'no-store'});
+ if(!response.ok)return [];
+ const xml=await response.text();
+ const results:SearchHit[]=[];
+ for(const item of xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)){
+  const field=(name:string)=>item[1].match(new RegExp('<'+name+'[^>]*>([\\s\\S]*?)</'+name+'>','i'))?.[1]||'';
+  const title=clean(field('title'));
+  const url=clean(field('link'));
+  const date=Date.parse(clean(field('pubDate')));
+  if(!title||!url.startsWith('https://news.google.com/')||!Number.isFinite(date)||Date.now()-date>30*86400000)continue;
+  results.push({title,url,snippet:'خبر انتقالات منشور حديثاً',source:clean(field('source'))||'News',status:'search_result_unverified'});
+  if(results.length>=8)break;
+ }
+ return results;
+}
 export async function GET(request: NextRequest) {
  const term = (request.nextUrl.searchParams.get('q') || '').trim();
  if (term.length < 2 || term.length > 80) return NextResponse.json({error:'query_length',results:[]},{status:400});
@@ -32,8 +49,9 @@ export async function GET(request: NextRequest) {
    } catch { /* ignore malformed search links */ }
    if (hits.length >= 18) break;
   }
-  return NextResponse.json({provider:'duckduckgo',results:hits,verified:false,note:'Search index results only. Not an official Transfermarkt API, and fees or completed transfers are not inferred.'},{headers:{'Cache-Control':'no-store'}});
+  const results=hits.length?hits:await rssFallback(term);
+  return NextResponse.json({provider:hits.length?'duckduckgo':'news_fallback',results,verified:false},{headers:{'Cache-Control':'no-store'}});
  }catch{
-  return NextResponse.json({provider:'duckduckgo',results:[],status:'unavailable',verified:false},{status:502,headers:{'Cache-Control':'no-store'}});
+  try {const results=await rssFallback(term);return NextResponse.json({provider:'news_fallback',results,verified:false},{headers:{'Cache-Control':'no-store'}});}catch{return NextResponse.json({results:[],status:'unavailable'},{headers:{'Cache-Control':'no-store'}});}
  }
 }
