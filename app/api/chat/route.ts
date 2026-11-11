@@ -168,7 +168,6 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
     const begin = new Date(end.getTime() - 90 * 86400000);
     const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
     const fromBackend = async (): Promise<LatestMatch[]> => {
-      if (club === 'barcelona') return [];
       const base = (process.env.AIFBALL_PYTHON_API_URL || 'https://aifball-python-api.onrender.com').replace(/\/$/, '');
       // Keep outbound requests limited to our Render services.
       if (!/^https:\/\/aifball-python-(?:api|test)\.onrender\.com$/.test(base)) return [];
@@ -188,7 +187,7 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
             Date.parse(date) > Date.now() || Date.parse(date) < begin.getTime() ||
             !Number.isInteger(hs) || !Number.isInteger(as) || !home || !away) return null;
         const names = (home + ' ' + away).toLowerCase();
-        if (!(club === 'al hilal' ? /hilal/.test(names) : /ittihad/.test(names))) return null;
+        if (!(club === 'al hilal' ? /hilal/.test(names) : club === 'barcelona' ? /barcelona|barça|barca/.test(names) : /ittihad/.test(names))) return null;
         return { date_utc: date, competition: String(row.competition || ''),
           home_team: home, away_team: away, home_score: hs, away_score: as,
           verification: 'espn_only_unverified', source: 'ESPN scoreboard' };
@@ -204,7 +203,7 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
         const data = await response.json();
         if (!Array.isArray(data?.events)) return [];
         return data.events.map((event: any) => espnEventToMatch(event, label, club))
-          .filter((m: LatestMatch | null): m is LatestMatch => m !== null);
+          .filter((m: LatestMatch | null): m is LatestMatch => m !== null && Date.parse(m.date_utc) >= begin.getTime() && Date.parse(m.date_utc) <= end.getTime());
       }));
       return results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
     };
