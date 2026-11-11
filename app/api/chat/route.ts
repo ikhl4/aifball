@@ -105,7 +105,7 @@ const CLUB_NEWS_RULES = `
 
 
 function latestClubMatchIntent(query: string): string | null {
-  const q = query.replace(/[؟?!.,،]/g, ' ').replace(/\\s+/g, ' ').trim();
+  const q = query.replace(/[؟?!.,،]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!/(?:آخر|اخر|أحدث|احدث|last|latest|recent|السابقة|الاخيرة|الأخيرة)/i.test(q) ||
       !/(?:مباراة|مباريات|مواجهات|لقاء|نتيجة|match|game|result)/i.test(q) ||
       /(?:ملخص|تحليل|تشكيل|إحصائيات|احصائيات|فيديو|هدف|أهداف|اهداف|موعد|القادمة|القادم|next|highlights)/i.test(q)) return null;
@@ -130,8 +130,8 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
     const m = data?.latest_match;
     if (data?.status !== 'found' || !m || m.completed !== true ||
         typeof m.home_team !== 'string' || typeof m.away_team !== 'string' ||
-        !/^\\d+$/.test(String(m.home_score)) || !/^\\d+$/.test(String(m.away_score)) ||
-        typeof m.date_utc !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}/.test(m.date_utc)) return null;
+        !/^\d+$/.test(String(m.home_score)) || !/^\d+$/.test(String(m.away_score)) ||
+        typeof m.date_utc !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(m.date_utc)) return null;
     const date = m.date_utc.slice(0, 10);
     const competition = typeof m.competition === 'string' ? m.competition : 'بطولة غير محددة';
     const verified = m.verification === 'verified_independent';
@@ -165,7 +165,7 @@ export async function POST(req: Request) {
           { event: 'message', answer, conversation_id },
           { event: 'message_end', conversation_id },
         ];
-        return new Response(events.map(event => 'event: ' + event.event + '\\ndata: ' + JSON.stringify(event) + '\n\n').join(''), {
+        return new Response(events.map(event => 'event: ' + event.event + '\ndata: ' + JSON.stringify(event) + '\n\n').join(''), {
           headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform' },
         });
       }
