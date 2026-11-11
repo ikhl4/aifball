@@ -226,8 +226,8 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
     // window must not hide a newer match from another competition.
     const [backendResult, espnResult] = await Promise.allSettled([fromBackend(), fromEspn()]);
     const backendMatches = backendResult.status === 'fulfilled' ? backendResult.value : [];
-    if (backendMatches.length && !directMatches.length) console.warn('[AIFBALL_BACKEND_ONLY_UNVERIFIED]', JSON.stringify({ club, count: backendMatches.length }));
     const directMatches = espnResult.status === 'fulfilled' ? espnResult.value : [];
+    if (backendMatches.length && !directMatches.length) console.warn('[AIFBALL_BACKEND_ONLY_UNVERIFIED]', JSON.stringify({ club, count: backendMatches.length }));
     // Backend results alone cannot establish recency across all competitions.
     // Let Dify search its other providers if ESPN coverage is incomplete.
     const matches = directMatches.length ? directMatches : [];
