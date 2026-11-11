@@ -161,7 +161,8 @@ export async function POST(req: Request) {
     const query = (typeof body?.query === 'string' ? body.query.trim() : '') || (hasImage ? 'اقرأ الصورة المرفقة ووضح ما يظهر فيها.' : '');
     // Direct, bounded ESPN lookup for explicit latest-match questions. Fallback to Dify on failure.
     const latestClub = !hasImage ? latestClubMatchIntent(query) : null;
-    if (latestClub) {
+    // Experimental ESPN path is isolated by default; ordinary questions continue to Dify.
+    if (process.env.ENABLE_EXPERIMENTAL_ESPN_LATEST_MATCH === 'true' && latestClub) {
       const answer = await espnLatestMatchAnswer(latestClub);
       {
         // Explicit match requests must not fall through to a long, ungrounded Dify answer.
