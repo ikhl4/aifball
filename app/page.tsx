@@ -1650,6 +1650,10 @@ export default function FootPlayChat() {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
               <AppIcon name="activity" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>التمارين</span>
             </button>
+            <button type="button" onClick={() => { setSidebarOpen(false); window.location.assign('/news'); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
+              <AppIcon name="activity" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>آخر أخبار كرة القدم · 24 ساعة</span>
+            </button>
             <button type="button" onClick={() => { setSidebarOpen(false); window.location.assign('/preview/transfers'); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
               <AppIcon name="activity" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>مركز الانتقالات</span>
