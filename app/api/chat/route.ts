@@ -172,8 +172,9 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
       const base = (process.env.AIFBALL_PYTHON_API_URL || 'https://aifball-python-api.onrender.com').replace(/\/$/, '');
       // Keep outbound requests limited to our Render services.
       if (!/^https:\/\/aifball-python-(?:api|test)\.onrender\.com$/.test(base)) return [];
-      const url = new URL(base + '/research/espn/club-latest');
+      const url = new URL(base + '/research/live/club-latest-match');
       url.searchParams.set('club', club);
+      url.searchParams.set('days', '31');
       const response = await fetch(url, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
       if (!response.ok) return [];
       const data = await response.json();
