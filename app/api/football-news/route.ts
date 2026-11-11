@@ -10,14 +10,64 @@ type XResponse = { data?: XPost[]; includes?: { users?: XUser[]; media?: XMedia[
 
 export async function GET(req: NextRequest) {
   const categoryParam = req.nextUrl.searchParams.get('category');
-  if (categoryParam && categoryParam !== 'general' && categoryParam !== 'transfers') {
+  if (categoryParam && categoryParam !== 'general' && categoryParam !== 'transfers' && categoryParam !== 'world') {
     return NextResponse.json({ error: 'invalid_category' }, { status: 400 });
   }
-  const category = (categoryParam || undefined) as NewsCategory | undefined;
-  const sources = activeNewsSources(category);
-  const mode = req.nextUrl.searchParams.get('provider') || 'duckduckgo';
-  if (mode !== 'duckduckgo' && mode !== 'x') return NextResponse.json({ error: 'invalid_provider' }, { status: 400 });
-  if (mode === 'duckduckgo') {
+  const category = (categoryParam || undefined) as NewsCategory | 'world' | undefined;
+  const sources = activeNewsSources(category === 'world' ? undefined : category);
+  if (categoryParam === 'world') {
+    const topics = [
+      'football soccer latest news',
+      'Saudi Pro League football news',
+      'international football national teams FIFA international break news',
+      'Saudi Arabia national football team international matches squad news',
+      'Brazil Argentina France England Spain Germany national team football',
+      'AFC national teams World Cup qualifiers football news',
+      'Premier League La Liga Serie A Bundesliga Ligue 1 football',
+      'UEFA Champions League AFC Champions League football'
+    ];
+    const decode = (value: string) => value.replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+    const feeds = await Promise.allSettled(topics.map(async topic => {
+      const url = 'https://news.google.com/rss/search?q=' + encodeURIComponent(topic + ' when:1d') + '&hl=en-US&gl=US&ceid=US:en';
+      const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8500), headers: { Accept: 'application/rss+xml,application/xml' } });
+      if (!response.ok) throw new Error('RSS ' + response.status);
+      const xml = await response.text();
+      if (xml.length > 1500000) throw new Error('RSS too large');
+      return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)].slice(0, 25).flatMap(match => {
+        const item = match[1];
+        const field = (name: string) => item.match(new RegExp('<' + name + '[^>]*>([\\s\\S]*?)</' + name + '>', 'i'))?.[1] || '';
+        const title = decode(field('title'));
+        const date = Date.parse(decode(field('pubDate')));
+        if (!Number.isFinite(date)) return [];
+        const publishedAt = new Date(date).toISOString();
+        const link = decode(field('link'));
+        const publisher = decode(field('source')) || 'Google News';
+        if (!title || !/^https:\/\/news\.google\.com\//.test(link) || !Number.isFinite(Date.parse(publishedAt))) return [];
+        if (Date.now() - Date.parse(publishedAt) > 24*3600000 || Date.parse(publishedAt) > Date.now()+300000) return [];
+        return [{ id: link, text: title, author: publisher, url: link, publishedAt, images: [] as string[], classification: 'unverified_report' as const }];
+      });
+    }));
+    const posts = [...new Map(feeds.flatMap(result => result.status === 'fulfilled' ? result.value : []).map(post => [post.text.toLowerCase().replace(/[^\p{L}\p{N}]/gu,''),post])).values()].sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt)).slice(0, 60);
+    // Prefer Arabic-language reporting and translate English headlines only when translation succeeds.
+    const translateHeadline = async (headline: string): Promise<string> => {
+      if (/[\u0600-\u06FF]/.test(headline)) return headline;
+      try {
+        const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ar&dt=t&q=' + encodeURIComponent(headline);
+        const response = await fetch(url, { signal: AbortSignal.timeout(2500), cache: 'no-store' });
+        if (!response.ok) return headline;
+        const data = await response.json() as unknown;
+        if (!Array.isArray(data) || !Array.isArray(data[0])) return headline;
+        const translated = (data[0] as unknown[]).map(part => Array.isArray(part) && typeof part[0] === 'string' ? part[0] : '').join('').trim();
+        return translated && /[\u0600-\u06FF]/.test(translated) ? translated : headline;
+      } catch { return headline; }
+    };
+    const translatedPosts = await Promise.all(posts.slice(0, 24).map(async post => ({ ...post, text: await translateHeadline(post.text) })));
+    const failed = feeds.filter(f => f.status === 'rejected').length;
+    return NextResponse.json({ status: failed === topics.length ? 'upstream_unavailable' : failed ? 'partial' : 'ok', provider: 'google_news_rss', windowHours: 24, posts: translatedPosts, failedSearches: failed, note: 'Headlines and publisher dates from Google News RSS. Publication date is not independent verification of claims; images are omitted when not supplied.' }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+  const mode = req.nextUrl.searchParams.get('provider') || 'auto';
+  if (mode !== 'duckduckgo' && mode !== 'x' && mode !== 'auto') return NextResponse.json({ error: 'invalid_provider' }, { status: 400 });
+  if (mode === 'duckduckgo' || (mode === 'auto' && !process.env.X_BEARER_TOKEN?.trim())) {
     try {
       const { searchXNewsWithDuckDuckGo } = await import('../../../lib/duckduckgo-x-news');
       const result = await searchXNewsWithDuckDuckGo(sources);
@@ -46,13 +96,14 @@ export async function GET(req: NextRequest) {
     const users = new Map((payload.includes?.users || []).map(user => [user.id, user]));
     const media = new Map((payload.includes?.media || []).map(item => [item.media_key, item]));
     const allowed = new Set(sources.map(source => source.handle.toLowerCase()));
+    const cutoff = Date.now() - 72 * 60 * 60 * 1000;
     const posts = (payload.data || []).flatMap(post => {
       const user = users.get(post.author_id || '');
-      if (!user || !allowed.has(user.username.toLowerCase()) || !post.created_at) return [];
-      const images = (post.attachments?.media_keys || []).map(key => media.get(key)).filter((item): item is XMedia => Boolean(item)).map(item => item.url || item.preview_image_url).filter((value): value is string => Boolean(value));
+      if (!user || !allowed.has(user.username.toLowerCase()) || !post.created_at || !Number.isFinite(Date.parse(post.created_at)) || Date.parse(post.created_at) < cutoff || Date.parse(post.created_at) > Date.now() + 5 * 60 * 1000) return [];
+      const images = (post.attachments?.media_keys || []).map(key => media.get(key)).filter((item): item is XMedia => Boolean(item) && (item.type === 'photo' || item.type === 'video')).map(item => item.url || item.preview_image_url).filter((value): value is string => Boolean(value) && /^https:\/\//i.test(value));
       return [{ id: post.id, text: post.text, author: user.username, authorName: user.name || user.username, publishedAt: post.created_at, url: 'https://x.com/' + user.username + '/status/' + post.id, images, classification: 'unverified_report' as const }];
     }).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
-    return NextResponse.json({ status: 'ok', source: 'X', posts, accounts: sources.map(source => source.handle), note: 'Account posts are not necessarily official confirmations.' }, { headers: { 'Cache-Control': 'private, max-age=0, s-maxage=120' } });
+    return NextResponse.json({ status: 'ok', provider: 'x', source: 'X', windowHours: 72, posts, accounts: sources.map(source => source.handle), note: 'Account posts are not necessarily official confirmations.' }, { headers: { 'Cache-Control': 'private, max-age=0, s-maxage=120' } });
   } catch {
     return NextResponse.json({ status: 'upstream_unavailable', posts: [], message: 'X API could not be reached.' }, { status: 502, headers: { 'Cache-Control': 'no-store' } });
   }
