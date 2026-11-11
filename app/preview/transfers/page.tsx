@@ -1,123 +1,126 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import ConfirmedSummerDeals from '../../components/ConfirmedSummerDeals';
 
-type Deal = {
-  player: string;
-  from: string;
-  to: string;
-  fee: string;
-  kind: string;
-  league: 'السعودي' | 'الإنجليزي';
-  date: string;
-  source: string;
-  href: string;
-  playerPhoto?: string;
-  fromBadge: string;
-  toBadge: string;
-  departure?: boolean;
-};
-
-const sources = {
-  spl: 'https://www.spl.com.sa/en/2026-27-summer-transfer-watch',
-  splStory: 'https://www.spl.com.sa/en/news/wijnaldum-back-in-rsl-with-al-ittihad-and-other-deadline-day-deals',
-  sky: 'https://www.skysports.com/football/news/13546618/transfer-news-summer-transfer-window-2026-premier-league-deals-ins-and-outs',
-};
-
-const deals: Deal[] = [
-  { player: 'جورجينيو فينالدوم', from: 'الاتفاق', to: 'الاتحاد', fee: 'مجاناً', kind: 'انتقال حر', league: 'السعودي', date: '07 سبتمبر', source: 'الدوري السعودي', href: sources.splStory, playerPhoto: '108038', fromBadge: '101915', toBadge: '8577' },
-  { player: 'كريسينسيو سامرفيل', from: 'وست هام', to: 'الهلال', fee: 'غير معلنة', kind: 'انتقال نهائي', league: 'السعودي', date: '25 يوليو', source: 'الدوري السعودي', href: 'https://www.spl.com.sa/en/news/can-t-wait-to-meet-you-crysencio-summerville-signs-with-al-hilal', playerPhoto: '941213', fromBadge: '8654', toBadge: '2529' },
-  { player: 'تيجاني ريندرز', from: 'مانشستر سيتي', to: 'القادسية', fee: 'غير معلنة', kind: 'انتقال نهائي', league: 'السعودي', date: 'صيف 2026', source: 'الدوري السعودي', href: sources.spl, playerPhoto: '868344', fromBadge: '8456', toBadge: '101919' },
-  { player: 'أولي واتكينز', from: 'أستون فيلا', to: 'الهلال', fee: '£50m', kind: 'انتقال نهائي', league: 'السعودي', date: 'صيف 2026', source: 'Sky Sports', href: sources.sky, playerPhoto: '540088', fromBadge: '10252', toBadge: '2529', departure: true },
-  { player: 'غابرييل مارتينيلي', from: 'أرسنال', to: 'الهلال', fee: '€70m', kind: 'انتقال نهائي', league: 'السعودي', date: 'صيف 2026', source: 'FotMob', href: 'https://www.fotmob.com/players/1021586/gabriel-martinelli', playerPhoto: '1021586', fromBadge: '9825', toBadge: '2529', departure: true },
-  { player: 'مورغان روجرز', from: 'أستون فيلا', to: 'تشيلسي', fee: '£117m', kind: 'انتقال نهائي', league: 'الإنجليزي', date: 'صيف 2026', source: 'Sky Sports', href: sources.sky, playerPhoto: '883080', fromBadge: '10252', toBadge: '8455' },
-  { player: 'إنزو فرنانديز', from: 'تشيلسي', to: 'مانشستر سيتي', fee: '£125m', kind: 'انتقال نهائي', league: 'الإنجليزي', date: 'صيف 2026', source: 'Sky Sports', href: sources.sky, playerPhoto: '1137705', fromBadge: '8455', toBadge: '8456', departure: true },
+type Hit = { title: string; url: string; snippet: string; source: string };
+type Story = Hit & { section: string; league: string; id: string };
+type Section = 'winter' | 'summer' | 'clubs' | 'contracts';
+// Add only completed, source-verified January 2027 transfers here; never populate from rumours.
+const confirmedWinterDeals: { player: string; from: string; to: string; sourceUrl: string; date: string }[] = [];
+const contractHighlights=[
+ {name:'رافينيا',club:'برشلونة',summary:'جدّد عقده حتى 30 يونيو 2030.',status:'رسمي',url:'https://www.fcbarcelona.com/en/football/first-team/news/4604888/raphinha-staying-at-fc-barcelona-until-2030'},
+ {name:'فرينكي دي يونغ',club:'برشلونة',summary:'موعد نهاية عقده المتداول 30 يونيو 2029؛ ليس من عقود يناير 2027 المنتهية.',status:'بحسب بيانات اللاعبين',url:'https://www.soccerway.com/player/de-jong-frenkie/A1F3rz9c/'},
+ {name:'كريستيانو رونالدو',club:'النصر',summary:'تقارير تشير إلى انتهاء عقده في صيف 2027؛ تجديده أو رحيله غير محسوم.',status:'تقرير صحفي',url:'https://worldsoccertalk.com/amp/news/cristiano-ronaldo-and-joao-felix-among-four-al-nassr-players-entering-final-six-months-of-contracts-in-january/'},
+ {name:'جواو فيليكس',club:'النصر',summary:'تقارير تشير إلى عقد حتى صيف 2027 وحديث عن مفاوضات للتجديد، دون إعلان نهائي.',status:'تقرير صحفي',url:'https://worldsoccertalk.com/amp/news/cristiano-ronaldo-and-joao-felix-among-four-al-nassr-players-entering-final-six-months-of-contracts-in-january/'},
+ {name:'ساديو ماني',club:'النصر',summary:'تقارير تضع نهاية عقده في يونيو 2027، ولا يوجد تجديد رسمي مؤكد في المصدر.',status:'تقرير صحفي',url:'https://worldsoccertalk.com/amp/news/cristiano-ronaldo-and-joao-felix-among-four-al-nassr-players-entering-final-six-months-of-contracts-in-january/'}
 ];
-
-const leagues = ['الكل', 'السعودي', 'الإنجليزي', 'الإسباني', 'الإيطالي', 'الألماني', 'الفرنسي'] as const;
-
-export default function TransfersPreview() {
-  const [league, setLeague] = useState<string>('الكل');
-  const [tab, setTab] = useState<'deals' | 'departures'>('deals');
-  const [query, setQuery] = useState('');
-  const visible = useMemo(() => deals.filter((deal) => {
-    const inLeague = league === 'الكل' || deal.league === league;
-    const inTab = tab === 'deals' || deal.departure;
-    const text = `${deal.player} ${deal.from} ${deal.to}`.toLowerCase();
-    return inLeague && inTab && text.includes(query.trim().toLowerCase());
-  }), [league, tab, query]);
-  const hasLeagueData = league === 'الكل' || league === 'السعودي' || league === 'الإنجليزي';
-
-  return (
-    <main className="transfer-page" dir="rtl">
-      <div className="ambient ambient-one" /><div className="ambient ambient-two" />
-      <header className="topbar">
-        <a className="brand" href="#top" aria-label="فوتبلاي"><span className="brand-mark">◉</span><span><b>فوتبلاي</b><small>مركز الانتقالات</small></span></a>
-        <nav><a href="#deals" className="nav-active">الانتقالات</a><a href="#leagues">الدوريات</a><a href="#deals">المغادرون</a></nav>
-        <span className="season-pill"><i /> صيف 2026 · موسم 2026/27</span>
-      </header>
-
-      <section className="hero" id="top">
-        <div className="hero-copy">
-          <span className="eyebrow"><i /> مركز الانتقالات · متابعة موثقة</span>
-          <h1>كل حركة<br /><em>لها وجهة.</em></h1>
-          <p>تابع صفقات الأندية من المصدر، نادياً بنادٍ. قيمة الصفقة ونوعها وحالتها في مكان واحد.</p>
-          <div className="covered-leagues" aria-label="الدوريات ضمن نطاق التغطية"><span>الدوريات المغطاة</span><b>روشن</b><b>إنجلترا</b><b>إسبانيا</b><b>إيطاليا</b><b>ألمانيا</b><b>فرنسا</b></div>
-          <div className="hero-actions"><a href="#deals" className="primary-link">استكشف الصفقات <span>↙</span></a><span className="live-note"><i /> آخر تحديث: 3 نوفمبر 2026</span></div>
-        </div>
-        <div className="hero-graphic" aria-label="رمز انتقال لاعب بين ناديين">
-          <div className="transfer-orbit orbit-a"/><div className="transfer-orbit orbit-b"/>
-          <div className="transfer-visual">
-            <div className="transfer-node node-from"><small>من</small><b>النادي</b></div>
-            <div className="transfer-path"><span/><span/><span/></div>
-            <div className="transfer-symbol" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M8 16h27l-7-7m7 7-7 7M40 32H13l7 7m-7-7 7-7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
-            <div className="transfer-node node-to"><small>إلى</small><b>الوجهة</b></div>
-          </div>
-          <div className="graphic-caption">كل انتقال <b>له مسار</b></div>
-        </div>
-      </section>
-
-      <section className="stats-strip" aria-label="ملخص المعاينة">
-        <div><small>الدوريات</small><strong>6</strong><span>الدوريات الخمسة الكبرى + روشن</span></div>
-        <div><small>نمط التتبع</small><strong>ناديًا بنادي</strong><span>وارد · صادر · إعارات</span></div>
-        <div><small>المصدر الأول</small><strong>رسمي</strong><span>والصحفيون للتقارير غير المؤكدة</span></div>
-        <div className="stats-emblem"><span>26</span><b>27</b></div>
-      </section>
-
-      <section className="market" id="deals">
-        <div className="section-head">
-          <div><span className="eyebrow">السجل الحي <i /></span><h2>سوق الانتقالات</h2><p>الصفقة، وجهتها، وقيمتها — من مصادر قابلة للتحقق.</p></div>
-          <label className="search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث عن لاعب أو نادٍ" /><kbd>⌘ K</kbd></label>
-        </div>
-
-        <div className="market-controls" id="leagues">
-          <div className="league-tabs" role="tablist" aria-label="اختيار الدوري">{leagues.map((item) => <button key={item} onClick={() => setLeague(item)} className={league === item ? 'selected' : ''}>{item === 'السعودي' && <span className="league-spark">✳</span>}{item}</button>)}</div>
-          <div className="sub-controls"><div className="toggle-tabs"><button onClick={() => setTab('deals')} className={tab === 'deals' ? 'selected' : ''}>كل الصفقات <b>{deals.length}</b></button><button onClick={() => setTab('departures')} className={tab === 'departures' ? 'selected' : ''}>أبرز المغادرين</button></div><span className="window-state"><i /> نافذة الصيف مغلقة</span></div>
-        </div>
-
-        <div className="table-wrap">
-          <div className="table-label"><span>صفقات صيف 2026</span><span className="sample-tag">معاينة تصميمية · عينة موثقة</span></div>
-          <div className="deal-head"><span>اللاعب</span><span>من النادي</span><span className="direction"/><span>إلى النادي</span><span>نوع الصفقة</span><span>قيمة الانتقال</span><span>المصدر</span></div>
-          {!hasLeagueData ? <div className="empty-state"><span>◌</span><b>قريباً في المعاينة</b><p>واجهة هذا الدوري جاهزة؛ نضيف بياناته عند اكتمال جمع الصفقات والتحقق منها.</p></div> : visible.length ? visible.map((deal, index) => <article className="deal-row" key={`${deal.league}-${deal.player}-${index}`}>
-            <div className="player-cell"><span className="player-avatar">{deal.player.split(' ').map((part) => part[0]).slice(0, 2).join('')}<img src={`https://images.fotmob.com/image_resources/playerimages/${deal.playerPhoto}.png`} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none'; }} /></span><span><b>{deal.player}</b><small>{deal.date}</small></span></div>
-            <div className="club-cell"><span className="club-crest"><img src={`https://images.fotmob.com/image_resources/logo/teamlogo/${deal.fromBadge}.png`} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none'; }} /><b>{deal.from.slice(0, 1)}</b></span><span>{deal.from}</span></div><span className="direction-arrow">←</span>
-            <div className="club-cell"><span className="club-crest destination"><img src={`https://images.fotmob.com/image_resources/logo/teamlogo/${deal.toBadge}.png`} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none'; }} /><b>{deal.to.slice(0, 1)}</b></span><span>{deal.to}</span></div>
-            <span><i className={`deal-type ${deal.kind === 'انتقال حر' ? 'free' : ''}`} />{deal.kind}</span><strong className={`fee ${deal.fee === 'غير معلنة' ? 'fee-undisclosed' : ''}`}>{deal.fee}</strong><a className="source-link" href={deal.href} target="_blank" rel="noreferrer">{deal.source}<span>↗</span></a>
-          </article>) : <div className="empty-state"><span>⌕</span><b>ما لقينا نتيجة بهذا البحث</b><p>جرّب اسم اللاعب أو أحد الناديين.</p></div>}
-          <div className="table-foot"><span><i /> المعلومات المثبتة تظهر أولاً</span><span>القيمة السوقية منفصلة عن قيمة الصفقة</span></div>
-        </div>
-        <aside className="source-note"><span className="source-icon">✓</span><p><b>مصادر مختصرة، ومعلومة واضحة.</b> نربط كل صفقة باسم مصدرها مباشرة؛ المصدر الرسمي عند الإعلان، وتقارير الصحفيين تظهر كتقارير حتى يؤكدها النادي. إذا لم تُعلن القيمة نكتب «غير معلنة».</p><a href={sources.spl} target="_blank" rel="noreferrer">منهج التوثيق ↗</a></aside>
-      </section>
-
-      <footer><span className="brand-mark">◉</span><span>فوتبلاي</span><span>كرة القدم تتحرك. خلك قريب.</span><small>معاينة واجهة — بيانات نموذجية مختارة ومسنودة بمصادر ظاهرة</small></footer>
-
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap');
-        *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:20px}body{margin:0;background:#07110d;color:#f3f5f1}.transfer-page{--bg:#07110d;--panel:#101c17;--line:rgba(187,210,195,.12);--muted:#98a69c;--mint:#49d7a3;--yellow:#d2ff69;position:relative;min-height:100vh;overflow:hidden;padding:0 max(28px,calc((100vw - 1220px)/2));background:radial-gradient(ellipse at 68% 24%,rgba(35,115,79,.17),transparent 35%),linear-gradient(180deg,#08110e,#09140f 42%,#07110d);font-family:'Cairo',Arial,sans-serif;color:#f3f5f1;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.ambient{position:absolute;width:500px;height:500px;filter:blur(100px);pointer-events:none;opacity:.1;border-radius:50%}.ambient-one{background:#15bc7e;top:120px;right:-240px}.ambient-two{background:#8fc542;top:720px;left:-360px}.topbar{position:relative;z-index:1;height:86px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none}.brand-mark{display:grid;place-items:center;width:40px;height:40px;border:1px solid rgba(73,215,163,.45);border-radius:13px;color:var(--mint);font-size:25px;box-shadow:0 0 24px rgba(73,215,163,.1)}.brand b{display:block;font-size:17px;letter-spacing:-.04em}.brand small{display:block;font-size:10px;color:var(--mint);margin-top:1px}.topbar nav{display:flex;gap:34px}.topbar nav a{color:#8b9a90;text-decoration:none;font-size:13px;padding:10px 0}.topbar nav a.nav-active{color:#f5faf6;border-bottom:1px solid var(--mint)}.season-pill{border:1px solid var(--line);border-radius:99px;padding:9px 14px;color:#d4dfd7;font-size:11px}.season-pill i,.live-note i,.window-state i,.table-foot i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--mint);margin-left:7px;box-shadow:0 0 10px var(--mint)}.hero{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1.05fr;gap:50px;align-items:center;padding:74px 0 56px;min-height:440px}.hero-copy{max-width:480px}.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.13em;color:var(--mint);font-weight:700}.eyebrow i{width:18px;height:1px;background:var(--mint)}h1{font-size:clamp(60px,7.5vw,94px);line-height:.95;letter-spacing:-.075em;margin:23px 0 19px;font-weight:800}h1 em{font-style:normal;color:var(--yellow)}.hero-copy p{max-width:380px;color:#a8b5ac;line-height:1.9;font-size:14px;margin:0}.hero-actions{display:flex;align-items:center;gap:20px;margin-top:27px}.primary-link{background:var(--yellow);color:#0b1710;border-radius:6px;padding:13px 17px;text-decoration:none;font-weight:700;font-size:12px}.primary-link span{font-size:16px;margin-right:12px}.live-note{font-size:10px;color:#89968e}.live-note i{width:6px;height:6px}.hero-graphic{height:320px;position:relative;border:1px solid rgba(213,238,222,.13);border-radius:50%;background:radial-gradient(ellipse at center,rgba(63,130,94,.22),rgba(10,28,19,.08) 59%,transparent 60%);display:grid;place-items:center;overflow:hidden}.orbit{position:absolute;border:1px solid rgba(73,215,163,.15);border-radius:50%;inset:22px 48px}.orbit-b{inset:66px 95px;border-color:rgba(210,255,105,.15)}.pitch-lines{position:absolute;inset:66px 115px;border:1px solid rgba(222,238,227,.18);border-radius:4px}.pitch-lines:before{content:'';position:absolute;top:0;bottom:0;left:50%;border-left:1px solid rgba(222,238,227,.18)}.pitch-lines:after{content:'';position:absolute;width:58px;height:58px;border:1px solid rgba(222,238,227,.18);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}.transfer-route{position:absolute;display:flex;align-items:center;gap:0;transform:rotate(-22deg)}.route-dot{width:48px;height:48px;display:grid;place-items:center;border-radius:50%;font-size:11px;font-weight:700;border:1px solid rgba(210,255,105,.55);background:#15271b;color:var(--yellow);box-shadow:0 0 24px rgba(210,255,105,.22)}.dot-b{background:var(--mint);color:#042015;border-color:var(--mint);box-shadow:0 0 32px rgba(73,215,163,.5)}.route-dash{width:136px;border-top:1px dashed var(--mint)}.route-arrow{color:var(--mint);font-size:22px;margin:0 -4px}.graphic-label{position:absolute;display:flex;flex-direction:column;gap:4px}.graphic-label small{font-size:9px;color:#8b9a90}.graphic-label b{font-size:14px}.label-a{top:66px;right:80px}.label-b{bottom:62px;left:82px}.graphic-caption{position:absolute;bottom:20px;font-size:9px;color:#74857a;letter-spacing:.1em}.graphic-caption b{color:var(--mint);font-size:11px}.stats-strip{position:relative;z-index:1;border-block:1px solid var(--line);padding:22px 0;display:grid;grid-template-columns:repeat(3,1fr) 90px;align-items:center;gap:20px}.stats-strip>div:not(.stats-emblem){display:flex;flex-direction:column;gap:3px;border-left:1px solid var(--line);padding-right:20px}.stats-strip small{font-size:9px;color:#89988f}.stats-strip strong{font-size:18px}.stats-strip span{font-size:10px;color:#8b9a90}.stats-emblem{direction:ltr;text-align:center;font-size:31px;letter-spacing:-.08em;line-height:.82}.stats-emblem span{color:var(--mint)}.stats-emblem b{color:var(--yellow)}.market{position:relative;z-index:1;padding:70px 0 56px}.section-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:30px}.section-head h2{font-size:32px;margin:8px 0 4px;letter-spacing:-.04em}.section-head p{color:#87968d;margin:0;font-size:12px}.search{display:flex;align-items:center;gap:10px;width:270px;border:1px solid var(--line);background:#0d1912;border-radius:6px;padding:10px 12px}.search>span{font-size:22px;color:var(--mint);line-height:1}.search input{flex:1;background:none;border:0;outline:0;color:#fff;font:inherit;font-size:11px;min-width:0}.search input::placeholder{color:#718078}.search kbd{font:9px Arial;color:#738078;border:1px solid var(--line);padding:4px 5px;border-radius:3px}.market-controls{border-bottom:1px solid var(--line)}.league-tabs{display:flex;gap:7px;overflow:auto;padding-bottom:14px}.league-tabs button,.toggle-tabs button{border:1px solid transparent;background:transparent;color:#87968d;padding:9px 14px;border-radius:4px;white-space:nowrap;font:inherit;font-size:11px;cursor:pointer}.league-tabs button.selected{border-color:rgba(73,215,163,.25);background:rgba(73,215,163,.09);color:var(--mint)}.league-spark{margin-left:6px;color:var(--mint)}.sub-controls{display:flex;align-items:center;justify-content:space-between;padding:11px 0}.toggle-tabs{display:flex;gap:5px}.toggle-tabs button{font-size:10px;padding:7px 10px}.toggle-tabs button.selected{background:#d6ff72;color:#0a170f;font-weight:700}.toggle-tabs b{font-size:9px;opacity:.7;margin-right:5px}.window-state{font-size:9px;color:#89968e}.window-state i{background:#8c9b92;box-shadow:none;width:6px;height:6px}.table-wrap{border:1px solid var(--line);background:rgba(15,27,21,.82);border-radius:7px;overflow:hidden;margin-top:20px}.table-label{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line);font-size:11px;font-weight:700}.sample-tag{font-weight:400;color:#88968d;font-size:9px}.deal-head,.deal-row{display:grid;grid-template-columns:1.35fr 1fr 32px 1fr .85fr .65fr .7fr;align-items:center;gap:13px;padding:13px 18px}.deal-head{font-size:9px;color:#819087;border-bottom:1px solid var(--line);background:rgba(255,255,255,.018)}.deal-row{min-height:70px;border-bottom:1px solid var(--line);font-size:10px;color:#dbe3dc}.deal-row:last-of-type{border-bottom:0}.player-cell,.club-cell{display:flex;align-items:center;gap:10px;min-width:0}.player-cell b{display:block;font-size:11px;color:#f4f7f4;font-weight:600}.player-cell small{display:block;color:#75847a;font-size:9px;margin-top:3px}.player-avatar{display:grid;place-items:center;flex:none;width:34px;height:34px;border:1px solid rgba(73,215,163,.2);border-radius:50%;background:rgba(73,215,163,.06);color:var(--mint);font-size:9px}.club-cell{gap:8px;white-space:nowrap}.club-crest{display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:#20392a;color:var(--mint);font-size:12px;font-weight:700}.club-crest.destination{background:rgba(210,255,105,.1);color:var(--yellow)}.direction-arrow{color:var(--mint);font-size:17px;text-align:center}.deal-type{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--mint);margin-left:7px}.deal-type.free{background:var(--yellow)}.fee{color:#eef5ee;font-size:11px;white-space:nowrap}.source-link{justify-self:start;color:#91a198;text-decoration:none;border-bottom:1px solid rgba(145,161,152,.35);font-size:9px;white-space:nowrap}.source-link span{color:var(--mint);margin-right:5px}.table-foot{display:flex;justify-content:space-between;padding:12px 18px;background:rgba(255,255,255,.018);border-top:1px solid var(--line);color:#738279;font-size:9px}.table-foot i{width:5px;height:5px;margin-left:5px}.empty-state{text-align:center;padding:42px 15px;color:#819087}.empty-state>span{font-size:24px;color:var(--mint)}.empty-state b{display:block;color:#e7eee8;font-size:13px;margin-top:8px}.empty-state p{font-size:10px;margin:6px 0}.source-note{display:flex;align-items:center;gap:14px;margin-top:17px;padding:15px 17px;background:rgba(73,215,163,.045);border:1px solid rgba(73,215,163,.13);border-radius:6px}.source-icon{display:grid;place-items:center;flex:none;width:25px;height:25px;border:1px solid rgba(73,215,163,.4);border-radius:50%;color:var(--mint);font-size:12px}.source-note p{flex:1;color:#91a097;font-size:10px;line-height:1.8;margin:0}.source-note p b{color:#e4ede6}.source-note>a{font-size:9px;color:var(--mint);text-decoration:none;white-space:nowrap}footer{position:relative;z-index:1;border-top:1px solid var(--line);height:76px;display:flex;align-items:center;gap:10px;color:#dce6de;font-size:11px}footer .brand-mark{width:28px;height:28px;font-size:18px;border-radius:9px}footer>span:nth-child(3){margin-right:auto;color:#77857c;font-size:10px}footer small{color:#66746b;font-size:8px;margin-right:20px}
-        .hero{min-height:355px;padding:46px 0 34px}.hero-graphic{height:240px;max-width:520px;margin-inline:auto;border-radius:28px;background:radial-gradient(ellipse at center,rgba(62,154,104,.17),rgba(10,28,19,.12) 68%);}.transfer-orbit{position:absolute;border:1px solid rgba(73,215,163,.12);border-radius:50%;inset:19px 38px}.transfer-orbit.orbit-b{inset:43px 84px;border-color:rgba(210,255,105,.15)}.transfer-visual{position:relative;width:86%;height:100%;display:flex;align-items:center;justify-content:space-between}.transfer-node{position:relative;z-index:1;width:86px;height:86px;border-radius:26px;border:1px solid rgba(73,215,163,.45);background:linear-gradient(145deg,rgba(73,215,163,.15),rgba(11,29,20,.92));display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;box-shadow:0 12px 34px rgba(0,0,0,.25)}.transfer-node small{font-size:9px;color:#90a197}.transfer-node b{font-size:13px;color:#f4faf5}.node-to{border-color:rgba(210,255,105,.55);background:linear-gradient(145deg,rgba(210,255,105,.18),rgba(11,29,20,.92))}.transfer-path{position:absolute;right:83px;left:83px;height:2px;border-top:2px dashed rgba(73,215,163,.7)}.transfer-path span{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--mint);top:-4px;box-shadow:0 0 12px var(--mint)}.transfer-path span:nth-child(1){right:18%}.transfer-path span:nth-child(2){right:50%}.transfer-path span:nth-child(3){left:18%}.transfer-symbol{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:58px;height:58px;display:grid;place-items:center;border-radius:19px;background:#10271c;border:1px solid rgba(73,215,163,.35);color:var(--mint);box-shadow:0 0 32px rgba(73,215,163,.18)}.transfer-symbol svg{width:30px;height:30px}.graphic-caption{letter-spacing:0}.covered-leagues{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:19px}.covered-leagues>span{font-size:9px;color:#84938a;margin-left:4px}.covered-leagues b{font-size:9px;font-weight:600;color:#c7d6cc;background:rgba(255,255,255,.04);border:1px solid var(--line);padding:5px 8px;border-radius:99px;white-space:nowrap}.hero-actions{margin-top:19px}.transfer-page .topbar,.transfer-page .hero,.transfer-page .stats-strip,.transfer-page .market,.transfer-page footer{scroll-margin-top:16px}
-.deal-row,.league-tabs button,.toggle-tabs button,.primary-link,.source-link{transition:background-color .2s ease,border-color .2s ease,color .2s ease,transform .2s ease,box-shadow .2s ease}.deal-row:hover{background:rgba(73,215,163,.055)}.league-tabs button:hover{background:rgba(73,215,163,.08);color:#e6fff3}.toggle-tabs button:hover{color:#f5faf6}.primary-link:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(210,255,105,.16)}.source-link:hover{color:var(--mint);border-color:var(--mint)}.player-avatar,.club-crest{position:relative;overflow:hidden}.player-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;background:#20392a}.club-crest{background:#fff;color:#1a5a40}.club-crest.destination{background:#fff;color:#385b14}.club-crest img{position:absolute;inset:2px;width:calc(100% - 4px);height:calc(100% - 4px);object-fit:contain;border-radius:50%;background:#fff}.club-crest b{font-size:10px;line-height:1}.fee{justify-self:start;color:#f1ffd3;font-size:13px;font-weight:800;letter-spacing:.01em;padding:7px 10px;border:1px solid rgba(210,255,105,.24);border-radius:6px;background:rgba(210,255,105,.09);box-shadow:inset 0 0 18px rgba(210,255,105,.035)}.fee-undisclosed{color:#a7b1aa;font-size:10px;font-weight:600;background:rgba(255,255,255,.035);border-color:var(--line);box-shadow:none}.deal-head span:nth-child(6){color:var(--yellow);font-weight:700}.deal-row .fee{direction:ltr}.table-wrap{box-shadow:0 18px 50px rgba(0,0,0,.14)}.player-avatar img,.club-crest img{transition:opacity .2s ease}.club-crest img[style*='display: none']+b{opacity:1}.club-crest b{opacity:0;position:absolute;inset:0;display:grid;place-items:center}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
-        @media(max-width:760px){.transfer-page{padding:0 19px}.topbar{height:69px}.topbar nav{display:none}.season-pill{font-size:9px;padding:8px 10px}.hero{grid-template-columns:1fr;gap:28px;padding:53px 0 40px;min-height:0}.hero-copy{max-width:100%}h1{font-size:67px}.hero-copy p{font-size:12px}.hero-graphic{height:210px;max-width:500px;width:100%;margin:auto}.transfer-node{width:72px;height:72px;border-radius:22px}.transfer-path{right:69px;left:69px}.covered-leagues{gap:5px}.covered-leagues b{font-size:8px;padding:5px 7px}.pitch-lines{inset:52px 95px}.stats-strip{grid-template-columns:repeat(2,1fr) 56px;gap:12px;padding:17px 0}.stats-strip>div:not(.stats-emblem){padding-right:11px}.stats-strip strong{font-size:15px}.stats-strip span{font-size:8px}.stats-emblem{font-size:25px}.market{padding:48px 0 40px}.section-head{display:block}.section-head h2{font-size:27px}.section-head p{font-size:10px}.search{width:100%;margin-top:18px}.league-tabs{margin-left:-19px;margin-right:-19px;padding-inline:19px}.sub-controls{align-items:flex-start;gap:12px;flex-direction:column}.deal-head{display:none}.deal-row{grid-template-columns:1.2fr 1fr 18px 1fr;gap:7px;padding:13px 11px}.deal-row>span:nth-of-type(2){display:none}.deal-row .fee{grid-column:2;grid-row:2;font-size:10px;color:var(--yellow)}.deal-row .source-link{grid-column:4;grid-row:2;font-size:8px}.deal-row>span:nth-of-type(1){grid-column:1;grid-row:2;font-size:9px;color:#89978e}.deal-row>.club-cell:nth-of-type(3){grid-column:2;grid-row:1}.deal-row .direction-arrow{grid-column:3;grid-row:1}.deal-row>.club-cell:nth-of-type(4){grid-column:4;grid-row:1}.player-cell{grid-column:1;grid-row:1}.player-avatar{width:30px;height:30px}.player-cell b{font-size:10px}.player-cell small{font-size:8px}.club-cell{font-size:9px;gap:5px}.club-crest{width:20px;height:20px;font-size:10px}.table-label{padding:13px 12px}.sample-tag{font-size:8px}.table-foot{padding:10px 12px;font-size:8px}.source-note{align-items:flex-start;padding:13px}.source-note p{font-size:9px}.source-note>a{display:none}footer{height:auto;min-height:70px;flex-wrap:wrap;padding:15px 0;gap:7px}footer>span:nth-child(3){display:none}footer small{margin-right:auto;font-size:7px}}
-      `}</style>
-    </main>
-  );
+const sections: Record<Section, { label: string; intro: string; topics: { title: string; league: string; q: string }[] }> = {
+ contracts: {label:'نهاية عقود أبرز اللاعبين',intro:'آخر تطورات العقود والتجديدات قبل يناير، مع تمييز الرسمي عن التقارير.',topics:[]},
+ winter: { label: 'انتقالات يناير 2027', intro: 'الصفقات الرسمية المكتملة فقط. يبقى القسم فارغاً ما لم تُؤكد صفقة من مصدر موثوق.', topics: []},
+ summer: {label:'أبرز صفقات الصيف',intro:'أبرز أسماء وصفقات صيف 2026 حسب الأندية والدوريات.',topics:[
+  {title:'صفقات روشن',league:'السعودي',q:'Saudi Pro League transfers 2026 2027 arrivals'},
+  {title:'صفقات برشلونة',league:'الإسباني',q:'FC Barcelona transfers 2026 2027'},
+  {title:'صفقات ريال مدريد',league:'الإسباني',q:'Real Madrid transfers 2026 2027'},
+  {title:'أبرز صفقات إسبانيا',league:'الإسباني',q:'La Liga top transfers summer 2026'},
+  {title:'أبرز صفقات ألمانيا',league:'الألماني',q:'Bundesliga top transfers summer 2026'},
+  {title:'أبرز صفقات إنجلترا',league:'الإنجليزي',q:'Premier League top transfers summer 2026'},
+  {title:'أبرز صفقات إيطاليا',league:'الإيطالي',q:'Serie A top transfers summer 2026'},
+  {title:'أبرز صفقات فرنسا',league:'الفرنسي',q:'Ligue 1 top transfers summer 2026'}
+ ]},
+ clubs: {label:'الأندية واللاعبون',intro:'تابع اللاعبين والأندية وانتقالاتهم من مصادر رياضية متعددة.',topics:[
+  {title:'برشلونة',league:'الإسباني',q:'Barcelona latest transfer news 2026'},
+  {title:'ريال مدريد',league:'الإسباني',q:'Real Madrid latest transfer news 2026'},
+  {title:'أتلتيكو مدريد',league:'الإسباني',q:'Atletico Madrid latest transfers 2026'},
+  {title:'بايرن ميونخ',league:'الألماني',q:'Bayern Munich latest transfers 2026'},
+  {title:'بوروسيا دورتموند',league:'الألماني',q:'Borussia Dortmund latest transfers 2026'},
+  {title:'الاتحاد',league:'السعودي',q:'Al Ittihad Jeddah latest transfers 2026'},
+  {title:'الهلال',league:'السعودي',q:'Al Hilal Riyadh latest transfers 2026'},
+  {title:'أرسنال',league:'الإنجليزي',q:'Arsenal latest transfers 2026'}
+ ]}
+};
+const leagues = ['الكل','السعودي','الإنجليزي','الإسباني','الألماني','الإيطالي','الفرنسي'];
+const perPage = 12;
+function normalize(value:string){return value.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();}
+export default function TransfersPreview(){
+ const [section,setSection]=useState<Section>('summer');
+ const [league,setLeague]=useState('الكل');
+ const [query,setQuery]=useState('');
+ const [page,setPage]=useState(1);
+ const [stories,setStories]=useState<Story[]>([]);
+ const [loading,setLoading]=useState(false);
+ const [failed,setFailed]=useState(0);
+ const [refresh,setRefresh]=useState(0);
+ useEffect(()=>{
+  if(section==='summer'||section==='contracts'||section==='winter'){setStories([]);setLoading(false);return;}
+  const controller=new AbortController();
+  const timer=setTimeout(async()=>{
+   setLoading(true);setStories([]);setFailed(0);
+   const topics=query.trim().length>1
+    ? [{title:'لاعبون وأخبار',league:'الكل',q:query.trim()+' transfer 2026 2027'}]
+    : sections[section].topics;
+   const responses=await Promise.allSettled(topics.map(async topic=>{
+    const response=await fetch('/api/transfermarkt-search?q='+encodeURIComponent(topic.q),{signal:controller.signal,cache:'no-store'});
+    if(!response.ok)throw Error('search unavailable');
+    const data=await response.json() as {results?:Hit[]};
+    return (data.results||[]).slice(0,query.trim()?18:5).map(hit=>({...hit,section:topic.title,league:topic.league,id:hit.url}));
+   }));
+   if(controller.signal.aborted)return;
+   const unique=new Map<string,Story>();
+   for(const result of responses)if(result.status==='fulfilled')for(const story of result.value){
+    const key=story.url.split('?')[0];
+    if(!unique.has(key))unique.set(key,story);
+   }
+   setStories([...unique.values()]);
+   setFailed(responses.filter(result=>result.status==='rejected').length);
+   setLoading(false);
+  },query.trim()?500:100);
+  return()=>{clearTimeout(timer);controller.abort();};
+ },[section,query,refresh]);
+ const filtered=useMemo(()=>stories.filter(story=>league==='الكل'||story.league===league||story.league==='الكل'),[stories,league]);
+ const pages=Math.max(1,Math.ceil(filtered.length/perPage));
+ const shown=filtered.slice((page-1)*perPage,page*perPage);
+ const switchSection=(next:Section)=>{setSection(next);setLeague('الكل');setQuery('');setPage(1);};
+ return <main dir="rtl" className="min-h-screen bg-[#07140e] text-white" style={{fontFamily:"'Cairo',sans-serif"}}>
+  <div className="mx-auto max-w-6xl px-4 sm:px-6 py-7 sm:py-12">
+   <header className="flex items-center justify-between gap-3 border-b border-emerald-300/15 pb-5">
+    <a href="/" className="text-emerald-300 font-bold text-sm">AiFBall · فوتبلاي</a>
+    <a href="/" className="rounded-xl border border-emerald-300/30 px-3 py-2 text-sm">العودة للرئيسية</a>
+   </header>
+   <div className="pt-9 pb-7">
+    <span className="text-sm font-bold text-lime-300">مركز الانتقالات العالمي · موسم 2026/27</span>
+    <h1 className="text-3xl sm:text-5xl font-black mt-3 leading-tight">سوق الانتقالات، <span className="text-lime-300">بصورة أشمل.</span></h1>
+    <p className="mt-3 text-emerald-100/75 max-w-2xl text-sm sm:text-base leading-8">ملفات الأندية، أبرز صفقات الصيف، واستعدادات يناير. أبرز أسماء اللاعبين وأخبار الأندية في سوق الانتقالات.</p>
+   </div>
+   <nav aria-label="أقسام الانتقالات" className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
+    {(Object.keys(sections) as Section[]).map(key=><button key={key} onClick={()=>switchSection(key)} className={'rounded-xl border px-2 py-3 font-bold text-xs sm:text-base '+(section===key?'bg-lime-300 text-emerald-950 border-lime-300':'bg-emerald-950/60 border-white/15 text-white')}>{sections[key].label}</button>)}
+   </nav>
+   {section === "summer" ? <ConfirmedSummerDeals /> : section === "winter" ? <section aria-live="polite" className="rounded-2xl border border-emerald-300/20 bg-[#10231a] p-5 sm:p-7"><h2 className="text-xl sm:text-2xl font-black">انتقالات يناير 2027</h2><p className="mt-2 text-sm text-emerald-100/70">الصفقات الرسمية المكتملة فقط، دون أخبار أو شائعات.</p>{confirmedWinterDeals.length ? <div className="mt-5 grid gap-3">{confirmedWinterDeals.map(deal=><article key={`${deal.player}-${deal.to}`} className="rounded-xl border border-emerald-300/20 p-4"><strong className="text-lg">{deal.player}</strong><p className="mt-2 text-sm">{deal.from} ← {deal.to}</p><p className="text-xs text-emerald-100/70 mt-1">{deal.date}</p><a className="inline-block mt-3 text-sm text-emerald-300 underline" href={deal.sourceUrl} target="_blank" rel="noopener noreferrer">المصدر الرسمي</a></article>)}</div> : <div className="mt-5 rounded-xl border border-white/10 p-8 text-center text-emerald-100/75">لا توجد صفقات رسمية مؤكدة مضافة حالياً.</div>}</section> : section === "contracts" ? <section className="grid gap-3 sm:grid-cols-2">{contractHighlights.map(item=><article key={item.name} className="rounded-2xl border border-emerald-300/20 bg-[#10231a] p-4"><div className="flex items-center justify-between gap-2"><strong className="text-lg">{item.name}</strong><span className="text-xs text-lime-300">{item.status}</span></div><p className="text-xs text-emerald-200 mt-1">{item.club}</p><p className="mt-3 text-sm leading-7">{item.summary}</p><a href={item.url} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-300 underline inline-block mt-3">تفاصيل الخبر</a></article>)}</section> : <section className="rounded-2xl bg-emerald-900/30 border border-emerald-300/15 p-4 sm:p-6 mb-6">
+    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+     <div><h2 className="text-xl sm:text-2xl font-black">{sections[section].label}</h2><p className="text-sm text-emerald-100/70 mt-1">{sections[section].intro}</p></div>
+     <button className="rounded-lg border border-emerald-300/40 px-3 py-2 text-sm text-emerald-200" onClick={()=>{setPage(1);setRefresh(n=>n+1);}}>تحديث النتائج</button>
+    </div>
+    <label htmlFor="transfer-search" className="block text-sm mb-2 font-bold">ابحث عن لاعب أو نادٍ</label>
+    <input id="transfer-search" type="search" value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}} placeholder="برشلونة، الاتحاد، بايرن ميونخ، اسم لاعب..." className="w-full bg-[#0a2118] border border-emerald-300/25 rounded-xl p-3.5 text-white placeholder:text-emerald-100/50 outline-none focus:border-lime-300"/>
+    <div className="flex gap-2 overflow-x-auto py-4" aria-label="فلترة حسب الدوري">{leagues.map(item=><button key={item} onClick={()=>{setLeague(item);setPage(1);}} className={'shrink-0 rounded-full border px-3 py-1.5 text-xs '+(league===item?'bg-emerald-300 text-emerald-950 border-emerald-300':'border-white/20 text-emerald-100')}>{item}</button>)}</div>
+    <div className="flex flex-wrap justify-between gap-2 text-xs text-emerald-100/65"><span>{loading?'جارٍ تحديث الأخبار...':filtered.length+' خبر'}</span></div>
+   </section>}
+   {section !== "summer" && section !== "contracts" && section !== "winter" && <section aria-live="polite">
+    {loading?<div className="rounded-xl border border-white/10 p-10 text-center">جارٍ جلب نتائج الانتقالات…</div>:shown.length?<div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+     {shown.map((story,index)=><article key={story.id} className="rounded-2xl border border-emerald-300/15 bg-[#10231a] p-4 sm:p-5 flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2"><span className="text-xs text-lime-300 font-bold">{story.section}</span><span className="text-xs text-emerald-100/60">{story.league}</span></div>
+      <h3 className="text-base sm:text-lg font-bold leading-8 break-words" dir="auto">• {story.title}</h3>
+      <p className="text-xs text-amber-200/90">خبر أو تقرير صحفي · ليس إعلان انتقال رسمي</p>
+      <a href={story.url} target="_blank" rel="noopener noreferrer" className="mt-auto text-sm text-emerald-300 font-bold underline underline-offset-4">قراءة الخبر ↗</a>
+     </article>)}
+    </div>:<div className="rounded-xl border border-white/10 p-8 text-center text-emerald-100/80">لا توجد أخبار متاحة لهذا القسم حالياً.</div>}
+    {!loading&&pages>1&&<div className="flex items-center justify-center flex-wrap gap-3 mt-7">
+     <button disabled={page===1} onClick={()=>setPage(n=>Math.max(1,n-1))} className="rounded-lg border border-white/20 px-4 py-2 disabled:opacity-30">السابق</button>
+     <span className="text-sm">صفحة {page} من {pages}</span>
+     <button disabled={page>=pages} onClick={()=>setPage(n=>Math.min(pages,n+1))} className="rounded-lg border border-white/20 px-4 py-2 disabled:opacity-30">التالي</button>
+    </div>}
+   </section>}
+   <footer className="border-t border-white/10 mt-12 pt-5 text-xs leading-7 text-emerald-100/65">فوتبلاي · سوق الانتقالات العالمي</footer>
+  </div>
+ </main>;
 }
