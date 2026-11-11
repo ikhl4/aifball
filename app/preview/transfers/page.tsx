@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import TransfermarktSearch from '../../components/TransfermarktSearch';
 
 type Deal = {
   player: string;
@@ -89,6 +90,8 @@ export default function TransfersPreview() {
           <div><span className="eyebrow">السجل الحي <i /></span><h2>سوق الانتقالات</h2><p>الصفقة، وجهتها، وقيمتها — من مصادر قابلة للتحقق.</p></div>
           <label className="search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث عن لاعب أو نادٍ" /><kbd>⌘ K</kbd></label>
         </div>
+
+        <TransfermarktSearch query={query} />
 
         <div className="market-controls" id="leagues">
           <div className="league-tabs" role="tablist" aria-label="اختيار الدوري">{leagues.map((item) => <button key={item} onClick={() => setLeague(item)} className={league === item ? 'selected' : ''}>{item === 'السعودي' && <span className="league-spark">✳</span>}{item}</button>)}</div>
