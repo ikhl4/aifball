@@ -6,7 +6,7 @@ type Hit = { title: string; url: string; snippet: string; source: string };
 type Story = Hit & { section: string; league: string; id: string };
 type Section = 'winter' | 'summer' | 'clubs';
 const sections: Record<Section, { label: string; intro: string; topics: { title: string; league: string; q: string }[] }> = {
- winter: { label: 'يناير 2027', intro: 'أخبار واهتمامات سوق الشتاء القادم — ليست صفقات مكتملة حتى يثبت الإعلان الرسمي.', topics: [
+ winter: { label: 'يناير 2027', intro: 'أسماء اللاعبين المرتبطين بالأندية وأبرز تحركات سوق الشتاء القادم.', topics: [
   {title:'برشلونة',league:'الإسباني',q:'Barcelona January 2027 transfer rumours news'},
   {title:'ريال مدريد',league:'الإسباني',q:'Real Madrid January 2027 transfer rumours'},
   {title:'الدوري الإسباني',league:'الإسباني',q:'La Liga winter 2027 transfer rumours'},
@@ -16,7 +16,7 @@ const sections: Record<Section, { label: string; intro: string; topics: { title:
   {title:'الدوري السعودي',league:'السعودي',q:'Saudi Pro League January 2027 transfer rumours'},
   {title:'إيطاليا وفرنسا',league:'الإيطالي',q:'Serie A Ligue 1 January 2027 transfer rumours'}
  ]},
- summer: {label:'أبرز صفقات الصيف',intro:'أرشيف صيف 2026 حسب الدوريات. النتائج روابط للمراجعة، ولا تعني أن كل رابط يؤكد صفقة.',topics:[
+ summer: {label:'أبرز صفقات الصيف',intro:'أبرز أسماء وصفقات صيف 2026 حسب الأندية والدوريات.',topics:[
   {title:'صفقات روشن',league:'السعودي',q:'Saudi Pro League transfers 2026 2027 arrivals'},
   {title:'صفقات برشلونة',league:'الإسباني',q:'FC Barcelona transfers 2026 2027'},
   {title:'صفقات ريال مدريد',league:'الإسباني',q:'Real Madrid transfers 2026 2027'},
@@ -26,7 +26,7 @@ const sections: Record<Section, { label: string; intro: string; topics: { title:
   {title:'أبرز صفقات إيطاليا',league:'الإيطالي',q:'Serie A top transfers summer 2026'},
   {title:'أبرز صفقات فرنسا',league:'الفرنسي',q:'Ligue 1 top transfers summer 2026'}
  ]},
- clubs: {label:'الأندية واللاعبون',intro:'استكشف مستجدات النادي واللاعب عبر فهرس ترانسفير ماركت، مع الرجوع للمصدر قبل اعتماد التفاصيل.',topics:[
+ clubs: {label:'الأندية واللاعبون',intro:'تابع اللاعبين والأندية وانتقالاتهم من مصادر رياضية متعددة.',topics:[
   {title:'برشلونة',league:'الإسباني',q:'Barcelona latest transfer news 2026'},
   {title:'ريال مدريد',league:'الإسباني',q:'Real Madrid latest transfer news 2026'},
   {title:'أتلتيكو مدريد',league:'الإسباني',q:'Atletico Madrid latest transfers 2026'},
@@ -38,7 +38,7 @@ const sections: Record<Section, { label: string; intro: string; topics: { title:
  ]}
 };
 const leagues = ['الكل','السعودي','الإنجليزي','الإسباني','الألماني','الإيطالي','الفرنسي'];
-const perPage = 8;
+const perPage = 12;
 function normalize(value:string){return value.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();}
 export default function TransfersPreview(){
  const [section,setSection]=useState<Section>('winter');
@@ -54,7 +54,7 @@ export default function TransfersPreview(){
   const timer=setTimeout(async()=>{
    setLoading(true);setStories([]);setFailed(0);
    const topics=query.trim().length>1
-    ? [{title:'نتائج البحث',league:'الكل',q:query.trim()+' transfer 2026 2027'}]
+    ? [{title:'لاعبون وأخبار',league:'الكل',q:query.trim()+' transfer 2026 2027'}]
     : sections[section].topics;
    const responses=await Promise.allSettled(topics.map(async topic=>{
     const response=await fetch('/api/transfermarkt-search?q='+encodeURIComponent(topic.q),{signal:controller.signal,cache:'no-store'});
@@ -87,7 +87,7 @@ export default function TransfersPreview(){
    <div className="pt-9 pb-7">
     <span className="text-sm font-bold text-lime-300">مركز الانتقالات العالمي · موسم 2026/27</span>
     <h1 className="text-3xl sm:text-5xl font-black mt-3 leading-tight">سوق الانتقالات، <span className="text-lime-300">بصورة أشمل.</span></h1>
-    <p className="mt-3 text-emerald-100/75 max-w-2xl text-sm sm:text-base leading-8">ملفات الأندية، أبرز صفقات الصيف، واستعدادات يناير. روابط من ترانسفير ماركت عبر DuckDuckGo، مع تمييز واضح بين البحث والتحقق من الصفقات.</p>
+    <p className="mt-3 text-emerald-100/75 max-w-2xl text-sm sm:text-base leading-8">ملفات الأندية، أبرز صفقات الصيف، واستعدادات يناير. أبرز أسماء اللاعبين وأخبار الأندية في سوق الانتقالات.</p>
    </div>
    <nav aria-label="أقسام الانتقالات" className="grid grid-cols-3 gap-2 mb-6">
     {(Object.keys(sections) as Section[]).map(key=><button key={key} onClick={()=>switchSection(key)} className={'rounded-xl border px-2 py-3 font-bold text-xs sm:text-base '+(section===key?'bg-lime-300 text-emerald-950 border-lime-300':'bg-emerald-950/60 border-white/15 text-white')}>{sections[key].label}</button>)}
@@ -100,24 +100,24 @@ export default function TransfersPreview(){
     <label htmlFor="transfer-search" className="block text-sm mb-2 font-bold">ابحث عن لاعب أو نادٍ</label>
     <input id="transfer-search" type="search" value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}} placeholder="برشلونة، الاتحاد، بايرن ميونخ، اسم لاعب..." className="w-full bg-[#0a2118] border border-emerald-300/25 rounded-xl p-3.5 text-white placeholder:text-emerald-100/50 outline-none focus:border-lime-300"/>
     <div className="flex gap-2 overflow-x-auto py-4" aria-label="فلترة حسب الدوري">{leagues.map(item=><button key={item} onClick={()=>{setLeague(item);setPage(1);}} className={'shrink-0 rounded-full border px-3 py-1.5 text-xs '+(league===item?'bg-emerald-300 text-emerald-950 border-emerald-300':'border-white/20 text-emerald-100')}>{item}</button>)}</div>
-    <div className="flex flex-wrap justify-between gap-2 text-xs text-emerald-100/65"><span>{loading?'جارٍ البحث...':filtered.length+' نتيجة مفهرسة'} · {failed?'بعض المصادر لم تستجب':''}</span><span>المصدر: فهرس DuckDuckGo لصفحات Transfermarkt</span></div>
+    <div className="flex flex-wrap justify-between gap-2 text-xs text-emerald-100/65"><span>{loading?'جارٍ تحديث الأخبار...':filtered.length+' خبر'}</span></div>
    </section>
    <section aria-live="polite">
     {loading?<div className="rounded-xl border border-white/10 p-10 text-center">جارٍ جلب نتائج الانتقالات…</div>:shown.length?<div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
      {shown.map((story,index)=><article key={story.id} className="rounded-2xl border border-emerald-300/15 bg-[#10231a] p-4 sm:p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2"><span className="text-xs text-lime-300 font-bold">{story.section}</span><span className="text-xs text-emerald-100/60">{story.league}</span></div>
       <h3 className="text-base sm:text-lg font-bold leading-8 break-words" dir="auto">{story.title}</h3>
-      <p className="text-xs text-amber-200/90">نتيجة بحث · حالة الصفقة وقيمتها غير متحققتين</p>
-      <a href={story.url} target="_blank" rel="noopener noreferrer" className="mt-auto text-sm text-emerald-300 font-bold underline underline-offset-4">عرض المصدر في ترانسفير ماركت ↗</a>
+      <p className="text-xs text-amber-200/90">تقرير انتقالات</p>
+      <a href={story.url} target="_blank" rel="noopener noreferrer" className="mt-auto text-sm text-emerald-300 font-bold underline underline-offset-4">قراءة الخبر ↗</a>
      </article>)}
-    </div>:<div className="rounded-xl border border-white/10 p-8 text-center text-emerald-100/80">لا توجد نتائج مفهرسة مطابقة حالياً. جرّب اسماً آخر أو تحديث النتائج.</div>}
+    </div>:<div className="rounded-xl border border-white/10 p-8 text-center text-emerald-100/80">لا توجد أخبار متاحة لهذا القسم حالياً.</div>}
     {!loading&&pages>1&&<div className="flex items-center justify-center flex-wrap gap-3 mt-7">
      <button disabled={page===1} onClick={()=>setPage(n=>Math.max(1,n-1))} className="rounded-lg border border-white/20 px-4 py-2 disabled:opacity-30">السابق</button>
      <span className="text-sm">صفحة {page} من {pages}</span>
      <button disabled={page>=pages} onClick={()=>setPage(n=>Math.min(pages,n+1))} className="rounded-lg border border-white/20 px-4 py-2 disabled:opacity-30">التالي</button>
     </div>}
    </section>
-   <footer className="border-t border-white/10 mt-12 pt-5 text-xs leading-7 text-emerald-100/65">هذه واجهة اكتشاف أخبار وصفحات انتقالات وليست قاعدة صفقات رسمية. فهرسة DuckDuckGo لا تؤكد توقيت الخبر أو إتمام الانتقال، ولا تُستخدم لاختلاق رسوم انتقال أو صور لاعبين. التحقق النهائي من إعلان النادي أو رابطة الدوري أو مصدر موثوق.</footer>
+   <footer className="border-t border-white/10 mt-12 pt-5 text-xs leading-7 text-emerald-100/65">فوتبلاي · سوق الانتقالات العالمي</footer>
   </div>
  </main>;
 }
