@@ -1,6 +1,6 @@
 export type Drill = { id: string; title: string; category: string; minutes: number; minPlayers: number; maxPlayers: number; age: string; objective: string; setup: string; steps: string[]; tips: string[]; progression: string };
 export const categories = ['الكل','الإحماء','الاستحواذ','الضغط العالي','التحولات','الدفاع','إنهاء الهجمات','الكرات الثابتة','حراس المرمى'];
-const seeds: [string,string,string,number,number,number,string,string,string,string,string][] = [
+const seeds: [string,string,string,number,number,number,string,string,string,string,string,string][] = [
 ['warm-1','تنشيط بالكرة','الإحماء',12,8,20,'U13+','تنشيط الحركة واللمسة الأولى','مربعات 15×15 متر وكرات لكل مجموعة','تمرير وتحرك مستمر؛ تغيير اتجاه الحركة بإشارة المدرب','رفع سرعة التمرير وتقليل مساحة اللعب','التركيز على استقبال الكرة بوضعية مفتوحة'],
 ['warm-2','رد الفعل والرشاقة','الإحماء',10,6,18,'U13+','تحسين الاستجابة والتوازن','أقماع ملونة ومسارات قصيرة','الانطلاق نحو لون يحدده المدرب؛ العودة بحركة جانبية','إضافة كرة بعد الانطلاق','مراعاة التدرج في الشدة'],
 ['pos-1','روندو 5 ضد 2','الاستحواذ',18,7,14,'U15+','الاحتفاظ بالكرة تحت الضغط','مربع 12×12 متر ومجموعات من 7','خمسة يحتفظون بالكرة ضد اثنين؛ تبديل المدافعين بعد قطع الكرة','تحديد لمستين لكل لاعب','زوايا الدعم وسرعة اتخاذ القرار'],
