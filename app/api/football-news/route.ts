@@ -10,11 +10,41 @@ type XResponse = { data?: XPost[]; includes?: { users?: XUser[]; media?: XMedia[
 
 export async function GET(req: NextRequest) {
   const categoryParam = req.nextUrl.searchParams.get('category');
-  if (categoryParam && categoryParam !== 'general' && categoryParam !== 'transfers') {
+  if (categoryParam && categoryParam !== 'general' && categoryParam !== 'transfers' && categoryParam !== 'world') {
     return NextResponse.json({ error: 'invalid_category' }, { status: 400 });
   }
   const category = (categoryParam || undefined) as NewsCategory | undefined;
-  const sources = activeNewsSources(category);
+  const sources = activeNewsSources(category === 'world' ? undefined : category);
+  if (categoryParam === 'world') {
+    const topics = [
+      'football soccer latest news',
+      'Saudi Pro League football news',
+      'Premier League La Liga Serie A Bundesliga Ligue 1 football',
+      'UEFA Champions League AFC Champions League football'
+    ];
+    const decode = (value: string) => value.replace(/<!\\[CDATA\\[|\\]\\]>/g, '').replace(/<[^>]*>/g, ' ').replace(/&(?:amp|lt|gt|quot|apos|#39);/g, m => ({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&apos;':"'",'&#39;':"'"}[m] || m)).replace(/\\s+/g,' ').trim();
+    const feeds = await Promise.allSettled(topics.map(async topic => {
+      const url = 'https://news.google.com/rss/search?q=' + encodeURIComponent(topic + ' when:1d') + '&hl=en-US&gl=US&ceid=US:en';
+      const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8500), headers: { Accept: 'application/rss+xml,application/xml' } });
+      if (!response.ok) throw new Error('RSS ' + response.status);
+      const xml = await response.text();
+      if (xml.length > 1500000) throw new Error('RSS too large');
+      return [...xml.matchAll(/<item>([\\s\\S]*?)<\\/item>/gi)].slice(0, 25).flatMap(match => {
+        const item = match[1];
+        const field = (name: string) => item.match(new RegExp('<' + name + '(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)<\\\\/' + name + '>', 'i'))?.[1] || '';
+        const title = decode(field('title'));
+        const publishedAt = new Date(decode(field('pubDate'))).toISOString();
+        const link = decode(field('link'));
+        const publisher = decode(field('source')) || 'Google News';
+        if (!title || !/^https:\/\/news\.google\.com\//.test(link) || !Number.isFinite(Date.parse(publishedAt))) return [];
+        if (Date.now() - Date.parse(publishedAt) > 24*3600000 || Date.parse(publishedAt) > Date.now()+300000) return [];
+        return [{ id: link, text: title, author: publisher, url: link, publishedAt, images: [] as string[], classification: 'unverified_report' as const }];
+      });
+    }));
+    const posts = [...new Map(feeds.flatMap(result => result.status === 'fulfilled' ? result.value : []).map(post => [post.text.toLowerCase().replace(/[^\\p{L}\\p{N}]/gu,''),post])).values()].sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt)).slice(0, 60);
+    const failed = feeds.filter(f => f.status === 'rejected').length;
+    return NextResponse.json({ status: failed === topics.length ? 'upstream_unavailable' : failed ? 'partial' : 'ok', provider: 'google_news_rss', windowHours: 24, posts, failedSearches: failed, note: 'Headlines and publisher dates from Google News RSS. Publication date is not independent verification of claims; images are omitted when not supplied.' }, { headers: { 'Cache-Control': 'no-store' } });
+  }
   const mode = req.nextUrl.searchParams.get('provider') || 'auto';
   if (mode !== 'duckduckgo' && mode !== 'x' && mode !== 'auto') return NextResponse.json({ error: 'invalid_provider' }, { status: 400 });
   if (mode === 'duckduckgo' || (mode === 'auto' && !process.env.X_BEARER_TOKEN?.trim())) {
