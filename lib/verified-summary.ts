@@ -81,6 +81,13 @@ export function verifiedSummaryStream(upstream: ReadableStream<Uint8Array>, sign
       if (buffer.trim()) frame(buffer);
       if (!end) throw Error('INCOMPLETE_STREAM');
       const verified = await verify(answer, signal);
+      const summaryTags = [...verified.matchAll(/<aifball-summary\b([^>]*?)\/?\s*>/gi)];
+      console.info('[AIFBALL_SUMMARY_FINAL_HANDOFF]', JSON.stringify({
+        summaryCount: summaryTags.length,
+        foundCount: summaryTags.filter((m) => /\bvideo_status="found"/.test(m[1])).length,
+        videoUrlCount: summaryTags.filter((m) => /\bvideo_url="https:\/\/www\.youtube\.com\/watch\?v=[\w-]{11}"/.test(m[1])).length,
+        answerLength: verified.length,
+      }));
       if (signal?.aborted) throw Error('ABORTED');
       send({ ...meta, event: 'message', answer: verified }); send(end); out.close();
     } catch {
