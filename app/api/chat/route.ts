@@ -119,9 +119,13 @@ function latestClubMatchIntent(query: string): string | null {
 
 async function espnLatestMatchAnswer(club: string): Promise<string | null> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8500);
+  const timeout = setTimeout(() => controller.abort(), 6000);
   try {
-    const endpoint = new URL('/research/live/club-latest-match', 'https://aifball-python-api.onrender.com');
+    // Preview must use the isolated Python test service. Never send test traffic to production.
+    const pythonOrigin = process.env.VERCEL_ENV === 'production'
+      ? 'https://aifball-python-api.onrender.com'
+      : 'https://aifball-python-test.onrender.com';
+    const endpoint = new URL('/research/live/club-latest-match', pythonOrigin);
     endpoint.searchParams.set('club', club);
     endpoint.searchParams.set('days', '30');
     const res = await fetch(endpoint, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
@@ -159,10 +163,12 @@ export async function POST(req: Request) {
     const latestClub = !hasImage ? latestClubMatchIntent(query) : null;
     if (latestClub) {
       const answer = await espnLatestMatchAnswer(latestClub);
-      if (answer) {
+      {
+        // Explicit match requests must not fall through to a long, ungrounded Dify answer.
+        const safeAnswer = answer ?? 'تعذر جلب آخر مباراة من محرك النتائج الآن. لم يتم التحقق من النتيجة، ويمكن إعادة المحاولة لاحقًا.';
         const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
         const events = [
-          { event: 'message', answer, conversation_id },
+          { event: 'message', answer: safeAnswer, conversation_id },
           { event: 'message_end', conversation_id },
         ];
         return new Response(events.map(event => 'event: ' + event.event + '\ndata: ' + JSON.stringify(event) + '\n\n').join(''), {
