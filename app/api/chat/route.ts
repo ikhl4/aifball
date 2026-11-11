@@ -90,10 +90,6 @@ const OFFICIAL_COMPETITION_SOURCES = `
 `;
 
 
-const LAST_MATCH_PRESENTATION_RULES = `
-عند سؤال المستخدم «آخر مباراة» لنادٍ، ابدأ مباشرة باسمَي الفريقين والنتيجة، ثم التاريخ الميلادي، ثم البطولة، ثم ملخص خفيف من جملة أو جملتين يستند حصراً إلى نتيجة المباراة أو أحداث مؤكدة من مصدر المباراة. لا تضف الهدافين أو دقائق الأهداف أو مجريات الشوطين أو التبديلات أو الإحصائيات في السؤال المختصر. إذا طلب «من سجل؟» أو «الهدافين» أو «مجريات المباراة» أو «التفاصيل» أو «التحليل»، اعرض التفاصيل المطلوبة بعد التحقق من بيانات المباراة نفسها؛ لا تستنتج اسم هداف أو دقيقة من النتيجة. لا تستخدم تفاصيل مباراة أخرى. إذا كانت البيانات من مصدر واحد فقط فلا تصفها بأنها متحققة من مصدرين. لا تذكر أسماء المكونات التقنية أو اعتذارات مطولة.
-`;
-
 const CLUB_NEWS_RULES = `
 أنت محرر أخبار كروية داخل فوتبلاي، لا دليل روابط. إذا طلب المستخدم أخبار نادٍ أو لاعب أو انتقالات، يجب أن يعرف مضمون الخبر من إجابتك دون مغادرة المحادثة.
 1) اجلب أولاً الأخبار الحديثة: آخر 48 ساعة بتوقيت الرياض، ثم 72 ساعة، ثم 7 أيام فقط عند قلة الأخبار مع توضيح الفترة. افصل تاريخ نشر المقال عن تاريخ الحدث. لا تنسب تاريخاً لمقال من تخمين أو من تاريخ المباراة.
@@ -183,39 +179,13 @@ async function espnLatestMatchAnswer(club: string): Promise<string | null> {
     const m = matches[0];
     if (!m) return null;
     const clubName = club === 'barcelona' ? 'برشلونة' : club === 'al ittihad' ? 'الاتحاد' : 'الهلال';
-    const competitionArabic: Record<string, string> = {
-      'Saudi Pro League': 'دوري روشن السعودي',
-      'AFC Champions League Elite': 'دوري أبطال آسيا للنخبة',
-      'King Cup': 'كأس خادم الحرمين الشريفين',
-      'FIFA Club World Cup': 'كأس العالم للأندية',
-      'La Liga': 'الدوري الإسباني',
-      'UEFA Champions League': 'دوري أبطال أوروبا',
-      'Copa del Rey': 'كأس ملك إسبانيا',
-    };
-    const teamArabic = (name: string): string => {
-      const n = name.toLowerCase();
-      if (/shabab.*ahl|shabab al ahli/.test(n)) return 'شباب الأهلي الإماراتي';
-      if (/hilal/.test(n)) return 'الهلال';
-      if (/ittihad/.test(n)) return 'الاتحاد';
-      if (/barcelona|barça/.test(n)) return 'برشلونة';
-      if (/al ain|al-ain/.test(n)) return 'العين';
-      return name;
-    };
-    const home = teamArabic(m.home_team), away = teamArabic(m.away_team);
-    const date = new Intl.DateTimeFormat('ar-SA-u-ca-gregory', {
-      day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Riyadh',
-    }).format(new Date(m.date_utc));
-    const summary = m.home_score === m.away_score
-      ? 'انتهت المواجهة بالتعادل ' + m.home_score + '–' + m.away_score + '.'
-      : 'حقق ' + (m.home_score > m.away_score ? home : away) +
-        ' الفوز على ' + (m.home_score > m.away_score ? away : home) +
-        ' بنتيجة ' + Math.max(m.home_score, m.away_score) + '–' + Math.min(m.home_score, m.away_score) + '.';
     return [
-      '### ' + home + ' ' + m.home_score + '–' + m.away_score + ' ' + away,
-      '**التاريخ:** ' + date,
-      '**البطولة:** ' + (competitionArabic[m.competition] || m.competition),
-      '**ملخص المباراة**',
-      summary,
+      '### آخر مباراة — ' + clubName,
+      '**' + m.home_team + ' ' + m.home_score + ' – ' + m.away_score + ' ' + m.away_team + '**',
+      '**البطولة:** ' + m.competition,
+      '**التاريخ (UTC):** ' + m.date_utc.slice(0, 10),
+      '**حالة المعلومة:** نتيجة منشورة في ESPN، ولم تُطابق بعد مع مصدر مستقل.',
+      'هذه آخر مباراة مكتملة وجدتها ضمن البطولات التي شملها البحث، وليست تأكيدًا على شمول جميع البطولات.',
     ].join('\n\n');
   } catch {
     return null;
@@ -360,7 +330,7 @@ export async function POST(req: Request) {
       /(?:برشلونة|barcelona|barça|barca)/i.test(query) ? 'برشلونة الإسباني (FC Barcelona)' : '';
     const clubIdentityRules = clubEntity ? `\nضبط هوية الكيان: المقصود حصراً ${clubEntity} لكرة القدم. لا تخلطه بمؤسسات تحمل الاسم نفسه مثل الهلال الأحمر المصري أو فرق أخرى. لا تستخدم صورة أو شعاراً إلا إذا أكد عنوان المصدر ووصف الصورة والنادي/الدولة تطابق الكيان؛ عند الشك احذف الصورة نهائياً. لا تعرض وسوم المكونات أو أسماءها التقنية أو رسائل تشخيص للمستخدم. إذا كان السؤال اسم النادي فقط، قدّم تعريفاً موجزاً بالنادي ولا تفترض أن المستخدم طلب أخباراً أو مباريات.\n` : '';
     const clubNewsIntentRules = clubNews ? `\nأولوية النية: سؤال «آخر أخبار» يعني أخباراً ومستجدات فعلية، وليس جدول مباريات. لا تجعل مواعيد المباريات عنوان الإجابة أو محتواها الرئيسي. إذا لم تتوفر أخبار موثقة، صرّح بذلك باختصار، ولا تعوضها بأخبار قديمة أو مواعيد فقط. لا تظهر اسم مكوّن تقني مثل aifball-club-news، ولا تُدرج صورة تعريفية غير مرتبطة مباشرة بالخبر.\n` : '';
-    const guidedQuery = baseQuery + OUTPUT_LANGUAGE_RULES + clubIdentityRules + clubNewsIntentRules + (/(?:آخر|اخر|أحدث|احدث|ملخص|مجريات|الهداف|من سجل|تفاصيل|تحليل)/i.test(query) && /(?:مباراة|مباريات|لقاء|هدف|أهداف|اهداف|الهلال|الاتحاد|برشلونة)/i.test(query) ? LAST_MATCH_PRESENTATION_RULES : '') + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + fixtureContext + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (!matchSummary && (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture) ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '');
+    const guidedQuery = baseQuery + OUTPUT_LANGUAGE_RULES + clubIdentityRules + clubNewsIntentRules + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + fixtureContext + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (!matchSummary && (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture) ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '');
 
     const difyStarted = performance.now();
     const apiRes = await fetch(url, {
