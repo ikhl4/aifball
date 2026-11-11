@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import ConfirmedSummerDeals from '../../components/ConfirmedSummerDeals';
 
 type Hit = { title: string; url: string; snippet: string; source: string };
 type Story = Hit & { section: string; league: string; id: string };
@@ -41,7 +42,7 @@ const leagues = ['الكل','السعودي','الإنجليزي','الإسبا�
 const perPage = 12;
 function normalize(value:string){return value.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();}
 export default function TransfersPreview(){
- const [section,setSection]=useState<Section>('winter');
+ const [section,setSection]=useState<Section>('summer');
  const [league,setLeague]=useState('الكل');
  const [query,setQuery]=useState('');
  const [page,setPage]=useState(1);
@@ -50,6 +51,7 @@ export default function TransfersPreview(){
  const [failed,setFailed]=useState(0);
  const [refresh,setRefresh]=useState(0);
  useEffect(()=>{
+  if(section==='summer'){setStories([]);setLoading(false);return;}
   const controller=new AbortController();
   const timer=setTimeout(async()=>{
    setLoading(true);setStories([]);setFailed(0);
@@ -92,7 +94,7 @@ export default function TransfersPreview(){
    <nav aria-label="أقسام الانتقالات" className="grid grid-cols-3 gap-2 mb-6">
     {(Object.keys(sections) as Section[]).map(key=><button key={key} onClick={()=>switchSection(key)} className={'rounded-xl border px-2 py-3 font-bold text-xs sm:text-base '+(section===key?'bg-lime-300 text-emerald-950 border-lime-300':'bg-emerald-950/60 border-white/15 text-white')}>{sections[key].label}</button>)}
    </nav>
-   <section className="rounded-2xl bg-emerald-900/30 border border-emerald-300/15 p-4 sm:p-6 mb-6">
+   {section === "summer" ? <ConfirmedSummerDeals /> : <section className="rounded-2xl bg-emerald-900/30 border border-emerald-300/15 p-4 sm:p-6 mb-6">
     <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
      <div><h2 className="text-xl sm:text-2xl font-black">{sections[section].label}</h2><p className="text-sm text-emerald-100/70 mt-1">{sections[section].intro}</p></div>
      <button className="rounded-lg border border-emerald-300/40 px-3 py-2 text-sm text-emerald-200" onClick={()=>{setPage(1);setRefresh(n=>n+1);}}>تحديث النتائج</button>
@@ -101,8 +103,8 @@ export default function TransfersPreview(){
     <input id="transfer-search" type="search" value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}} placeholder="برشلونة، الاتحاد، بايرن ميونخ، اسم لاعب..." className="w-full bg-[#0a2118] border border-emerald-300/25 rounded-xl p-3.5 text-white placeholder:text-emerald-100/50 outline-none focus:border-lime-300"/>
     <div className="flex gap-2 overflow-x-auto py-4" aria-label="فلترة حسب الدوري">{leagues.map(item=><button key={item} onClick={()=>{setLeague(item);setPage(1);}} className={'shrink-0 rounded-full border px-3 py-1.5 text-xs '+(league===item?'bg-emerald-300 text-emerald-950 border-emerald-300':'border-white/20 text-emerald-100')}>{item}</button>)}</div>
     <div className="flex flex-wrap justify-between gap-2 text-xs text-emerald-100/65"><span>{loading?'جارٍ تحديث الأخبار...':filtered.length+' خبر'}</span></div>
-   </section>
-   <section aria-live="polite">
+   </section>}
+   {section !== "summer" && <section aria-live="polite">
     {loading?<div className="rounded-xl border border-white/10 p-10 text-center">جارٍ جلب نتائج الانتقالات…</div>:shown.length?<div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
      {shown.map((story,index)=><article key={story.id} className="rounded-2xl border border-emerald-300/15 bg-[#10231a] p-4 sm:p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2"><span className="text-xs text-lime-300 font-bold">{story.section}</span><span className="text-xs text-emerald-100/60">{story.league}</span></div>
@@ -116,7 +118,7 @@ export default function TransfersPreview(){
      <span className="text-sm">صفحة {page} من {pages}</span>
      <button disabled={page>=pages} onClick={()=>setPage(n=>Math.min(pages,n+1))} className="rounded-lg border border-white/20 px-4 py-2 disabled:opacity-30">التالي</button>
     </div>}
-   </section>
+   </section>}
    <footer className="border-t border-white/10 mt-12 pt-5 text-xs leading-7 text-emerald-100/65">فوتبلاي · سوق الانتقالات العالمي</footer>
   </div>
  </main>;
