@@ -6,6 +6,8 @@ import ConfirmedSummerDeals from '../../components/ConfirmedSummerDeals';
 type Hit = { title: string; url: string; snippet: string; source: string };
 type Story = Hit & { section: string; league: string; id: string };
 type Section = 'winter' | 'summer' | 'clubs' | 'contracts';
+// Add only completed, source-verified January 2027 transfers here; never populate from rumours.
+const confirmedWinterDeals: { player: string; from: string; to: string; sourceUrl: string; date: string }[] = [];
 const contractHighlights=[
  {name:'رافينيا',club:'برشلونة',summary:'جدّد عقده حتى 30 يونيو 2030.',status:'رسمي',url:'https://www.fcbarcelona.com/en/football/first-team/news/4604888/raphinha-staying-at-fc-barcelona-until-2030'},
  {name:'فرينكي دي يونغ',club:'برشلونة',summary:'موعد نهاية عقده المتداول 30 يونيو 2029؛ ليس من عقود يناير 2027 المنتهية.',status:'بحسب بيانات اللاعبين',url:'https://www.soccerway.com/player/de-jong-frenkie/A1F3rz9c/'},
@@ -15,16 +17,7 @@ const contractHighlights=[
 ];
 const sections: Record<Section, { label: string; intro: string; topics: { title: string; league: string; q: string }[] }> = {
  contracts: {label:'نهاية عقود أبرز اللاعبين',intro:'آخر تطورات العقود والتجديدات قبل يناير، مع تمييز الرسمي عن التقارير.',topics:[]},
- winter: { label: 'يناير 2027', intro: 'أسماء اللاعبين المرتبطين بالأندية وأبرز تحركات سوق الشتاء القادم.', topics: [
-  {title:'برشلونة',league:'الإسباني',q:'Barcelona January 2027 transfer rumours news'},
-  {title:'ريال مدريد',league:'الإسباني',q:'Real Madrid January 2027 transfer rumours'},
-  {title:'الدوري الإسباني',league:'الإسباني',q:'La Liga winter 2027 transfer rumours'},
-  {title:'بايرن ميونخ',league:'الألماني',q:'Bayern Munich January 2027 transfer rumours'},
-  {title:'الدوري الألماني',league:'الألماني',q:'Bundesliga winter 2027 transfer rumours'},
-  {title:'الدوري الإنجليزي',league:'الإنجليزي',q:'Premier League January 2027 transfer rumours'},
-  {title:'الدوري السعودي',league:'السعودي',q:'Saudi Pro League January 2027 transfer rumours'},
-  {title:'إيطاليا وفرنسا',league:'الإيطالي',q:'Serie A Ligue 1 January 2027 transfer rumours'}
- ]},
+ winter: { label: 'انتقالات يناير 2027', intro: 'الصفقات الرسمية المكتملة فقط. يبقى القسم فارغاً ما لم تُؤكد صفقة من مصدر موثوق.', topics: []},
  summer: {label:'أبرز صفقات الصيف',intro:'أبرز أسماء وصفقات صيف 2026 حسب الأندية والدوريات.',topics:[
   {title:'صفقات روشن',league:'السعودي',q:'Saudi Pro League transfers 2026 2027 arrivals'},
   {title:'صفقات برشلونة',league:'الإسباني',q:'FC Barcelona transfers 2026 2027'},
@@ -59,7 +52,7 @@ export default function TransfersPreview(){
  const [failed,setFailed]=useState(0);
  const [refresh,setRefresh]=useState(0);
  useEffect(()=>{
-  if(section==='summer'||section==='contracts'){setStories([]);setLoading(false);return;}
+  if(section==='summer'||section==='contracts'||section==='winter'){setStories([]);setLoading(false);return;}
   const controller=new AbortController();
   const timer=setTimeout(async()=>{
    setLoading(true);setStories([]);setFailed(0);
@@ -102,7 +95,7 @@ export default function TransfersPreview(){
    <nav aria-label="أقسام الانتقالات" className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
     {(Object.keys(sections) as Section[]).map(key=><button key={key} onClick={()=>switchSection(key)} className={'rounded-xl border px-2 py-3 font-bold text-xs sm:text-base '+(section===key?'bg-lime-300 text-emerald-950 border-lime-300':'bg-emerald-950/60 border-white/15 text-white')}>{sections[key].label}</button>)}
    </nav>
-   {section === "summer" ? <ConfirmedSummerDeals /> : section === "contracts" ? <section className="grid gap-3 sm:grid-cols-2">{contractHighlights.map(item=><article key={item.name} className="rounded-2xl border border-emerald-300/20 bg-[#10231a] p-4"><div className="flex items-center justify-between gap-2"><strong className="text-lg">{item.name}</strong><span className="text-xs text-lime-300">{item.status}</span></div><p className="text-xs text-emerald-200 mt-1">{item.club}</p><p className="mt-3 text-sm leading-7">{item.summary}</p><a href={item.url} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-300 underline inline-block mt-3">تفاصيل الخبر</a></article>)}</section> : <section className="rounded-2xl bg-emerald-900/30 border border-emerald-300/15 p-4 sm:p-6 mb-6">
+   {section === "summer" ? <ConfirmedSummerDeals /> : section === "winter" ? <section aria-live="polite" className="rounded-2xl border border-emerald-300/20 bg-[#10231a] p-5 sm:p-7"><h2 className="text-xl sm:text-2xl font-black">انتقالات يناير 2027</h2><p className="mt-2 text-sm text-emerald-100/70">الصفقات الرسمية المكتملة فقط، دون أخبار أو شائعات.</p>{confirmedWinterDeals.length ? <div className="mt-5 grid gap-3">{confirmedWinterDeals.map(deal=><article key={`${deal.player}-${deal.to}`} className="rounded-xl border border-emerald-300/20 p-4"><strong className="text-lg">{deal.player}</strong><p className="mt-2 text-sm">{deal.from} ← {deal.to}</p><p className="text-xs text-emerald-100/70 mt-1">{deal.date}</p><a className="inline-block mt-3 text-sm text-emerald-300 underline" href={deal.sourceUrl} target="_blank" rel="noopener noreferrer">المصدر الرسمي</a></article>)}</div> : <div className="mt-5 rounded-xl border border-white/10 p-8 text-center text-emerald-100/75">لا توجد صفقات رسمية مؤكدة مضافة حالياً.</div>}</section> : section === "contracts" ? <section className="grid gap-3 sm:grid-cols-2">{contractHighlights.map(item=><article key={item.name} className="rounded-2xl border border-emerald-300/20 bg-[#10231a] p-4"><div className="flex items-center justify-between gap-2"><strong className="text-lg">{item.name}</strong><span className="text-xs text-lime-300">{item.status}</span></div><p className="text-xs text-emerald-200 mt-1">{item.club}</p><p className="mt-3 text-sm leading-7">{item.summary}</p><a href={item.url} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-300 underline inline-block mt-3">تفاصيل الخبر</a></article>)}</section> : <section className="rounded-2xl bg-emerald-900/30 border border-emerald-300/15 p-4 sm:p-6 mb-6">
     <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
      <div><h2 className="text-xl sm:text-2xl font-black">{sections[section].label}</h2><p className="text-sm text-emerald-100/70 mt-1">{sections[section].intro}</p></div>
      <button className="rounded-lg border border-emerald-300/40 px-3 py-2 text-sm text-emerald-200" onClick={()=>{setPage(1);setRefresh(n=>n+1);}}>تحديث النتائج</button>
@@ -112,7 +105,7 @@ export default function TransfersPreview(){
     <div className="flex gap-2 overflow-x-auto py-4" aria-label="فلترة حسب الدوري">{leagues.map(item=><button key={item} onClick={()=>{setLeague(item);setPage(1);}} className={'shrink-0 rounded-full border px-3 py-1.5 text-xs '+(league===item?'bg-emerald-300 text-emerald-950 border-emerald-300':'border-white/20 text-emerald-100')}>{item}</button>)}</div>
     <div className="flex flex-wrap justify-between gap-2 text-xs text-emerald-100/65"><span>{loading?'جارٍ تحديث الأخبار...':filtered.length+' خبر'}</span></div>
    </section>}
-   {section !== "summer" && section !== "contracts" && <section aria-live="polite">
+   {section !== "summer" && section !== "contracts" && section !== "winter" && <section aria-live="polite">
     {loading?<div className="rounded-xl border border-white/10 p-10 text-center">جارٍ جلب نتائج الانتقالات…</div>:shown.length?<div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
      {shown.map((story,index)=><article key={story.id} className="rounded-2xl border border-emerald-300/15 bg-[#10231a] p-4 sm:p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2"><span className="text-xs text-lime-300 font-bold">{story.section}</span><span className="text-xs text-emerald-100/60">{story.league}</span></div>
