@@ -19,6 +19,10 @@ export async function GET(req: NextRequest) {
     const topics = [
       'football soccer latest news',
       'Saudi Pro League football news',
+      'international football national teams FIFA international break news',
+      'Saudi Arabia national football team international matches squad news',
+      'Brazil Argentina France England Spain Germany national team football',
+      'AFC national teams World Cup qualifiers football news',
       'Premier League La Liga Serie A Bundesliga Ligue 1 football',
       'UEFA Champions League AFC Champions League football'
     ];
