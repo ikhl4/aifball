@@ -103,12 +103,73 @@ const CLUB_NEWS_RULES = `
 9) مثال البنية المرئية (ليس خبراً حقيقياً): «عنوان الخبر» ثم «ملخص يشرح الحدث والتفاصيل الأساسية بلغة سهلة.» ثم «المصدر: [اسم الصحيفة](رابط مؤكد) · تاريخ مؤكد · تقرير». كرر لكل خبر دون جدول أو روابط خام.
 `;
 
+
+function latestClubMatchIntent(query: string): string | null {
+  const q = query.replace(/[؟?!.,،]/g, ' ').replace(/\\s+/g, ' ').trim();
+  if (!/(?:آخر|اخر|أحدث|احدث|last|latest|recent|السابقة|الاخيرة|الأخيرة)/i.test(q) ||
+      !/(?:مباراة|مباريات|مواجهات|لقاء|نتيجة|match|game|result)/i.test(q) ||
+      /(?:ملخص|تحليل|تشكيل|إحصائيات|احصائيات|فيديو|هدف|أهداف|اهداف|موعد|القادمة|القادم|next|highlights)/i.test(q)) return null;
+  const clubs: Array<[RegExp, string]> = [
+    [/(?:الاتحاد|الإتحاد|ittihad|al[ -]?ittihad)/i, 'al ittihad'],
+    [/(?:الهلال|hilal|al[ -]?hilal)/i, 'al hilal'],
+  ];
+  const found = clubs.filter(([pattern]) => pattern.test(q));
+  return found.length === 1 ? found[0][1] : null;
+}
+
+async function espnLatestMatchAnswer(club: string): Promise<string | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8500);
+  try {
+    const endpoint = new URL('/research/live/club-latest-match', 'https://aifball-python-api.onrender.com');
+    endpoint.searchParams.set('club', club);
+    endpoint.searchParams.set('days', '30');
+    const res = await fetch(endpoint, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const m = data?.latest_match;
+    if (data?.status !== 'found' || !m || m.completed !== true ||
+        typeof m.home_team !== 'string' || typeof m.away_team !== 'string' ||
+        !/^\\d+$/.test(String(m.home_score)) || !/^\\d+$/.test(String(m.away_score)) ||
+        typeof m.date_utc !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}/.test(m.date_utc)) return null;
+    const date = m.date_utc.slice(0, 10);
+    const competition = typeof m.competition === 'string' ? m.competition : 'بطولة غير محددة';
+    const verified = m.verification === 'verified_independent';
+    return [
+      '### آخر مباراة — ' + (club === 'al ittihad' ? 'الاتحاد' : 'الهلال'),
+      '**' + m.home_team + ' ' + m.home_score + ' – ' + m.away_score + ' ' + m.away_team + '**',
+      '**البطولة:** ' + competition,
+      '**التاريخ:** ' + date,
+      verified ? 'المصدر: ESPN، مع تحقق مستقل.' : 'المصدر: ESPN — النتيجة لم تُتحقق من مصدر مستقل بعد.',
+    ].join('\n\n');
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function POST(req: Request) {
   const requestStarted = performance.now();
   try {
     const body = await req.json();
     const hasImage = Array.isArray(body?.files) && body.files.some((file: { type?: string } | null) => file?.type === 'image');
     const query = (typeof body?.query === 'string' ? body.query.trim() : '') || (hasImage ? 'اقرأ الصورة المرفقة ووضح ما يظهر فيها.' : '');
+    // Direct, bounded ESPN lookup for explicit latest-match questions. Fallback to Dify on failure.
+    const latestClub = !hasImage ? latestClubMatchIntent(query) : null;
+    if (latestClub) {
+      const answer = await espnLatestMatchAnswer(latestClub);
+      if (answer) {
+        const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
+        const events = [
+          { event: 'message', answer, conversation_id },
+          { event: 'message_end', conversation_id },
+        ];
+        return new Response(events.map(event => 'event: ' + event.event + '\\ndata: ' + JSON.stringify(event) + '\n\n').join(''), {
+          headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform' },
+        });
+      }
+    }
     // Match artwork is built from independently verified provider data, not model-invented fixture rows.
     if (!hasImage && posterIntent(query)) {
       const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
