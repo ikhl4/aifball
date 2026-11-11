@@ -530,7 +530,25 @@ export async function POST(req: Request) {
     // إرجاع الـ Stream مباشرة للواجهة الأمامية
     return new Response(observedBody && historical !== 'none' && !hasImage && !wantsDesign ? verifiedSummaryStream(observedBody, req.signal, (answer, signal) => presentHistoryAnswer(answer, historical, signal)) : observedBody && matchSummary && !hasImage && !wantsDesign
       ? verifiedSummaryStream(observedBody, req.signal, async (answer, signal) => {
-          if (/<aifball-summary\b/i.test(answer)) return verifySummaryAnswer(answer, signal);
+          if (/<aifball-summary\b/i.test(answer)) {
+            // An undated request means a recent match, not an arbitrary older season.
+            // Reject stale fixture cards rather than presenting old highlights as current.
+            const explicitDate = /\b20\d{2}\b|\b\d{4}-\d{2}-\d{2}\b/.test(query);
+            if (!explicitDate) {
+              const dates = [...answer.matchAll(/<aifball-summary\b([^>]*?)\/?\s*>/gi)]
+                .map((tag) => tag[1].match(/\bdate="(\d{4}-\d{2}-\d{2})"/)?.[1])
+                .filter((date): date is string => Boolean(date));
+              const recent = dates.length > 0 && dates.every((date) => {
+                const age = Date.now() - Date.parse(date + 'T00:00:00Z');
+                return Number.isFinite(age) && age >= -86400000 && age <= 45 * 86400000;
+              });
+              if (!recent) {
+                console.warn('[AIFBALL_SUMMARY_STALE_FIXTURE]', JSON.stringify({ dates, requestedDate: false }));
+                return 'لم أتمكن من تأكيد مواجهة حديثة بين الفريقين من بيانات المباراة المتاحة. لن أعرض مباراة من موسم سابق على أنها أحدث مواجهة. حدّد تاريخ المباراة إن كنت تقصد مواجهة قديمة.';
+              }
+            }
+            return verifySummaryAnswer(answer, signal);
+          }
           // When Dify returns prose only, retain its explanation and append independently
           // verified fixture cards so the existing inline video renderer can display them.
           if (dailyReport && /<aifball-summary\b/i.test(dailyReport)) {
