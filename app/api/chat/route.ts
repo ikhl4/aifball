@@ -249,18 +249,20 @@ export async function POST(req: Request) {
     // Experimental ESPN path is isolated by default; ordinary questions continue to Dify.
     if (latestClub && (process.env.VERCEL_ENV !== 'production' || process.env.ENABLE_EXPERIMENTAL_ESPN_LATEST_MATCH === 'true')) {
       const answer = await espnLatestMatchAnswer(latestClub);
-      {
-        // Explicit match requests must not fall through to a long, ungrounded Dify answer.
-        const safeAnswer = answer ?? 'لم أجد مباراة مكتملة يمكن عرض نتيجتها بثقة ضمن مصادر البطولات التي فُحصت. هذا لا يعني أن النادي لم يلعب؛ قد تكون تغطية المصدر ناقصة أو غير متاحة الآن.';
+      if (answer) {
+        // Return only a completed match backed by an actual provider response.
         const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
         const events = [
-          { event: 'message', answer: safeAnswer, conversation_id },
+          { event: 'message', answer, conversation_id },
           { event: 'message_end', conversation_id },
         ];
         return new Response(events.map(event => 'event: ' + event.event + '\ndata: ' + JSON.stringify(event) + '\n\n').join(''), {
           headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform' },
         });
       }
+      // A missing ESPN/Render result is not evidence that no match exists.
+      // Allow the existing Dify source-discovery pipeline to try other providers.
+      console.warn('[AIFBALL_LATEST_MATCH_FALLBACK]', JSON.stringify({ club: latestClub, reason: 'provider_no_completed_match' }));
     }
     // Match artwork is built from independently verified provider data, not model-invented fixture rows.
     if (!hasImage && posterIntent(query)) {
@@ -374,7 +376,7 @@ export async function POST(req: Request) {
       /(?:برشلونة|barcelona|barça|barca)/i.test(query) ? 'برشلونة الإسباني (FC Barcelona)' : '';
     const clubIdentityRules = clubEntity ? `\nضبط هوية الكيان: المقصود حصراً ${clubEntity} لكرة القدم. لا تخلطه بمؤسسات تحمل الاسم نفسه مثل الهلال الأحمر المصري أو فرق أخرى. لا تستخدم صورة أو شعاراً إلا إذا أكد عنوان المصدر ووصف الصورة والنادي/الدولة تطابق الكيان؛ عند الشك احذف الصورة نهائياً. لا تعرض وسوم المكونات أو أسماءها التقنية أو رسائل تشخيص للمستخدم. إذا كان السؤال اسم النادي فقط، قدّم تعريفاً موجزاً بالنادي ولا تفترض أن المستخدم طلب أخباراً أو مباريات.\n` : '';
     const clubNewsIntentRules = clubNews ? `\nأولوية النية: سؤال «آخر أخبار» يعني أخباراً ومستجدات فعلية، وليس جدول مباريات. لا تجعل مواعيد المباريات عنوان الإجابة أو محتواها الرئيسي. إذا لم تتوفر أخبار موثقة، صرّح بذلك باختصار، ولا تعوضها بأخبار قديمة أو مواعيد فقط. لا تظهر اسم مكوّن تقني مثل aifball-club-news، ولا تُدرج صورة تعريفية غير مرتبطة مباشرة بالخبر.\n` : '';
-    const guidedQuery = baseQuery + OUTPUT_LANGUAGE_RULES + clubIdentityRules + clubNewsIntentRules + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + fixtureContext + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (!matchSummary && (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture) ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '');
+    const latestMatchSourceRules = latestClub ? `\nسؤال آخر مباراة مكتملة: ابحث أولاً في نتائج الفريق الأول بجميع البطولات للموسم الحالي عبر FotMob و365Scores وSofaScore ثم موقع البطولة أو النادي الرسمي. فشل ESPN أو Render وحده ليس دليلاً على عدم وجود مباراة. لا تعرض مباراة قديمة باعتبارها الأحدث دون مقارنة تواريخ النتائج المكتملة، ولا تخترع نتيجة أو تاريخاً. إذا تحققت من المباراة، ابدأ بالنتيجة ثم التاريخ والبطولة وملخص خفيف؛ لا تذكر الهدافين أو التفاصيل غير الموثقة إلا إذا طلبها المستخدم. إذا تعذر التحقق بعد البحث البديل، صرّح بذلك باختصار.\n` : '';\n    const guidedQuery = baseQuery + latestMatchSourceRules + OUTPUT_LANGUAGE_RULES + clubIdentityRules + clubNewsIntentRules + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + fixtureContext + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (!matchSummary && (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture) ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '');
 
     const difyStarted = performance.now();
     const apiRes = await fetch(url, {
