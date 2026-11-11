@@ -189,9 +189,13 @@ export function youtubeSearchEntries(data: any): YoutubeSearchEntry[] {
     const v = node.videoRenderer;
     if (/^[\w-]{11}$/.test(v?.videoId || '')) {
       const owner = v.ownerText?.runs?.[0]?.navigationEndpoint?.browseEndpoint;
-      const handle = handleOf('https://www.youtube.com' + (owner?.canonicalBaseUrl || ''));
+      const ownerRun = v.ownerText?.runs?.[0] || v.longBylineText?.runs?.[0] || v.shortBylineText?.runs?.[0];
+      const ownerBrowse = ownerRun?.navigationEndpoint?.browseEndpoint;
+      const ownerUrl = ownerRun?.navigationEndpoint?.commandMetadata?.webCommandMetadata?.url || '';
+      const canonical = owner?.canonicalBaseUrl || ownerBrowse?.canonicalBaseUrl || ownerUrl;
+      const handle = handleOf(canonical.startsWith('http') ? canonical : 'https://www.youtube.com' + canonical);
       entries.push({ id: v.videoId, title: text(v.title), channelId: String(owner?.browseId || ''),
-        handle, channelName: text(v.ownerText) || '', published: text(v.publishedTimeText) });
+        handle, channelName: text(v.ownerText) || text(v.longBylineText) || text(v.shortBylineText) || '', published: text(v.publishedTimeText) });
     }
     for (const child of Object.values(node)) {
       if (Array.isArray(child)) child.forEach(visit);
