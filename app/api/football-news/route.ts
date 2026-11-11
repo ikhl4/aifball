@@ -15,9 +15,9 @@ export async function GET(req: NextRequest) {
   }
   const category = (categoryParam || undefined) as NewsCategory | undefined;
   const sources = activeNewsSources(category);
-  const mode = req.nextUrl.searchParams.get('provider') || 'duckduckgo';
-  if (mode !== 'duckduckgo' && mode !== 'x') return NextResponse.json({ error: 'invalid_provider' }, { status: 400 });
-  if (mode === 'duckduckgo') {
+  const mode = req.nextUrl.searchParams.get('provider') || 'auto';
+  if (mode !== 'duckduckgo' && mode !== 'x' && mode !== 'auto') return NextResponse.json({ error: 'invalid_provider' }, { status: 400 });
+  if (mode === 'duckduckgo' || (mode === 'auto' && !process.env.X_BEARER_TOKEN?.trim())) {
     try {
       const { searchXNewsWithDuckDuckGo } = await import('../../../lib/duckduckgo-x-news');
       const result = await searchXNewsWithDuckDuckGo(sources);
@@ -46,13 +46,14 @@ export async function GET(req: NextRequest) {
     const users = new Map((payload.includes?.users || []).map(user => [user.id, user]));
     const media = new Map((payload.includes?.media || []).map(item => [item.media_key, item]));
     const allowed = new Set(sources.map(source => source.handle.toLowerCase()));
+    const cutoff = Date.now() - 72 * 60 * 60 * 1000;
     const posts = (payload.data || []).flatMap(post => {
       const user = users.get(post.author_id || '');
-      if (!user || !allowed.has(user.username.toLowerCase()) || !post.created_at) return [];
-      const images = (post.attachments?.media_keys || []).map(key => media.get(key)).filter((item): item is XMedia => Boolean(item)).map(item => item.url || item.preview_image_url).filter((value): value is string => Boolean(value));
+      if (!user || !allowed.has(user.username.toLowerCase()) || !post.created_at || !Number.isFinite(Date.parse(post.created_at)) || Date.parse(post.created_at) < cutoff || Date.parse(post.created_at) > Date.now() + 5 * 60 * 1000) return [];
+      const images = (post.attachments?.media_keys || []).map(key => media.get(key)).filter((item): item is XMedia => Boolean(item) && (item.type === 'photo' || item.type === 'video')).map(item => item.url || item.preview_image_url).filter((value): value is string => Boolean(value) && /^https:\/\//i.test(value));
       return [{ id: post.id, text: post.text, author: user.username, authorName: user.name || user.username, publishedAt: post.created_at, url: 'https://x.com/' + user.username + '/status/' + post.id, images, classification: 'unverified_report' as const }];
     }).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
-    return NextResponse.json({ status: 'ok', source: 'X', posts, accounts: sources.map(source => source.handle), note: 'Account posts are not necessarily official confirmations.' }, { headers: { 'Cache-Control': 'private, max-age=0, s-maxage=120' } });
+    return NextResponse.json({ status: 'ok', provider: 'x', source: 'X', windowHours: 72, posts, accounts: sources.map(source => source.handle), note: 'Account posts are not necessarily official confirmations.' }, { headers: { 'Cache-Control': 'private, max-age=0, s-maxage=120' } });
   } catch {
     return NextResponse.json({ status: 'upstream_unavailable', posts: [], message: 'X API could not be reached.' }, { status: 502, headers: { 'Cache-Control': 'no-store' } });
   }
