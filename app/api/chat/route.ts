@@ -103,12 +103,121 @@ const CLUB_NEWS_RULES = `
 9) مثال البنية المرئية (ليس خبراً حقيقياً): «عنوان الخبر» ثم «ملخص يشرح الحدث والتفاصيل الأساسية بلغة سهلة.» ثم «المصدر: [اسم الصحيفة](رابط مؤكد) · تاريخ مؤكد · تقرير». كرر لكل خبر دون جدول أو روابط خام.
 `;
 
+
+function latestClubMatchIntent(query: string): string | null {
+  const q = query.replace(/[؟?!.,،]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!/(?:آخر|اخر|أحدث|احدث|last|latest|recent)/i.test(q) ||
+      !/(?:مباراة|مباريات|لقاء|نتيجة|match|game|result)/i.test(q) ||
+      /(?:ملخص|تحليل|تشكيل|إحصائيات|احصائيات|فيديو|هدف|أهداف|اهداف|موعد|القادمة|القادم|next|highlights)/i.test(q)) return null;
+  const clubs: Array<[RegExp, string]> = [
+    [/(?:الاتحاد|الإتحاد|ittihad|al[ -]?ittihad)/i, 'al ittihad'],
+    [/(?:الهلال|hilal|al[ -]?hilal)/i, 'al hilal'],
+    [/(?:برشلونة|برشلونه|barcelona|barca|barça)/i, 'barcelona'],
+  ];
+  const found = clubs.filter(([pattern]) => pattern.test(q));
+  return found.length === 1 ? found[0][1] : null;
+}
+
+type LatestMatch = {
+  date_utc: string; competition: string; home_team: string; away_team: string;
+  home_score: number; away_score: number; verification: string; source: string;
+};
+
+function espnEventToMatch(event: any, competition: string, club: string): LatestMatch | null {
+  const fixture = event?.competitions?.[0];
+  const sides = fixture?.competitors;
+  if (!Array.isArray(sides) || sides.length !== 2) return null;
+  const home = sides.find((x: any) => x.homeAway === 'home');
+  const away = sides.find((x: any) => x.homeAway === 'away');
+  // ESPN may report completion on either the competition or event status.
+  // Never treat scheduled, postponed, or live fixtures as final results.
+  const completed = fixture?.status?.type?.completed === true || event?.status?.type?.completed === true;
+  if (!home || !away || !completed) return null;
+  const homeName = String(home.team?.displayName || home.team?.name || '');
+  const awayName = String(away.team?.displayName || away.team?.name || '');
+  const teamMatches = (side: any) => {
+    const names = [side.team?.displayName, side.team?.name, side.team?.shortDisplayName, side.team?.abbreviation]
+      .map((n: unknown) => String(n || '').toLowerCase());
+    return club === 'barcelona'
+      ? names.some(n => /barcelona|barça|barca/.test(n))
+      : club === 'al hilal'
+        ? names.some(n => /hilal/.test(n))
+        : names.some(n => /ittihad/.test(n));
+  };
+  if (!teamMatches(home) && !teamMatches(away)) return null;
+  const score = (side: any): number => Number(typeof side.score === 'object' ? side.score?.displayValue ?? side.score?.value : side.score);
+  const hs = score(home), as = score(away);
+  const date = String(event?.date || '');
+  if (!Number.isInteger(hs) || !Number.isInteger(as) || !/^\d{4}-\d{2}-\d{2}T/.test(date) ||
+      new Date(date).getTime() > Date.now()) return null;
+  return { date_utc: date, competition, home_team: homeName, away_team: awayName,
+    home_score: hs, away_score: as, verification: 'espn_only_unverified', source: 'ESPN scoreboard' };
+}
+
+async function espnLatestMatchAnswer(club: string): Promise<string | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6500);
+  try {
+    const leagues: Array<[string, string]> = club === 'barcelona'
+      ? [['esp.1', 'La Liga'], ['uefa.champions', 'UEFA Champions League'], ['esp.copa_del_rey', 'Copa del Rey']]
+      : [['ksa.1', 'Saudi Pro League'], ['afc.champions', 'AFC Champions League Elite'], ['ksa.kings.cup', 'King Cup'], ['fifa.cwc', 'FIFA Club World Cup']];
+    const end = new Date();
+    const begin = new Date(end.getTime() - 45 * 86400000);
+    const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
+    const results = await Promise.allSettled(leagues.map(async ([code, label]) => {
+      const url = new URL('https://site.api.espn.com/apis/site/v2/sports/soccer/' + code + '/scoreboard');
+      url.searchParams.set('dates', fmt(begin) + '-' + fmt(end));
+      url.searchParams.set('limit', '200');
+      const response = await fetch(url, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error('scoreboard_unavailable');
+      const data = await response.json();
+      if (!Array.isArray(data?.events)) throw new Error('scoreboard_invalid');
+      return data.events.map((event: any) => espnEventToMatch(event, label, club)).filter((m: LatestMatch | null): m is LatestMatch => m !== null);
+    }));
+    const matches = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    matches.sort((a, b) => Date.parse(b.date_utc) - Date.parse(a.date_utc));
+    const m = matches[0];
+    if (!m) return null;
+    const clubName = club === 'barcelona' ? 'برشلونة' : club === 'al ittihad' ? 'الاتحاد' : 'الهلال';
+    return [
+      '### آخر مباراة — ' + clubName,
+      '**' + m.home_team + ' ' + m.home_score + ' – ' + m.away_score + ' ' + m.away_team + '**',
+      '**البطولة:** ' + m.competition,
+      '**التاريخ (UTC):** ' + m.date_utc.slice(0, 10),
+      '**حالة المعلومة:** نتيجة منشورة في ESPN، ولم تُطابق بعد مع مصدر مستقل.',
+      'هذه آخر مباراة مكتملة وجدتها ضمن البطولات التي شملها البحث، وليست تأكيدًا على شمول جميع البطولات.',
+    ].join('\n\n');
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function POST(req: Request) {
   const requestStarted = performance.now();
   try {
     const body = await req.json();
     const hasImage = Array.isArray(body?.files) && body.files.some((file: { type?: string } | null) => file?.type === 'image');
     const query = (typeof body?.query === 'string' ? body.query.trim() : '') || (hasImage ? 'اقرأ الصورة المرفقة ووضح ما يظهر فيها.' : '');
+    // Direct, bounded ESPN lookup for explicit latest-match questions. Fallback to Dify on failure.
+    const latestClub = !hasImage ? latestClubMatchIntent(query) : null;
+    // Experimental ESPN path is isolated by default; ordinary questions continue to Dify.
+    if (latestClub && (process.env.VERCEL_ENV !== 'production' || process.env.ENABLE_EXPERIMENTAL_ESPN_LATEST_MATCH === 'true')) {
+      const answer = await espnLatestMatchAnswer(latestClub);
+      {
+        // Explicit match requests must not fall through to a long, ungrounded Dify answer.
+        const safeAnswer = answer ?? 'لم أجد مباراة مكتملة يمكن عرض نتيجتها بثقة ضمن مصادر البطولات التي فُحصت. هذا لا يعني أن النادي لم يلعب؛ قد تكون تغطية المصدر ناقصة أو غير متاحة الآن.';
+        const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
+        const events = [
+          { event: 'message', answer: safeAnswer, conversation_id },
+          { event: 'message_end', conversation_id },
+        ];
+        return new Response(events.map(event => 'event: ' + event.event + '\ndata: ' + JSON.stringify(event) + '\n\n').join(''), {
+          headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform' },
+        });
+      }
+    }
     // Match artwork is built from independently verified provider data, not model-invented fixture rows.
     if (!hasImage && posterIntent(query)) {
       const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
@@ -215,7 +324,13 @@ export async function POST(req: Request) {
     const gameStart = /اختبرني|تحد[ىي] الثلاثين|تحد[ىي] 30|لغز|لعبة من اللاعب|quiz/i.test(query);
     const gameRules = `إذا طلب المستخدم لعبة كروية أو كانت المحادثة في جولة لعبة نشطة، العب داخل الشات. في لغز اللاعب اختر جواباً موثقاً وقدّم قرائن عن أنديته أو زملائه دون كشفه. اقبل الأسماء المكافئة، وأعط تلميحاً واحداً عند الخطأ. في الاختبار أو تحدي الثلاثين اسأل سؤالاً واحداً كل مرة، سجّل النقاط واذكرها بعد الإجابة. لا تدّع وجود مؤقت فعلي. حافظ على نوع اللعبة والنقاط من سياق المحادثة، وأنهِ الجولة عند طلب المستخدم. إذا انتهت اللعبة أو غيّر الموضوع، أجب كالمعتاد.\n`;
     const OUTPUT_LANGUAGE_RULES = '\nبروتوكول اللغة: اتبع طلب اللغة الصريح أولاً، وإلا لغة السؤال الحالي، وإلا سياق المحادثة، وإلا العربية. الأسماء الأجنبية لا تغيّر لغة الرد. إذا أخرجت aifball-standings فاستخدم lang=\"ar\" أو lang=\"en\" بحسب لغة الرد؛ لا تضف lang لوسم آخر. لا تختلق إحصائيات أو روابط أو ألقاب. إذا تعذّر المكوّن لكن البيانات موثقة، استخدم جدول Markdown دون تكرار.\n';
-    const guidedQuery = baseQuery + OUTPUT_LANGUAGE_RULES + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + fixtureContext + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (!matchSummary && (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture) ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '');
+    // Entity identity and intent quality guardrails for club-news and club-profile queries.
+    const clubEntity = /(?:الهلال|al[ -]?hilal|alhilal)/i.test(query) ? 'الهلال السعودي (Al Hilal SFC)' :
+      /(?:الاتحاد|الإتحاد|al[ -]?ittihad)/i.test(query) ? 'الاتحاد السعودي (Al Ittihad Club)' :
+      /(?:برشلونة|barcelona|barça|barca)/i.test(query) ? 'برشلونة الإسباني (FC Barcelona)' : '';
+    const clubIdentityRules = clubEntity ? `\nضبط هوية الكيان: المقصود حصراً ${clubEntity} لكرة القدم. لا تخلطه بمؤسسات تحمل الاسم نفسه مثل الهلال الأحمر المصري أو فرق أخرى. لا تستخدم صورة أو شعاراً إلا إذا أكد عنوان المصدر ووصف الصورة والنادي/الدولة تطابق الكيان؛ عند الشك احذف الصورة نهائياً. لا تعرض وسوم المكونات أو أسماءها التقنية أو رسائل تشخيص للمستخدم. إذا كان السؤال اسم النادي فقط، قدّم تعريفاً موجزاً بالنادي ولا تفترض أن المستخدم طلب أخباراً أو مباريات.\n` : '';
+    const clubNewsIntentRules = clubNews ? `\nأولوية النية: سؤال «آخر أخبار» يعني أخباراً ومستجدات فعلية، وليس جدول مباريات. لا تجعل مواعيد المباريات عنوان الإجابة أو محتواها الرئيسي. إذا لم تتوفر أخبار موثقة، صرّح بذلك باختصار، ولا تعوضها بأخبار قديمة أو مواعيد فقط. لا تظهر اسم مكوّن تقني مثل aifball-club-news، ولا تُدرج صورة تعريفية غير مرتبطة مباشرة بالخبر.\n` : '';
+    const guidedQuery = baseQuery + OUTPUT_LANGUAGE_RULES + clubIdentityRules + clubNewsIntentRules + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + fixtureContext + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (!matchSummary && (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture) ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '');
 
     const difyStarted = performance.now();
     const apiRes = await fetch(url, {
