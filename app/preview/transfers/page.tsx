@@ -5,8 +5,16 @@ import ConfirmedSummerDeals from '../../components/ConfirmedSummerDeals';
 
 type Hit = { title: string; url: string; snippet: string; source: string };
 type Story = Hit & { section: string; league: string; id: string };
-type Section = 'winter' | 'summer' | 'clubs';
+type Section = 'winter' | 'summer' | 'clubs' | 'contracts';
+const contractHighlights=[
+ {name:'رافينيا',club:'برشلونة',summary:'جدّد عقده حتى 30 يونيو 2030.',status:'رسمي',url:'https://www.fcbarcelona.com/en/football/first-team/news/4604888/raphinha-staying-at-fc-barcelona-until-2030'},
+ {name:'فرينكي دي يونغ',club:'برشلونة',summary:'موعد نهاية عقده المتداول 30 يونيو 2029؛ ليس من عقود يناير 2027 المنتهية.',status:'بحسب بيانات اللاعبين',url:'https://www.soccerway.com/player/de-jong-frenkie/A1F3rz9c/'},
+ {name:'كريستيانو رونالدو',club:'النصر',summary:'تقارير تشير إلى انتهاء عقده في صيف 2027؛ تجديده أو رحيله غير محسوم.',status:'تقرير صحفي',url:'https://worldsoccertalk.com/amp/news/cristiano-ronaldo-and-joao-felix-among-four-al-nassr-players-entering-final-six-months-of-contracts-in-january/'},
+ {name:'جواو فيليكس',club:'النصر',summary:'تقارير تشير إلى عقد حتى صيف 2027 وحديث عن مفاوضات للتجديد، دون إعلان نهائي.',status:'تقرير صحفي',url:'https://worldsoccertalk.com/amp/news/cristiano-ronaldo-and-joao-felix-among-four-al-nassr-players-entering-final-six-months-of-contracts-in-january/'},
+ {name:'ساديو ماني',club:'النصر',summary:'تقارير تضع نهاية عقده في يونيو 2027، ولا يوجد تجديد رسمي مؤكد في المصدر.',status:'تقرير صحفي',url:'https://worldsoccertalk.com/amp/news/cristiano-ronaldo-and-joao-felix-among-four-al-nassr-players-entering-final-six-months-of-contracts-in-january/'}
+];
 const sections: Record<Section, { label: string; intro: string; topics: { title: string; league: string; q: string }[] }> = {
+ contracts: {label:'نهاية عقود أبرز اللاعبين',intro:'آخر تطورات العقود والتجديدات قبل يناير، مع تمييز الرسمي عن التقارير.',topics:[]},
  winter: { label: 'يناير 2027', intro: 'أسماء اللاعبين المرتبطين بالأندية وأبرز تحركات سوق الشتاء القادم.', topics: [
   {title:'برشلونة',league:'الإسباني',q:'Barcelona January 2027 transfer rumours news'},
   {title:'ريال مدريد',league:'الإسباني',q:'Real Madrid January 2027 transfer rumours'},
@@ -51,7 +59,7 @@ export default function TransfersPreview(){
  const [failed,setFailed]=useState(0);
  const [refresh,setRefresh]=useState(0);
  useEffect(()=>{
-  if(section==='summer'){setStories([]);setLoading(false);return;}
+  if(section==='summer'||section==='contracts'){setStories([]);setLoading(false);return;}
   const controller=new AbortController();
   const timer=setTimeout(async()=>{
    setLoading(true);setStories([]);setFailed(0);
@@ -91,10 +99,10 @@ export default function TransfersPreview(){
     <h1 className="text-3xl sm:text-5xl font-black mt-3 leading-tight">سوق الانتقالات، <span className="text-lime-300">بصورة أشمل.</span></h1>
     <p className="mt-3 text-emerald-100/75 max-w-2xl text-sm sm:text-base leading-8">ملفات الأندية، أبرز صفقات الصيف، واستعدادات يناير. أبرز أسماء اللاعبين وأخبار الأندية في سوق الانتقالات.</p>
    </div>
-   <nav aria-label="أقسام الانتقالات" className="grid grid-cols-3 gap-2 mb-6">
+   <nav aria-label="أقسام الانتقالات" className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
     {(Object.keys(sections) as Section[]).map(key=><button key={key} onClick={()=>switchSection(key)} className={'rounded-xl border px-2 py-3 font-bold text-xs sm:text-base '+(section===key?'bg-lime-300 text-emerald-950 border-lime-300':'bg-emerald-950/60 border-white/15 text-white')}>{sections[key].label}</button>)}
    </nav>
-   {section === "summer" ? <ConfirmedSummerDeals /> : <section className="rounded-2xl bg-emerald-900/30 border border-emerald-300/15 p-4 sm:p-6 mb-6">
+   {section === "summer" ? <ConfirmedSummerDeals /> : section === "contracts" ? <section className="grid gap-3 sm:grid-cols-2">{contractHighlights.map(item=><article key={item.name} className="rounded-2xl border border-emerald-300/20 bg-[#10231a] p-4"><div className="flex items-center justify-between gap-2"><strong className="text-lg">{item.name}</strong><span className="text-xs text-lime-300">{item.status}</span></div><p className="text-xs text-emerald-200 mt-1">{item.club}</p><p className="mt-3 text-sm leading-7">{item.summary}</p><a href={item.url} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-300 underline inline-block mt-3">تفاصيل الخبر</a></article>)}</section> : <section className="rounded-2xl bg-emerald-900/30 border border-emerald-300/15 p-4 sm:p-6 mb-6">
     <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
      <div><h2 className="text-xl sm:text-2xl font-black">{sections[section].label}</h2><p className="text-sm text-emerald-100/70 mt-1">{sections[section].intro}</p></div>
      <button className="rounded-lg border border-emerald-300/40 px-3 py-2 text-sm text-emerald-200" onClick={()=>{setPage(1);setRefresh(n=>n+1);}}>تحديث النتائج</button>
@@ -104,12 +112,12 @@ export default function TransfersPreview(){
     <div className="flex gap-2 overflow-x-auto py-4" aria-label="فلترة حسب الدوري">{leagues.map(item=><button key={item} onClick={()=>{setLeague(item);setPage(1);}} className={'shrink-0 rounded-full border px-3 py-1.5 text-xs '+(league===item?'bg-emerald-300 text-emerald-950 border-emerald-300':'border-white/20 text-emerald-100')}>{item}</button>)}</div>
     <div className="flex flex-wrap justify-between gap-2 text-xs text-emerald-100/65"><span>{loading?'جارٍ تحديث الأخبار...':filtered.length+' خبر'}</span></div>
    </section>}
-   {section !== "summer" && <section aria-live="polite">
+   {section !== "summer" && section !== "contracts" && <section aria-live="polite">
     {loading?<div className="rounded-xl border border-white/10 p-10 text-center">جارٍ جلب نتائج الانتقالات…</div>:shown.length?<div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
      {shown.map((story,index)=><article key={story.id} className="rounded-2xl border border-emerald-300/15 bg-[#10231a] p-4 sm:p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2"><span className="text-xs text-lime-300 font-bold">{story.section}</span><span className="text-xs text-emerald-100/60">{story.league}</span></div>
-      <h3 className="text-base sm:text-lg font-bold leading-8 break-words" dir="auto">{story.title}</h3>
-      <p className="text-xs text-amber-200/90">تقرير انتقالات</p>
+      <h3 className="text-base sm:text-lg font-bold leading-8 break-words" dir="auto">• {story.title}</h3>
+      <p className="text-xs text-amber-200/90">خبر أو تقرير صحفي · ليس إعلان انتقال رسمي</p>
       <a href={story.url} target="_blank" rel="noopener noreferrer" className="mt-auto text-sm text-emerald-300 font-bold underline underline-offset-4">قراءة الخبر ↗</a>
      </article>)}
     </div>:<div className="rounded-xl border border-white/10 p-8 text-center text-emerald-100/80">لا توجد أخبار متاحة لهذا القسم حالياً.</div>}
