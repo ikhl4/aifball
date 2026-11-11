@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       'Premier League La Liga Serie A Bundesliga Ligue 1 football',
       'UEFA Champions League AFC Champions League football'
     ];
-    const decode = (value: string) => value.replace(/<!\\[CDATA\\[|\\]\\]>/g, '').replace(/<[^>]*>/g, ' ').replace(/&(?:amp|lt|gt|quot|apos|#39);/g, m => ({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&apos;':"'",'&#39;':"'"}[m] || m)).replace(/\\s+/g,' ').trim();
+    const decode = (value: string) => value.replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
     const feeds = await Promise.allSettled(topics.map(async topic => {
       const url = 'https://news.google.com/rss/search?q=' + encodeURIComponent(topic + ' when:1d') + '&hl=en-US&gl=US&ceid=US:en';
       const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8500), headers: { Accept: 'application/rss+xml,application/xml' } });
@@ -33,7 +33,9 @@ export async function GET(req: NextRequest) {
         const item = match[1];
         const field = (name: string) => item.match(new RegExp('<' + name + '(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)<\\\\/' + name + '>', 'i'))?.[1] || '';
         const title = decode(field('title'));
-        const publishedAt = new Date(decode(field('pubDate'))).toISOString();
+        const date = Date.parse(decode(field('pubDate')));
+        if (!Number.isFinite(date)) return [];
+        const publishedAt = new Date(date).toISOString();
         const link = decode(field('link'));
         const publisher = decode(field('source')) || 'Google News';
         if (!title || !/^https:\/\/news\.google\.com\//.test(link) || !Number.isFinite(Date.parse(publishedAt))) return [];
