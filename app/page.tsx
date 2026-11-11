@@ -1523,7 +1523,7 @@ export default function FootPlayChat() {
           : 'bg-white text-black'
       }`}
     >
-      {/* خطوط ملعب SVG مرسومة مباشرة، بدون صورة أو طبقة شفافة */}
+      {/* خطوط ملعب خفيفة مباشرة على الخلفية؛ بلا صورة أو إطار جانبي */}
       <div aria-hidden="true" className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <svg
           className="absolute inset-0 h-full w-full"
@@ -1531,19 +1531,12 @@ export default function FootPlayChat() {
           preserveAspectRatio="xMidYMid slice"
           fill="none"
           stroke={isDarkMode ? '#ffffff' : '#15803d'}
-          strokeWidth="1.35"
-          strokeOpacity={isDarkMode ? 0.24 : 0.14}
+          strokeWidth="1.2"
+          strokeOpacity={isDarkMode ? 0.11 : 0.08}
         >
-          <rect x="18" y="18" width="354" height="808" rx="1" />
-          <path d="M18 422H372" />
-          <circle cx="195" cy="422" r="65" />
-          <circle cx="195" cy="422" r="2.5" fill={isDarkMode ? '#ffffff' : '#15803d'} stroke="none" />
-          <rect x="88" y="18" width="214" height="112" />
-          <rect x="145" y="18" width="100" height="48" />
-          <path d="M145 130A65 65 0 0 0 245 130" />
-          <rect x="88" y="714" width="214" height="112" />
-          <rect x="145" y="778" width="100" height="48" />
-          <path d="M145 714A65 65 0 0 1 245 714" />
+          {/* خط منتصف الملعب وقوس الدائرة في المساحة العليا بعيداً عن بطاقات الأسئلة */}
+          <path d="M0 290H390" />
+          <path d="M132 290A63 63 0 0 0 258 290" />
         </svg>
       </div>
 
