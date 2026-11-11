@@ -1,5 +1,5 @@
 'use client';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import TacticalLesson from '../components/TacticalLesson';
 import { categories, drills, type Drill } from '../../lib/academy/drills';
@@ -64,6 +64,24 @@ export default function AcademyPage() {
     ]
   };
   const dailyPlan=(agePlans[ageGroup] || agePlans.U19)[trainingDay];
+  type SavedSession={name:string;age:string;day:number;players:number;duration:number;exercises:[string,number,string][];savedAt:string};
+  const [players,setPlayers]=useState(16);
+  const [duration,setDuration]=useState(60);
+  const [sessionName,setSessionName]=useState('');
+  const [editedExercises,setEditedExercises]=useState<[string,number,string][]>([]);
+  const [savedSessions,setSavedSessions]=useState<SavedSession[]>([]);
+  const [saveMessage,setSaveMessage]=useState('');
+  useEffect(()=>{try{const raw=localStorage.getItem('aifball-academy-sessions-v2');if(raw){const parsed:unknown=JSON.parse(raw);if(Array.isArray(parsed))setSavedSessions(parsed as SavedSession[]);}}catch{}},[]);
+  useEffect(()=>{setEditedExercises(dailyPlan.exercises.map(([title,minutes,note])=>[title,minutes,note]));setSessionName('حصة اليوم '+(trainingDay+1)+' — '+dailyPlan.title);setSaveMessage('');},[ageGroup,trainingDay]);
+  const totalExerciseMinutes=editedExercises.reduce((sum,e)=>sum+e[1],0);
+  const saveSchedule=()=>{
+    const item:SavedSession={name:sessionName.trim()||dailyPlan.title,age:ageGroup,day:trainingDay,players,duration,exercises:editedExercises.map(e=>[...e] as [string,number,string]),savedAt:new Date().toISOString()};
+    const next=[item,...savedSessions].slice(0,30);
+    try{localStorage.setItem('aifball-academy-sessions-v2',JSON.stringify(next));setSavedSessions(next);setSaveMessage('تم حفظ الحصة على هذا الجهاز.');}
+    catch{setSaveMessage('تعذر الحفظ في هذا المتصفح.');}
+  };
+  const loadSchedule=(item:SavedSession)=>{setAgeGroup(item.age);setTrainingDay(item.day);setPlayers(item.players);setDuration(item.duration);setTimeout(()=>{setEditedExercises(item.exercises.map(e=>[...e] as [string,number,string]));setSessionName(item.name);},0);setSaveMessage('تم فتح الحصة المحفوظة.');};
+
   const filtered=useMemo(()=>drills.filter(d=>(category==='الكل'||d.category===category)&&[d.title,d.objective,d.category].some(x=>x.includes(query.trim()))),[category,query]);
   return <main dir="rtl" className="min-h-screen bg-emerald-950 text-white px-4 py-8 sm:px-8" style={{fontFamily:"'Cairo', sans-serif"}}>
     <div className="mx-auto max-w-5xl">
@@ -91,12 +109,24 @@ export default function AcademyPage() {
       {selected&&<div className="fixed inset-0 z-50 bg-black/80 p-3 sm:p-8 flex items-center justify-center" onClick={()=>setSelected(null)}><section role="dialog" aria-modal="true" aria-labelledby="drill-title" onClick={e=>e.stopPropagation()} className="max-h-[90vh] overflow-y-auto w-full max-w-2xl rounded-2xl border border-emerald-400/40 bg-emerald-950 p-5 sm:p-7"><div className="flex justify-between gap-3 mb-4"><h2 id="drill-title" className="text-xl font-bold">{selected.title}</h2><button type="button" onClick={()=>setSelected(null)} aria-label="إغلاق التفاصيل" className="rounded-lg border px-3 py-1">إغلاق</button></div><Pitch drill={selected}/><p className="mt-4 text-emerald-200">{selected.category} · {selected.age} · {selected.minutes} دقيقة · {selected.minPlayers}–{selected.maxPlayers} لاعباً</p><button type="button" disabled={sessionIds.includes(selected.id)} onClick={()=>addToSession(selected.id)} className="mt-4 w-full rounded-xl bg-emerald-600 px-4 py-3 font-bold disabled:bg-emerald-900 disabled:text-emerald-200">{sessionIds.includes(selected.id)?'مضاف إلى حقيبتي ✓':'أضف إلى حقيبتي التدريبية +'}</button><h3 className="font-bold mt-5">الهدف</h3><p>{selected.objective}</p><h3 className="font-bold mt-4">التجهيز والأدوات</h3><p>{selected.setup}</p><h3 className="font-bold mt-4">طريقة التنفيذ</h3><ol className="list-decimal list-inside space-y-2 mt-2">{selected.steps.map((s,i)=><li key={i}>{s}</li>)}</ol><h3 className="font-bold mt-4">توجيهات المدرب</h3><ul className="list-disc list-inside">{selected.tips.map((t,i)=><li key={i}>{t}</li>)}</ul><h3 className="font-bold mt-4">تطوير التمرين</h3><p>{selected.progression}</p><h3 className="font-bold mt-4">قبل التمرين</h3><p>جهّز الأدوات والمساحة، ووضّح القواعد والأدوار، وتأكد من جاهزية اللاعبين.</p><h3 className="font-bold mt-4">بعد التمرين</h3><p>ناقش ملاحظات التنفيذ مع اللاعبين، وامنحهم وقتاً مناسباً للتعافي قبل النشاط التالي.</p><p className="text-xs text-emerald-300 mt-5">الرسم تخطيطي عام للتوضيح، وليس توزيعاً دقيقاً للاعبين في التمرين.</p></section></div>}
       </> : section==='schedule' ? <section aria-label="جدول التمارين" className="rounded-2xl border border-emerald-400/30 bg-emerald-900/40 p-4 sm:p-6">
         <h2 className="text-xl font-bold mb-2">جدول التمارين</h2><p className="text-sm text-emerald-200 mb-4">اختر الفئة السنية واليوم. هذه أمثلة تعليمية قابلة للتعديل وليست برنامج أحمال معتمداً.</p>
-        <label htmlFor="academy-age" className="block text-sm mb-2">الفئة السنية</label>
-        <select id="academy-age" value={ageGroup} onChange={e=>setAgeGroup(e.target.value)} className="w-full sm:w-64 rounded-xl bg-white text-emerald-950 p-3 mb-4">{['U9','U12','U15','U17','U19','الفريق الأول'].map(a=><option key={a} value={a}>{a==='الفريق الأول'?a:'تحت '+a.slice(1)+' سنة'}</option>)}</select>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          <div><label htmlFor="academy-age" className="block text-sm mb-2">الفئة السنية</label><select id="academy-age" value={ageGroup} onChange={e=>setAgeGroup(e.target.value)} className="w-full rounded-xl bg-white text-emerald-950 p-3">{['U9','U12','U15','U17','U19','الفريق الأول'].map(a=><option key={a} value={a}>{a==='الفريق الأول'?a:'تحت '+a.slice(1)+' سنة'}</option>)}</select></div>
+          <div><label htmlFor="academy-players" className="block text-sm mb-2">عدد اللاعبين</label><input id="academy-players" type="number" min="4" max="40" value={players} onChange={e=>setPlayers(Math.max(4,Math.min(40,Number(e.target.value)||4)))} className="w-full rounded-xl bg-white text-emerald-950 p-3"/></div>
+          <div><label htmlFor="academy-duration" className="block text-sm mb-2">مدة الحصة (دقيقة)</label><input id="academy-duration" type="number" min="20" max="120" value={duration} onChange={e=>setDuration(Math.max(20,Math.min(120,Number(e.target.value)||20)))} className="w-full rounded-xl bg-white text-emerald-950 p-3"/></div>
+        </div>
         <div className="grid grid-cols-5 gap-1 sm:gap-2 mb-5">{(agePlans[ageGroup] || agePlans.U19).map((plan,i)=><button key={i} type="button" onClick={()=>setTrainingDay(i)} aria-pressed={trainingDay===i} className={`rounded-lg border px-1 py-3 text-xs sm:text-sm ${trainingDay===i?'bg-emerald-600 border-emerald-300':'border-white/20'}`}>اليوم {i+1}</button>)}</div>
         <h3 className="font-bold mb-3">اليوم {trainingDay+1} — {dailyPlan.title}</h3>
-        <p className="text-sm text-emerald-200 mb-3">المدة المقترحة: {dailyPlan.exercises.reduce((sum,item)=>sum+item[1],0)} دقيقة، مع فترات راحة حسب جاهزية اللاعبين.</p>
-        <div className="space-y-2">{dailyPlan.exercises.map(([title,minutes,note],i)=><div key={i} className="rounded-xl border border-white/15 p-3"><div className="flex justify-between gap-2"><p className="font-bold">{i+1}. {title}</p><span className="shrink-0 text-emerald-200 text-sm">{minutes} دقيقة</span></div><p className="text-xs text-emerald-200 mt-1">{note}</p></div>)}</div>
+        <label htmlFor="academy-session-name" className="block text-sm mb-2">اسم الحصة</label>
+        <input id="academy-session-name" value={sessionName} onChange={e=>setSessionName(e.target.value)} className="w-full rounded-xl bg-white text-emerald-950 p-3 mb-4"/>
+        <div className="space-y-2">{editedExercises.map(([title,minutes,note],i)=><div key={i} className="rounded-xl border border-white/15 p-3">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_110px] gap-2"><input aria-label={'اسم التمرين '+(i+1)} value={title} onChange={e=>setEditedExercises(prev=>prev.map((x,j)=>i===j?[e.target.value,x[1],x[2]]:x))} className="rounded-lg bg-white text-emerald-950 p-2"/><div><label className="sr-only" htmlFor={'exercise-minutes-'+i}>دقائق التمرين</label><input id={'exercise-minutes-'+i} type="number" min="1" max="90" value={minutes} onChange={e=>setEditedExercises(prev=>prev.map((x,j)=>i===j?[x[0],Math.max(1,Math.min(90,Number(e.target.value)||1)),x[2]]:x))} className="w-full rounded-lg bg-white text-emerald-950 p-2"/></div></div>
+          <input aria-label={'ملاحظات التمرين '+(i+1)} value={note} onChange={e=>setEditedExercises(prev=>prev.map((x,j)=>i===j?[x[0],x[1],e.target.value]:x))} className="w-full mt-2 rounded-lg bg-white text-emerald-950 p-2"/>
+          <button type="button" onClick={()=>setEditedExercises(prev=>prev.filter((_,j)=>j!==i))} className="text-xs text-red-200 mt-2">حذف التمرين</button>
+        </div>)}</div>
+        <div className="flex flex-wrap gap-2 mt-3"><button type="button" onClick={()=>setEditedExercises(prev=>[...prev,['تمرين جديد',10,'ملاحظات المدرب']])} className="rounded-lg border border-emerald-300 px-4 py-2">+ إضافة تمرين</button><button type="button" onClick={saveSchedule} className="rounded-lg bg-emerald-600 px-4 py-2 font-bold">حفظ الحصة</button></div>
+        <p className="text-sm text-emerald-200 mt-3">إجمالي التمارين: {totalExerciseMinutes} دقيقة من أصل {duration} دقيقة محددة للحصة{totalExerciseMinutes>duration?' — تجاوزت المدة المحددة':''}.</p>
+        {saveMessage&&<p role="status" className="text-emerald-200 mt-2">{saveMessage}</p>}
+        {savedSessions.length>0&&<div className="mt-5 border-t border-white/20 pt-4"><h3 className="font-bold mb-2">حصصي المحفوظة على هذا الجهاز</h3><div className="space-y-2">{savedSessions.map((item,i)=><div key={i} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/20 p-2"><span className="text-sm">{item.name} · {item.age} · {item.exercises.length} تمارين</span><div className="flex gap-2"><button type="button" onClick={()=>loadSchedule(item)} className="rounded-lg bg-emerald-700 px-3 py-1 text-sm">فتح</button><button type="button" onClick={()=>{const next=savedSessions.filter((_,j)=>i!==j);try{localStorage.setItem('aifball-academy-sessions-v2',JSON.stringify(next));setSavedSessions(next);}catch{setSaveMessage('تعذر حذف الحصة.');}}} className="rounded-lg border border-red-300/40 px-3 py-1 text-sm">حذف</button></div></div>)}</div></div>}
         <p className="text-xs text-emerald-200 mt-4">هذه خطط توضيحية مختلفة بحسب العمر واليوم وليست توصية بحمل تدريبي يومي متتالٍ؛ عدّل الشدة والراحة بحسب جدول المباريات وحالة اللاعبين.</p>
       </section> : <section aria-label="التمارين التفاعلية" className="rounded-2xl border border-emerald-400/30 bg-emerald-900/30 p-2 sm:p-4"><h2 className="text-xl font-bold mb-2">السبورة التفاعلية</h2><p className="text-sm text-emerald-100 mb-3">اختر التمرين، ثم أضف اللاعبين وحرّكهم وشغّل المراحل.</p><TacticalLesson name="" isDark trainingFirst={false}/></section>}
     </div>
