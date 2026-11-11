@@ -1,4 +1,4 @@
-export type LessonId = 'build-up' | 'counterpress' | 'rondo' | 'third-man' | 'switch-play' | 'finishing' | 'wide-attack' | 'mid-block' | 'transition' | 'high-press' | 'corners' | 'goalkeeping';
+export type LessonId = 'rondo-4v1' | 'possession-6v6' | 'third-man-combo' | 'switch-under-pressure' | 'press-backpass' | 'press-wide-trap' | 'counter-3v2' | 'defensive-recovery' | 'finish-through-ball' | 'finish-cutback' | 'build-up' | 'counterpress' | 'rondo' | 'third-man' | 'switch-play' | 'finishing' | 'wide-attack' | 'mid-block' | 'transition' | 'high-press' | 'corners' | 'goalkeeping';
 export const LESSON_CATEGORIES = ['بناء اللعب', 'التمرير والاستحواذ', 'الضغط', 'الدفاع', 'الإنهاء', 'الأطراف', 'التحولات', 'الكرات الثابتة', 'حراسة المرمى'] as const;
 export type LessonCategory = typeof LESSON_CATEGORIES[number];
 export type BoardPlayer = { id: string; number: string; side: 'team' | 'opponent'; x: number; y: number; role: string };
@@ -2715,6 +2715,115 @@ export const TACTICAL_LESSONS: Record<LessonId, TacticalLessonData> = {
   }
 },
 };
+
+// Additional authored AiFBall academy scenarios. FIFA references are related reading, not claims of identical drills.
+const ACADEMY_INTERACTIVE_SEEDS = [
+  {
+    "id": "rondo-4v1",
+    "title": "روندو 4 ضد 1",
+    "category": "التمرير والاستحواذ",
+    "base": "rondo",
+    "objective": "التمرير السريع وخلق زوايا دعم",
+    "reference": "https://www.fifatrainingcentre.com/en/practice/talent-coach-programme/secure-possession/3v1-rondo-fast-readjustments.php"
+  },
+  {
+    "id": "possession-6v6",
+    "title": "استحواذ 6 ضد 6",
+    "category": "التمرير والاستحواذ",
+    "base": "rondo",
+    "objective": "توسيع الملعب مع وجود لاعبين محايدين",
+    "reference": null
+  },
+  {
+    "id": "third-man-combo",
+    "title": "الربط عبر اللاعب الثالث",
+    "category": "التمرير والاستحواذ",
+    "base": "third-man",
+    "objective": "استغلال اللاعب الثالث لكسر خط ضغط",
+    "reference": null
+  },
+  {
+    "id": "switch-under-pressure",
+    "title": "تغيير جهة اللعب تحت الضغط",
+    "category": "التمرير والاستحواذ",
+    "base": "switch-play",
+    "objective": "نقل الكرة للطرف البعيد عند ازدحام جهة",
+    "reference": "https://www.fifatrainingcentre.com/en/practice/elite-sessions/in-possession/switching_play.php"
+  },
+  {
+    "id": "press-backpass",
+    "title": "الضغط عند التمريرة الخلفية",
+    "category": "الضغط",
+    "base": "high-press",
+    "objective": "تنسيق الضغط بعد تمريرة للخلف",
+    "reference": null
+  },
+  {
+    "id": "press-wide-trap",
+    "title": "مصيدة الضغط على الطرف",
+    "category": "الضغط",
+    "base": "high-press",
+    "objective": "إغلاق خيارات التمرير قرب خط التماس",
+    "reference": null
+  },
+  {
+    "id": "counter-3v2",
+    "title": "هجوم مرتد 3 ضد 2",
+    "category": "التحولات",
+    "base": "transition",
+    "objective": "استغلال التفوق العددي فور افتكاك الكرة",
+    "reference": null
+  },
+  {
+    "id": "defensive-recovery",
+    "title": "العودة الدفاعية بعد الفقد",
+    "category": "الدفاع",
+    "base": "mid-block",
+    "objective": "حماية العمق والعودة خلف الكرة",
+    "reference": null
+  },
+  {
+    "id": "finish-through-ball",
+    "title": "إنهاء من كرة بينية",
+    "category": "الإنهاء",
+    "base": "finishing",
+    "objective": "توقيت انطلاق المهاجم خلف المدافعين",
+    "reference": null
+  },
+  {
+    "id": "finish-cutback",
+    "title": "إنهاء من تمريرة عكسية",
+    "category": "الإنهاء",
+    "base": "wide-attack",
+    "objective": "استغلال المساحة خلف خط الدفاع بتمريرة للخلف",
+    "reference": null
+  }
+] as const;
+for (const seed of ACADEMY_INTERACTIVE_SEEDS) {
+  const source = TACTICAL_LESSONS[seed.base as LessonId];
+  const frames = source.frames.map((frame,index)=>({
+    ...frame,
+    title: `${index+1}. ${index===0?'التمركز الأولي':index===source.frames.length-1?'التطبيق والقرار':'التحرك والتمرير'} — ${seed.title}`,
+    instruction: index===0 ? `وزّع اللاعبين وحدد الأدوار قبل بدء تمرين ${seed.title}. ${seed.objective}.` : `${frame.instruction} ركّز على: ${seed.objective}.`,
+    players: frame.players.map(p=>({...p})),
+    arrows: frame.arrows.map(a=>({...a})),
+    ball: [...frame.ball] as [number,number]
+  }));
+  TACTICAL_LESSONS[seed.id as LessonId] = {
+    ...source,
+    id: seed.id as LessonId,
+    title: seed.title,
+    query: seed.title,
+    aliases: [seed.title],
+    category: seed.category as LessonCategory,
+    intro: `سيناريو تدريبي تفاعلي من إعداد فوتبلاي لتطبيق ${seed.title}.`,
+    objective: seed.objective,
+    frames,
+    coaching: [...source.coaching,`راقب تحقيق الهدف: ${seed.objective}.`],
+    reference: seed.reference ? {title:'FIFA Training Centre — مادة تعليمية ذات صلة',url:seed.reference} : source.reference
+  };
+}
+
 export const LESSON_CHOICES = Object.values(TACTICAL_LESSONS);
 const normalized = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f\u064b-\u065f\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[?!؟،.,]/g,'').replace(/\s+/g,' ').trim();
 export function lessonByName(name: string): LessonId | null {
