@@ -5,6 +5,7 @@ import { posterIntent } from '../../../lib/match-card-data';
 import { buildSingleMatchHighlights } from '../../../lib/single-match-highlights';
 import { historyMode, FOOTBALL_HISTORY_RULES, DOCUMENTARY_REQUEST_RULES, presentHistoryAnswer } from '../../../lib/football-history';
 import { groundedMatchStream } from '../../../lib/grounded-match-answer';
+import { requestedTeam, latestVerifiedMatch, latestMatchText } from '../../../lib/latest-match';
 import { NextResponse } from 'next/server';
 import { isDetailedMatchQuery, withMatchReportPresentation, withMatchConversationContext } from '../../../lib/match-report-prompt';
 import { isAnalysisRequest } from '../../../lib/analysis-story';
@@ -103,12 +104,227 @@ const CLUB_NEWS_RULES = `
 9) مثال البنية المرئية (ليس خبراً حقيقياً): «عنوان الخبر» ثم «ملخص يشرح الحدث والتفاصيل الأساسية بلغة سهلة.» ثم «المصدر: [اسم الصحيفة](رابط مؤكد) · تاريخ مؤكد · تقرير». كرر لكل خبر دون جدول أو روابط خام.
 `;
 
+
+function anyTeamLatestMatchIntent(query: string): boolean {
+  const q = query.replace(/[؟?!.,،]/g, ' ').replace(/\s+/g, ' ').trim();
+  return /(?:آخر|اخر|أحدث|احدث|last|latest|most recent)/i.test(q)
+    && /(?:مباراة|مباريات|لقاء|مواجهة|نتيجة|match|game|result)/i.test(q)
+    && !/(?:ملخص|تحليل|تشكيل|إحصائيات|احصائيات|فيديو|موعد|القادمة|القادم|next|highlights)/i.test(q);
+}
+
+// Fail closed on clearly stale answers for ANY team, not only hard-coded clubs.
+// This is a safety net; it does not replace independently verified fixture discovery.
+function rejectStaleLatestMatch(answer: string): string {
+  const dates = [...answer.matchAll(/\b(20\d{2})[-\/]([01]?\d)[-\/]([0-3]?\d)\b/g)]
+    .map(m => Date.parse(`${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}T00:00:00Z`))
+    .filter(Number.isFinite);
+  const arabicMonths: Record<string, number> = { يناير:1, فبراير:2, مارس:3, أبريل:4, ابريل:4, مايو:5, يونيو:6, يوليو:7, أغسطس:8, اغسطس:8, سبتمبر:9, أكتوبر:10, اكتوبر:10, نوفمبر:11, ديسمبر:12 };
+  for (const m of answer.matchAll(/\b([0-3]?\d)\s+(يناير|فبراير|مارس|أبريل|ابريل|مايو|يونيو|يوليو|أغسطس|اغسطس|سبتمبر|أكتوبر|اكتوبر|نوفمبر|ديسمبر)\s+(20\d{2})\b/g)) {
+    dates.push(Date.UTC(Number(m[3]), arabicMonths[m[2]] - 1, Number(m[1])));
+  }
+  const recent = dates.filter(d => d <= Date.now() + 86400000);
+  if (recent.length && Math.max(...recent) < Date.now() - 60 * 86400000) {
+    return 'لم أتمكن من تأكيد آخر مباراة مكتملة للفريق من بيانات حديثة. النتيجة التي وصلت من البحث قديمة، ولذلك لن أعرضها على أنها آخر مباراة. يرجى إعادة المحاولة عند توفر مصدر مباريات محدث.';
+  }
+  return answer;
+}
+
+function latestClubMatchIntent(query: string): string | null {
+  const q = query.replace(/[؟?!.,،]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!/(?:آخر|اخر|أحدث|احدث|last|latest|recent)/i.test(q) ||
+      !/(?:مباراة|مباريات|لقاء|نتيجة|match|game|result)/i.test(q) ||
+      /(?:ملخص|تحليل|تشكيل|إحصائيات|احصائيات|فيديو|هدف|أهداف|اهداف|موعد|القادمة|القادم|next|highlights)/i.test(q)) return null;
+  const clubs: Array<[RegExp, string]> = [
+    [/(?:الاتحاد|الإتحاد|ittihad|al[ -]?ittihad)/i, 'al ittihad'],
+    [/(?:الهلال|hilal|al[ -]?hilal)/i, 'al hilal'],
+    [/(?:برشلونة|برشلونه|barcelona|barca|barça)/i, 'barcelona'],
+  ];
+  const found = clubs.filter(([pattern]) => pattern.test(q));
+  return found.length === 1 ? found[0][1] : null;
+}
+
+type LatestMatch = {
+  date_utc: string; competition: string; home_team: string; away_team: string;
+  home_score: number; away_score: number; verification: string; source: string;
+};
+
+function espnEventToMatch(event: any, competition: string, club: string): LatestMatch | null {
+  const fixture = event?.competitions?.[0];
+  const sides = fixture?.competitors;
+  if (!Array.isArray(sides) || sides.length !== 2) return null;
+  const home = sides.find((x: any) => x.homeAway === 'home');
+  const away = sides.find((x: any) => x.homeAway === 'away');
+  // ESPN may report completion on either the competition or event status.
+  // Never treat scheduled, postponed, or live fixtures as final results.
+  const completed = fixture?.status?.type?.completed === true || event?.status?.type?.completed === true;
+  if (!home || !away || !completed) return null;
+  const homeName = String(home.team?.displayName || home.team?.name || '');
+  const awayName = String(away.team?.displayName || away.team?.name || '');
+  const teamMatches = (side: any) => {
+    const names = [side.team?.displayName, side.team?.name, side.team?.shortDisplayName, side.team?.abbreviation]
+      .map((n: unknown) => String(n || '').toLowerCase());
+    return club === 'barcelona'
+      ? names.some(n => /barcelona|barça|barca/.test(n))
+      : club === 'al hilal'
+        ? names.some(n => /hilal/.test(n))
+        : names.some(n => /ittihad/.test(n));
+  };
+  if (!teamMatches(home) && !teamMatches(away)) return null;
+  const score = (side: any): number => Number(typeof side.score === 'object' ? side.score?.displayValue ?? side.score?.value : side.score);
+  const hs = score(home), as = score(away);
+  const date = String(event?.date || '');
+  if (!Number.isInteger(hs) || !Number.isInteger(as) || !/^\d{4}-\d{2}-\d{2}T/.test(date) ||
+      new Date(date).getTime() > Date.now()) return null;
+  return { date_utc: date, competition, home_team: homeName, away_team: awayName,
+    home_score: hs, away_score: as, verification: 'espn_only_unverified', source: 'ESPN scoreboard' };
+}
+
+async function espnLatestMatchAnswer(club: string): Promise<string | null> {
+  // Query the isolated backend first. ESPN remains a bounded fallback when that
+  // service is unavailable; neither feed is described as independently verified.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 18000);
+  try {
+    const clubName = club === 'barcelona' ? 'برشلونة' : club === 'al ittihad' ? 'الاتحاد' : 'الهلال';
+    const leagues: Array<[string, string]> = club === 'barcelona'
+      ? [['esp.1', 'La Liga'], ['uefa.champions', 'UEFA Champions League'], ['esp.copa_del_rey', 'Copa del Rey']]
+      : [['ksa.1', 'Saudi Pro League'], ['afc.champions', 'AFC Champions League Elite'], ['ksa.kings.cup', 'King Cup'], ['fifa.cwc', 'FIFA Club World Cup']];
+    const end = new Date();
+    const begin = new Date(end.getTime() - 42 * 86400000);
+    const fromBackend = async (): Promise<LatestMatch[]> => {
+      const base = (process.env.AIFBALL_PYTHON_API_URL || 'https://aifball-python-api.onrender.com').replace(/\/$/, '');
+      // Keep outbound requests limited to our Render services.
+      if (!/^https:\/\/aifball-python-(?:api|test)\.onrender\.com$/.test(base)) return [];
+      const url = new URL(base + '/research/live/club-latest-match');
+      url.searchParams.set('club', club);
+      url.searchParams.set('days', '42');
+      const response = await fetch(url, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
+      if (!response.ok) return [];
+      const data = await response.json();
+      const rows = Array.isArray(data?.matches) ? data.matches : data?.latest_match ? [data.latest_match] : [];
+      return rows.map((row: any): LatestMatch | null => {
+        if (row?.completed !== true) return null;
+        const date = String(row.date_utc || '');
+        const home = String(row.home_team || ''), away = String(row.away_team || '');
+        const hs = Number(row.home_score), as = Number(row.away_score);
+        if (!/^\d{4}-\d{2}-\d{2}T/.test(date) || !Number.isFinite(Date.parse(date)) ||
+            Date.parse(date) > Date.now() || Date.parse(date) < begin.getTime() ||
+            !Number.isInteger(hs) || !Number.isInteger(as) || !home || !away) return null;
+        const names = (home + ' ' + away).toLowerCase();
+        if (!(club === 'al hilal' ? /hilal/.test(names) : club === 'barcelona' ? /barcelona|barça|barca/.test(names) : /ittihad/.test(names))) return null;
+        return { date_utc: date, competition: String(row.competition || ''),
+          home_team: home, away_team: away, home_score: hs, away_score: as,
+          verification: 'espn_only_unverified', source: 'ESPN scoreboard' };
+      }).filter((m: LatestMatch | null): m is LatestMatch => m !== null);
+    };
+    const fromEspn = async (): Promise<LatestMatch[]> => {
+      // ESPN's documented date filter accepts explicit YYYYMMDD ranges.
+      // The previous YYYYMM month request was not supported by the evidence.
+      const windows: Array<[string, string]> = [];
+      const day = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
+      for (let cursor = begin.getTime(); cursor <= end.getTime(); cursor += 14 * 86400000) {
+        windows.push([day(new Date(cursor)), day(new Date(Math.min(cursor + 14 * 86400000 - 1, end.getTime())))]);
+      }
+      const requests = leagues.flatMap(([code, label]) => windows.map(async ([first, last]) => {
+        const url = new URL('https://site.api.espn.com/apis/site/v2/sports/soccer/' + code + '/scoreboard');
+        url.searchParams.set('dates', first + '-' + last);
+        url.searchParams.set('limit', '500');
+        const response = await fetch(url, { signal: controller.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
+        if (!response.ok) throw new Error('ESPN scoreboard HTTP ' + response.status + ' for ' + code);
+        const data = await response.json();
+        if (!Array.isArray(data?.events)) throw new Error('ESPN scoreboard missing events for ' + code);
+        return data.events.map((event: any) => espnEventToMatch(event, label, club))
+          .filter((m: LatestMatch | null): m is LatestMatch => m !== null && Date.parse(m.date_utc) >= begin.getTime() && Date.parse(m.date_utc) <= end.getTime());
+      }));
+      const results = await Promise.allSettled(requests);
+      // A failed month/competition means the search is incomplete. Never
+      // advertise an older fixture as the latest on the strength of partial data.
+      if (results.some(r => r.status === 'rejected')) {
+        console.warn('[AIFBALL_ESPN_INCOMPLETE]', JSON.stringify({
+          club, total: results.length, failed: results.filter(r => r.status === 'rejected').length,
+        }));
+        return [];
+      }
+      return results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    };
+    // Run the backend and direct ESPN discovery concurrently. A partial backend
+    // window must not hide a newer match from another competition.
+    const [backendResult, espnResult] = await Promise.allSettled([fromBackend(), fromEspn()]);
+    const backendMatches = backendResult.status === 'fulfilled' ? backendResult.value : [];
+    const directMatches = espnResult.status === 'fulfilled' ? espnResult.value : [];
+    if (backendMatches.length && !directMatches.length) console.warn('[AIFBALL_BACKEND_ONLY_UNVERIFIED]', JSON.stringify({ club, count: backendMatches.length }));
+    // Backend results alone cannot establish recency across all competitions.
+    // Let Dify search its other providers if ESPN coverage is incomplete.
+    const matches = directMatches.length ? directMatches : [];
+    const unique = new Set<string>();
+    const deduped = matches.filter(m => {
+      const key = [m.date_utc.slice(0, 10), m.home_team.toLowerCase(), m.away_team.toLowerCase(), m.home_score, m.away_score].join('|');
+      if (unique.has(key)) return false;
+      unique.add(key);
+      return true;
+    });
+    deduped.sort((a, b) => Date.parse(b.date_utc) - Date.parse(a.date_utc));
+    const m = deduped[0];
+    if (!m) return null;
+    return [
+      '### آخر مباراة — ' + clubName,
+      '**' + m.home_team + ' ' + m.home_score + ' – ' + m.away_score + ' ' + m.away_team + '**',
+      '**البطولة:** ' + m.competition,
+      '**التاريخ (UTC):** ' + m.date_utc.slice(0, 10),
+      '**حالة المعلومة:** نتيجة منشورة في ESPN، ولم تُطابق بعد مع مصدر مستقل.',
+      'هذه أحدث مباراة مكتملة عُثر عليها ضمن البطولات التي شملها البحث، وقد تكون التغطية غير مكتملة.',
+    ].join('\n\n');
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function POST(req: Request) {
   const requestStarted = performance.now();
   try {
     const body = await req.json();
     const hasImage = Array.isArray(body?.files) && body.files.some((file: { type?: string } | null) => file?.type === 'image');
     const query = (typeof body?.query === 'string' ? body.query.trim() : '') || (hasImage ? 'اقرأ الصورة المرفقة ووضح ما يظهر فيها.' : '');
+    // Fast path: same ESPN scoreboard data family used by the live match center.
+    // Never claim a latest result when one of the relevant competitions failed.
+    const directTeam = !hasImage ? requestedTeam(query) : null;
+    if (directTeam) {
+      const found = await latestVerifiedMatch(directTeam, req.signal);
+      const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
+      // Never send a recognized latest-match question to a second, slow Dify
+      // discovery path after a provider failure.
+      const answer = found.match
+        ? latestMatchText(directTeam, found.match) + (found.complete ? '' : '\\n\\n**تنبيه:** بعض البطولات لم تستجب؛ هذه أحدث نتيجة عُثر عليها، وليست بالضرورة آخر مباراة في جميع البطولات.')
+        : 'تعذر استرجاع نتيجة مكتملة حديثة لـ' + directTeam + ' من مصدر المباريات حالياً. لا توجد نتيجة مؤكدة يمكن عرضها.';
+      console.info('[AIFBALL_LATEST_DIRECT]', JSON.stringify({team:directTeam,complete:found.complete,hasMatch:Boolean(found.match)}));
+      const events = [{event:'message',answer,conversation_id},{event:'message_end',conversation_id}];
+      return new Response(events.map(event => 'data: '+JSON.stringify(event)+'\n\n').join(''), {
+        headers: {'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform'}
+      });
+    }
+    // Direct, bounded ESPN lookup for explicit latest-match questions. Fallback to Dify on failure.
+    const latestClub = !hasImage ? latestClubMatchIntent(query) : null;
+    const anyLatestMatch = !hasImage && anyTeamLatestMatchIntent(query);
+    // Experimental ESPN path is isolated by default; ordinary questions continue to Dify.
+    if (latestClub && (process.env.VERCEL_ENV !== 'production' || process.env.ENABLE_EXPERIMENTAL_ESPN_LATEST_MATCH === 'true')) {
+      const answer = await espnLatestMatchAnswer(latestClub);
+      if (answer) {
+        // Return only a completed match backed by an actual provider response.
+        const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
+        const events = [
+          { event: 'message', answer, conversation_id },
+          { event: 'message_end', conversation_id },
+        ];
+        return new Response(events.map(event => 'event: ' + event.event + '\ndata: ' + JSON.stringify(event) + '\n\n').join(''), {
+          headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform' },
+        });
+      }
+      // A missing ESPN/Render result is not evidence that no match exists.
+      // Allow the existing Dify source-discovery pipeline to try other providers.
+      console.warn('[AIFBALL_LATEST_MATCH_FALLBACK]', JSON.stringify({ club: latestClub, reason: 'provider_no_completed_match' }));
+    }
     // Match artwork is built from independently verified provider data, not model-invented fixture rows.
     if (!hasImage && posterIntent(query)) {
       const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
@@ -215,7 +431,14 @@ export async function POST(req: Request) {
     const gameStart = /اختبرني|تحد[ىي] الثلاثين|تحد[ىي] 30|لغز|لعبة من اللاعب|quiz/i.test(query);
     const gameRules = `إذا طلب المستخدم لعبة كروية أو كانت المحادثة في جولة لعبة نشطة، العب داخل الشات. في لغز اللاعب اختر جواباً موثقاً وقدّم قرائن عن أنديته أو زملائه دون كشفه. اقبل الأسماء المكافئة، وأعط تلميحاً واحداً عند الخطأ. في الاختبار أو تحدي الثلاثين اسأل سؤالاً واحداً كل مرة، سجّل النقاط واذكرها بعد الإجابة. لا تدّع وجود مؤقت فعلي. حافظ على نوع اللعبة والنقاط من سياق المحادثة، وأنهِ الجولة عند طلب المستخدم. إذا انتهت اللعبة أو غيّر الموضوع، أجب كالمعتاد.\n`;
     const OUTPUT_LANGUAGE_RULES = '\nبروتوكول اللغة: اتبع طلب اللغة الصريح أولاً، وإلا لغة السؤال الحالي، وإلا سياق المحادثة، وإلا العربية. الأسماء الأجنبية لا تغيّر لغة الرد. إذا أخرجت aifball-standings فاستخدم lang=\"ar\" أو lang=\"en\" بحسب لغة الرد؛ لا تضف lang لوسم آخر. لا تختلق إحصائيات أو روابط أو ألقاب. إذا تعذّر المكوّن لكن البيانات موثقة، استخدم جدول Markdown دون تكرار.\n';
-    const guidedQuery = baseQuery + OUTPUT_LANGUAGE_RULES + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + fixtureContext + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (!matchSummary && (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture) ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '');
+    // Entity identity and intent quality guardrails for club-news and club-profile queries.
+    const clubEntity = /(?:الهلال|al[ -]?hilal|alhilal)/i.test(query) ? 'الهلال السعودي (Al Hilal SFC)' :
+      /(?:الاتحاد|الإتحاد|al[ -]?ittihad)/i.test(query) ? 'الاتحاد السعودي (Al Ittihad Club)' :
+      /(?:برشلونة|barcelona|barça|barca)/i.test(query) ? 'برشلونة الإسباني (FC Barcelona)' : '';
+    const clubIdentityRules = clubEntity ? `\nضبط هوية الكيان: المقصود حصراً ${clubEntity} لكرة القدم. لا تخلطه بمؤسسات تحمل الاسم نفسه مثل الهلال الأحمر المصري أو فرق أخرى. لا تستخدم صورة أو شعاراً إلا إذا أكد عنوان المصدر ووصف الصورة والنادي/الدولة تطابق الكيان؛ عند الشك احذف الصورة نهائياً. لا تعرض وسوم المكونات أو أسماءها التقنية أو رسائل تشخيص للمستخدم. إذا كان السؤال اسم النادي فقط، قدّم تعريفاً موجزاً بالنادي ولا تفترض أن المستخدم طلب أخباراً أو مباريات.\n` : '';
+    const clubNewsIntentRules = clubNews ? `\nأولوية النية: سؤال «آخر أخبار» يعني أخباراً ومستجدات فعلية، وليس جدول مباريات. لا تجعل مواعيد المباريات عنوان الإجابة أو محتواها الرئيسي. إذا لم تتوفر أخبار موثقة، صرّح بذلك باختصار، ولا تعوضها بأخبار قديمة أو مواعيد فقط. لا تظهر اسم مكوّن تقني مثل aifball-club-news، ولا تُدرج صورة تعريفية غير مرتبطة مباشرة بالخبر.\n` : '';
+    const latestMatchSourceRules = anyLatestMatch ? `\nسؤال آخر مباراة مكتملة: ابحث أولاً في نتائج الفريق الأول بجميع البطولات للموسم الحالي عبر FotMob و365Scores وSofaScore ثم موقع البطولة أو النادي الرسمي. فشل ESPN أو Render وحده ليس دليلاً على عدم وجود مباراة. لا تعرض مباراة قديمة باعتبارها الأحدث دون مقارنة تواريخ النتائج المكتملة، ولا تخترع نتيجة أو تاريخاً. إذا تحققت من المباراة، ابدأ بالنتيجة ثم التاريخ والبطولة وملخص خفيف؛ لا تذكر الهدافين أو التفاصيل غير الموثقة إلا إذا طلبها المستخدم. إذا تعذر التحقق بعد البحث البديل، صرّح بذلك باختصار.\n` : '';
+    const guidedQuery = baseQuery + latestMatchSourceRules + OUTPUT_LANGUAGE_RULES + clubIdentityRules + clubNewsIntentRules + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + fixtureContext + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (!matchSummary && (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture) ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '');
 
     const difyStarted = performance.now();
     const apiRes = await fetch(url, {
@@ -317,6 +540,7 @@ export async function POST(req: Request) {
           }
           return singleReport ? verifySummaryAnswer(singleReport, signal) : answer;
         })
+      : observedBody && anyLatestMatch && !wantsDesign && !wantsPhoto ? verifiedSummaryStream(observedBody, req.signal, async (answer) => rejectStaleLatestMatch(answer))
       : observedBody && !hasImage && !wantsPhoto && !wantsDesign && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(observedBody,query,req.signal) : observedBody, {
       headers: {
         'Content-Type': 'text/event-stream',
