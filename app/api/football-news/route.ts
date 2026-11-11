@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   if (categoryParam && categoryParam !== 'general' && categoryParam !== 'transfers' && categoryParam !== 'world') {
     return NextResponse.json({ error: 'invalid_category' }, { status: 400 });
   }
-  const category = (categoryParam || undefined) as NewsCategory | undefined;
+  const category = (categoryParam || undefined) as NewsCategory | 'world' | undefined;
   const sources = activeNewsSources(category === 'world' ? undefined : category);
   if (categoryParam === 'world') {
     const topics = [
@@ -33,9 +33,9 @@ export async function GET(req: NextRequest) {
       if (!response.ok) throw new Error('RSS ' + response.status);
       const xml = await response.text();
       if (xml.length > 1500000) throw new Error('RSS too large');
-      return [...xml.matchAll(/<item>([\\s\\S]*?)<\\/item>/gi)].slice(0, 25).flatMap(match => {
+      return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)].slice(0, 25).flatMap(match => {
         const item = match[1];
-        const field = (name: string) => item.match(new RegExp('<' + name + '(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)<\\\\/' + name + '>', 'i'))?.[1] || '';
+        const field = (name: string) => item.match(new RegExp('<' + name + '[^>]*>([\\s\\S]*?)</' + name + '>', 'i'))?.[1] || '';
         const title = decode(field('title'));
         const date = Date.parse(decode(field('pubDate')));
         if (!Number.isFinite(date)) return [];
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
         return [{ id: link, text: title, author: publisher, url: link, publishedAt, images: [] as string[], classification: 'unverified_report' as const }];
       });
     }));
-    const posts = [...new Map(feeds.flatMap(result => result.status === 'fulfilled' ? result.value : []).map(post => [post.text.toLowerCase().replace(/[^\\p{L}\\p{N}]/gu,''),post])).values()].sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt)).slice(0, 60);
+    const posts = [...new Map(feeds.flatMap(result => result.status === 'fulfilled' ? result.value : []).map(post => [post.text.toLowerCase().replace(/[^\p{L}\p{N}]/gu,''),post])).values()].sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt)).slice(0, 60);
     const failed = feeds.filter(f => f.status === 'rejected').length;
     return NextResponse.json({ status: failed === topics.length ? 'upstream_unavailable' : failed ? 'partial' : 'ok', provider: 'google_news_rss', windowHours: 24, posts, failedSearches: failed, note: 'Headlines and publisher dates from Google News RSS. Publication date is not independent verification of claims; images are omitted when not supplied.' }, { headers: { 'Cache-Control': 'no-store' } });
   }
