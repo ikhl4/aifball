@@ -1523,43 +1523,28 @@ export default function FootPlayChat() {
           : 'bg-white text-black'
       }`}
     >
-      {/* خلفية الملعب */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
-      >
-        <div
-          className={`absolute inset-0 bg-center bg-no-repeat transition-all duration-700 ease-in-out ${
-            messages.length === 0
-              ? 'opacity-100 scale-100'
-              : 'opacity-45 scale-[1.03]'
-          }`}
-          style={{
-            backgroundImage: isDarkMode ? "url('/IMG_0091.jpeg')" : messages.length === 0 ? "linear-gradient(90deg, transparent 49.8%, #16a34a 50%, transparent 50.2%), radial-gradient(circle at center, transparent 13%, #16a34a 13.2%, transparent 13.5%)" : 'none',
-            backgroundColor: isDarkMode ? undefined : '#fff',
-            backgroundSize: 'cover',
-          }}
-        />
-
-        <div
-          className={`absolute inset-0 transition-all duration-700 ${
-            isDarkMode
-              ? messages.length === 0
-                ? 'bg-[#064e3b]/35'
-                : 'bg-[#022c22]/75'
-              : messages.length === 0
-                ? 'bg-white/20'
-                : 'bg-white'
-          }`}
-        />
-
-        <div
-          className={`absolute inset-0 bg-gradient-to-b ${
-            isDarkMode
-              ? 'from-emerald-700/10 via-transparent to-emerald-950/75'
-              : 'from-white/10 via-transparent to-white/50'
-          }`}
-        />
+      {/* خطوط ملعب SVG مرسومة مباشرة، بدون صورة أو طبقة شفافة */}
+      <div aria-hidden="true" className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <svg
+          className="absolute inset-0 h-full w-full"
+          viewBox="0 0 390 844"
+          preserveAspectRatio="xMidYMid slice"
+          fill="none"
+          stroke={isDarkMode ? '#ffffff' : '#15803d'}
+          strokeWidth="1.35"
+          strokeOpacity={isDarkMode ? 0.24 : 0.14}
+        >
+          <rect x="18" y="18" width="354" height="808" rx="1" />
+          <path d="M18 422H372" />
+          <circle cx="195" cy="422" r="65" />
+          <circle cx="195" cy="422" r="2.5" fill={isDarkMode ? '#ffffff' : '#15803d'} stroke="none" />
+          <rect x="88" y="18" width="214" height="112" />
+          <rect x="145" y="18" width="100" height="48" />
+          <path d="M145 130A65 65 0 0 0 245 130" />
+          <rect x="88" y="714" width="214" height="112" />
+          <rect x="145" y="778" width="100" height="48" />
+          <path d="M145 714A65 65 0 0 1 245 714" />
+        </svg>
       </div>
 
       {/* خط Cairo */}
