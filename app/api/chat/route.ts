@@ -300,7 +300,7 @@ export async function POST(req: Request) {
         : 'تعذر استرجاع نتيجة مكتملة حديثة لـ' + directTeam + ' من مصدر المباريات حالياً. لا توجد نتيجة مؤكدة يمكن عرضها.';
       console.info('[AIFBALL_LATEST_DIRECT]', JSON.stringify({team:directTeam,complete:found.complete,hasMatch:Boolean(found.match)}));
       const events = [{event:'message',answer,conversation_id},{event:'message_end',conversation_id}];
-      return new Response(events.map(event => 'data: '+JSON.stringify(event)+'\\n\\n').join(''), {
+      return new Response(events.map(event => 'data: '+JSON.stringify(event)+'\n\n').join(''), {
         headers: {'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform'}
       });
     }
