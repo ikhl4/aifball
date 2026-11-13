@@ -71,7 +71,31 @@ async function fotmobLeaders(league: string, kind: 'goals'|'assists', season: nu
   if (number(data.currentSeasonId) !== null && number(data.currentSeasonId) !== seasonId) return [];
   if (str(data.currentStatName) && str(data.currentStatName) !== stat) return [];
   const statsData = array(data.statsData);
-  return normalize(statsData,stat);
+  const players = normalize(statsData,stat);
+  if (!players.length) return [];
+  // Enrich with club names from the league hub; never fail the ranked list if that endpoint is unavailable.
+  try {
+    const hub=await fotmobJson('leagues',{id:String(id)});
+    const clubNames=new Map<number,string>();
+    for(const table of array(hub.table)){
+      // FotMob nests the actual league table under data.table.all.
+      const entries=array(record(record(record(table).data).table).all);
+      for(const entry of entries){
+        const team=record(entry), teamId=number(team.id), teamName=str(team.name);
+        if(teamId!==null && teamName)clubNames.set(teamId,teamName);
+      }
+    }
+    const playerTeams=new Map<number,number>();
+    for(const raw of statsData){
+      const athlete=record(raw);
+      const playerId=number(athlete.id),teamId=number(athlete.teamId);
+      if(playerId!==null && teamId!==null)playerTeams.set(playerId,teamId);
+    }
+    return players.map(p=>{
+      const teamId=playerTeams.get(p.id), team=teamId?clubNames.get(teamId):undefined;
+      return team ? {...p,team,logo:teamId?'https://images.fotmob.com/image_resources/logo/teamlogo/'+teamId+'.png':null}:p;
+    });
+  }catch{return players;}
 }
 async function apiFootballLeaders(league: string, kind: 'goals'|'assists', season: number): Promise<Leader[]> {
   const ids: Record<string,number> = { 'ksa.1':307,'eng.1':39,'esp.1':140,'ita.1':135,'ger.1':78,'fra.1':61,'usa.1':253 };
