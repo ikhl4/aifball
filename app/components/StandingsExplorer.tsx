@@ -8,7 +8,7 @@ import AppleSportsCenter from './AppleSportsCenter';
 
 type Tab = 'standings' | 'goals' | 'assists' | 'overview';
 type Leader = { id: number; name: string; team: string; photo: string | null; logo: string | null; value: number };
-type Row = { name?: string; played?: number; won?: number; draw?: number; lost?: number; goalsFor?: number; goalsAgainst?: number; points?: number };
+type Row = { id?: string; position?: number; name?: string; logo?: string | null; played?: number; won?: number; draw?: number; lost?: number; goalsFor?: number; goalsAgainst?: number; goalDifference?: number; points?: number };
 type Group = { rows?: Row[] };
 
 const tabs: { id: Tab; ar: string; en: string }[] = [
@@ -35,10 +35,14 @@ export default function StandingsExplorer({ isDark = true, language = 'ar' }: { 
   const [rows, setRows] = useState<Row[]>([]);
   const [overviewStatus, setOverviewStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [expanded, setExpanded] = useState(false);
+  const [fullTable, setFullTable] = useState(false);
+  const [standingsRows, setStandingsRows] = useState<Row[]>([]);
+  const [standingsLoading, setStandingsLoading] = useState(true);
+  const [standingsError, setStandingsError] = useState(false);
   const selectedCompetition = COMPETITIONS[league];
-  const surface = isDark ? 'border-emerald-700/30 bg-emerald-950/45 text-white' : 'border-emerald-700/20 bg-white text-gray-900';
-  const subtle = isDark ? 'border-white/10 bg-white/5' : 'border-emerald-900/10 bg-emerald-50/70';
-  const secondary = isDark ? 'text-gray-300' : 'text-gray-600';
+  const surface = 'border-[#2d5183] bg-[#091a36] text-white';
+  const subtle = 'border-[#2a4d7e] bg-[#132b50] text-white';
+  const secondary = 'text-slate-300';
 
   useEffect(() => {
     if (other || (tab !== 'goals' && tab !== 'assists')) return;
@@ -81,6 +85,31 @@ export default function StandingsExplorer({ isDark = true, language = 'ar' }: { 
     return () => controller.abort();
   }, [league, tab, other]);
 
+  useEffect(() => {
+    if (other || tab !== 'standings') return;
+    if (selectedCompetition?.searchOnly && !selectedCompetition.standingsSource) return;
+    const controller = new AbortController();
+    setStandingsLoading(true);
+    setStandingsError(false);
+    setStandingsRows([]);
+    fetch('/api/standings?league=' + encodeURIComponent(league), { signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error('Standings unavailable');
+        return response.json() as Promise<{groups?: Group[]; rows?: Row[]}>;
+      })
+      .then(data => {
+        if (controller.signal.aborted) return;
+        const next = data.groups?.[0]?.rows || data.rows || [];
+        setStandingsRows(next);
+        setStandingsError(!next.length);
+      })
+      .catch(() => { if (!controller.signal.aborted) setStandingsError(true); })
+      .finally(() => { if (!controller.signal.aborted) setStandingsLoading(false); });
+    return () => controller.abort();
+  }, [league, other, tab, selectedCompetition?.searchOnly, selectedCompetition?.standingsSource]);
+
+  useEffect(() => { setFullTable(false); }, [league, other]);
+
   const totals = {
     clubs: rows.length,
     played: rows.reduce((sum, row) => sum + (Number(row.played) || 0), 0) / 2,
@@ -89,7 +118,7 @@ export default function StandingsExplorer({ isDark = true, language = 'ar' }: { 
   };
 
   return (
-    <div dir={language === 'ar' ? 'rtl' : 'ltr'} lang={language} className="mx-auto max-w-4xl space-y-4 p-2 pb-8 font-cairo sm:p-5">
+    <div dir={language === 'ar' ? 'rtl' : 'ltr'} lang={language} className="mx-auto max-w-4xl space-y-4 rounded-3xl bg-gradient-to-b from-[#0d274f] via-[#091a36] to-[#040e22] p-2 pb-8 font-cairo text-white sm:p-5">
       <header className={`rounded-2xl border p-4 sm:p-5 ${surface}`}>
         <h2 className="text-xl font-extrabold sm:text-2xl">{t('الجداول والإحصائيات', 'Tables & statistics')}</h2>
         <p className={`mt-1 text-xs ${secondary}`}>{t('بيانات البطولات واللاعبين بحسب المصادر المتاحة', 'Competition and player data from available providers')}</p>
@@ -97,11 +126,11 @@ export default function StandingsExplorer({ isDark = true, language = 'ar' }: { 
 
       <div role="group" aria-label={t('نوع الرياضة', 'Sport type')} className="grid grid-cols-2 gap-2">
         <button type="button" onClick={() => setOther(false)} aria-pressed={!other}
-          className={`rounded-2xl border px-3 py-3 text-sm font-bold transition ${!other ? 'border-emerald-600 bg-emerald-700 text-white' : surface}`}>
+          className={`rounded-2xl border px-3 py-3 text-sm font-bold transition ${!other ? 'border-cyan-300 bg-cyan-400 text-[#092443]' : surface}`}>
           ⚽ {t('كرة القدم', 'Football')}
         </button>
         <button type="button" onClick={() => setOther(true)} aria-pressed={other}
-          className={`rounded-2xl border px-3 py-3 text-sm font-bold transition ${other ? 'border-emerald-600 bg-emerald-700 text-white' : surface}`}>
+          className={`rounded-2xl border px-3 py-3 text-sm font-bold transition ${other ? 'border-cyan-300 bg-cyan-400 text-[#092443]' : surface}`}>
           🏀 {t('الرياضات الأخرى', 'Other sports')}
         </button>
       </div>
@@ -129,7 +158,7 @@ export default function StandingsExplorer({ isDark = true, language = 'ar' }: { 
           <nav role="tablist" aria-label={t('إحصائيات كرة القدم', 'Football statistics')} className="grid grid-cols-4 gap-1.5 sm:gap-2">
             {tabs.map(item => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id}
               onClick={() => { setTab(item.id); setExpanded(false); }}
-              className={`min-h-11 rounded-xl border px-1.5 py-2 text-[11px] font-bold leading-snug sm:px-3 sm:text-sm ${tab === item.id ? 'border-emerald-700 bg-emerald-700 text-white' : surface}`}>
+              className={`min-h-11 rounded-xl border px-1.5 py-2 text-[11px] font-bold leading-snug sm:px-3 sm:text-sm ${tab === item.id ? 'border-cyan-300 bg-cyan-400 text-[#092443]' : surface}`}>
               {t(item.ar, item.en)}
             </button>)}
           </nav>
@@ -138,7 +167,7 @@ export default function StandingsExplorer({ isDark = true, language = 'ar' }: { 
               <h3 className="text-base font-extrabold sm:text-lg">{t(tabs.find(item => item.id === tab)?.ar || '', tabs.find(item => item.id === tab)?.en || '')}</h3>
               <select value={league} onChange={event => { setLeague(event.target.value); setExpanded(false); }}
                 aria-label={t('اختر البطولة', 'Choose competition')}
-                className={`max-w-full rounded-xl border border-emerald-600/30 px-3 py-2 text-xs font-bold sm:text-sm ${isDark ? 'bg-[#10251b] text-white [color-scheme:dark]' : 'bg-white text-gray-900'}`}>
+                className={`max-w-full rounded-xl border border-[#315d9d] bg-[#0a2146] px-3 py-2 text-xs font-bold text-white [color-scheme:dark] sm:text-sm`}>
                 {(['club', 'national'] as const).map(kind =>
                   <optgroup key={kind} label={kind === 'club' ? t('بطولات الأندية', 'Club competitions') : t('بطولات المنتخبات', 'International competitions')}>
                     {Object.entries(COMPETITIONS).filter(([, competition]) => competition.kind === kind).map(([code, competition]) =>
@@ -149,8 +178,29 @@ export default function StandingsExplorer({ isDark = true, language = 'ar' }: { 
 
             {tab === 'standings' && (
               selectedCompetition?.searchOnly && !selectedCompetition.standingsSource
-                ? <p className="text-sm">{t('لا تتوفر بيانات ترتيب مؤكدة لهذه البطولة عبر المصدر الحالي.', 'Verified standings are unavailable for this competition.')}{selectedCompetition.officialUrl && <a className="ms-2 text-emerald-500 underline" href={selectedCompetition.officialUrl} target="_blank" rel="noreferrer">{t('المصدر الرسمي', 'Official source')}</a>}</p>
-                : <LeagueDashboard key={league} leagueCode={league} isDark={isDark} lang={language} />
+                ? <p className="text-sm">{t('لا تتوفر بيانات ترتيب مؤكدة لهذه البطولة عبر المصدر الحالي.', 'Verified standings are unavailable for this competition.')}{selectedCompetition.officialUrl && <a className="ms-2 text-cyan-300 underline" href={selectedCompetition.officialUrl} target="_blank" rel="noreferrer">{t('المصدر الرسمي', 'Official source')}</a>}</p>
+                : <div className="space-y-3">
+                    <h3 className="text-base font-extrabold">{t('🏆 جدول الترتيب', '🏆 League standings')}</h3>
+                    {standingsLoading && <p role="status" className="text-sm text-slate-300">{t('جارٍ جلب الترتيب…', 'Loading standings…')}</p>}
+                    {standingsError && !standingsLoading && <p role="status" className="text-sm">{t('تعذر جلب ترتيب موثوق حاليًا.', 'Verified standings are unavailable.')}</p>}
+                    {!standingsLoading && !standingsError && <div className="overflow-hidden rounded-xl border border-[#315d9d]">
+                      <div className="grid grid-cols-[24px_minmax(0,1fr)_29px_36px_31px] gap-1 bg-[#18375e] px-2 py-2 text-[10px] font-bold sm:grid-cols-[35px_minmax(0,1fr)_55px_80px_60px] sm:gap-2 sm:text-xs">
+                        <span>#</span><span>{t('النادي', 'Club')}</span><span className="text-center">{t('لعب', 'P')}</span><span className="text-center">{t('فارق', 'GD')}</span><span className="text-center">{t('نقاط', 'Pts')}</span>
+                      </div>
+                      {standingsRows.slice(0,5).map((team,index) => <div key={team.id || index} className={`grid grid-cols-[24px_minmax(0,1fr)_29px_36px_31px] items-center gap-1 px-2 py-2 text-xs sm:grid-cols-[35px_minmax(0,1fr)_55px_80px_60px] sm:gap-2 sm:text-sm ${index%2 ? 'bg-[#122a4d]' : 'bg-[#0a1c39]'}`}>
+                        <bdi className="text-center font-bold text-cyan-300">{team.position ?? index+1}</bdi>
+                        <span className="flex min-w-0 items-center gap-1">
+                          {team.logo && <img src={team.logo} alt="" className="h-5 w-5 shrink-0 object-contain sm:h-7 sm:w-7"/>}
+                          <bdi className="truncate font-semibold">{team.name || '—'}</bdi>
+                        </span>
+                        <bdi className="text-center">{team.played ?? '—'}</bdi>
+                        <bdi className="text-center">{team.goalDifference == null ? '—' : team.goalDifference>0 ? '+'+team.goalDifference : team.goalDifference}</bdi>
+                        <bdi className="text-center font-extrabold">{team.points ?? '—'}</bdi>
+                      </div>)}
+                    </div>}
+                    {!standingsLoading && !standingsError && <button type="button" aria-expanded={fullTable} className="rounded-xl px-1 py-2 text-sm font-bold text-cyan-300" onClick={() => setFullTable(!fullTable)}>{fullTable ? t('إخفاء الجدول الكامل', 'Hide full table') : t('عرض الجدول كامل', 'Show full table')} ‹</button>}
+                    {fullTable && <div className="min-w-0 overflow-hidden rounded-xl border border-[#315d9d]"><LeagueDashboard key={league} leagueCode={league} isDark lang={language}/></div>}
+                  </div>
             )}
 
             {(tab === 'goals' || tab === 'assists') && (
@@ -162,10 +212,10 @@ export default function StandingsExplorer({ isDark = true, language = 'ar' }: { 
                   {leaders.slice(0, expanded ? 20 : 6).map((player, index) => (
                     <div key={player.id} className={`flex items-center gap-2 rounded-xl border p-2.5 ${subtle}`}>
                       <span className="w-6 shrink-0 text-center text-sm font-extrabold text-emerald-500">{index + 1}</span>
-                      {player.photo ? <img src={player.photo} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : <span aria-hidden="true" className="h-9 w-9 shrink-0 rounded-full bg-emerald-600/15" />}
+                      {player.photo ? <img src={player.photo} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : <span aria-hidden="true" className="h-9 w-9 shrink-0 rounded-full bg-cyan-400/15" />}
                       <span className="min-w-0 flex-1"><span dir="auto" className="block truncate text-sm font-bold">{player.name}</span><span dir="auto" className={`block truncate text-xs ${secondary}`}>{player.team}</span></span>
                       {player.logo && <img src={player.logo} alt="" className="h-6 w-6 shrink-0 object-contain" />}
-                      <bdi className="min-w-9 rounded-lg bg-emerald-700 px-2 py-1 text-center text-base font-extrabold text-white">{player.value}</bdi>
+                      <bdi className="min-w-9 rounded-lg bg-[#176b9c] px-2 py-1 text-center text-base font-extrabold text-white">{player.value}</bdi>
                     </div>))}
                   {leaders.length > 6 && <button type="button" className="text-sm font-bold text-emerald-500" onClick={() => setExpanded(!expanded)}>
                     {expanded ? t('عرض أقل', 'Show less') : t('عرض الترتيب الكامل', 'Show full ranking')}
