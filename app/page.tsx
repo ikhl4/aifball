@@ -15,6 +15,7 @@ import {
 } from '@clerk/nextjs';
 
 import LiveSportsWidget from './components/LiveSportsWidget';
+import { appLanguageKey, type AppLanguage } from '../lib/app-language';
 import LiveMatchCenter from './components/LiveMatchCenter';
 import LeagueDashboard from './components/LeagueDashboard';
 import StandingsExplorer from './components/StandingsExplorer';
@@ -104,6 +105,21 @@ const DISCOVERY_QUESTIONS: SuggestionCard[] = [
 
 const CARDS_PER_PAGE = 4;
 const DISCOVERY_INTERVAL = 15000;
+
+const englishDiscoveryQuestions: SuggestionCard[][] = [
+  [
+    { question: 'How do high, mid and counter-pressing differ?', tag: 'Tactics', icon: 'pitch' },
+    { question: 'How can data help clubs discover young talent?', tag: 'Scouting', icon: 'activity' },
+    { question: 'How does a crowded fixture schedule affect injury risk?', tag: 'Performance', icon: 'activity' },
+    { question: 'How can we evaluate a coach beyond results?', tag: 'Coaching', icon: 'chart' },
+  ],
+  [
+    { question: 'How do teams create overloads in midfield?', tag: 'Tactics', icon: 'pitch' },
+    { question: 'How has the role of the full-back evolved?', tag: 'Football history', icon: 'pitch' },
+    { question: 'What should a scouting report include?', tag: 'Scouting', icon: 'activity' },
+    { question: 'What does expected goals tell us about a match?', tag: 'Analytics', icon: 'chart' },
+  ],
+];
 
 function getDiscoveryQuestions(page: number): SuggestionCard[] {
   const start = (page * CARDS_PER_PAGE) % DISCOVERY_QUESTIONS.length;
@@ -911,6 +927,22 @@ export default function FootPlayChat() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [themePreference, setThemePreference] = useState<ThemePreference>('system');
   const [showLiveScores, setShowLiveScores] = useState(false);
+  const [language, setLanguage] = useState<AppLanguage>('ar');
+  const t = (ar: string, en: string) => language === 'en' ? en : ar;
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(appLanguageKey) === 'en') setLanguage('en');
+    } catch {}
+  }, []);
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.documentElement.dir = language === 'en' ? 'ltr' : 'rtl';
+  }, [language]);
+
+  function changeLanguage(next: AppLanguage) {
+    setLanguage(next);
+    try { localStorage.setItem(appLanguageKey, next); } catch {}
+  }
   const [homeScreen, setHomeScreen] = useState<'home' | 'analytics'>('home');
   const homeSwipe = useRef<{x:number;y:number} | null>(null);
 
@@ -1006,7 +1038,7 @@ export default function FootPlayChat() {
   }, [pollDurableJob]);
 
 
-  const suggestionCards = getDiscoveryQuestions(discoveryPage);
+  const suggestionCards = language === 'ar' ? getDiscoveryQuestions(discoveryPage) : englishDiscoveryQuestions[discoveryPage % englishDiscoveryQuestions.length];
 
   const exploreMore = useCallback(() => {
     setDiscoveryPage((previous) =>
@@ -1133,7 +1165,7 @@ export default function FootPlayChat() {
     if (isListening) return;
 
     const recognition = new Recognition();
-    recognition.lang = 'ar-SA';
+    recognition.lang = t('ar-SA', 'en-US');
     recognition.onstart = () => setIsListening(true);
     recognition.onresult = (event: any) => {
       setInput((previous) =>
@@ -1206,7 +1238,7 @@ export default function FootPlayChat() {
     if (greetings.includes(normalized) && files.length === 0) {
       const result: Message[] = [
         ...base,
-        { role: 'assistant', content: GREETING },
+        { role: 'assistant', content: t(GREETING, "Hi, I’m AiFBall, your football assistant. What would you like to know?") },
       ];
 
       setMessages(result);
@@ -1214,7 +1246,7 @@ export default function FootPlayChat() {
       return;
     }
 
-    if (files.length === 0 && /^(?:اعرض\s+)?(?:معاينة|نموذج|تجربة)\s+(?:تقرير فوتبلاي|التقرير التفاعلي)[.!؟?]*$/.test(query.trim())) {
+    if (language === 'ar' && files.length === 0 && /^(?:اعرض\s+)?(?:معاينة|نموذج|تجربة)\s+(?:تقرير فوتبلاي|التقرير التفاعلي)[.!؟?]*$/.test(query.trim())) {
       const result: Message[] = [...base, {
         role: 'assistant',
         content: 'معاينة تقرير فوتبلاي. المباراة والقيم والإحداثيات افتراضية للتوضيح فقط.\n<aifball-analysis-demo />',
@@ -1227,16 +1259,16 @@ export default function FootPlayChat() {
 
     const standingsRequest = files.length === 0 ? resolveStandingsRequest(query) : null;
     if (standingsRequest) {
-      const language = detectLanguage(query);
+      const responseLanguage = language;
       const seasonAttribute = standingsRequest.season ? ` season="${standingsRequest.season}"` : '';
-      const content = `<aifball-standings league="${standingsRequest.league}"${seasonAttribute} lang="${language}" />`;
+      const content = `<aifball-standings league="${standingsRequest.league}"${seasonAttribute} lang="${responseLanguage}" />`;
       const result: Message[] = [...base, { role: 'assistant', content, userQuery: query }];
       setMessages(result);
       saveSession(id, conversationId, result);
       return;
     }
 
-    const tacticalRequest = files.length === 0 ? resolveTacticalRequest(query) : null;
+    const tacticalRequest = language === 'ar' && files.length === 0 ? resolveTacticalRequest(query) : null;
     if (tacticalRequest) {
       const content = `<aifball-tactics lesson="${tacticalRequest}" />`;
       const result: Message[] = [...base, { role: 'assistant', content, userQuery: query }];
@@ -1300,7 +1332,7 @@ export default function FootPlayChat() {
         const key = crypto.randomUUID();
         const durable = await fetch('/api/chat/jobs', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, conversation_id: conversationId, idempotency_key: key }),
+          body: JSON.stringify({ query, language, conversation_id: conversationId, idempotency_key: key }),
           signal: controller.signal,
         }).catch(() => null);
         if (durable?.ok) {
@@ -1357,6 +1389,7 @@ export default function FootPlayChat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query,
+          language,
           conversation_id: conversationId,
           documentary_context: (() => {
             const previous = [...messages].reverse().find(m => m.role === 'assistant');
@@ -1436,22 +1469,22 @@ export default function FootPlayChat() {
       if (buffer.trim()) handleFrame(buffer);
 
       if (receivedAnswer && !responseDone) {
-        update(`${answer}\n\n⚠️ انقطع الاتصال قبل اكتمال الرد.`);
+        update(`${answer}\n\n${t('انقطع الاتصال قبل اكتمال الرد.', 'The connection ended before the reply finished.')}`);
       }
 
       if (!receivedAnswer) {
-        update('عذراً، لم يصل رد من المساعد. حاول مرة أخرى.');
+        update(t('لم يصل رد من المساعد. حاول مرة أخرى.', 'No reply was received. Try again.'));
       }
     } catch (error) {
       const aborted = controller.signal.aborted;
 
       const message = aborted
-        ? 'توقف الاتصال قبل اكتمال البحث. يمكنك إعادة إرسال السؤال.'
-        : 'تعذر إكمال الاتصال. تحقق من الإنترنت، ثم اضغط إعادة المحاولة.';
+        ? t('توقف الاتصال قبل اكتمال البحث. يمكنك إعادة إرسال السؤال.', 'The connection ended before the reply finished. You can send the question again.')
+        : t('تعذر إكمال الاتصال. تحقق من الإنترنت، ثم اضغط إعادة المحاولة.', 'Could not connect. Check your internet connection and try again.');
 
       update(
         answer
-          ? `${answer}\n\n⚠️ انقطع الاتصال قبل اكتمال الرد.`
+          ? `${answer}\n\n${t('انقطع الاتصال قبل اكتمال الرد.', 'The connection ended before the reply finished.')}`
           : message
       );
 
@@ -1516,7 +1549,8 @@ export default function FootPlayChat() {
 
   return (
     <div
-      dir="rtl"
+      dir={language === 'en' ? 'ltr' : 'rtl'}
+      lang={language}
       className={`flex flex-col h-[100dvh] relative overflow-hidden font-cairo transition-colors duration-300 ${
         isDarkMode
           ? 'bg-[#022c22] text-white'
@@ -1599,7 +1633,7 @@ export default function FootPlayChat() {
           <div className="flex items-center gap-2.5">
             <AiFBallLogo size="sm" />
             <span className="font-bold text-sm">
-              سجل البحوث والمحادثات
+              {t('سجل البحوث والمحادثات', 'Chat history')}
             </span>
           </div>
 
@@ -1607,7 +1641,7 @@ export default function FootPlayChat() {
             type="button"
             onClick={() => setSidebarOpen(false)}
             className="w-8 h-8 rounded-lg hover:bg-white/10"
-            aria-label="إغلاق القائمة"
+            aria-label={t('إغلاق القائمة', 'Close menu')}
           >
             <AppIcon name="close" size={18}/>
           </button>
@@ -1620,42 +1654,42 @@ export default function FootPlayChat() {
             className="w-full py-2.5 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow"
           >
             <span>+</span>
-            <span>بدء محادثة جديدة</span>
+            <span>{t('بدء محادثة جديدة', 'New chat')}</span>
           </button>
           <div className="mt-4 space-y-1.5">
-            <p className={`px-2 pb-1 text-[10px] font-bold ${isDarkMode ? 'text-gray-500' : 'text-white'}`}>مراكز فوتبلاي</p>
+            <p className={`px-2 pb-1 text-[10px] font-bold ${isDarkMode ? 'text-gray-500' : 'text-white'}`}>{t('مراكز فوتبلاي', 'AiFBall centers')}</p>
             <button type="button" onClick={() => { setSidebarOpen(false); void sendMessage('اعرض مكتبة التمارين'); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
-              <AppIcon name="activity" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>التمارين</span>
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
+              <AppIcon name="activity" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>{t('التمارين', 'Training')}</span>
             </button>
             <button type="button" onClick={() => { setSidebarOpen(false); window.location.assign('/news'); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
-              <AppIcon name="activity" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>آخر أخبار كرة القدم · 24 ساعة</span>
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
+              <AppIcon name="activity" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>{t('آخر أخبار كرة القدم · 24 ساعة', 'Football news · 24 hours')}</span>
             </button>
             <button type="button" onClick={() => { setSidebarOpen(false); window.location.assign('/preview/transfers'); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
-              <AppIcon name="activity" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>مركز الانتقالات</span>
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
+              <AppIcon name="activity" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>{t('مركز الانتقالات', 'Transfer center')}</span>
             </button>
             <button type="button" onClick={() => { setSidebarOpen(false); setShowStandings(true); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
-              <AppIcon name="chart" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>الترتيب</span>
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
+              <AppIcon name="chart" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>{t('الترتيب', 'Standings')}</span>
             </button>
             <button type="button" onClick={() => { setSidebarOpen(false); setShowLiveScores(true); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
-              <AppIcon name="pitch" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>النتائج المباشرة</span>
-              <span className="mr-auto w-1.5 h-1.5 rounded-full bg-red-500" aria-hidden="true"/>
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
+              <AppIcon name="pitch" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>{t('النتائج المباشرة', 'Live scores')}</span>
+              <span className="mr-auto w-1.5 h-1.5 rounded-full bg-gray-300" aria-hidden="true"/>
             </button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1.5 custom-scrollbar">
-          <input aria-label="البحث في المحادثات" placeholder="ابحث في المحادثات…" value={historySearch} onChange={event => setHistorySearch(event.target.value)} className={`w-full rounded-lg border px-3 py-2 text-sm mb-3 outline-none focus:border-emerald-600 ${isDarkMode ? 'border-emerald-700/30 bg-transparent text-white placeholder:text-gray-400' : 'border-emerald-900/20 bg-white text-slate-900 placeholder:text-slate-500'}` } />
+          <input aria-label={t('البحث في المحادثات', 'Search chats')} placeholder={t('ابحث في المحادثات…', 'Search chats…')} value={historySearch} onChange={event => setHistorySearch(event.target.value)} className={`w-full rounded-lg border px-3 py-2 text-sm mb-3 outline-none focus:border-emerald-600 ${isDarkMode ? 'border-emerald-700/30 bg-transparent text-white placeholder:text-gray-400' : 'border-emerald-900/20 bg-white text-slate-900 placeholder:text-slate-500'}` } />
           {sessions.filter(session => session.title.toLocaleLowerCase().includes(historySearch.trim().toLocaleLowerCase())).map((session) => (
             <button
               type="button"
               key={session.id}
               onClick={() => openSession(session)}
-              className={`w-full text-right p-3 rounded-xl cursor-pointer text-xs truncate transition border ${
+              className={`w-full text-start p-3 rounded-xl cursor-pointer text-xs truncate transition border ${
                 isDarkMode
                   ? 'bg-white/5 hover:bg-white/10 text-gray-300 border-transparent'
                   : 'bg-emerald-800/50 hover:bg-emerald-700/70 text-white border-emerald-600/30'
@@ -1679,7 +1713,7 @@ export default function FootPlayChat() {
                 type="button"
                 className="w-full py-3 px-4 rounded-xl bg-[#1D6B35] hover:bg-emerald-600 text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg"
               >
-                تسجيل الدخول
+                {t('تسجيل الدخول', 'Sign in')}
               </button>
             </SignInButton>
           </SignedOut>
@@ -1704,7 +1738,7 @@ export default function FootPlayChat() {
 
                 <div className="flex flex-col flex-1 min-w-0">
                   <span className="text-xs font-bold truncate">
-                    {user?.fullName || user?.firstName || 'حسابي'}
+                    {user?.fullName || user?.firstName || t('حسابي', 'My account')}
                   </span>
                   <span className="text-[10px] text-emerald-500 mt-1">
                     متصل الآن
@@ -1733,33 +1767,38 @@ export default function FootPlayChat() {
                 ? 'bg-white/5 border-white/10'
                 : 'bg-gray-100 border-gray-200'
             }`}
-            aria-label="فتح القائمة"
+            aria-label={t('فتح القائمة', 'Open menu')}
           >
             <AppIcon name="menu"/>
           </button>
 
-          <img src="/IMG_1417.png" alt="شعار فوتبلاي" width={48} height={48} className="h-12 w-12 shrink-0 object-contain" decoding="async" />
+          <img src="/IMG_1417.png" alt={t('شعار فوتبلاي', 'AiFBall logo')} width={48} height={48} className="h-12 w-12 shrink-0 object-contain" decoding="async" />
 
           <div>
-            <h1 className="text-base font-bold leading-tight">فوتبلاي</h1>
+            <h1 className="text-base font-bold leading-tight">{t('فوتبلاي', 'AiFBall')}</h1>
             <p className="text-[10px] font-medium text-emerald-500">
-              صديقك الرياضي
+              {t('صديقك الرياضي', 'Your football companion')}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setShowStandings(true)} aria-label="جداول الترتيب" title="جداول الترتيب"
+              <div dir="ltr" role="group" aria-label={language === 'ar' ? 'لغة التطبيق' : 'App language'} className="flex gap-1 rounded-lg border border-emerald-600/25 p-0.5">
+                {(['ar', 'en'] as const).map(lang => <button key={lang} type="button" aria-label={lang === 'ar' ? 'العربية' : 'English'}
+                  aria-pressed={language === lang} onClick={() => changeLanguage(lang)}
+                  className={`rounded-md px-2 py-1 text-xs font-bold ${language === lang ? 'bg-emerald-700 text-white' : ''}`}>{lang.toUpperCase()}</button>)}
+              </div>
+          <button type="button" onClick={() => setShowStandings(true)} aria-label={t('جداول الترتيب', 'Standings')} title={t('جداول الترتيب', 'Standings')}
             className="hidden sm:flex h-9 px-3 rounded-xl border border-emerald-500/30 bg-emerald-600/10 text-emerald-500 items-center justify-center gap-2 font-bold text-xs">
-            <span aria-hidden="true">▤</span><span className="hidden sm:inline">جداول الترتيب</span>
+            <span aria-hidden="true">▤</span><span className="hidden sm:inline">{t('جداول الترتيب', 'Standings')}</span>
           </button>
           <button
             type="button"
             onClick={() => setShowLiveScores(true)}
-            className="px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-600/10 text-emerald-500 flex items-center gap-2 font-bold text-xs"
+            className="px-3 py-1.5 rounded-xl border border-emerald-600/30 bg-emerald-600/10 text-emerald-700 dark:text-emerald-300 flex items-center gap-2 font-bold text-xs"
           >
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            النتائج المباشرة
+            <span className="w-2 h-2 rounded-full bg-gray-300" />
+            {language === 'ar' ? 'النتائج المباشرة' : 'Live scores'}
           </button>
 
           <button
@@ -1791,7 +1830,7 @@ export default function FootPlayChat() {
       </header>
 
       {intro && (
-        <button type="button" aria-label="تخطي المقدمة" onClick={() => setIntro(false)} className="aifball-intro fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_center,#114333,#050e0b_70%)] text-white ">
+        <button type="button" aria-label={t('تخطي المقدمة', 'Skip intro')} onClick={() => setIntro(false)} className="aifball-intro fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_center,#114333,#050e0b_70%)] text-white ">
           <style>{`@keyframes glass-orbit{from{transform:translateY(4vh);opacity:0}18%{opacity:1}70%{opacity:1}to{transform:translateY(-90vh);opacity:0}}`}</style>
           <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 -top-[30vh] grid h-[150vh] grid-cols-5 place-items-center gap-4 px-4 mix-blend-screen [animation:glass-orbit_1.2s_ease-in-out_both] sm:grid-cols-9">
             {Array.from({length: 28}, (_, index) => {
@@ -1805,7 +1844,7 @@ export default function FootPlayChat() {
           </span>
           <span className="relative flex flex-col items-center gap-6">
             <span className="my-4 scale-150 sm:scale-[1.8]"><OriginalBrandLogo size="lg" /></span>
-            <span className="text-sm font-normal text-white/80">من الرياض إلى العالم</span>
+            <span className="text-sm font-normal text-white/80">{t('من الرياض إلى العالم', 'From Riyadh to the world')}</span>
           </span>
         </button>
       )}
@@ -1822,16 +1861,16 @@ export default function FootPlayChat() {
           if (Math.abs(dx) > 75 && Math.abs(dx) > Math.abs(dy) * 1.5) setHomeScreen(dx < 0 ? 'analytics' : 'home');
         }}>
         {messages.length === 0 && (
-          <nav aria-label="شاشات فوتبلاي" className={`sticky top-0 z-20 mx-auto mb-5 flex w-full max-w-sm gap-1 rounded-2xl border p-1 shadow-lg backdrop-blur-lg ${isDarkMode ? "border-emerald-500/30 bg-emerald-950/60" : "border-emerald-800/25 bg-[#155c3e] shadow-emerald-950/10"}`}>
+          <nav aria-label={t('شاشات فوتبلاي', 'AiFBall screens')} className={`sticky top-0 z-20 mx-auto mb-5 flex w-full max-w-sm gap-1 rounded-2xl border p-1 shadow-lg backdrop-blur-lg ${isDarkMode ? "border-emerald-500/30 bg-emerald-950/60" : "border-emerald-800/25 bg-[#155c3e] shadow-emerald-950/10"}`}>
             <button type="button" aria-current={homeScreen === 'home' ? 'page' : undefined} onClick={() => setHomeScreen('home')}
-              className={`flex-1 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold transition ${homeScreen === 'home' ? 'bg-emerald-600 text-white' : (isDarkMode ? 'text-gray-300 hover:bg-white/10' : 'text-white hover:bg-emerald-700/60')}`}>الرئيسية</button>
+              className={`flex-1 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold transition ${homeScreen === 'home' ? 'bg-emerald-600 text-white' : (isDarkMode ? 'text-gray-300 hover:bg-white/10' : 'text-white hover:bg-emerald-700/60')}`}>{t('الرئيسية', 'Home')}</button>
             <button type="button" aria-current={homeScreen === 'analytics' ? 'page' : undefined} onClick={() => setHomeScreen('analytics')}
-              className={`flex-1 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold transition ${homeScreen === 'analytics' ? 'bg-emerald-600 text-white' : (isDarkMode ? 'text-gray-300 hover:bg-white/10' : 'text-white hover:bg-emerald-700/60')}`}><span className="inline-flex items-center justify-center gap-2">التحليلات <svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7 16v-3m5 3V8m5 8v-5"/><path d="M6 19h12"/></svg></span></button>
+              className={`flex-1 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold transition ${homeScreen === 'analytics' ? 'bg-emerald-600 text-white' : (isDarkMode ? 'text-gray-300 hover:bg-white/10' : 'text-white hover:bg-emerald-700/60')}`}><span className="inline-flex items-center justify-center gap-2">{t('التحليلات', 'Analytics')} <svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7 16v-3m5 3V8m5 8v-5"/><path d="M6 19h12"/></svg></span></button>
           </nav>
         )}
         {messages.length === 0 ? (homeScreen === 'home' ? (
           <div className="flex-1 flex flex-col justify-center my-auto py-2" style={{ fontFamily: "Cairo, sans-serif" }}>
-            <div className="text-right space-y-3 mb-5 px-1">
+            <div className="text-start space-y-3 mb-5 px-1">
               <div className={`inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 border-emerald-500/40 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-900'}`}>
                 <AppIcon name="pitch"/>
                 <span>HOME OF FOOTBALL</span>
@@ -1846,26 +1885,26 @@ export default function FootPlayChat() {
               </p>
             </div>
 
-            <nav aria-label="اختصارات فوتبلاي" className="mb-6 grid grid-cols-4 gap-2">
+            <nav aria-label={t('اختصارات فوتبلاي', 'AiFBall shortcuts')} className="mb-6 grid grid-cols-4 gap-2">
               {[
-                { title: 'إضافة التطبيق للرئيسية', icon: 'plus', install: true },
-                { title: 'الأكاديمية التدريبية', icon: 'activity', href: '/academy' },
+                { title: t('إضافة التطبيق للرئيسية', 'Install app'), icon: 'plus', install: true },
+                { title: t('الأكاديمية التدريبية', 'Training academy'), icon: 'activity', href: '/academy' },
                 { title: 'FC 27', icon: 'pitch', href: 'https://www.futbin.com/' },
-                { title: 'الفانتازي', icon: 'chart', fantasy: true },
+                { title: t('الفانتازي', 'Fantasy'), icon: 'chart', fantasy: true },
               ].map(item => {
                 const style = 'flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-emerald-300/35 p-2 text-center text-[10px] font-bold backdrop-blur-md transition focus-visible:outline focus-visible:outline-emerald-600 sm:text-sm' + (isDarkMode ? ' bg-emerald-900/45 backdrop-blur-xl text-white hover:bg-emerald-950/45' : ' bg-white/60 text-gray-900 hover:bg-emerald-950/50 backdrop-blur-xl');
                 const label = <>{item.href ? <svg aria-hidden="true" width="27" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className={isDarkMode ? "text-emerald-300" : "text-emerald-800"}><path d="M7 7h10a4 4 0 0 1 4 3l1 5a2 2 0 0 1-3 2l-3-3H8l-3 3a2 2 0 0 1-3-2l1-5a4 4 0 0 1 4-3Z"/><path d="M7 9v4m-2-2h4m7-1h.01m3 2h.01"/></svg> : <AppIcon name={item.icon} size={23} className={isDarkMode ? "text-emerald-300" : "text-emerald-800"}/>}<span>{item.title}</span></>;
                 return item.href ? <a key={item.title} href={item.href} className={style}>{label}</a> :
-                  <button key={item.title} type="button" className={style} onClick={() => { if (item.install) setShowInstallHelp(open => !open); else if (item.fantasy) setShowFantasyChoices(open => !open); else if (item.query) void sendMessage(item.query); }}>{label}</button>;
+                  <button key={item.title} type="button" className={style} onClick={() => { if (item.install) setShowInstallHelp(open => !open); else if (item.fantasy) setShowFantasyChoices(open => !open);  }}>{label}</button>;
               })}
             </nav>
             {showFantasyChoices && (
-              <section aria-label="اختر مسابقة الفانتازي" className={`mb-4 rounded-2xl border border-emerald-500/30 p-4 text-right ${isDarkMode ? 'bg-emerald-950/50 backdrop-blur-xl text-white' : 'bg-white text-slate-900'}`}>
-                <p className="mb-3 text-sm font-bold">أي فانتازي تبي؟</p>
+              <section aria-label={t('اختر مسابقة الفانتازي', 'Choose a fantasy competition')} className={`mb-4 rounded-2xl border border-emerald-500/30 p-4 text-start ${isDarkMode ? 'bg-emerald-950/50 backdrop-blur-xl text-white' : 'bg-white text-slate-900'}`}>
+                <p className="mb-3 text-sm font-bold">{t('أي فانتازي تبي؟', 'Choose a fantasy competition')}</p>
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { title: 'فانتازي روشن', query: 'أريد فانتازي دوري روشن السعودي: اعرض نصائح الجولة القادمة واللاعبين المقترحين مع رابط اللعبة الرسمي.' },
-                    { title: 'فانتازي البريميرليغ', query: 'أريد فانتازي الدوري الإنجليزي الممتاز: اعرض نصائح الجولة القادمة واللاعبين المقترحين مع رابط اللعبة الرسمي.' },
+                    { title: t('فانتازي روشن', 'Saudi Pro League fantasy'), query: 'أريد فانتازي دوري روشن السعودي: اعرض نصائح الجولة القادمة واللاعبين المقترحين مع رابط اللعبة الرسمي.' },
+                    { title: t('فانتازي البريميرليغ', 'Premier League fantasy'), query: 'أريد فانتازي الدوري الإنجليزي الممتاز: اعرض نصائح الجولة القادمة واللاعبين المقترحين مع رابط اللعبة الرسمي.' },
                   ].map(choice => (
                     <button key={choice.title} type="button" onClick={() => { setShowFantasyChoices(false); void sendMessage(choice.query); }} className={`rounded-xl border border-emerald-400/40 px-3 py-4 text-center text-xs font-bold transition hover:border-emerald-400 sm:text-sm ${isDarkMode ? 'bg-emerald-950/50 hover:bg-emerald-800/70' : 'bg-emerald-50 hover:bg-emerald-100'}`}>
                       {choice.title}
@@ -1876,9 +1915,9 @@ export default function FootPlayChat() {
             )}
             {showInstallHelp && (
               <section className={`mb-4 rounded-xl border border-emerald-500/30 p-3 text-sm leading-7 ${isDarkMode ? 'bg-emerald-950/60 backdrop-blur-xl text-white' : 'bg-white text-gray-900'}`}>
-                <p>آيفون: من سفاري اضغط مشاركة، ثم إضافة إلى الشاشة الرئيسية.</p>
-                <p>أندرويد: من قائمة المتصفح اختر تثبيت التطبيق أو إضافة إلى الشاشة الرئيسية.</p>
-                <button type="button" onClick={() => setShowInstallHelp(false)} className="underline">إغلاق</button>
+                <p>{t('آيفون: من سفاري اضغط مشاركة، ثم إضافة إلى الشاشة الرئيسية.', 'iPhone: in Safari, tap Share, then Add to Home Screen.')}</p>
+                <p>{t('أندرويد: من قائمة المتصفح اختر تثبيت التطبيق أو إضافة إلى الشاشة الرئيسية.', 'Android: open the browser menu and select Install app or Add to Home Screen.')}</p>
+                <button type="button" onClick={() => setShowInstallHelp(false)} className="underline">{t('إغلاق', 'Close')}</button>
               </section>
             )}
 
@@ -1891,7 +1930,7 @@ export default function FootPlayChat() {
                   disabled={loading}
                   onClick={() => { void sendMessage(card.question); }}
                   aria-label={`${card.tag}: ${card.question}`}
-                  className={`flex flex-col justify-between text-right p-3 sm:p-4 rounded-2xl border backdrop-blur-[6px] min-h-[112px] sm:min-h-[126px] transition-all duration-500 cursor-pointer hover:border-emerald-400/60 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-wait disabled:opacity-60 ${
+                  className={`flex flex-col justify-between text-start p-3 sm:p-4 rounded-2xl border backdrop-blur-[6px] min-h-[112px] sm:min-h-[126px] transition-all duration-500 cursor-pointer hover:border-emerald-400/60 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-wait disabled:opacity-60 ${
                     isDarkMode
                       ? 'bg-emerald-950/45 backdrop-blur-xl border-emerald-500/40 text-white shadow-md'
                       : 'bg-white/35 border-white/55 text-gray-950 shadow-sm'
@@ -1923,7 +1962,7 @@ export default function FootPlayChat() {
                   isDarkMode ? 'text-gray-300' : 'text-gray-700'
                 }`}
               >
-                استكشف مجالات المعرفة الرياضية
+                {t('استكشف مجالات المعرفة الرياضية', 'Explore football topics')}
               </span>
 
               <button
@@ -1936,13 +1975,13 @@ export default function FootPlayChat() {
                 }`}
               >
                 <AppIcon name="refresh" size={16}/>
-                <span>استكشف المزيد</span>
+                <span>{t('استكشف المزيد', 'Explore more')}</span>
               </button>
             </div>
           </div>
         ) : (
           <div className={`w-full flex-1 rounded-2xl border backdrop-blur-xl p-3 sm:p-5 ${isDarkMode ? "border-emerald-500/20 bg-emerald-950/50" : "border-emerald-800/20 bg-[#176343] text-white"}`}>
-            <p className={`mb-4 text-center text-xs ${isDarkMode ? "text-emerald-300" : "text-white"}`}>الشاشة الثانية • اسحب يمينًا للعودة للرئيسية</p>
+            <p className={`mb-4 text-center text-xs ${isDarkMode ? "text-emerald-300" : "text-white"}`}>{t('الشاشة الثانية • اسحب يمينًا للعودة للرئيسية', 'Swipe to return home')}</p>
             <AnalyticsDashboard />
           </div>
         )) : (
@@ -1982,7 +2021,7 @@ export default function FootPlayChat() {
                               <img
                                 key={imageIndex}
                                 src={url}
-                                alt="مرفق"
+                                alt={t('مرفق', 'Attachment')}
                                 className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border border-white/20"
                               />
                             ))}
@@ -2002,15 +2041,15 @@ export default function FootPlayChat() {
                                 }`}
                               >
                                 <AppIcon name="clock" size={14} className="text-emerald-500"/>
-                                زمن استقبال الإجابة:{' '}
-                                {formatSeconds(msg.thinkingTime)}
+                                {t('زمن استقبال الإجابة', 'Response time')}{' '}
+                                {language === 'en' ? msg.thinkingTime + ' s' : formatSeconds(msg.thinkingTime)}
                               </span>
                             </div>
                           )}
 
                         <div
                           dir={
-                            detectLanguage(msg.userQuery) === 'en'
+                            detectLanguage(msg.content.replace(/<[^>]*>/g, '').trim() || msg.userQuery) === 'en'
                               ? 'ltr'
                               : 'rtl'
                           }
@@ -2037,25 +2076,25 @@ export default function FootPlayChat() {
                         </div>
 
                         {!loading && index === messages.length - 1 && msg.content.trim() && (
-                          <section dir="rtl" aria-label="أسئلة مقترحة" className="mt-3">
-                            <p className="mb-2 text-sm font-bold text-emerald-500">أسئلة مقترحة</p>
+                          <section aria-label={t('أسئلة مقترحة', 'Suggested questions')} className="mt-3">
+                            <p className="mb-2 text-sm font-bold text-emerald-500">{t('أسئلة مقترحة', 'Suggested questions')}</p>
                             <div className="flex flex-wrap gap-2">
                               {((msg.content.includes('<aifball-player') || /اللاعب|مسير|راتب|عقد|قيمة سوقية|player|career/i.test(msg.userQuery ?? '')) ? [
-                                'ما أرقام هذا اللاعب في الموسم الحالي؟',
-                                'ما أبرز بطولاته ومحطات مسيرته؟',
-                                'متى ينتهي عقده وكم راتبه وقيمته السوقية؟',
+                                t('ما أرقام هذا اللاعب في الموسم الحالي؟', 'What are this player’s stats this season?'),
+                                t('ما أبرز بطولاته ومحطات مسيرته؟', 'What are the highlights and trophies of his career?'),
+                                t('متى ينتهي عقده وكم راتبه وقيمته السوقية؟', 'When does his contract expire, and what are his salary and market value?'),
                                ] : /مبار|إحصا|احصا|نتائج|تشكيل|match|stats/i.test(msg.userQuery ?? '') ? [
-                                'أعطني ملخص المباريات المذكورة في الرد.',
-                                'ما المباريات القادمة للفرق المذكورة؟',
-                                'من أبرز لاعب في المباراة؟ اعرض أداءه بالأرقام.',
-                                'ما آخر تغريدة من الحساب الرسمي للنادي عن المباراة؟',
+                                t('أعطني ملخص المباريات المذكورة في الرد.', 'Summarize the matches mentioned above.'),
+                                t('ما المباريات القادمة للفرق المذكورة؟', 'What are the next matches for these teams?'),
+                                t('من أبرز لاعب في المباراة؟ اعرض أداءه بالأرقام.', 'Who was the standout player? Show their statistics.'),
+                                t('ما آخر تغريدة من الحساب الرسمي للنادي عن المباراة؟', 'What did the club’s official account last post about the match?'),
                               ] : /نادي|فريق|club|team/i.test(msg.userQuery ?? '') ? [
-                                'ما مباريات الفريق القادمة؟',
-                                'لخّص آخر مباراة للفريق.',
-                                'ما آخر تغريدة في حساب النادي الرسمي؟',
+                                t('ما مباريات الفريق القادمة؟', 'What are the team’s next matches?'),
+                                t('لخّص آخر مباراة للفريق.', 'Summarize the team’s latest match.'),
+                                t('ما آخر تغريدة في حساب النادي الرسمي؟', 'What did the club’s official account last post?'),
                               ] : [
-                                'ما أهم التفاصيل الإضافية عن هذا الموضوع؟',
-                                'هل فيه أرقام أو أمثلة موثقة توضح الإجابة؟',
+                                t('ما أهم التفاصيل الإضافية عن هذا الموضوع؟', 'What else should I know about this?'),
+                                t('هل فيه أرقام أو أمثلة موثقة توضح الإجابة؟', 'Are there verified figures or examples that illustrate this?'),
                               ]).map(question => (
                                 <button key={question} type="button" onClick={() => void sendMessage(question)}
                                   className="rounded-full border border-emerald-500/40 px-3 py-1.5 text-sm hover:border-emerald-500">
@@ -2078,7 +2117,7 @@ export default function FootPlayChat() {
                               navigator.clipboard.writeText(msg.content)
                             }
                             className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-gray-400"
-                            aria-label="نسخ النص" title="نسخ النص"
+                            aria-label={t('نسخ النص', 'Copy text')} title={t('نسخ النص', 'Copy text')}
                           >
                             <AppIcon name="copy"/>
                           </button>
@@ -2087,19 +2126,19 @@ export default function FootPlayChat() {
                             type="button"
                             onClick={() =>
                               navigator.share?.({
-                                title: 'فوتبلاي',
+                                title: t('فوتبلاي', 'AiFBall'),
                                 text: msg.content,
                                 url: window.location.href,
                               })
                             }
                             className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-gray-400"
-                            aria-label="مشاركة" title="مشاركة"
+                            aria-label={t('مشاركة', 'Share')} title={t('مشاركة', 'Share')}
                           >
                             <AppIcon name="share"/>
                           </button>
 
                           <ReadAloudButton content={msg.content}/>
-                          <details className="relative"><summary aria-label="خيارات الرد الأخرى" title="خيارات الرد الأخرى" className="list-none cursor-pointer p-2 rounded-lg text-gray-400 hover:bg-emerald-500/10 [&::-webkit-details-marker]:hidden"><AppIcon name="more"/></summary><div className={`absolute z-30 bottom-full mb-2 start-0 rounded-xl border shadow-lg p-2 whitespace-nowrap ${isDarkMode?'bg-emerald-950/60 backdrop-blur-xl border-emerald-600/40':'bg-white border-gray-200'}`}>
+                          <details className="relative"><summary aria-label={t('خيارات الرد الأخرى', 'More response options')} title={t('خيارات الرد الأخرى', 'More response options')} className="list-none cursor-pointer p-2 rounded-lg text-gray-400 hover:bg-emerald-500/10 [&::-webkit-details-marker]:hidden"><AppIcon name="more"/></summary><div className={`absolute z-30 bottom-full mb-2 start-0 rounded-xl border shadow-lg p-2 whitespace-nowrap ${isDarkMode?'bg-emerald-950/60 backdrop-blur-xl border-emerald-600/40':'bg-white border-gray-200'}`}>
                           <button
                             type="button"
                             onClick={() => {
@@ -2108,9 +2147,9 @@ export default function FootPlayChat() {
                             }}
                             disabled={loading}
                             className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-gray-400 disabled:opacity-40"
-                            aria-label="إعادة التوليد" title="إعادة التوليد"
+                            aria-label={t('إعادة التوليد', 'Regenerate')} title={t('إعادة التوليد', 'Regenerate')}
                           >
-                            <AppIcon name="refresh"/><span className="text-xs ms-2">إعادة التوليد</span>
+                            <AppIcon name="refresh"/><span className="text-xs ms-2">{t('إعادة التوليد', 'Regenerate')}</span>
                           </button></div></details>
 
                           <button
@@ -2143,7 +2182,7 @@ export default function FootPlayChat() {
                                 ? 'text-emerald-500'
                                 : 'text-gray-400'
                             }`}
-                            aria-pressed={msg.feedback === 'like'} aria-label="إعجاب" title="إعجاب"
+                            aria-pressed={msg.feedback === 'like'} aria-label={t('إعجاب', 'Like')} title={t('إعجاب', 'Like')}
                           >
                             <AppIcon name="like"/>
                           </button>
@@ -2178,7 +2217,7 @@ export default function FootPlayChat() {
                                 ? 'text-red-500'
                                 : 'text-gray-400'
                             }`}
-                            aria-pressed={msg.feedback === 'dislike'} aria-label="عدم إعجاب" title="عدم إعجاب"
+                            aria-pressed={msg.feedback === 'dislike'} aria-label={t('عدم إعجاب', 'Dislike')} title={t('عدم إعجاب', 'Dislike')}
                           >
                             <AppIcon name="dislike"/>
                           </button>
@@ -2226,12 +2265,12 @@ export default function FootPlayChat() {
                     </svg>
 
                     <span className="font-bold text-xs sm:text-sm text-emerald-500">
-                      {loadingSeconds < 8 ? 'جاري بدء البحث' : loadingSeconds < 25 ? 'جاري جمع البيانات والتحقق من المصادر' : 'جاري تجهيز الإجابة'}... ({formatSeconds(loadingSeconds)})
+                      {loadingSeconds < 8 ? t('جاري بدء البحث', 'Starting the search') : loadingSeconds < 25 ? t('جاري جمع البيانات والتحقق من المصادر', 'Gathering data and checking sources') : t('جاري تجهيز الإجابة', 'Preparing the response')}... ({language === 'en' ? loadingSeconds + ' s' : formatSeconds(loadingSeconds)})
                     </span>
                   </div>
 
                   <p className="text-[11px] text-gray-500 mt-2">
-                    جاري انتظار البيانات من خادم فوتبلاي
+                    {t('جاري انتظار البيانات من خادم فوتبلاي', 'Waiting for AiFBall')}
                   </p>
                 </div>
               </div>
@@ -2261,7 +2300,7 @@ export default function FootPlayChat() {
                 >
                   <img
                     src={item.url}
-                    alt="مرفق"
+                    alt={t('مرفق', 'Attachment')}
                     className="w-8 h-8 object-cover rounded-md"
                   />
 
@@ -2280,7 +2319,7 @@ export default function FootPlayChat() {
                       })
                     }
                     className="text-red-500"
-                    aria-label="إزالة المرفق"
+                    aria-label={t('إزالة المرفق', 'Remove attachment')}
                   >
                     <AppIcon name="close" size={18}/>
                   </button>
@@ -2308,7 +2347,7 @@ export default function FootPlayChat() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              title="إرفاق ملف"
+              title={t('إرفاق ملف', 'Attach file')}
               className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full flex items-center justify-center font-bold text-xl ${isDarkMode ? 'text-emerald-200 hover:text-white' : 'text-emerald-800 hover:text-emerald-600'}`}
             >
               +
@@ -2317,7 +2356,7 @@ export default function FootPlayChat() {
             <button
               type="button"
               onClick={handleVoiceSearch}
-              title="بحث صوتي"
+              title={t('بحث صوتي', 'Voice input')}
               className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full flex items-center justify-center ${
                 isListening
                   ? 'bg-emerald-600 text-white animate-pulse'
@@ -2354,12 +2393,12 @@ export default function FootPlayChat() {
                   event.stopPropagation();
                 }
               }}
-              aria-label="اكتب رسالتك"
+              aria-label={t('اكتب رسالتك', 'Write your message')}
               enterKeyHint="enter"
               placeholder={
                 isListening
-                  ? 'جاري الاستماع لصوتك...'
-                  : 'اسأل عن أي مباراة، تحليل، أو إحصائية...'
+                  ? t('جاري الاستماع لصوتك...', 'Listening…')
+                  : t('اسأل عن أي مباراة، تحليل، أو إحصائية...', 'Ask about a match, analysis or statistics…')
               }
               className={`flex-1 min-w-0 max-h-[104px] resize-none overflow-y-auto bg-transparent px-2 sm:px-3 py-2 text-sm leading-6 focus:outline-none ${
                 isDarkMode
@@ -2373,7 +2412,7 @@ export default function FootPlayChat() {
               onClick={() => sendMessage()}
               disabled={loading || (!input.trim() && !attachedFiles.length)}
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1D6B35] hover:bg-emerald-600 disabled:bg-emerald-950/30 disabled:text-emerald-700 flex items-center justify-center text-white flex-shrink-0"
-              aria-label="إرسال الرسالة"
+              aria-label={t('إرسال الرسالة', 'Send message')}
             >
               ➤
             </button>
@@ -2384,20 +2423,20 @@ export default function FootPlayChat() {
               isDarkMode ? 'text-gray-500' : 'text-gray-400'
             }`}
           >
-            منصة فوتبلاي للذكاء الاصطناعي الرياضي • by خالد العايش
+            {t('منصة فوتبلاي للذكاء الاصطناعي الرياضي • by خالد العايش', 'AiFBall football AI • by Khaled Alayesh')}
           </p>
         </div>
       </footer>
 
       {showStandings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowStandings(false)}>
-          <div role="dialog" aria-modal="true" aria-label="جداول الترتيب العالمية" onClick={event => event.stopPropagation()}
+          <div role="dialog" aria-modal="true" aria-label={t('جداول الترتيب العالمية', 'Global standings')} onClick={event => event.stopPropagation()}
             className={`w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl ${isDarkMode ? 'bg-emerald-950/60 backdrop-blur-xl border border-emerald-600/40' : 'bg-white border border-gray-200'}`}>
             <div className={`sticky top-0 z-30 flex justify-between items-center p-4 border-b ${isDarkMode ? 'bg-emerald-950/60 backdrop-blur-xl border-emerald-600/40' : 'bg-white border-gray-200'}`}>
-              <h2 className="font-bold">جداول الترتيب العالمية</h2>
-              <button type="button" aria-label="إغلاق جداول الترتيب" onClick={() => setShowStandings(false)} className="w-8 h-8 rounded-full"><AppIcon name="close" size={18}/></button>
+              <h2 className="font-bold">{t('جداول الترتيب العالمية', 'Global standings')}</h2>
+              <button type="button" aria-label={t('إغلاق جداول الترتيب', 'Close standings')} onClick={() => setShowStandings(false)} className="w-8 h-8 rounded-full"><AppIcon name="close" size={18}/></button>
             </div>
-            <StandingsExplorer isDark={isDarkMode} />
+            <StandingsExplorer isDark={isDarkMode} language={language} />
           </div>
         </div>
       )}
@@ -2409,6 +2448,11 @@ export default function FootPlayChat() {
           onClick={() => setShowLiveScores(false)}
         >
           <div
+            dir={language === 'ar' ? 'rtl' : 'ltr'}
+            lang={language}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="live-scores-title"
             onClick={(event) => event.stopPropagation()}
             className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl shadow-2xl ${
               isDarkMode
@@ -2423,22 +2467,23 @@ export default function FootPlayChat() {
                   : 'bg-white border-gray-200'
               }`}
             >
-              <h2 className="font-bold text-lg">
-                <AppIcon name="pitch"/> مركز النتائج المباشرة
+              <h2 id="live-scores-title" className={`flex items-center gap-2 text-sm font-bold sm:text-lg ${isDarkMode ? 'text-emerald-200' : 'text-emerald-800'}`}>
+                <AppIcon name="pitch" /> {language === 'ar' ? 'النتائج المباشرة' : 'Live scores'}
               </h2>
+
 
               <button
                 type="button"
                 onClick={() => setShowLiveScores(false)}
                 className="w-8 h-8 rounded-full hover:bg-white/10"
-                aria-label="إغلاق النتائج"
+                aria-label={language === 'ar' ? 'إغلاق النتائج' : 'Close scores'}
               >
                 <AppIcon name="close" size={18}/>
               </button>
             </div>
 
             <div className="p-2 sm:p-4">
-              <LiveMatchCenter isDark={isDarkMode} />
+              <LiveMatchCenter isDark={isDarkMode} language={language} />
             </div>
           </div>
         </div>

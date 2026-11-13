@@ -1,252 +1,176 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import AppIcon from './AppIcon';
+
+import { useEffect, useState } from 'react';
+import AppleSportsCenter from './AppleSportsCenter';
 import MatchSummary from './MatchSummary';
-import { filterLiveMatches, MATCH_FILTERS, type MatchFilter } from '../../lib/live-match-filters';
+import { filterLiveMatches, MATCH_FILTERS, matchFilterState, type MatchFilter } from '../../lib/live-match-filters';
 import { footballNameInArabic } from '../../lib/football-names-ar';
+import { footballGroups, footballLeagues, type FootballBoard, type FootballEvent, type FootballTeam, type ScoresLanguage } from '../../lib/football-scoreboard';
 
-const LEAGUES = [
-  { id: 'ksa.1', name: 'دوري روشن السعودي', flag: '🇸🇦' },
-  { id: 'eng.1', name: 'الدوري الإنجليزي', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-  { id: 'esp.1', name: 'الدوري الإسباني', flag: '🇪🇸' },
-  { id: 'ita.1', name: 'الدوري الإيطالي', flag: '🇮🇹' },
-  { id: 'ger.1', name: 'الدوري الألماني', flag: '🇩🇪' },
-  { id: 'fra.1', name: 'الدوري الفرنسي', flag: '🇫🇷' },
-  { id: 'uefa.champions', name: 'دوري أبطال أوروبا', flag: '🏆' },
-  { id: 'afc.champions', name: 'دوري أبطال آسيا للنخبة', flag: '🏆' },
-  { id: 'fifa.world', name: 'كأس العالم', flag: '🌍' },
-  { id: 'fifa.worldq.afc', name: 'تصفيات كأس العالم — آسيا', flag: '🌏' },
-  { id: 'fifa.worldq.uefa', name: 'تصفيات كأس العالم — أوروبا', flag: '🌍' },
-  { id: 'fifa.worldq.caf', name: 'تصفيات كأس العالم — أفريقيا', flag: '🌍' },
-  { id: 'fifa.worldq.conmebol', name: 'تصفيات كأس العالم — أمريكا الجنوبية', flag: '🌎' },
-  { id: 'fifa.worldq.concacaf', name: 'تصفيات كأس العالم — كونكاكاف', flag: '🌎' },
-  { id: 'fifa.worldq.ofc', name: 'تصفيات كأس العالم — أوقيانوسيا', flag: '🌏' },
-  { id: 'afc.asian.cup', name: 'كأس آسيا للمنتخبات', flag: '🌏' },
-  { id: 'uefa.euro', name: 'كأس أمم أوروبا', flag: '🌍' },
-  { id: 'uefa.euroq', name: 'تصفيات كأس أمم أوروبا', flag: '🌍' },
-  { id: 'uefa.nations', name: 'دوري الأمم الأوروبية', flag: '🌍' },
-  { id: 'caf.nations', name: 'كأس أمم أفريقيا', flag: '🌍' },
-  { id: 'conmebol.america', name: 'كوبا أمريكا', flag: '🌎' },
-  { id: 'concacaf.gold', name: 'الكأس الذهبية', flag: '🌎' },
-  { id: 'fifa.friendly', name: 'مباريات المنتخبات الودية', flag: '🌐' },
-];
+const dateOptions = [
+  ['yesterday', 'أمس', 'Yesterday'], ['today', 'اليوم', 'Today'], ['tomorrow', 'غدًا', 'Tomorrow'],
+] as const;
+const englishFilters = { all: 'All', live: 'Live now', scheduled: 'Upcoming', finished: 'Finished' };
+const nationalPriority = new Set(['Argentina', 'Brazil', 'England', 'France', 'Germany', 'Italy', 'Spain', 'Portugal', 'Netherlands', 'Uruguay', 'Egypt', 'Morocco', 'Japan', 'South Korea', 'Qatar', 'Iraq', 'United Arab Emirates', 'Kuwait', 'Jordan']);
+const topLeagues = new Set<string>(footballGroups[0].leagues.map(([id]) => id));
+const internationalLeagues = new Set<string>(footballGroups[1].leagues.map(([id]) => id));
+const teamName = (team?: FootballTeam) => team?.displayName || team?.shortDisplayName || team?.name || '';
+const getTeams = (event: FootballEvent) => (event.competitions?.[0]?.competitors ?? []).flatMap(side => side.team ? [side.team] : []);
+const favoriteKey = 'aifball-scoreboard-favorites';
 
-export default function LiveMatchCenter({ isDark = true }: { isDark?: boolean }) {
-  const [dateMode, setDateMode] = useState<'yesterday' | 'today' | 'tomorrow'>('today');
-  const [matchesByLeague, setMatchesByLeague] = useState<Record<string, any[]>>({});
-  const [loading, setLoading] = useState(true);
-  const [failedLeagues, setFailedLeagues] = useState<string[]>([]);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
-  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+export default function LiveMatchCenter({ isDark = true, language = 'ar' }: { isDark?: boolean; language?: ScoresLanguage }) {
+  const [other, setOther] = useState(false);
+  const ar = language === 'ar';
+  const toggleStyle = (active: boolean) => `rounded-xl px-4 py-2 text-sm font-bold ${active ? 'bg-emerald-700 text-white' : 'border border-emerald-600/30'}`;
+  return (
+    <div dir={ar ? 'rtl' : 'ltr'} lang={language}>
+      <div role="group" aria-label={ar ? 'الرياضة' : 'Sport'} className="mx-auto flex max-w-4xl gap-2 px-2">
+        <button type="button" aria-pressed={!other} onClick={() => setOther(false)} className={toggleStyle(!other)}>{ar ? 'كرة القدم' : 'Football'}</button>
+        <button type="button" aria-pressed={other} onClick={() => setOther(true)} className={toggleStyle(other)}>{ar ? 'الرياضات الأخرى' : 'Other sports'}</button>
+      </div>
+      {other ? <AppleSportsCenter isDark={isDark} language={language} /> : <FootballMatchCenter isDark={isDark} language={language} />}
+    </div>
+  );
+}
 
+function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: ScoresLanguage }) {
+  const ar = language === 'ar';
+  const t = (arabic: string, english: string) => ar ? arabic : english;
+  const [date, setDate] = useState<(typeof dateOptions)[number][0]>('today');
+  const [board, setBoard] = useState<FootballBoard>();
+  const [failed, setFailed] = useState(false);
+  const [expanded, setExpanded] = useState('');
   const [search, setSearch] = useState('');
-  const [selectedLeague, setSelectedLeague] = useState('all');
-  const [statusFilter, setStatusFilter] = useState<MatchFilter>('all');
-  const filtered = filterLiveMatches(matchesByLeague, selectedLeague, search, statusFilter);
-  const hasFilters = Boolean(search.trim() || selectedLeague !== 'all' || statusFilter !== 'all');
-  const clearFilters = () => { setSearch(''); setSelectedLeague('all'); setStatusFilter('all'); setExpandedMatchId(null); };
-
-  const formatMatchTime = (dateStr: string) => {
-    try {
-      const date = new Date(dateStr);
-      return new Intl.DateTimeFormat('ar-SA', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-        timeZone: 'Asia/Riyadh'
-      }).format(date);
-    } catch (e) {
-      return 'غير محدد';
-    }
-  };
+  const [league, setLeague] = useState('all-leagues');
+  const [status, setStatus] = useState<MatchFilter>('all');
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favoriteOnly, setFavoriteOnly] = useState(false);
 
   useEffect(() => {
-    let active = true;
-    let pending = false;
-    const controller = new AbortController();
-    setLoading(true);
-    setMatchesByLeague({});
-    setFailedLeagues([]);
-    setUpdatedAt(null);
-    setExpandedMatchId(null);
+    try {
+      const saved: unknown = JSON.parse(localStorage.getItem(favoriteKey) ?? '[]');
+      if (Array.isArray(saved)) setFavorites(saved.filter(id => typeof id === 'string'));
+    } catch {}
+  }, []);
 
-    const fetchAllLeagues = async () => {
+  function toggleFavorite(id: string) {
+    const next = favorites.includes(id) ? favorites.filter(value => value !== id) : [...favorites, id];
+    setFavorites(next);
+    try { localStorage.setItem(favoriteKey, JSON.stringify(next)); } catch {}
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let pending = false;
+    const refresh = async () => {
       if (pending) return;
       pending = true;
-      const results = await Promise.allSettled(LEAGUES.map(async (league) => {
-        const res = await fetch(`/api/espn?league=${league.id}&date=${dateMode}`, {
-          signal: controller.signal, cache: 'no-store',
-        });
-        const json = await res.json();
-        if (!res.ok || !Array.isArray(json?.events)) throw new Error('فشل جلب المباريات');
-        return json.events;
-      }));
-      if (!active) return;
-      const failed: string[] = [];
-      const successful: Record<string, any[]> = {};
-      results.forEach((result, index) => {
-        const league = LEAGUES[index];
-        if (result.status === 'fulfilled') successful[league.id] = result.value;
-        else failed.push(league.name);
-      });
-      setMatchesByLeague(previous => ({ ...previous, ...successful }));
-      setFailedLeagues(failed);
-      if (failed.length < LEAGUES.length) {
-        setUpdatedAt(new Intl.DateTimeFormat('ar-SA', {
-          hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Riyadh',
-        }).format(new Date()));
+      try {
+        const response = await fetch('/api/espn?league=all&grouped=1&date=' + date, { signal: controller.signal });
+        if (!response.ok) throw new Error('Scoreboard unavailable');
+        const data: FootballBoard = await response.json();
+        if (!controller.signal.aborted) { setBoard(data); setFailed(false); }
+      } catch {
+        if (!controller.signal.aborted) setFailed(true);
+      } finally {
+        pending = false;
       }
-      setLoading(false);
-      pending = false;
     };
+    void refresh();
+    const timer = date === 'today' ? setInterval(refresh, 30000) : undefined;
+    return () => { controller.abort(); clearInterval(timer); };
+  }, [date]);
 
-    void fetchAllLeagues();
-    const interval = setInterval(() => { void fetchAllLeagues(); }, 60000);
-    return () => {
-      active = false;
-      controller.abort();
-      clearInterval(interval);
-    };
-  }, [dateMode]);
+  const { all: otherWorld, ...specific } = board?.matches ?? {};
+  const matches = { ...specific, 'other-world': otherWorld ?? [] };
+  const input = favoriteOnly ? Object.fromEntries(Object.entries(matches).map(([id, events]) =>
+    [id, events.filter(event => getTeams(event).some(team => favorites.includes(team.id)))])) : matches;
+  const filtered = filterLiveMatches(input, league === 'all-leagues' ? 'all' : league === 'all' ? 'other-world' : league, search, status);
+  const visible = filtered.visible;
+  const display = (team: FootballTeam) => ar ? footballNameInArabic(teamName(team)) || teamName(team) : teamName(team);
+  const timeFormat = new Intl.DateTimeFormat(ar ? 'ar-SA' : 'en-GB', { timeZone: 'Asia/Riyadh', hour: 'numeric', minute: '2-digit' });
+  const priorities = Object.entries(visible).flatMap(([code, events]) => events.map((event: FootballEvent) => {
+    const teams = getTeams(event);
+    const names = teams.map(teamName);
+    const score = teams.some(team => team.id === '655') ? 100
+      : teams.some(team => favorites.includes(team.id)) ? 90
+      : internationalLeagues.has(code) && names.some(name => nationalPriority.has(name)) ? 60
+      : topLeagues.has(code) ? 35 : 0;
+    return { code, event, score };
+  })).filter(item => item.score > 0).sort((a, b) =>
+    b.score - a.score || Number(matchFilterState(b.event) === 'live') - Number(matchFilterState(a.event) === 'live') || a.event.date.localeCompare(b.event.date)
+  ).slice(0, 6);
+  const prioritized = new Set(priorities.map(item => item.event.id));
+  const box = `rounded-2xl border ${isDark ? 'border-white/15 bg-white/5' : 'border-emerald-900/15 bg-white'}`;
+  const chip = (active: boolean) => `rounded-xl border px-3 py-2 text-sm font-bold ${active ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-emerald-600/25'}`;
+
+  function row(event: FootballEvent, code: string) {
+    const competitors = event.competitions?.[0]?.competitors ?? [];
+    const sides = ['home', 'away'].flatMap(key => competitors.filter(side => side.homeAway === key && side.team));
+    const state = matchFilterState(event);
+    const open = expanded === event.id;
+    const timing = state === 'live' ? event.status?.type?.name === 'STATUS_HALFTIME' ? t('استراحة', 'Half-time')
+      : event.status?.displayClock ? t('مباشر', 'Live') + ' · ' + event.status.displayClock : t('مباشر', 'Live')
+      : state === 'finished' ? t('انتهت', 'Finished')
+      : state === 'scheduled' ? timeFormat.format(new Date(event.date))
+      : /POSTPONED/i.test(event.status?.type?.name ?? '') ? t('مؤجلة', 'Postponed')
+      : /CANCEL/i.test(event.status?.type?.name ?? '') ? t('ملغاة', 'Cancelled') : t('متوقفة أو غير مؤكدة', 'Interrupted or unconfirmed');
+    return (
+      <article key={event.id} className={`overflow-hidden ${box}`}>
+        <div className="grid grid-cols-[1fr_auto] items-start gap-2 p-3">
+          <button type="button" aria-expanded={open} onClick={() => setExpanded(open ? '' : event.id)} className="min-w-0 space-y-2 text-start">
+            <span className="block text-xs font-bold text-emerald-600">{timing}</span>
+            {sides.map(({ team, score }) => team && (
+              <span key={team.id} className="flex items-center justify-between gap-3 font-semibold">
+                <span className="flex min-w-0 items-center gap-2">{team.logo && <img src={team.logo} alt="" className="h-6 w-6 object-contain" />}<bdi>{display(team)}</bdi></span>
+                {(state === 'live' || state === 'finished') && score != null && <bdi className={`min-w-8 rounded-md px-2 py-0.5 text-center font-bold ${isDark ? "bg-white/15 text-white" : "bg-gray-100 text-gray-700"}`}>{ar && /^\d+$/.test(score) ? Number(score).toLocaleString("ar-SA") : score}</bdi>}
+              </span>
+            ))}
+          </button>
+          <div className="flex flex-col gap-1">
+            {sides.map(({ team }) => team && <button type="button" key={team.id} aria-pressed={favorites.includes(team.id)}
+              aria-label={t('الفريق المفضل: ', 'Favorite team: ') + display(team)} onClick={() => toggleFavorite(team.id)}
+              className="h-8 w-8 rounded-lg text-lg text-emerald-600 hover:bg-emerald-500/15">{favorites.includes(team.id) ? '★' : '☆'}</button>)}
+          </div>
+        </div>
+        {open && <MatchSummary eventId={event.id} league={code === 'other-world' ? 'all' : code} isDark={isDark} language={language} />}
+      </article>
+    );
+  }
 
   return (
-    <div dir="rtl" className={`w-full max-w-4xl mx-auto px-2 py-4 sm:p-4 font-cairo ${isDark ? 'text-white' : 'text-gray-900'}`}>
-
-      {/* أزرار التحكم (الأمس، اليوم، غداً) */}
-      <div className={`flex justify-center gap-1 sm:gap-2 mb-5 p-1 rounded-2xl border border-white/10 ${isDark ? 'bg-[#1A1C1E]' : 'bg-gray-100'}`}>
-        <button onClick={() => setDateMode('yesterday')} className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${dateMode === 'yesterday' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}>نتائج الأمس</button>
-        <button onClick={() => setDateMode('today')} className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${dateMode === 'today' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}>مباريات اليوم</button>
-        <button onClick={() => setDateMode('tomorrow')} className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${dateMode === 'tomorrow' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}>مباريات غداً</button>
+    <div className="mx-auto max-w-4xl space-y-4 p-2 pt-4 sm:p-4">
+      <div className="flex flex-wrap gap-2">
+        {dateOptions.map(([id, label, english]) => <button type="button" key={id} className={chip(date === id)} aria-pressed={date === id} onClick={() => {
+          if (id === date) return;
+          setDate(id); setBoard(undefined); setFailed(false); setExpanded('');
+        }}>{t(label, english)}</button>)}
+        <button type="button" className={chip(favoriteOnly)} aria-pressed={favoriteOnly} onClick={() => setFavoriteOnly(!favoriteOnly)}>{t('فرق مفضلة', 'Favorite teams')}</button>
       </div>
-
-      <div dir="rtl" className="mb-5 space-y-3" role="search" aria-label="بحث وتصفية المباريات">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="text-xs font-bold space-y-1">
-            <span>ابحث عن فريق</span>
-            <input type="search" value={search} onChange={e => { setSearch(e.target.value); setExpandedMatchId(null); }} placeholder="اسم الفريق بالعربية أو الإنجليزية" className={`w-full p-3 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-[#1A1C1E] border-gray-700 text-white placeholder:text-gray-400' : 'bg-white border-gray-300 text-gray-900'}`} />
-          </label>
-          <label className="text-xs font-bold space-y-1">
-            <span>البطولة</span>
-            <select value={selectedLeague} onChange={e => { setSelectedLeague(e.target.value); setExpandedMatchId(null); }} className={`w-full p-3 rounded-xl border text-sm focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-[#1A1C1E] border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
-              <option value="all">كل البطولات</option>
-              {LEAGUES.map(league => <option key={league.id} value={league.id}>{league.name}</option>)}
-            </select>
-          </label>
-        </div>
-        <div role="group" aria-label="حالة المباراة" className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {MATCH_FILTERS.map(filter => <button key={filter.id} aria-pressed={statusFilter === filter.id} onClick={() => { setStatusFilter(filter.id); setExpandedMatchId(null); }} className={`py-2 px-1 rounded-lg text-xs font-bold focus-visible:ring-2 focus-visible:ring-emerald-500 ${statusFilter === filter.id ? 'bg-emerald-600 text-white' : isDark ? 'bg-gray-800 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
-            {filter.label} <span className="inline-block mx-1">({loading ? '—' : filtered.counts[filter.id]})</span>
-          </button>)}
-        </div>
-        <div className="flex justify-between items-center gap-2 text-xs">
-          <p aria-live="polite" aria-atomic="true">{loading ? 'جارٍ تحميل المباريات…' : `المباريات المعروضة: ${filtered.total} · الأعداد بحسب البيانات المحمّلة`}</p>
-          {hasFilters && <button className="text-emerald-600 font-bold underline shrink-0" onClick={clearFilters}>مسح التصفية</button>}
-        </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <input type="search" aria-label={t('ابحث عن فريق', 'Search teams')} placeholder={t('ابحث عن فريق', 'Search teams')} value={search} onChange={e => setSearch(e.target.value)} className={`p-2 ${box}`} />
+        <select aria-label={t('البطولة', 'Competition')} value={league} onChange={e => { setLeague(e.target.value); setExpanded(''); }} className={`p-2 ${box} ${isDark ? '[color-scheme:dark]' : ''}`}>
+          <option value="all-leagues">{t('كل البطولات', 'All competitions')}</option>
+          {footballGroups.map(group => <optgroup key={group.id} label={t(group.ar, group.en)}>{group.leagues.map(([id, label, english]) =>
+            <option key={id} value={id}>{t(label, english)}</option>)}</optgroup>)}
+        </select>
       </div>
-
-      <p className="text-xs text-gray-500 text-center mb-3" aria-live="polite">
-        ESPN · المواعيد بتوقيت الرياض · تحديث تلقائي كل دقيقة{updatedAt ? ` · آخر تحديث ناجح: ${updatedAt}` : ''}
-      </p>
-      {failedLeagues.length > 0 && (
-        <p role="alert" className="text-sm text-amber-600 text-center mb-3">
-          تعذّر تحديث: {failedLeagues.join('، ')}. أي نتائج ظاهرة لهذه البطولات من آخر جلب ناجح؛ ستتم إعادة المحاولة تلقائياً.
-        </p>
-      )}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-10">
-          <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-emerald-500 font-bold text-sm">جاري جلب المباريات...</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {LEAGUES.map((league) => {
-            const leagueMatches = filtered.visible[league.id] || [];
-            if (leagueMatches.length === 0) return null;
-
-            return (
-              <div key={league.id} className={`rounded-2xl border overflow-hidden shadow-lg ${isDark ? 'border-white/10 bg-[#131a2a]' : 'border-gray-200 bg-white'}`}>
-                <div className={`px-4 py-3.5 border-b flex items-center gap-2 ${isDark ? 'bg-[#0f1420] border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
-                  <span className="text-xl">{league.flag==='🏆'?<AppIcon name="trophy" size={22}/>:['🌍','🌏','🌎','🌐'].includes(league.flag)?<AppIcon name="globe" size={22}/>:league.flag}</span>
-                  <h2 className="font-extrabold text-sm sm:text-base flex-1">{league.name}</h2><span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-500">{leagueMatches.length} مباراة</span>
-                </div>
-
-                <div className={`divide-y ${isDark ? 'divide-gray-800/50' : 'divide-gray-100'}`}>
-                  {leagueMatches.map((event: any) => {
-                    const comp = event.competitions?.[0];
-                    if (!comp || !Array.isArray(comp.competitors)) return null;
-                    const home = comp.competitors.find((c: any) => c.homeAway === 'home');
-                    const away = comp.competitors.find((c: any) => c.homeAway === 'away');
-
-                    if (!home?.team || !away?.team) return null;
-                    const status = event.status?.type;
-                    const specialStatus = /POSTPONED|CANCELED|CANCELLED|SUSPENDED|DELAYED|ABANDONED/i.test(status?.name || '')
-                      ? status?.detail || 'تغيّر موعد المباراة' : null;
-                    const isLive = status?.state === 'in';
-                    const isFinished = status?.state === 'post';
-                    const isScheduled = !isLive && !isFinished;
-
-                    const matchKey = `${league.id}:${event.id}`;
-                    const isExpanded = expandedMatchId === matchKey;
-
-                    return (
-                      <div key={event.id} className="flex flex-col">
-                        {/* صف المباراة */}
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          aria-expanded={isExpanded}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              setExpandedMatchId(isExpanded ? null : matchKey);
-                            }
-                          }}
-                          onClick={() => setExpandedMatchId(isExpanded ? null : matchKey)}
-                          className={`p-3 sm:p-4 flex items-center justify-between gap-1 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-emerald-500 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${isExpanded ? (isDark ? 'bg-white/5 border-b border-gray-700' : 'bg-gray-50 border-b border-gray-200') : ''}`}
-                        >
-                          <div className="w-14 sm:w-20 text-center flex-shrink-0">
-                            {specialStatus ? (
-                              <span className="text-amber-600 text-xs font-bold">{specialStatus}</span>
-                            ) : isLive ? (
-                              <span className="text-red-500 font-bold text-xs animate-pulse bg-red-900/20 px-2 py-1 rounded">{status?.name === 'STATUS_HALFTIME' ? 'استراحة' : event.status?.displayClock ? `${event.status.displayClock.replace(/['′]+$/, '')}′` : status?.detail || 'مباشر'}</span>
-                            ) : isFinished ? (
-                              <span className="text-gray-500 text-xs font-bold">انتهت</span>
-                            ) : (
-                              <span className="text-emerald-500 text-[10px] sm:text-xs font-bold" dir="ltr">{formatMatchTime(event.date)}</span>
-                            )}
-                          </div>
-
-                          <div className="flex-1 flex flex-col sm:flex-row-reverse items-center justify-center sm:justify-start gap-1.5 sm:gap-2 min-w-0 text-center">
-                            <span className={`font-bold text-[11px] sm:text-sm text-center sm:text-start line-clamp-2 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{footballNameInArabic(home.team.displayName || home.team.shortDisplayName) || home.team.shortDisplayName}</span>
-                            <img src={home.team.logo} alt={home.team.name} className="w-8 h-8 sm:w-9 sm:h-9 object-contain flex-shrink-0" />
-                          </div>
-
-                          <div className={`mx-1 sm:mx-3 min-w-12 sm:min-w-16 text-center font-black tabular-nums px-2 py-2 rounded-xl flex-shrink-0 flex items-center justify-center ${isDark ? 'bg-gray-800' : 'bg-gray-200'} ${isScheduled ? 'text-gray-400 text-[10px] sm:text-xs font-bold' : (isDark ? 'text-lg text-white' : 'text-lg text-gray-900')}`}>
-                            {isScheduled ? '—' : `${home.score ?? '—'} - ${away.score ?? '—'}`}
-                          </div>
-
-                          <div className="flex-1 flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1.5 sm:gap-2 min-w-0 text-center">
-                            <img src={away.team.logo} alt={away.team.name} className="w-6 h-6 object-contain flex-shrink-0" />
-                            <span className={`font-bold text-sm truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{footballNameInArabic(away.team.displayName || away.team.shortDisplayName) || away.team.shortDisplayName}</span>
-                          </div>
-                        </div>
-
-                        {isExpanded && <MatchSummary eventId={String(event.id)} league={league.id} isDark={isDark} />}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-
-          {filtered.total === 0 && (
-            <div className={`text-center py-20 rounded-2xl border ${isDark ? 'bg-[#131a2a] border-gray-800' : 'bg-white border-gray-200'}`}>
-              <p className="text-gray-500 font-bold">{failedLeagues.length ? 'لا توجد نتائج مطابقة ضمن البيانات المحمّلة؛ بعض البطولات لم تُحدّث.' : hasFilters ? 'لا توجد مباريات تطابق البحث والتصفية.' : `لا توجد مباريات في هذه البطولات ${dateMode === 'today' ? 'اليوم' : dateMode === 'yesterday' ? 'بالأمس' : 'غداً'}.`}</p>
-            </div>
-          )}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2" role="group" aria-label={t('حالة المباراة', 'Match status')}>
+        {MATCH_FILTERS.map(filter => <button type="button" key={filter.id} className={chip(status === filter.id)} aria-pressed={status === filter.id} onClick={() => setStatus(filter.id)}>{t(filter.label, englishFilters[filter.id])}</button>)}
+      </div>
+      <p className="text-xs opacity-70">{t('توقيت الرياض', 'Riyadh time')}{date === 'today' ? t(' · تحديث كل ٣٠ ثانية', ' · Refreshes every 30 seconds') : ''}</p>
+      {(failed || !!board?.failed) && <p role="status" className="text-sm text-emerald-600">{t('تعذّر تحديث بعض النتائج.', 'Some scores could not be refreshed.')}</p>}
+      {!board && !failed && <p role="status">{t('جارٍ جلب المباريات…', 'Loading matches…')}</p>}
+      {board && !Object.values(visible).some(events => events.length) && <p role="status">{favoriteOnly && !favorites.length ? t('اضغط النجمة بجانب أي فريق لإضافته للمفضلة.', 'Select the star next to a team to favorite it.') : t('لا توجد مباريات مطابقة في البيانات المتاحة.', 'No matching matches in the available data.')}</p>}
+      {league === 'all-leagues' && priorities.length > 0 && <section className="space-y-2">
+        <h3 className="font-bold text-emerald-600">{t('أهم المباريات', 'Top matches')}</h3>
+        {priorities.map(({ event, code }) => row(event, code))}
+      </section>}
+      {footballLeagues.map(([code, label, english]) => {
+        const events = (visible[code === 'all' ? 'other-world' : code] ?? [])
+          .filter((event: FootballEvent) => league !== 'all-leagues' || !prioritized.has(event.id));
+        return events.length > 0 && <section key={code} className="space-y-2"><h3 className="font-bold">{t(label, english)}</h3>{events.map(event => row(event, code))}</section>;
+      })}
     </div>
   );
 }
