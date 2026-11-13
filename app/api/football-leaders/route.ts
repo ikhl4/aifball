@@ -1,100 +1,123 @@
 import { NextResponse } from 'next/server';
 
-const leagues: Record<string, number> = {
-  'ksa.1': 307, 'eng.1': 39, 'esp.1': 140, 'ita.1': 135,
-  'ger.1': 78, 'fra.1': 61, 'usa.1': 253,
+// FotMob's public web endpoints are unofficial and can change or block server traffic.
+// Never present partial/mismatched-season numbers as verified statistics.
+const fotmobIds: Record<string, number> = {
+  'ksa.1': 536, 'eng.1': 47, 'esp.1': 87, 'ita.1': 55,
+  'ger.1': 54, 'fra.1': 53, 'usa.1': 130,
 };
 type Leader = { id: number; name: string; team: string; photo: string | null; logo: string | null; value: number };
-
-
-// ESPN provides competition-season player leaderboards independently of Apple Sports.
-// Apple currently exposes match-level player statistics but no validated season leaders endpoint.
-async function espnFallback(league: string, kind: string, season: number): Promise<Leader[]> {
-  const url = new URL('https://site.web.api.espn.com/apis/common/v3/sports/soccer/' + league + '/statistics/byathlete');
-  url.searchParams.set('season', String(season));
-  url.searchParams.set('limit', '100');
-  const response = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) });
-  if (!response.ok) return [];
-  const payload: any = await response.json();
-  // Only accept numeric season aggregate stats explicitly identified as goals or assists.
-  const aliases = kind === 'goals' ? ['goals', 'totalGoals', 'goal'] : ['assists', 'totalAssists', 'goalAssists'];
-  const rows: any[] = Array.isArray(payload?.athletes) ? payload.athletes :
-    Array.isArray(payload?.entries) ? payload.entries :
-    Array.isArray(payload?.players) ? payload.players : [];
-  return rows.flatMap((item: any) => {
-    const athlete = item?.athlete || item?.player || item;
-    const id = Number(athlete?.id);
-    const name = athlete?.displayName || athlete?.fullName || athlete?.name;
-    const summaries: any[] = Array.isArray(item?.statistics) ? item.statistics : [];
-    const matched = summaries.find(stat => aliases.includes(stat?.name) || aliases.includes(stat?.type));
-    const raw = aliases.map(key => item?.stats?.[key] ?? item?.statistics?.[key]).find(value => typeof value === 'number');
-    const value = Number(matched?.value ?? raw);
-    if (!Number.isSafeInteger(id) || id <= 0 || typeof name !== 'string' || !name.trim() ||
-      !Number.isInteger(value) || value < 0) return [];
-    const team = athlete?.team?.displayName || item?.team?.displayName || '';
-    return [{id, name:name.trim(), team:typeof team==='string'?team:'', photo:null, logo:null, value}];
-  }).sort((a: Leader,b: Leader)=>b.value-a.value).slice(0,20);
+type LeaderResponse = { players: Leader[]; source: string; season: number; league: string; kind: string };
+type AnyRecord = Record<string, unknown>;
+const record = (v: unknown): AnyRecord => v && typeof v === 'object' && !Array.isArray(v) ? v as AnyRecord : {};
+const array = (v: unknown): unknown[] => Array.isArray(v) ? v : [];
+const str = (v: unknown) => typeof v === 'string' ? v : '';
+const number = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() && Number.isFinite(Number(v)) ? Number(v) : null;
+const fotmobBase = 'https://www.fotmob.com/api/data/';
+async function fotmobJson(endpoint: string, params: Record<string,string>): Promise<AnyRecord> {
+  const url = new URL(fotmobBase + endpoint);
+  Object.entries(params).forEach(([key, val]) => url.searchParams.set(key, val));
+  const response = await fetch(url, {
+    headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 (compatible; AiFBall/1.0)' },
+    next: { revalidate: 1800 },
+    signal: AbortSignal.timeout(8500),
+  });
+  if (!response.ok) throw new Error('FotMob HTTP ' + response.status);
+  return record(await response.json());
 }
-
-export async function GET(request: Request) {
-  const params = new URL(request.url).searchParams;
-  const league = params.get('league') || 'ksa.1';
-  const kind = params.get('kind');
-  const leagueId = leagues[league];
-  if (!leagueId || (kind !== 'goals' && kind !== 'assists')) {
-    return NextResponse.json({ error: 'Unsupported competition or category', players: [] }, { status: 400 });
+const playerImage = (id: number) => 'https://images.fotmob.com/image_resources/playerimages/' + id + '.png';
+function normalize(list: unknown[], stat: string): Leader[] {
+  const seen = new Set<number>();
+  const output: Leader[] = [];
+  for (const raw of list) {
+    const row = record(raw);
+    const participant = record(row.participant);
+    const athlete = Object.keys(participant).length ? participant : row;
+    const id = number(athlete.id ?? athlete.playerId);
+    const name = str(athlete.name);
+    const type = str(record(athlete.statValue).name || record(athlete.stat).name);
+    const value = number(record(athlete.statValue).value ?? record(athlete.stat).value ?? athlete.value);
+    // If the stat name is present it must match the requested metric.
+    if (type && type !== stat) continue;
+    if (id === null || !Number.isSafeInteger(id) || id <= 0 || !name || value === null || !Number.isInteger(value) || value < 0 || seen.has(id)) continue;
+    seen.add(id);
+    const team = str(athlete.teamName ?? record(athlete.team).name);
+    output.push({ id, name, team, photo: playerImage(id), logo: null, value });
   }
-  const apiSportsKey = process.env.API_SPORTS_KEY;
-  const rapidKey = process.env.RAPIDAPI_KEY;
-
-  const currentYear = new Date().getUTCFullYear();
-  // European and Saudi leagues cross calendar years; MLS follows calendar years.
-  const season = league === 'usa.1' ? currentYear : new Date().getUTCMonth() < 6 ? currentYear - 1 : currentYear;
-  // RapidAPI and API-Sports use different hosts and authorization headers.
-  const direct = Boolean(apiSportsKey);
-  const base = direct
-    ? 'https://v3.football.api-sports.io/players/'
-    : 'https://api-football-v1.p.rapidapi.com/v3/players/';
-  const url = new URL(base + (kind === 'goals' ? 'topscorers' : 'topassists'));
+  return output.sort((a,b) => b.value - a.value).slice(0,20);
+}
+async function fotmobLeaders(league: string, kind: 'goals'|'assists', season: number): Promise<Leader[]> {
+  const id = fotmobIds[league];
+  if (!id) return [];
+  const stat = kind === 'goals' ? 'goals' : 'goal_assist';
+  const seasonLabel = league === 'usa.1' ? String(season) : season + '/' + (season+1);
+  // Resolve FotMob's internal numeric season ID instead of guessing it.
+  const categories = await fotmobJson('leagueseasondeepstats',{id:String(id),type:'players'});
+  const seasons = array(categories.seasons).map(record);
+  const match = seasons.find(row => str(row.name) === seasonLabel);
+  const selectedId = match && number(match.id);
+  const currentId = number(categories.currentSeasonId);
+  const currentName = seasons.find(row => number(row.id) === currentId);
+  if (selectedId === null || selectedId === undefined) {
+    // Some newer leagues use a large synthetic season label; permit it only
+    // when the API explicitly identifies the current season as the requested one.
+    if (!currentId || str(currentName?.name) !== seasonLabel) return [];
+  }
+  const seasonId = selectedId || currentId;
+  if (!seasonId) return [];
+  const data = await fotmobJson('leagueseasondeepstats', {
+    id: String(id), season:String(seasonId), type:'players', stat,
+  });
+  if (number(data.currentSeasonId) !== null && number(data.currentSeasonId) !== seasonId) return [];
+  if (str(data.currentStatName) && str(data.currentStatName) !== stat) return [];
+  const statsData = array(data.statsData);
+  return normalize(statsData,stat);
+}
+async function apiFootballLeaders(league: string, kind: 'goals'|'assists', season: number): Promise<Leader[]> {
+  const ids: Record<string,number> = { 'ksa.1':307,'eng.1':39,'esp.1':140,'ita.1':135,'ger.1':78,'fra.1':61,'usa.1':253 };
+  const leagueId = ids[league];
+  const direct = process.env.API_SPORTS_KEY;
+  const rapid = process.env.RAPIDAPI_KEY;
+  if (!leagueId || (!direct && !rapid)) return [];
+  const url = new URL((direct ? 'https://v3.football.api-sports.io/players/' : 'https://api-football-v1.p.rapidapi.com/v3/players/') + (kind === 'goals' ? 'topscorers':'topassists'));
   url.searchParams.set('league', String(leagueId));
-  url.searchParams.set('season', String(season));
-  try {
-    if (!apiSportsKey && !rapidKey) throw new Error('PRIMARY_NOT_CONFIGURED');
-    const response = await fetch(url, {
-      headers: direct
-        ? { 'x-apisports-key': apiSportsKey! }
-        : { 'x-rapidapi-key': rapidKey!, 'x-rapidapi-host': 'api-football-v1.p.rapidapi.com' },
-      next: { revalidate: 3600 },
-      signal: AbortSignal.timeout(9000),
-    });
-    if (!response.ok) {
-      console.error('[Football leaders] provider HTTP status', response.status, { league, kind, provider: direct ? 'api-sports' : 'rapidapi' });
-      throw new Error('PRIMARY_PROVIDER_HTTP');
-    }
-    const raw: unknown = await response.json();
-    const data = raw as { response?: unknown[]; errors?: unknown };
-    if (!Array.isArray(data.response) || (data.errors && Object.keys(data.errors).length)) {
-      console.error('[Football leaders] provider returned errors', { league, kind, provider: direct ? 'api-sports' : 'rapidapi', keys: Object.keys(data.errors || {}) });
-      throw new Error('PRIMARY_PROVIDER_DATA');
-    }
-    const players: Leader[] = data.response.flatMap((entry) => {
-      const item = entry as { player?: { id?: number; name?: string; photo?: string }; statistics?: { goals?: { total?: number | null; assists?: number | null }; team?: { name?: string; logo?: string } }[] };
-      const stat = item.statistics?.[0];
-      const value = kind === 'goals' ? stat?.goals?.total : stat?.goals?.assists;
-      if (typeof value !== 'number' || !Number.isFinite(value) || !item.player?.name || !item.player.id) return [];
-      const safe = (s?: string) => s && /^https:\/\//.test(s) ? s : null;
-      return [{ id: item.player.id, name: item.player.name, team: stat?.team?.name || '', photo: safe(item.player.photo), logo: safe(stat?.team?.logo), value }];
-    }).sort((a, b) => b.value - a.value).slice(0, 20);
-    if (players.length) return NextResponse.json({ players, season, source: 'API-Football', league, kind });
-    throw new Error('PRIMARY_EMPTY');
-  } catch (error) {
-    console.error('[Football leaders] fetch failed', { league, kind, reason: error instanceof Error ? error.name : 'unknown' });
-    try {
-      const players = await espnFallback(league, kind, season);
-      if (players.length) return NextResponse.json({ players, season, source: 'ESPN', league, kind });
-    } catch (fallbackError) {
-      console.error('[Football leaders] ESPN fallback unavailable', { league, kind, reason: fallbackError instanceof Error ? fallbackError.name : 'unknown' });
-    }
-    return NextResponse.json({ error: 'Verified league-wide leaderboard is not available from either provider', code: 'SOURCES_UNAVAILABLE', players: [] }, { status: 502 });
+  url.searchParams.set('season',String(season));
+  const response=await fetch(url,{
+    headers: direct ? {'x-apisports-key':direct} : {'x-rapidapi-key':rapid!, 'x-rapidapi-host':'api-football-v1.p.rapidapi.com'},
+    next:{revalidate:3600},signal:AbortSignal.timeout(7500)
+  });
+  if (!response.ok) { console.warn('[Leaders] API-Football unavailable',{league,kind,status:response.status});return []; }
+  const raw=record(await response.json());
+  if (Object.keys(record(raw.errors)).length || !Array.isArray(raw.response)) return [];
+  return normalizeApiFootball(array(raw.response),kind);
+}
+function normalizeApiFootball(items: unknown[], kind:'goals'|'assists'):Leader[] {
+  const output:Leader[]=[];
+  for(const entry of items){
+    const row=record(entry), player=record(row.player), stats=record(array(row.statistics)[0]);
+    const goals=record(stats.goals), team=record(stats.team);
+    const id=number(player.id), value=number(goals[kind==='goals'?'total':'assists']),name=str(player.name);
+    if(id===null || value===null || !name || !Number.isInteger(value)) continue;
+    const photo=str(player.photo),logo=str(team.logo);
+    output.push({id,name,value,team:str(team.name),photo:photo.startsWith('https://')?photo:null,logo:logo.startsWith('https://')?logo:null});
   }
+  return output.sort((a,b)=>b.value-a.value).slice(0,20);
+}
+export async function GET(request: Request) {
+  const params=new URL(request.url).searchParams;
+  const league=params.get('league')||'ksa.1';
+  const kind=params.get('kind');
+  if (!(league in fotmobIds) || (kind!=='goals' && kind!=='assists')) return NextResponse.json({error:'Unsupported competition',players:[]},{status:400});
+  const now=new Date(), year=now.getUTCFullYear();
+  const season=league==='usa.1'?year:(now.getUTCMonth()<6?year-1:year);
+  try{
+    const players=await fotmobLeaders(league,kind,season);
+    if(players.length) return NextResponse.json({players,source:'FotMob',season,league,kind} satisfies LeaderResponse);
+    console.warn('[Leaders] FotMob has no validated stats',{league,kind,season});
+  }catch(err){console.warn('[Leaders] FotMob unavailable',{league,kind,reason:err instanceof Error?err.message:'unknown'});}
+  try{
+    const players=await apiFootballLeaders(league,kind,season);
+    if(players.length) return NextResponse.json({players,source:'API-Football',season,league,kind} satisfies LeaderResponse);
+  }catch(err){console.warn('[Leaders] API-Football fallback failed',{league,kind,reason:err instanceof Error?err.message:'unknown'});}
+  return NextResponse.json({error:'Verified season leaders unavailable',players:[],code:'SOURCES_UNAVAILABLE'},{status:503});
 }
