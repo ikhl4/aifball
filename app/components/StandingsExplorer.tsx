@@ -4,13 +4,22 @@ import { useState } from 'react';
 import { COMPETITIONS } from '../../lib/competitions';
 import type { AppLanguage } from '../../lib/app-language';
 import LeagueDashboard from './LeagueDashboard';
+import OtherSportsRankings from './OtherSportsRankings';
 
 export default function StandingsExplorer({ isDark = true, language = 'ar' }: { isDark?: boolean; language?: AppLanguage }) {
   const t = (ar: string, en: string) => language === 'ar' ? ar : en;
   const [league, setLeague] = useState('ksa.1');
+  const [otherSports, setOtherSports] = useState(false);
   const selectedCompetition = COMPETITIONS[league];
   return (
     <div className="p-3 sm:p-5 space-y-4" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+      <div role="group" aria-label={t('نوع الرياضة','Sport')} className="grid grid-cols-2 gap-2">
+        <button type="button" aria-pressed={!otherSports} onClick={()=>setOtherSports(false)}
+          className={`rounded-xl border px-3 py-3 text-sm font-bold ${!otherSports?'border-emerald-600 bg-emerald-700 text-white':'border-emerald-700/30'}`}>{t('⚽ كرة القدم','⚽ Football')}</button>
+        <button type="button" aria-pressed={otherSports} onClick={()=>setOtherSports(true)}
+          className={`rounded-xl border px-3 py-3 text-sm font-bold ${otherSports?'border-emerald-600 bg-emerald-700 text-white':'border-emerald-700/30'}`}>{t('🏀 الرياضات الأخرى','🏀 Other sports')}</button>
+      </div>
+      {otherSports ? <OtherSportsRankings language={language}/> : <>
       <label className="block text-sm font-bold">
         {t('اختر البطولة', 'Choose a competition')}
         <select value={league} onChange={event => setLeague(event.target.value)}
@@ -39,6 +48,7 @@ export default function StandingsExplorer({ isDark = true, language = 'ar' }: { 
       ) : (
         <LeagueDashboard key={league} leagueCode={league} season="" isDark={isDark} lang={language} />
       )}
+      </>}
     </div>
   );
 }
