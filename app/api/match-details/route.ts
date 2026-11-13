@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { footballLeagues } from '../../../lib/football-scoreboard';
 import { COMPETITIONS } from '../../../lib/competitions';
 import { normalizeMatchDetails } from '../../../lib/match-details';
 export const dynamic = 'force-dynamic';
@@ -6,7 +7,7 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const league = params.get('league') || '';
   const eventId = params.get('event') || '';
-  if (!(Object.prototype.hasOwnProperty.call(COMPETITIONS, league) || league === 'fifa.friendly') || !/^\d{1,12}$/.test(eventId)) return NextResponse.json({ error: 'معرّف المباراة أو البطولة غير صالح.' }, { status: 400 });
+  if (!(Object.prototype.hasOwnProperty.call(COMPETITIONS, league) || footballLeagues.some(([id]) => id === league)) || !/^\d{1,12}$/.test(eventId)) return NextResponse.json({ error: 'معرّف المباراة أو البطولة غير صالح.' }, { status: 400 });
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
   try {

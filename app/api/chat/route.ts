@@ -1,3 +1,4 @@
+import { preferredAnswerLanguage } from '../../../lib/app-language';
 // Vercel preview rebuild trigger for PR #50 - 2026-11-05 rerun; no production merge.
 // Preview redeploy trigger: structured highlights fallback, unrestricted discovery experiment; production unchanged.
 import { verifiedSummaryStream, verifySummaryAnswer } from '../../../lib/verified-summary';
@@ -285,11 +286,12 @@ export async function POST(req: Request) {
   const requestStarted = performance.now();
   try {
     const body = await req.json();
+    const english = body?.language === 'en';
     const hasImage = Array.isArray(body?.files) && body.files.some((file: { type?: string } | null) => file?.type === 'image');
     const query = (typeof body?.query === 'string' ? body.query.trim() : '') || (hasImage ? 'اقرأ الصورة المرفقة ووضح ما يظهر فيها.' : '');
     // Fast path: same ESPN scoreboard data family used by the live match center.
     // Never claim a latest result when one of the relevant competitions failed.
-    const directTeam = !hasImage ? requestedTeam(query) : null;
+    const directTeam = !english && !hasImage ? requestedTeam(query) : null;
     if (directTeam) {
       const found = await latestVerifiedMatch(directTeam, req.signal);
       const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
@@ -305,7 +307,7 @@ export async function POST(req: Request) {
       });
     }
     // Direct, bounded ESPN lookup for explicit latest-match questions. Fallback to Dify on failure.
-    const latestClub = !hasImage ? latestClubMatchIntent(query) : null;
+    const latestClub = !english && !hasImage ? latestClubMatchIntent(query) : null;
     const anyLatestMatch = !hasImage && anyTeamLatestMatchIntent(query);
     // Experimental ESPN path is isolated by default; ordinary questions continue to Dify.
     if (latestClub && (process.env.VERCEL_ENV !== 'production' || process.env.ENABLE_EXPERIMENTAL_ESPN_LATEST_MATCH === 'true')) {
@@ -326,7 +328,7 @@ export async function POST(req: Request) {
       console.warn('[AIFBALL_LATEST_MATCH_FALLBACK]', JSON.stringify({ club: latestClub, reason: 'provider_no_completed_match' }));
     }
     // Match artwork is built from independently verified provider data, not model-invented fixture rows.
-    if (!hasImage && posterIntent(query)) {
+    if (!english && !hasImage && posterIntent(query)) {
       const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
       const tag = '<aifball-match-poster query="' + encodeURIComponent(query) + '" />';
       const events = [{ event: 'message', answer: tag, conversation_id }, { event: 'message_end', conversation_id }];
@@ -339,7 +341,7 @@ export async function POST(req: Request) {
     const conversation_id = body?.conversation_id || '';
     const documentaryContext = typeof body?.documentary_context === 'string' ? body.documentary_context.slice(0, 6000) : '';
     const historical = historyMode(query, documentaryContext);
-    const matchSummary = historical === 'none' && isMatchSummaryRequest(query) && !/(?:صم[ّ]?م|تصميم|بوستر|ملصق|إنفوجرافيك)/i.test(query);
+    const matchSummary = !english && historical === 'none' && isMatchSummaryRequest(query) && !/(?:صم[ّ]?م|تصميم|بوستر|ملصق|إنفوجرافيك)/i.test(query);
 
     if (matchSummary) console.info('[AIFBALL_SUMMARY_ROUTE]', JSON.stringify({ mode: 'match-summary', hasImage, historical, isDetailedMatch: detailedMatch }));
     const singleReport = matchSummary && !hasImage ? await buildSingleMatchHighlights(query, req.signal).catch(() => null) : null;
@@ -438,7 +440,7 @@ export async function POST(req: Request) {
     const clubIdentityRules = clubEntity ? `\nضبط هوية الكيان: المقصود حصراً ${clubEntity} لكرة القدم. لا تخلطه بمؤسسات تحمل الاسم نفسه مثل الهلال الأحمر المصري أو فرق أخرى. لا تستخدم صورة أو شعاراً إلا إذا أكد عنوان المصدر ووصف الصورة والنادي/الدولة تطابق الكيان؛ عند الشك احذف الصورة نهائياً. لا تعرض وسوم المكونات أو أسماءها التقنية أو رسائل تشخيص للمستخدم. إذا كان السؤال اسم النادي فقط، قدّم تعريفاً موجزاً بالنادي ولا تفترض أن المستخدم طلب أخباراً أو مباريات.\n` : '';
     const clubNewsIntentRules = clubNews ? `\nأولوية النية: سؤال «آخر أخبار» يعني أخباراً ومستجدات فعلية، وليس جدول مباريات. لا تجعل مواعيد المباريات عنوان الإجابة أو محتواها الرئيسي. إذا لم تتوفر أخبار موثقة، صرّح بذلك باختصار، ولا تعوضها بأخبار قديمة أو مواعيد فقط. لا تظهر اسم مكوّن تقني مثل aifball-club-news، ولا تُدرج صورة تعريفية غير مرتبطة مباشرة بالخبر.\n` : '';
     const latestMatchSourceRules = anyLatestMatch ? `\nسؤال آخر مباراة مكتملة: ابحث أولاً في نتائج الفريق الأول بجميع البطولات للموسم الحالي عبر FotMob و365Scores وSofaScore ثم موقع البطولة أو النادي الرسمي. فشل ESPN أو Render وحده ليس دليلاً على عدم وجود مباراة. لا تعرض مباراة قديمة باعتبارها الأحدث دون مقارنة تواريخ النتائج المكتملة، ولا تخترع نتيجة أو تاريخاً. إذا تحققت من المباراة، ابدأ بالنتيجة ثم التاريخ والبطولة وملخص خفيف؛ لا تذكر الهدافين أو التفاصيل غير الموثقة إلا إذا طلبها المستخدم. إذا تعذر التحقق بعد البحث البديل، صرّح بذلك باختصار.\n` : '';
-    const guidedQuery = baseQuery + latestMatchSourceRules + OUTPUT_LANGUAGE_RULES + clubIdentityRules + clubNewsIntentRules + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + fixtureContext + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (!matchSummary && (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture) ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '');
+    const guidedQuery = baseQuery + latestMatchSourceRules + OUTPUT_LANGUAGE_RULES + clubIdentityRules + clubNewsIntentRules + ((gameStart || conversation_id) ? gameRules : '') + photoRules + visualRules + fixtureScope + fixtureContext + dailyContext + (clubNews ? CLUB_NEWS_RULES + `\nتاريخ الرياض اليوم هو ${newsDate}. إذا طلب المستخدم أخبار اليوم صراحةً، استبعد أي بند منها إذا لم يثبت أن تاريخ نشره يساوي هذا التاريخ وأن رابطه يفتح المنشور أو المقال نفسه. تاريخ المباراة ليس تاريخ النشر. ارفض روابط الحسابات وصفحات التصنيفات. إذا لم يبق أي بند بعد التصفية، أجب فقط بأنك لم تجد أخباراً موثقة للفترة المطلوبة، دون جدول أو أخبار سابقة.\n` : '') + (fantasy ? FANTASY_RULES : '') + (!matchSummary && (regionalCompetition || fantasy || upcomingFixture || ageGroupFixture) ? OFFICIAL_COMPETITION_SOURCES : '') + (matchSummary ? MATCH_SUMMARY_RULES : '') + (jawwyLeague ? JAWY_LEAGUE_RULES : '') + (wantsTweet ? TWEET_COMPOSER_RULES : '') + preferredAnswerLanguage(body?.language);
 
     const difyStarted = performance.now();
     const apiRes = await fetch(url, {
@@ -522,7 +524,7 @@ export async function POST(req: Request) {
     }
 
     // إرجاع الـ Stream مباشرة للواجهة الأمامية
-    return new Response(observedBody && historical !== 'none' && !hasImage && !wantsDesign ? verifiedSummaryStream(observedBody, req.signal, (answer, signal) => presentHistoryAnswer(answer, historical, signal)) : observedBody && matchSummary && !hasImage && !wantsDesign
+    return new Response(observedBody && !english && historical !== 'none' && !hasImage && !wantsDesign ? verifiedSummaryStream(observedBody, req.signal, (answer, signal) => presentHistoryAnswer(answer, historical, signal)) : observedBody && matchSummary && !hasImage && !wantsDesign
       ? verifiedSummaryStream(observedBody, req.signal, async (answer, signal) => {
           if (/<aifball-summary\b/i.test(answer)) return verifySummaryAnswer(answer, signal);
           // When Dify returns prose only, retain its explanation and append independently
@@ -540,7 +542,7 @@ export async function POST(req: Request) {
           }
           return singleReport ? verifySummaryAnswer(singleReport, signal) : answer;
         })
-      : observedBody && anyLatestMatch && !wantsDesign && !wantsPhoto ? verifiedSummaryStream(observedBody, req.signal, async (answer) => rejectStaleLatestMatch(answer))
+      : observedBody && !english && anyLatestMatch && !wantsDesign && !wantsPhoto ? verifiedSummaryStream(observedBody, req.signal, async (answer) => rejectStaleLatestMatch(answer))
       : observedBody && !hasImage && !wantsPhoto && !wantsDesign && !upcomingFixture && (detailedMatch || body?.has_match_context === true) ? groundedMatchStream(observedBody,query,req.signal) : observedBody, {
       headers: {
         'Content-Type': 'text/event-stream',

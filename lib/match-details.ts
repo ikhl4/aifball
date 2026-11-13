@@ -25,6 +25,6 @@ export function normalizeMatchDetails(raw: any, eventId: string, league: string)
   return { eventId, league, state: value(competition.status?.type?.state), home, away,
     venue: value(raw.gameInfo?.venue?.fullName),
     statistics: Object.entries(STAT_LABELS).filter(([key]) => home.statistics[key] != null || away.statistics[key] != null).map(([key, label]) => ({ key, label, home: home.statistics[key] ?? null, away: away.statistics[key] ?? null, percent: key === 'possessionPct' })),
-    events: list(raw.keyEvents).filter(e => EVENT_LABELS[e.type?.text]).map((e, i) => ({ id: value(e.id) || String(i), label: EVENT_LABELS[e.type.text], minute: value(e.clock?.displayValue), teamId: value(e.team?.id), players: list(e.participants).map(p => p.athlete?.displayName).filter((n): n is string => typeof n === 'string'), shootout: e.shootout === true })),
+    events: list(raw.keyEvents).filter(e => EVENT_LABELS[e.type?.text]).map((e, i) => ({ id: value(e.id) || String(i), label: EVENT_LABELS[e.type.text], englishLabel: e.type.text as string, minute: value(e.clock?.displayValue), teamId: value(e.team?.id), players: list(e.participants).map(p => p.athlete?.displayName).filter((n): n is string => typeof n === 'string'), shootout: e.shootout === true })),
     fetchedAt: new Date().toISOString(), source: 'ESPN' };
 }
