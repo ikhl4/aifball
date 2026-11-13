@@ -41,7 +41,7 @@ export default function StandingsExplorer({ isDark = true, language = 'ar' }: { 
         <button type="button" aria-pressed={!otherSports} onClick={()=>setOtherSports(false)}
           className={`rounded-xl border px-2 py-2.5 text-xs font-bold sm:text-sm ${!otherSports?'border-emerald-600 bg-emerald-700 text-white':'border-emerald-700/30'}`}>{t('⚽ كرة القدم','⚽ Football')}</button>
         <button type="button" aria-pressed={otherSports} onClick={()=>setOtherSports(true)}
-          className={`rounded-xl border px-3 py-3 text-sm font-bold ${otherSports?'border-emerald-600 bg-emerald-700 text-white':'border-emerald-700/30'}`}>{t('🏀 الرياضات الأخرى','🏀 Other sports')}</button>
+          className={`rounded-xl border px-2 py-2.5 text-xs font-bold sm:text-sm ${otherSports?'border-emerald-600 bg-emerald-700 text-white':'border-emerald-700/30'}`}>{t('🏀 الرياضات الأخرى','🏀 Other sports')}</button>
       </div>
       {otherSports ? <OtherSportsRankings language={language}/> : <>
       <div role="tablist" aria-label={t('إحصائيات كرة القدم','Football statistics')} className="grid grid-cols-3 gap-1.5">
