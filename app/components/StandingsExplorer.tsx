@@ -5,6 +5,7 @@ import { COMPETITIONS } from '../../lib/competitions';
 import type { AppLanguage } from '../../lib/app-language';
 import LeagueDashboard from './LeagueDashboard';
 import OtherSportsRankings from './OtherSportsRankings';
+import { footballNameInArabic } from '../../lib/football-names-ar';
 
 export default function StandingsExplorer({ isDark = true, language = 'ar' }: { isDark?: boolean; language?: AppLanguage }) {
   const t = (ar: string, en: string) => language === 'ar' ? ar : en;
@@ -19,7 +20,7 @@ export default function StandingsExplorer({ isDark = true, language = 'ar' }: { 
   useEffect(() => {
     if (otherSports || tab === 'standings') return;
     const controller = new AbortController();
-    setLeaders([]); setShowAll(false); setLeadersStatus('loading');
+    setLeaders([]); setLeaderSource(''); setShowAll(false); setLeadersStatus('loading');
     fetch('/api/football-leaders?league=' + encodeURIComponent(league) + '&kind=' + tab, { signal: controller.signal })
       .then(async response => {
         if (!response.ok) throw Error('Unavailable');
@@ -86,7 +87,7 @@ export default function StandingsExplorer({ isDark = true, language = 'ar' }: { 
           {(showAll?leaders:leaders.slice(0,5)).map((player,index) => <div key={player.id} className="flex items-center gap-2 border-t border-emerald-700/15 px-2 py-2">
             <bdi className="w-5 shrink-0 text-center text-xs font-extrabold text-emerald-500">{index+1}</bdi>
             {player.photo && <img src={player.photo} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover"/>}
-            <div className="min-w-0 flex-1"><bdi className="block truncate text-xs font-bold">{player.name}</bdi><bdi className="block truncate text-[11px] opacity-60">{player.team}</bdi></div>
+            <div className="min-w-0 flex-1"><bdi dir="auto" className="block truncate text-xs font-bold">{language === 'ar' ? (footballNameInArabic(player.name) || player.name) : player.name}</bdi><bdi dir="auto" className="block truncate text-[11px] opacity-60">{language === 'ar' ? (footballNameInArabic(player.team) || player.team) : player.team}</bdi></div>
             {player.logo && <img src={player.logo} alt="" className="h-5 w-5 shrink-0 object-contain"/>}
             <bdi className="min-w-7 text-center text-sm font-extrabold">{player.value}</bdi>
           </div>)}
