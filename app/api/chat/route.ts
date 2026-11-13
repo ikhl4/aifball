@@ -342,7 +342,13 @@ export async function POST(req: Request) {
     const matchSummary = historical === 'none' && isMatchSummaryRequest(query) && !/(?:صم[ّ]?م|تصميم|بوستر|ملصق|إنفوجرافيك)/i.test(query);
 
     if (matchSummary) console.info('[AIFBALL_SUMMARY_ROUTE]', JSON.stringify({ mode: 'match-summary', hasImage, historical, isDetailedMatch: detailedMatch }));
-    const singleReport = matchSummary && !hasImage ? await buildSingleMatchHighlights(query, req.signal).catch(() => null) : null;
+    // Let Dify's established DuckDuckGo highlights workflow handle named matches first.
+    // The exhaustive ESPN lookup previously blocked that workflow for up to 45 seconds.
+    const namedMatchSummary = matchSummary && !/(?:اليوم|أمس|امس|today|yesterday)/i.test(query);
+    const singleReport = matchSummary && !hasImage && !namedMatchSummary ? await buildSingleMatchHighlights(query, req.signal).catch((error) => {
+      console.warn('[AIFBALL_SINGLE_SUMMARY_ERROR]', JSON.stringify({ errorType: error instanceof Error ? error.name : 'unknown' }));
+      return null;
+    }) : null;
     if (matchSummary) console.info('[AIFBALL_FIXTURE_LOOKUP]', JSON.stringify({
       fixtureAvailable: Boolean(singleReport),
       verifiedVideoTagPresent: Boolean(singleReport && /\\bvideo_status="found"/.test(singleReport)),

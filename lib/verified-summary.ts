@@ -5,6 +5,7 @@ const decode = (s: string) => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').re
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 export async function verifySummaryAnswer(answer: string, signal?: AbortSignal, lookup = findHighlightVideo): Promise<string> {
   const tags = [...answer.matchAll(/<aifball-summary\b([^>]*?)\/?\s*>/gi)];
+  console.info('[AIFBALL_SUMMARY_VERIFY_INPUT]', JSON.stringify({tagCount: tags.length, hasYoutubeUrl: /(?:youtube\.com|youtu\.be)/i.test(answer), answerLength: answer.length}));
   // A structured match identity is required; never guess a fixture from free prose.
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 35000);
   const abort = () => controller.abort(); signal?.addEventListener('abort', abort, { once: true }); if (signal?.aborted) abort();
@@ -14,8 +15,9 @@ export async function verifySummaryAnswer(answer: string, signal?: AbortSignal, 
     const attrs: Record<string, string> = {};
     for (const m of tag[1].matchAll(/([\w_]+)\s*=\s*"([^"]*)"/g)) attrs[m[1]] = decode(m[2]);
     let result: Awaited<ReturnType<typeof findHighlightVideo>> = { status: 'unavailable' };
+    let lookupError = '';
     if (!controller.signal.aborted) {
-      try { result = await lookup({ home: attrs.home || '', away: attrs.away || '', date: attrs.date || '', competition: attrs.competition }, attrs.video_url || '', controller.signal); } catch { /* Keep a usable card with an honest verification status. */ }
+      try { result = await lookup({ home: attrs.home || '', away: attrs.away || '', date: attrs.date || '', competition: attrs.competition }, attrs.video_url || '', controller.signal); } catch (error) { lookupError = error instanceof Error ? error.name : 'unknown'; /* Keep a usable card with an honest verification status. */ }
     }
     // Dify's supplied title/channel are untrusted hints, not publisher
     // verification. The lookup independently validates an actual YouTube
@@ -42,6 +44,8 @@ export async function verifySummaryAnswer(answer: string, signal?: AbortSignal, 
         difyProvidedChannel: Boolean(candidateChannel),
         difyProvidedSource: Boolean(candidateSource),
         lookupStatus: result.status,
+        lookupError,
+        hasMatchIdentity: Boolean(attrs.home && attrs.away && attrs.date),
         externalCandidateAccepted: false,
         finalStatus: attrs.video_status,
       }));
@@ -77,6 +81,13 @@ export function verifiedSummaryStream(upstream: ReadableStream<Uint8Array>, sign
       if (buffer.trim()) frame(buffer);
       if (!end) throw Error('INCOMPLETE_STREAM');
       const verified = await verify(answer, signal);
+      const summaryTags = [...verified.matchAll(/<aifball-summary\b([^>]*?)\/?\s*>/gi)];
+      console.info('[AIFBALL_SUMMARY_FINAL_HANDOFF]', JSON.stringify({
+        summaryCount: summaryTags.length,
+        foundCount: summaryTags.filter((m) => /\bvideo_status="found"/.test(m[1])).length,
+        videoUrlCount: summaryTags.filter((m) => /\bvideo_url="https:\/\/www\.youtube\.com\/watch\?v=[\w-]{11}"/.test(m[1])).length,
+        answerLength: verified.length,
+      }));
       if (signal?.aborted) throw Error('ABORTED');
       send({ ...meta, event: 'message', answer: verified }); send(end); out.close();
     } catch {
