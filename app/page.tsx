@@ -1648,6 +1648,18 @@ export default function FootPlayChat() {
         </div>
 
         <div className="p-3">
+          <div className="mb-3 flex items-center justify-between gap-3 px-2 text-white">
+            <span className="text-xs font-semibold">{t('لغة التطبيق', 'App language')}</span>
+            <div dir="ltr" role="group" aria-label={t('لغة التطبيق', 'App language')} className="flex gap-1 rounded-lg border border-white/25 p-0.5">
+              {(['ar', 'en'] as const).map(lang => (
+                <button key={lang} type="button" aria-label={lang === 'ar' ? 'العربية' : 'English'}
+                  aria-pressed={language === lang} onClick={() => changeLanguage(lang)}
+                  className={`min-h-8 min-w-9 rounded-md px-2 text-xs font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${language === lang ? 'bg-white text-emerald-900' : 'text-white hover:bg-white/10'}`}>
+                  {lang.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
             type="button"
             onClick={startNewChat}
@@ -1676,7 +1688,7 @@ export default function FootPlayChat() {
             </button>
             <button type="button" onClick={() => { setSidebarOpen(false); setShowLiveScores(true); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
-              <AppIcon name="pitch" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>{t('النتائج المباشرة', 'Live scores')}</span>
+              <AppIcon name="pitch" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>{t('مباشر', 'Live')}</span>
               <span className="mr-auto w-1.5 h-1.5 rounded-full bg-gray-300" aria-hidden="true"/>
             </button>
           </div>
@@ -1783,11 +1795,6 @@ export default function FootPlayChat() {
         </div>
 
         <div className="flex items-center gap-2">
-              <div dir="ltr" role="group" aria-label={language === 'ar' ? 'لغة التطبيق' : 'App language'} className="flex gap-1 rounded-lg border border-emerald-600/25 p-0.5">
-                {(['ar', 'en'] as const).map(lang => <button key={lang} type="button" aria-label={lang === 'ar' ? 'العربية' : 'English'}
-                  aria-pressed={language === lang} onClick={() => changeLanguage(lang)}
-                  className={`rounded-md px-2 py-1 text-xs font-bold ${language === lang ? 'bg-emerald-700 text-white' : ''}`}>{lang.toUpperCase()}</button>)}
-              </div>
           <button type="button" onClick={() => setShowStandings(true)} aria-label={t('جداول الترتيب', 'Standings')} title={t('جداول الترتيب', 'Standings')}
             className="hidden sm:flex h-9 px-3 rounded-xl border border-emerald-500/30 bg-emerald-600/10 text-emerald-500 items-center justify-center gap-2 font-bold text-xs">
             <span aria-hidden="true">▤</span><span className="hidden sm:inline">{t('جداول الترتيب', 'Standings')}</span>
@@ -1798,7 +1805,7 @@ export default function FootPlayChat() {
             className="px-3 py-1.5 rounded-xl border border-emerald-600/30 bg-emerald-600/10 text-emerald-700 dark:text-emerald-300 flex items-center gap-2 font-bold text-xs"
           >
             <span className="w-2 h-2 rounded-full bg-gray-300" />
-            {language === 'ar' ? 'النتائج المباشرة' : 'Live scores'}
+            {t('مباشر', 'Live')}
           </button>
 
           <button
@@ -2468,7 +2475,7 @@ export default function FootPlayChat() {
               }`}
             >
               <h2 id="live-scores-title" className={`flex items-center gap-2 text-sm font-bold sm:text-lg ${isDarkMode ? 'text-emerald-200' : 'text-emerald-800'}`}>
-                <AppIcon name="pitch" /> {language === 'ar' ? 'النتائج المباشرة' : 'Live scores'}
+                <AppIcon name="pitch" /> {t('مباشر', 'Live')}
               </h2>
 
 
