@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 const fotmobIds: Record<string, number> = {
   'ksa.1': 536, 'eng.1': 47, 'esp.1': 87, 'ita.1': 55,
   'ger.1': 54, 'fra.1': 53, 'usa.1': 130,
+  'uefa.champions': 42, 'uefa.europa': 73, 'uefa.europa.conf': 10216,
 };
 type Leader = { id: number; name: string; team: string; photo: string | null; logo: string | null; value: number };
 type LeaderResponse = { players: Leader[]; source: string; season: number; league: string; kind: string };
