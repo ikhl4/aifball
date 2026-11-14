@@ -79,52 +79,52 @@ export default function TodayHighlights({
       return espnMatches(data);
     };
     const reload=async()=>{
-      const now = new Date();
+      const now=new Date();
       const localDate=todayRiyadh(now);
       setDate(localDate);
-      const read=async(offset:number)=>{
+      const readApple=async(offset:number)=>{
         const response=await fetch('/api/apple-sports?sport=football&date='+offset+'&lang='+language,{signal:controller.signal});
-        if(!response.ok)throw new Error('Schedule unavailable');
+        if(!response.ok)throw new Error('Apple Sports unavailable');
         return response.json() as Promise<AppleSchedule>;
       };
-      try {
-        const today=await read(0);
-        if(controller.signal.aborted)return;
-        const todayGames=(Array.isArray(today.matches)?today.matches:[])
-          .filter(m=>todayRiyadh(new Date(m.start))===localDate && m.sides.length>=2);
-        if(todayGames.length){
-          setMatches(todayGames);setFallbackYesterday(false);
-          setFailed(Array.isArray(today.failed)?today.failed:[]);setStatus('ready');
-          return;
-        }
-        // Include national teams and world competitions missing from Apple's club-focused feed.
-        try {
-          const espnToday=await readEspn('today');
-          if(controller.signal.aborted)return;
-          const todayESPN=espnToday.filter(m=>todayRiyadh(new Date(m.start))===localDate);
-          if(todayESPN.length){
-            setMatches(todayESPN);setFallbackYesterday(false);setFailed([]);setStatus('ready');
-            return;
-          }
-        }catch{}
-        // A quiet international-break day should not make the highlights shelf disappear.
-        const yesterdayDate=todayRiyadh(new Date(now.getTime()-86400000));
-        const yesterday=await read(-1);
-        if(controller.signal.aborted)return;
-        let completed=(Array.isArray(yesterday.matches)?yesterday.matches:[])
-          .filter(m=>todayRiyadh(new Date(m.start))===yesterdayDate && m.status==='final' && m.sides.length>=2);
-        if(!completed.length){
-          try{
-            const espnYesterday=await readEspn('yesterday');
-            completed=espnYesterday.filter(m=>todayRiyadh(new Date(m.start))===yesterdayDate&&m.status==='final');
-          }catch{}
-        }
-        setMatches(completed);setFallbackYesterday(Boolean(completed.length));
-        setFailed([...(today.failed||[]),...(yesterday.failed||[])]);
-        setStatus('ready');
-      } catch {
-        if(!controller.signal.aborted)setStatus('unavailable');
+      // ESPN includes national teams and major international matches absent from Apple Sports.
+      // Independent provider failures should not hide results from the other source.
+      const todayResults=await Promise.allSettled([readEspn('today'),readApple(0)]);
+      if(controller.signal.aborted)return;
+      const espnToday=todayResults[0].status==='fulfilled'?todayResults[0].value:[];
+      const appleToday=todayResults[1].status==='fulfilled'?todayResults[1].value.matches||[]:[];
+      const current=[...espnToday,...appleToday].filter(m=>todayRiyadh(new Date(m.start))===localDate&&m.sides.length>=2);
+      // Cross-provider events have distinct IDs, so deduplicate by sorted team names and kickoff time.
+      const seen=new Set<string>();
+      const unique=current.filter(match=>{
+        const names=match.sides.slice(0,2).map(s=>(s.englishName||s.name).toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]/g,'')).sort().join('-');
+        const key=names+'|'+Math.floor(new Date(match.start).getTime()/600000);
+        if(seen.has(key))return false;
+        seen.add(key);return true;
+      });
+      if(unique.length){
+        setMatches(unique);setFallbackYesterday(false);
+        setFailed(todayResults[1].status==='fulfilled'?todayResults[1].value.failed||[]:[]);
+        setStatus('ready');return;
       }
+      const yesterdayDate=todayRiyadh(new Date(now.getTime()-86400000));
+      const yesterdayResults=await Promise.allSettled([readEspn('yesterday'),readApple(-1)]);
+      if(controller.signal.aborted)return;
+      const espnYesterday=yesterdayResults[0].status==='fulfilled'?yesterdayResults[0].value:[];
+      const appleYesterday=yesterdayResults[1].status==='fulfilled'?yesterdayResults[1].value.matches||[]:[];
+      const completed=[...espnYesterday,...appleYesterday].filter(m=>
+        todayRiyadh(new Date(m.start))===yesterdayDate&&m.status==='final'&&m.sides.length>=2);
+      const yesterdaySeen=new Set<string>();
+      const uniqueCompleted=completed.filter(match=>{
+        const names=match.sides.slice(0,2).map(s=>(s.englishName||s.name).toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]/g,'')).sort().join('-');
+        const key=names+'|'+Math.floor(new Date(match.start).getTime()/600000);
+        if(yesterdaySeen.has(key))return false;
+        yesterdaySeen.add(key);return true;
+      });
+      setMatches(uniqueCompleted);
+      setFallbackYesterday(Boolean(uniqueCompleted.length));
+      setFailed(yesterdayResults[1].status==='fulfilled'?yesterdayResults[1].value.failed||[]:[]);
+      setStatus(todayResults.every(r=>r.status==='rejected')&&yesterdayResults.every(r=>r.status==='rejected')?'unavailable':'ready');
     };
     void reload();
     const timer=window.setInterval(()=>{void reload()},180000);
