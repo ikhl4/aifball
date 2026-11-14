@@ -3,11 +3,41 @@
 import { useEffect, useMemo, useState } from 'react';
 import { appleCompetitionNames, type AppleMatch, type AppleSchedule } from '../../lib/apple-sports-types';
 import type { AppLanguage } from '../../lib/app-language';
+import { footballLeagues, type FootballBoard, type FootballEvent } from '../../lib/football-scoreboard';
+import { footballNameInArabic } from '../../lib/football-names-ar';
 
 const leaguePriority: Record<string,number> = {
   SPL: 105, UEFA_CHM: 100, EPL: 95, UEFA_EU: 85, UECL: 75,
+  'ksa.1':105,'eng.1':95,'esp.1':90,'ita.1':78,'ger.1':82,'fra.1':77,
+  'uefa.champions':100,'uefa.europa':85,'uefa.europa.conf':75,
+  'fifa.friendly':96,'uefa.nations':105,'fifa.worldq.uefa':102,
+  'fifa.worldq.afc':104,'fifa.worldq.conmebol':102,'fifa.worldq.caf':88,
+  'fifa.world':112,'afc.asian.cup':93,'uefa.euro':105,
   LA_LIGA: 90, ITSA: 78, BUND: 82, FXL1: 77, MLS: 65,
 };
+const espnCompetitionNames = new Map<string,string>(footballLeagues.map(([code,ar])=>[code,ar]));
+function labelCompetition(code:string,language:AppLanguage):string {
+  if(language==='en')return footballLeagues.find(([id])=>id===code)?.[2]||code;
+  return appleCompetitionNames[code]||espnCompetitionNames.get(code)||code;
+}
+function espnMatches(board:FootballBoard):AppleMatch[] {
+  const results:AppleMatch[]=[];
+  for(const [competition,events] of Object.entries(board.matches||{})){
+    for(const event of events as FootballEvent[]){
+      const raw=event.competitions?.[0]?.competitors||[];
+      const sides=['home','away'].flatMap(side=>raw.filter(x=>x.homeAway===side&&x.team).map(x=>{
+        const englishName=x.team?.displayName||x.team?.shortDisplayName||x.team?.name||'';
+        return {name:footballNameInArabic(englishName)||englishName,englishName,score:x.score!=null&&Number.isFinite(Number(x.score))?Number(x.score):null,periods:[],stats:[],players:[]};
+      }));
+      if(sides.length!==2||!sides.every(side=>side.name)||!event.id)continue;
+      const state=event.status?.type?.state;
+      const name=event.status?.type?.name||'';
+      const status:AppleMatch['status']=state==='post'||/FINAL/i.test(name)?'final':state==='in'||/IN_PROGRESS|HALFTIME/i.test(name)?'live':state==='pre'?'scheduled':'other';
+      results.push({id:event.id,name:sides.map(x=>x.name).join(' × '),englishName:sides.map(x=>x.englishName).join(' vs '),competition,start:event.date,timeTbd:false,status,sides});
+    }
+  }
+  return results;
+}
 const notable = /(?:الاتحاد|الهلال|النصر|الأهلي|ريال مدريد|برشلونة|مانشستر|ليفربول|أرسنال|تشيلسي|باريس|بايرن|دورتموند|يوفنتوس|ميلان|إنتر|أتلتيكو|al ittihad|al hilal|al nassr|al ahli|real madrid|barcelona|manchester|liverpool|arsenal|chelsea|paris|bayern|dortmund|juventus|milan|inter|atletico)/i;
 
 function timeInRiyadh(value:string,language:AppLanguage):string {
@@ -42,6 +72,12 @@ export default function TodayHighlights({
   const [date,setDate]=useState<string>('');
   useEffect(()=>{
     const controller=new AbortController();
+    const readEspn=async(day:'today'|'yesterday')=>{
+      const response=await fetch('/api/espn?league=all&grouped=1&date='+day,{signal:controller.signal});
+      if(!response.ok)throw Error('ESPN unavailable');
+      const data=await response.json() as FootballBoard;
+      return espnMatches(data);
+    };
     const reload=async()=>{
       const now = new Date();
       const localDate=todayRiyadh(now);
@@ -61,12 +97,28 @@ export default function TodayHighlights({
           setFailed(Array.isArray(today.failed)?today.failed:[]);setStatus('ready');
           return;
         }
+        // Include national teams and world competitions missing from Apple's club-focused feed.
+        try {
+          const espnToday=await readEspn('today');
+          if(controller.signal.aborted)return;
+          const todayESPN=espnToday.filter(m=>todayRiyadh(new Date(m.start))===localDate);
+          if(todayESPN.length){
+            setMatches(todayESPN);setFallbackYesterday(false);setFailed([]);setStatus('ready');
+            return;
+          }
+        }catch{}
         // A quiet international-break day should not make the highlights shelf disappear.
         const yesterdayDate=todayRiyadh(new Date(now.getTime()-86400000));
         const yesterday=await read(-1);
         if(controller.signal.aborted)return;
-        const completed=(Array.isArray(yesterday.matches)?yesterday.matches:[])
+        let completed=(Array.isArray(yesterday.matches)?yesterday.matches:[])
           .filter(m=>todayRiyadh(new Date(m.start))===yesterdayDate && m.status==='final' && m.sides.length>=2);
+        if(!completed.length){
+          try{
+            const espnYesterday=await readEspn('yesterday');
+            completed=espnYesterday.filter(m=>todayRiyadh(new Date(m.start))===yesterdayDate&&m.status==='final');
+          }catch{}
+        }
         setMatches(completed);setFallbackYesterday(Boolean(completed.length));
         setFailed([...(today.failed||[]),...(yesterday.failed||[])]);
         setStatus('ready');
@@ -88,7 +140,7 @@ export default function TodayHighlights({
     .slice(0,4).map(x=>x.match),[matches]);
   const request=(match:AppleMatch)=>{
     const fixture=matchLabel(match,language);
-    const competition=language==='ar'?(appleCompetitionNames[match.competition]||match.competition):match.competition;
+    const competition=labelCompetition(match.competition,language);
     // Include the provider's match date to prevent wrong-season highlight results.
     const matchDate=todayRiyadh(new Date(match.start));
     const prompt=language==='ar'
@@ -111,7 +163,7 @@ export default function TodayHighlights({
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {picks.map(match=><button type="button" key={match.id} disabled={disabled} onClick={()=>request(match)}
           className={`w-full min-w-0 rounded-xl border px-3 py-2.5 text-start transition disabled:opacity-50 ${isDark?'border-emerald-600/30 bg-[#0d241b] hover:bg-emerald-900/70':'border-emerald-700/15 bg-white hover:bg-emerald-50'}`}>
-          <div className="flex justify-between gap-2 text-[10px] opacity-75"><span className="truncate">{language==='ar'?appleCompetitionNames[match.competition]||match.competition:match.competition}</span>
+          <div className="flex justify-between gap-2 text-[10px] opacity-75"><span className="truncate">{labelCompetition(match.competition,language)}</span>
             <span className="shrink-0">{match.status==='final'?t('انتهت','FT'):match.status==='live'?t('مباشر','Live'):timeInRiyadh(match.start,language)}</span>
           </div>
           <div className="mt-1.5 flex items-center justify-between gap-2">
