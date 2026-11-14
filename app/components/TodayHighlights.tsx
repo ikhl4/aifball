@@ -38,24 +38,44 @@ export default function TodayHighlights({
   const [matches,setMatches]=useState<AppleMatch[]>([]);
   const [status,setStatus]=useState<'loading'|'ready'|'unavailable'>('loading');
   const [failed,setFailed]=useState<string[]>([]);
+  const [fallbackYesterday,setFallbackYesterday]=useState(false);
   const [date,setDate]=useState<string>('');
   useEffect(()=>{
     const controller=new AbortController();
-    const reload=()=>{
-      const localDate=todayRiyadh(new Date());
-      fetch('/api/apple-sports?sport=football&date=0&lang='+language,{signal:controller.signal})
-        .then(async r=>{if(!r.ok)throw Error('Schedule unavailable');return r.json() as Promise<AppleSchedule>;})
-        .then(data=>{
-          if(controller.signal.aborted)return;
-          const list=Array.isArray(data.matches)?data.matches:[];
-          setDate(localDate);
-          setMatches(list.filter(m=>todayRiyadh(new Date(m.start))===localDate&&m.sides.length>=2));
-          setFailed(Array.isArray(data.failed)?data.failed:[]);
-          setStatus('ready');
-        }).catch(()=>{if(!controller.signal.aborted)setStatus('unavailable')});
+    const reload=async()=>{
+      const now = new Date();
+      const localDate=todayRiyadh(now);
+      setDate(localDate);
+      const read=async(offset:number)=>{
+        const response=await fetch('/api/apple-sports?sport=football&date='+offset+'&lang='+language,{signal:controller.signal});
+        if(!response.ok)throw new Error('Schedule unavailable');
+        return response.json() as Promise<AppleSchedule>;
+      };
+      try {
+        const today=await read(0);
+        if(controller.signal.aborted)return;
+        const todayGames=(Array.isArray(today.matches)?today.matches:[])
+          .filter(m=>todayRiyadh(new Date(m.start))===localDate && m.sides.length>=2);
+        if(todayGames.length){
+          setMatches(todayGames);setFallbackYesterday(false);
+          setFailed(Array.isArray(today.failed)?today.failed:[]);setStatus('ready');
+          return;
+        }
+        // A quiet international-break day should not make the highlights shelf disappear.
+        const yesterdayDate=todayRiyadh(new Date(now.getTime()-86400000));
+        const yesterday=await read(-1);
+        if(controller.signal.aborted)return;
+        const completed=(Array.isArray(yesterday.matches)?yesterday.matches:[])
+          .filter(m=>todayRiyadh(new Date(m.start))===yesterdayDate && m.status==='final' && m.sides.length>=2);
+        setMatches(completed);setFallbackYesterday(Boolean(completed.length));
+        setFailed([...(today.failed||[]),...(yesterday.failed||[])]);
+        setStatus('ready');
+      } catch {
+        if(!controller.signal.aborted)setStatus('unavailable');
+      }
     };
-    reload();
-    const timer=window.setInterval(reload,180000);
+    void reload();
+    const timer=window.setInterval(()=>{void reload()},180000);
     return ()=>{controller.abort();window.clearInterval(timer)};
   },[language]);
   const picks=useMemo(()=>matches
@@ -80,14 +100,14 @@ export default function TodayHighlights({
     <section dir={language==='ar'?'rtl':'ltr'} aria-label={t('مباريات اليوم وملخصاتها','Today matches and highlights')}
       className={`mb-5 rounded-2xl border p-3 sm:p-4 ${isDark?'border-emerald-500/35 bg-emerald-950/45 text-white':'border-emerald-700/20 bg-white/60 text-slate-900'}`}>
       <div className="mb-3 flex items-start justify-between gap-2">
-        <div><h2 className="text-sm font-extrabold sm:text-base">🎬 {t('مباريات اليوم وملخصاتها','Today’s matches & highlights')}</h2>
+        <div><h2 className="text-sm font-extrabold sm:text-base">🎬 {fallbackYesterday?t('ملخصات مباريات أمس','Yesterday’s match highlights'):t('مباريات اليوم وملخصاتها','Today’s matches & highlights')}</h2>
           <p className="mt-1 text-[11px] opacity-75">{t('اختر المباراة للبحث عن ملخصها في الشات','Tap a fixture to search its highlights in chat')}</p>
         </div>
-        <span className="shrink-0 rounded-lg bg-emerald-700/20 px-2 py-1 text-[10px] font-bold">{date||t('اليوم','Today')}</span>
+        <span className="shrink-0 rounded-lg bg-emerald-700/20 px-2 py-1 text-[10px] font-bold">{fallbackYesterday?t('أمس','Yesterday'):(date||t('اليوم','Today'))}</span>
       </div>
       {status==='loading'&&<p role="status" className="py-2 text-xs">{t('جارٍ جلب مباريات اليوم…','Loading today’s fixtures…')}</p>}
       {status==='unavailable'&&<p role="status" className="py-2 text-xs">{t('تعذر تحديث مباريات اليوم من المصدر الرياضي.','Today’s fixtures are unavailable from the provider.')}</p>}
-      {status==='ready'&&!picks.length&&<p role="status" className="py-2 text-xs">{t('لا توجد مباريات مؤكدة ضمن الدوريات المغطاة اليوم.','No confirmed matches in covered competitions today.')}</p>}
+      {status==='ready'&&!picks.length&&<p role="status" className="py-2 text-xs">{t('لا توجد مباريات مؤكدة اليوم أو مباريات منتهية أمس ضمن البطولات المغطاة.','No confirmed fixtures today or completed matches yesterday in covered competitions.')}</p>}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {picks.map(match=><button type="button" key={match.id} disabled={disabled} onClick={()=>request(match)}
           className={`w-full min-w-0 rounded-xl border px-3 py-2.5 text-start transition disabled:opacity-50 ${isDark?'border-emerald-600/30 bg-[#0d241b] hover:bg-emerald-900/70':'border-emerald-700/15 bg-white hover:bg-emerald-50'}`}>
