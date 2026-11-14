@@ -19,6 +19,7 @@ import { appLanguageKey, type AppLanguage } from '../lib/app-language';
 import LiveMatchCenter from './components/LiveMatchCenter';
 import LeagueDashboard from './components/LeagueDashboard';
 import StandingsExplorer from './components/StandingsExplorer';
+import TodayHighlights from './components/TodayHighlights';
 import { COMPETITIONS, resolveStandingsRequest } from '../lib/competitions';
 import MatchReport from './components/MatchReport';
 import MatchHighlightCard from './components/MatchHighlightCard';
@@ -1927,6 +1928,13 @@ export default function FootPlayChat() {
                 <button type="button" onClick={() => setShowInstallHelp(false)} className="underline">{t('إغلاق', 'Close')}</button>
               </section>
             )}
+
+            <TodayHighlights
+              language={language}
+              isDark={isDarkMode}
+              disabled={loading}
+              onRequest={(query) => { void sendMessage(query); }}
+            />
 
             {/* بطاقات أسئلة الاستكشاف التفاعلية */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full">
