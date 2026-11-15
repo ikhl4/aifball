@@ -285,6 +285,39 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     }catch{verifiedSearchChannel.set(entry.channelId,false);return false;}
   }
   try {
+    // First check the publisher feeds the user selected. These feed entries
+    // contain the publisher channel ID and absolute upload time, so a missing
+    // YouTube watch-page player payload cannot suppress a genuine thumbnail.
+    const preferredFeeds = [
+      { id:'UCvuPuKPukGd8S2qr4msLAuQ', name:'TOD by beIN' },
+      { id:'UCJUCcJUeh0Cz2xyKwkw5Q1w', name:'beIN SPORTS' },
+    ];
+    const feedResults = await Promise.allSettled(preferredFeeds.map(async publisher=>{
+      const url='https://www.youtube.com/feeds/videos.xml?channel_id='+publisher.id;
+      const xml=await html(url,c.signal,fetcher);
+      // Never accept an imitation channel or video title alone.
+      if(!xml.includes('<yt:channelId>'+publisher.id+'</yt:channelId>'))return null;
+      const played=Date.parse(match.date+'T00:00:00+03:00');
+      for(const entry of xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)){
+        const chunk=entry[1];
+        const id=chunk.match(/<yt:videoId>([\w-]{11})<\/yt:videoId>/)?.[1];
+        const rawTitle=chunk.match(/<title>([\s\S]*?)<\/title>/)?.[1]||'';
+        const title=rawTitle.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+        const published=chunk.match(/<published>([^<]+)<\/published>/)?.[1]||'';
+        const timestamp=Date.parse(published);
+        if(!id||!matchesTeams(title,match)||!Number.isFinite(timestamp)||!Number.isFinite(played))continue;
+        if(timestamp<played-86400000||timestamp>played+14*86400000)continue;
+        const video:HighlightVideo={id,url:'https://www.youtube.com/watch?v='+id,title,channel:publisher.name,publishedAt:published,embeddable:false};
+        return video;
+      }
+      return null;
+    }));
+    for(const item of feedResults){
+      if(item.status==='fulfilled'&&item.value){
+        diagnostics.result='preferred_official_feed';
+        return {status:'found',video:item.value};
+      }
+    }
     const candidateId = youtubeVideoId(candidate);
     if (candidateId) diagnostics.result = 'candidate_supplied';
     if (candidateId) { try { return { status: 'found', video: await check(candidateId) }; } catch { /* Try the official channel instead of declaring absence. */ } }
