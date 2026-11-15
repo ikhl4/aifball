@@ -343,7 +343,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
             // A year printed in the video title, plus a known official channel,
             // is a conservative fallback when the matching fixture is unambiguous.
             const exactOfficial = verifiedPublisher(entry.handle, entry.channelId, entry.channelName);
-            const titleYear = new RegExp('(?:^|\\\\D)' + match.date.slice(0,4) + '(?:\\\\D|$)').test(entry.title);
+            const titleYear = entry.title.includes(match.date.slice(0,4));
             const dateVerified = searchDateMatches(entry.published, match.date)
               || (!entry.published.trim() && titleYear && exactOfficial);
             if (!dateVerified) {
