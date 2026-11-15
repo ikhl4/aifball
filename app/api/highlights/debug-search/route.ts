@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server';
-import { pageJson, youtubeSearchEntries, matchesTeams } from '../../../../lib/highlight-video';
+import { findHighlightVideo } from '../../../../lib/highlight-video';
 export const dynamic='force-dynamic';
-export async function GET() {
+export const maxDuration=35;
+export async function GET(request:Request){
  if(process.env.VERCEL_ENV!=='preview')return NextResponse.json({error:'Not available'},{status:404});
- const match={home:'Portugal',away:'Denmark',date:'2026-11-14'};
- const q='ملخص البرتغال الدنمارك beIN SPORTS 2026';
- try { const r=await fetch('https://www.youtube.com/results?search_query='+encodeURIComponent(q),{cache:'no-store',signal:AbortSignal.timeout(9000)});
- if(!r.ok)return NextResponse.json({http:r.status});
- const entries=youtubeSearchEntries(pageJson(await r.text(),'ytInitialData'));
- return NextResponse.json({total:entries.length,entries:entries.filter(x=>matchesTeams(x.title,match)).slice(0,12).map(x=>({id:x.id,title:x.title.slice(0,125),channel:x.channelName,channelId:x.channelId,handle:x.handle,published:x.published}))}); } catch(e){return NextResponse.json({error:e instanceof Error?e.message:'unknown'},{status:200});}
+ const result=await findHighlightVideo({home:'Portugal',away:'Denmark',date:'2026-11-14',competition:'دوري الأمم الأوروبية'},'',request.signal);
+ return NextResponse.json(result.status==='found'?{status:'found',video:{url:result.video.url,title:result.video.title,channel:result.video.channel}}:{status:result.status});
 }
