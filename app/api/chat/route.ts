@@ -5,7 +5,8 @@ import { verifiedSummaryStream, verifySummaryAnswer } from '../../../lib/verifie
 import { posterIntent } from '../../../lib/match-card-data';
 import { buildSingleMatchHighlights } from '../../../lib/single-match-highlights';
 import { historyMode, FOOTBALL_HISTORY_RULES, DOCUMENTARY_REQUEST_RULES, presentHistoryAnswer } from '../../../lib/football-history';
-import { groundedMatchStream } from '../../../lib/grounded-match-answer';
+import { resolveDatedMatchReport, requestedReportPlayer } from '../../../lib/dated-match-report';
+import { groundedMatchAnswer, groundedMatchStream } from '../../../lib/grounded-match-answer';
 import { requestedTeam, latestVerifiedMatch, latestMatchText } from '../../../lib/latest-match';
 import { NextResponse } from 'next/server';
 import { isDetailedMatchQuery, withMatchReportPresentation, withMatchConversationContext } from '../../../lib/match-report-prompt';
@@ -337,6 +338,24 @@ export async function POST(req: Request) {
       });
     }
     const detailedMatch=isDetailedMatchQuery(query);
+    if (detailedMatch && !english && !hasImage) {
+      const fixture = await resolveDatedMatchReport(query, req.signal);
+      if (fixture) {
+        const { report, raw } = fixture;
+        const playerName = requestedReportPlayer(report, query);
+        const escapeAttribute = (value: string) => value.replace(/[&"<>]/g, character =>
+          ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' }[character] || character));
+        const player = playerName ? ` player_name="${escapeAttribute(playerName)}"` : '';
+        const tag = `<aifball-match-report match="المباراة" event="${report.eventId}" league="${report.league}"${player} />`;
+        const answer = await groundedMatchAnswer(tag, report.state === 'in' ? query + ' مباشر' : query,
+          req.signal, async () => Response.json(raw));
+        const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
+        const events = [{ event: 'message', answer, conversation_id }, { event: 'message_end', conversation_id }];
+        return new Response(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), {
+          headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-AiFBall-Presentation': 'match-report' },
+        });
+      }
+    }
     const analysis = body?.analysis_mode === true || isAnalysisRequest(query);
     const conversation_id = body?.conversation_id || '';
     const documentaryContext = typeof body?.documentary_context === 'string' ? body.documentary_context.slice(0, 6000) : '';
