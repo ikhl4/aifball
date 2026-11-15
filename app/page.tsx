@@ -1078,7 +1078,7 @@ export default function FootPlayChat() {
       if(activeRequestSession.current!==id) return;
       const found=response.ok && payload.status==='found' && payload.video && /^https:\/\/www\.youtube\.com\/watch\?v=[\w-]{11}$/.test(payload.video.url);
       const officialPage=response.ok && payload.status==='official_page' && payload.video &&
-        /^https:\/\/www\.uefa\.com\/uefanationsleague\/news\//.test(payload.video.url);
+        /^https:\/\/(?:pt\.)?uefa\.com\/uefanationsleague\/video\/highlights\//.test(payload.video.url);
       const assistant:Message=found
         ? {role:'assistant',content:language==='ar'?'🎬 ملخص المباراة من '+(payload.video?.channel||'القناة الرسمية'):'🎬 Match highlights from '+(payload.video?.channel||'official publisher'),highlightVideo:payload.video}
         : officialPage ? {role:'assistant',
