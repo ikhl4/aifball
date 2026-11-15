@@ -260,6 +260,28 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     }
   };
   const check = async (id: string, channelId?: string) => videoMetadata(await html(`https://www.youtube.com/watch?v=${id}`, c.signal, fetcher), id, match, channelId);
+  const verifiedSearchChannel = new Map<string, boolean>();
+  async function verifySearchChannel(entry: YoutubeSearchEntry): Promise<boolean> {
+    if (verifiedPublisher(entry.handle, entry.channelId, entry.channelName)) return true;
+    if (!/^UC[\\w-]{22}$/.test(entry.channelId)) return false;
+    const cached=verifiedSearchChannel.get(entry.channelId);
+    if(cached!==undefined)return cached;
+    try {
+      // Never trust the search-result display name on its own.
+      // Confirm the same YouTube channel ID on the actual publisher page.
+      const page=await html('https://www.youtube.com/channel/'+entry.channelId+'/videos',c.signal,fetcher);
+      const data=pageJson(page,'ytInitialData');
+      const metadata=data.metadata?.channelMetadataRenderer;
+      const channelId=String(metadata?.externalId||'');
+      const name=String(metadata?.title||'').toLowerCase().trim();
+      const handle=handleOf(String(metadata?.vanityChannelUrl||''));
+      const approved=channelId===entry.channelId &&
+        (handle && HIGHLIGHT_CHANNELS.includes(handle as typeof HIGHLIGHT_CHANNELS[number]) ||
+          OFFICIAL_CHANNEL_TITLES.has(name));
+      verifiedSearchChannel.set(entry.channelId,Boolean(approved));
+      return Boolean(approved);
+    }catch{verifiedSearchChannel.set(entry.channelId,false);return false;}
+  }
   try {
     const candidateId = youtubeVideoId(candidate);
     if (candidateId) diagnostics.result = 'candidate_supplied';
@@ -342,7 +364,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
             // Date labels are sometimes omitted from YouTube's search cards.
             // A year printed in the video title, plus a known official channel,
             // is a conservative fallback when the matching fixture is unambiguous.
-            const exactOfficial = verifiedPublisher(entry.handle, entry.channelId, entry.channelName);
+            const exactOfficial = await verifySearchChannel(entry);
             const titleYear = entry.title.includes(match.date.slice(0,4));
             const dateVerified = searchDateMatches(entry.published, match.date)
               || (!entry.published.trim() && titleYear && exactOfficial);
