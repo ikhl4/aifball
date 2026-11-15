@@ -2028,8 +2028,8 @@ export default function FootPlayChat() {
                   aria-label={`${card.tag}: ${card.question}`}
                   className={`flex flex-col justify-between text-start p-3 sm:p-4 rounded-2xl border backdrop-blur-[6px] min-h-[112px] sm:min-h-[126px] transition-all duration-500 cursor-pointer hover:border-emerald-400/60 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-wait disabled:opacity-60 ${
                     isDarkMode
-                      ? 'bg-emerald-950/15 backdrop-blur-xl border-emerald-500/25 text-white'
-                      : 'bg-white/15 border-white/35 text-gray-950'
+                      ? 'bg-emerald-950/45 backdrop-blur-xl border-emerald-500/40 text-white shadow-md'
+                      : 'bg-white/35 border-white/55 text-gray-950 shadow-sm'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -2038,14 +2038,14 @@ export default function FootPlayChat() {
                     </span>
                     <span
                       className={`text-[9px] sm:text-[10px] font-bold ${
-                        isDarkMode ? 'text-emerald-400' : 'text-emerald-800'
+                        isDarkMode ? 'text-emerald-300/65' : 'text-emerald-800/65'
                       }`}
                     >
                       {card.tag}
                     </span>
                   </div>
 
-                  <p className="mt-3 text-[11px] sm:text-sm font-bold leading-[1.8] line-clamp-3">
+                  <p className={`mt-3 text-[11px] sm:text-sm font-bold leading-[1.8] line-clamp-3 ${isDarkMode ? "text-white/65" : "text-gray-950/65"}`}>
                     {card.question}
                   </p>
                 </button>
