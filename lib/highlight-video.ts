@@ -298,12 +298,12 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
       // Never accept an imitation channel or video title alone.
       if(!xml.includes('<yt:channelId>'+publisher.id+'</yt:channelId>'))return null;
       const played=Date.parse(match.date+'T00:00:00+03:00');
-      for(const entry of xml.matchAll(/<entry>([\\s\\S]*?)<\\/entry>/g)){
+      for(const entry of xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)){
         const chunk=entry[1];
-        const id=chunk.match(/<yt:videoId>([\\w-]{11})<\\/yt:videoId>/)?.[1];
-        const rawTitle=chunk.match(/<title>([\\s\\S]*?)<\\/title>/)?.[1]||'';
+        const id=chunk.match(/<yt:videoId>([\w-]{11})<\/yt:videoId>/)?.[1];
+        const rawTitle=chunk.match(/<title>([\s\S]*?)<\/title>/)?.[1]||'';
         const title=rawTitle.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
-        const published=chunk.match(/<published>([^<]+)<\\/published>/)?.[1]||'';
+        const published=chunk.match(/<published>([^<]+)<\/published>/)?.[1]||'';
         const timestamp=Date.parse(published);
         if(!id||!matchesTeams(title,match)||!Number.isFinite(timestamp)||!Number.isFinite(played))continue;
         if(timestamp<played-86400000||timestamp>played+14*86400000)continue;
