@@ -2,7 +2,7 @@
 import { footballNameInArabic } from './football-names-ar';
 import { youtubeVideoId } from './summary-presentation';
 
-export const HIGHLIGHT_CHANNELS = ['beinsports', 'ittihadclub', 'theafchub', 'tod_bybein', 'thmanyahsports', 'beinsportsturkiye', 'seriea', 'laliga', 'mls', 'adsportstv', 'alkasstvsports', 'stctvsports'] as const;
+export const HIGHLIGHT_CHANNELS = ['beinsports', 'ittihadclub', 'theafchub', 'tod_bybein', 'thmanyahsports', 'beinsportsturkiye', 'seriea', 'laliga', 'mls', 'adsportstv', 'alkasstvsports', 'stctvsports', 'uefa'] as const;
 export type HighlightMatch = { home: string; away: string; date: string; competition?: string };
 export type HighlightVideo = { id: string; url: string; title: string; channel: string; publishedAt: string; embeddable: boolean };
 type ChannelIndex = { channelId: string; videos: { id: string; title: string }[] };
@@ -15,11 +15,12 @@ const OFFICIAL_CHANNEL_TITLES = new Set([
   'Serie A', 'Serie A Enilive', 'LaLiga', 'LaLiga EA SPORTS',
   'MLS', 'Major League Soccer', 'AD Sports', 'أبوظبي الرياضية',
   'قناة نادي الاتحاد السعودي', 'نادي الاتحاد السعودي', 'Al-Ittihad Club',
-  'The AFC Hub',
+  'The AFC Hub', 'UEFA',
   'Alkass Sports Channels', 'قنوات الكأس', 'stc tv sports'
 ].map(name => name.toLowerCase()));
 // Verified official YouTube channel IDs, used if search omits @handles.
 const VERIFIED_CHANNEL_IDS: Record<string, string> = {
+  UCyGa1YEx9ST66rYrJTGIKOw: 'uefa',
   UCJUCcJUeh0Cz2xyKwkw5Q1w: 'beinsports',
   UCivJETAP4VD7rXRgjdpVwNw: 'ittihadclub',
   UCnj0TjaM0wyxkAWW_nz8_1g: 'theafchub',
@@ -158,6 +159,7 @@ export function duckDuckGoVideos(page: string): DuckDuckGoVideoResult[] {
 function recognizedSearchPublisher(value: string): string {
   const lower = norm(value);
   const publishers = [
+    ['UEFA', /(?:^|\s)uefa(?:\s|$)/],
     ['beIN SPORTS', /(?:^|\s)bein sports(?:\s|$)/],
     ['TOD by beIN', /(?:^|\s)tod by bein(?:\s|$)/],
     ['ثمانية', /(?:^|\s)(?:ثمانيه|ثمانية|thmanyah sports)(?:\s|$)/],
@@ -246,7 +248,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     youtubeWatchRejected: 0, youtubeWatchStatusErrors: 0, channelFailures: 0,
     youtubeRejectReasons: {} as Record<string, number>, channelRejectReasons: {} as Record<string, number>,
     ddgErrorKinds: [] as string[], searchPublisherCandidates: 0,
-    searchPublisherValidated: 0, searchDateRejected: 0, searchDateMissing: 0,
+    searchPublisherValidated: 0, searchPublisherRejected: 0, searchDateRejected: 0, searchDateMissing: 0,
     searchDateOutsideWindow: 0, searchMissingIdentity: 0,
     searchPublicationExamples: [] as string[], result: 'unknown' };
   const logDiagnostic = () => {
