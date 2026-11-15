@@ -21,6 +21,7 @@ import LeagueDashboard from './components/LeagueDashboard';
 import StandingsExplorer from './components/StandingsExplorer';
 import HighlightsPicker from './components/HighlightsPicker';
 import { COMPETITIONS, resolveStandingsRequest } from '../lib/competitions';
+import { isNamedVideoHighlights, needsDurableResearch } from '../lib/chat-intent';
 import MatchReport from './components/MatchReport';
 import MatchHighlightCard from './components/MatchHighlightCard';
 import ChatVideoCard from './components/ChatVideoCard';
@@ -1283,8 +1284,7 @@ export default function FootPlayChat() {
     if ((!query && attachedFiles.length === 0) || loading) return;
     // Treat a named-match highlight as a VIDEO request, not a 60-second
     // narrative match report. Leave daily/league highlight requests unchanged.
-    const namedHighlights=/ملخص|هايلايت|highlights?/i.test(query) &&
-      !/ملخصات|مباريات اليوم|مباريات أمس|ملخصات امس|ملخصات أمس|أبرز المباريات|ابرز المباريات|today.s highlights|yesterday.s highlights|highlights of (?:today|yesterday)/i.test(query);
+    const namedHighlights = isNamedVideoHighlights(query);
     if(namedHighlights && attachedFiles.length===0){void requestTypedHighlight(query);return;}
 
     const id =
@@ -1417,7 +1417,7 @@ export default function FootPlayChat() {
     try {
       // Signed-in text requests use the durable Render worker when configured.
       // If not configured, preserve the existing streaming Dify behavior.
-      if (user?.id && files.length === 0) {
+      if (user?.id && files.length === 0 && needsDurableResearch(query)) {
         const key = crypto.randomUUID();
         const durable = await fetch('/api/chat/jobs', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
