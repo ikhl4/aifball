@@ -7,14 +7,19 @@ import type { AppLanguage } from '../../lib/app-language';
 
 type Match = { id: string; code: string; date: string; names: string[]; englishNames: string[]; score: string; status: 'final'|'live'|'scheduled' };
 const competitions = new Map<string, { ar:string; en:string }>(footballLeagues.map(([code,ar,en])=>[code,{ar,en}]));
+const excludedFixture = /(?:^|[^a-z])israel(?:$|[^a-z])|إسرائيل|اسرائيل|إسراءيل|الكيان الصهيوني/i;
 const national = /Saudi Arabia|France|Spain|England|Portugal|Germany|Brazil|Argentina|Italy|Belgium|Netherlands|Croatia|Morocco|Türkiye|Turkey|Uruguay|Japan|South Korea|السعودية|فرنسا|اسبانيا|إنجلترا|البرتغال|ألمانيا|البرازيل|الأرجنتين|إيطاليا|بلجيكا|هولندا|كرواتيا|المغرب/i;
 const bigTeams = /Real Madrid|Barcelona|Man City|Manchester|Arsenal|Liverpool|Chelsea|Bayern|PSG|Paris Saint|Juventus|Inter Milan|AC Milan|Al Hilal|Al Nassr|Al Ittihad|Al Ahli|الهلال|النصر|الاتحاد|الأهلي/i;
-const importantLeagues:Record<string,number> = {'uefa.nations':125,'fifa.friendly':85,'fifa.world':140,'fifa.worldq.uefa':115,'fifa.worldq.afc':112,'uefa.champions':125,'afc.champions':110,'ksa.1':108,'eng.1':105,'esp.1':100,'ita.1':95,'ger.1':95,'fra.1':90,'uefa.europa':90,'uefa.europa.conf':85};
+const importantLeagues:Record<string,number> = {'uefa.nations':145,'fifa.friendly':115,'fifa.world':155,'fifa.worldq.uefa':135,'fifa.worldq.afc':132,'uefa.champions':125,'afc.champions':110,'ksa.1':108,'eng.1':105,'esp.1':100,'ita.1':95,'ger.1':95,'fra.1':90,'uefa.europa':90,'uefa.europa.conf':85};
 const dateKey=(d:Date)=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
 function toMatches(data: FootballBoard, day: 'today'|'yesterday'): Match[] {
   const expected=dateKey(new Date(Date.now()+(day==='today'?0:-86400000)));
   const seen=new Set<string>(), result:Match[]=[];
   for(const [code,events] of Object.entries(data.matches||{})) {
+    // ESPN's 'all' feed mixes youth, women's, regional and unrelated
+    // competitions without a reliable league ID. Never promote those games as
+    // yesterday's biggest highlights or mislabel them as senior men's football.
+    if(code === 'all' || !competitions.has(code)) continue;
     for(const e of events as FootballEvent[]) {
       if(!e.id||!e.date||dateKey(new Date(e.date))!==expected)continue;
       const sides=e.competitions?.[0]?.competitors||[];
@@ -22,6 +27,9 @@ function toMatches(data: FootballBoard, day: 'today'|'yesterday'): Match[] {
       if(teams.some(x=>!x?.team))continue;
       const englishNames=teams.map(t=>t?.team?.displayName||t?.team?.name||'');
       if(englishNames.some(x=>!x))continue;
+      if ([...englishNames, ...englishNames.map(x=>footballNameInArabic(x)||'')].some(x=>excludedFixture.test(x))) continue;
+      // Only surface fixtures whose calendar day is confirmed in Riyadh.
+      if(!e.date || dateKey(new Date(e.date))!==expected)continue;
       const names=englishNames.map(x=>footballNameInArabic(x)||x);
       const key=englishNames.map(n=>n.toLowerCase()).sort().join('|')+'|'+e.date;
       if(seen.has(key))continue;seen.add(key);
@@ -40,8 +48,8 @@ function matchWeight(m:Match):number {
   return (importantLeagues[m.code]||30)+powers*24+(bigTeams.test(teams)?35:0)+(m.status==='live'?8:0);
 }
 
-export default function HighlightsPicker({ language='ar', isDark=true, onRequest, disabled=false }:{
-  language?: AppLanguage;isDark?:boolean;onRequest:(query:string)=>void;disabled?:boolean;
+export default function HighlightsPicker({ language='ar', isDark=true, onRequest, onMatch, disabled=false }:{
+  language?: AppLanguage;isDark?:boolean;onRequest:(query:string)=>void;onMatch?:(match:{home:string;away:string;date:string;competition:string;display:string;status:'final'|'live'|'scheduled'})=>void;disabled?:boolean;
 }) {
   const t=(ar:string,en:string)=>language==='ar'?ar:en;
   const [day,setDay]=useState<'today'|'yesterday'>('today');
@@ -73,17 +81,17 @@ export default function HighlightsPicker({ language='ar', isDark=true, onRequest
     const league=competitions.get(m.code);
     const comp=language==='ar'?league?.ar||m.code:league?.en||m.code;
     const date=dateKey(new Date(m.date));
-    const request=language==='ar'
-      ? `ابحث عن ملخص فيديو مباراة ${fixture} في ${comp} بتاريخ ${date}. تحقق من النتيجة وحالة المباراة قبل البحث. إذا انتهت ابحث عن ملخصها من القنوات الرسمية في يوتيوب، وأعطني ملخصًا كتابيًا قصيرًا ثم الفيديو داخل المحادثة إن وُجد وتأكدت أنه لنفس المباراة. إن لم ينشر الفيديو فلا تختلق رابطًا، وإن لم تنته المباراة أخبرني بالموعد أو الحالة بدل تقديم ملخص غير موجود.`
-      : `Find verified video highlights for ${fixture} in ${comp} on ${date}. Check whether the match has finished, provide a brief recap, and show an official YouTube video inline only if it matches this exact game. If not available, say so; for upcoming games give match details instead.`;
-    onRequest(request);
+        if(onMatch) {
+      onMatch({home:m.englishNames[0],away:m.englishNames[1],date,competition:comp,
+        display:language==='ar'?'ملخص '+fixture:'Highlights: '+fixture,status:m.status});
+      return;
+    }
+    onRequest(language==='ar'?'ملخص '+fixture+' '+date:'Highlights '+fixture+' '+date);
   };
   const customSend=()=>{
     const value=custom.trim().slice(0,180);
     if(!value)return;
-    onRequest(language==='ar'
-      ? `ابحث عن ملخص المباراة التالية: ${value}. حدد المباراة الصحيحة وتاريخها ونتيجتها، ثم ابحث عن فيديو ملخص من قناة رسمية واعرضه داخل الشات إن توفر، ولا تختلق فيديو أو تستخدم مباراة مختلفة. إذا لم تنته المباراة وضح ذلك.`
-      : `Find verified highlights for this specific match: ${value}. Verify its date and result, then show a matching official video inline if available. Do not invent links or confuse fixtures.`);
+    onRequest(language==='ar'?'ملخص مباراة '+value:'Match highlights '+value);
   };
   return <section dir={language==='ar'?'rtl':'ltr'} className="space-y-3 p-3 sm:p-4">
     <p className="text-xs opacity-75">{t('اضغط على المباراة، وفوتبلاي يبحث عن ملخصها داخل المحادثة.','Tap a match and AiFBall will search for its highlights in chat.')}</p>

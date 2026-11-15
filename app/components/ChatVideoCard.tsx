@@ -10,11 +10,12 @@ type Props = {
   isDark?: boolean;
   /** Only an explicit false from verified metadata disables inline playback. */
   canEmbed?: boolean;
+  openExternally?: boolean;
 };
 
 /** Presentation only. Never fetches or chooses a different video. */
 export default function ChatVideoCard({
-  url, title = 'ملخص المباراة', channel, isDark = true, canEmbed,
+  url, title = 'ملخص المباراة', channel, isDark = true, canEmbed, openExternally = false,
 }: Props) {
   const id = youtubeVideoId(url);
   const [playing, setPlaying] = useState(false);
@@ -89,7 +90,7 @@ export default function ChatVideoCard({
                 onError={() => setThumbnailFailed(true)}
               />
             )}
-            {restricted ? (
+            {restricted || openExternally ? (
               <a href={watch} target="_blank" rel="noopener noreferrer" aria-label="مشاهدة الملخص على يوتيوب" className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/15 text-white">
                 <span aria-hidden="true" className="flex h-14 w-16 items-center justify-center rounded-2xl bg-red-600 text-2xl shadow-lg">▶</span>
                 <span className="rounded-lg bg-black/75 px-3 py-1.5 text-xs font-semibold">المشاهدة على يوتيوب</span>
