@@ -17,6 +17,12 @@ export function isNamedVideoHighlights(query: string): boolean {
 export function needsDurableResearch(query:string):boolean {
   const q=query.trim();
   if(q.length>175) return true;
+  // A short single-season player stat question should stream as soon as
+  // verified league figures are available; full career research stays durable.
+  const quickSeasonStats = /(?:إحصائيات|احصائيات|أرقام|ارقام|stats|statistics|numbers)/i.test(q)
+    && /(?:هذا الموسم|الموسم الحالي|هالموسم|this season|current season|2026[\\/-]2027)/i.test(q)
+    && !/(?:كامل|كاملة|تفصيل|المسيرة|مسيرته|career|all seasons|every competition|جميع البطولات)/i.test(q);
+  if(quickSeasonStats)return false;
   // Brief club-news requests should stream immediately, without the signed-in
   // job-creation/polling round-trip. Deep research still uses resumable jobs.
   const briefClubNews=/^(?:آخر|اخر|أحدث|احدث)?\s*(?:أخبار|اخبار|مستجدات)\s+(?:ال)?[\p{L}\p{M}\s-]{2,45}(?:\s+اليوم)?[؟?!.]*$/iu.test(q)
