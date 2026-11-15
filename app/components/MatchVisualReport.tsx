@@ -3,11 +3,12 @@
 import React, { useId, useState } from 'react';
 import type { DetailedMatchReport } from '../../lib/match-report';
 import type { Scores365Report } from '../../lib/scores365-report';
+import { matchDateInArabic, matchNameInArabic, matchNumberInArabic } from '../../lib/match-display-ar';
 import type { SpatialReport } from '../../lib/spatial-report';
 
 type Side = 'home' | 'away';
 type Metric = { key: string; label: string; home: number | null; away: number | null; percent?: boolean };
-type Shot = { id: string; x: number; y: number; side: Side; xg: number | null; goal: boolean };
+type Shot = { id: string; x: number; y: number; side: Side; xg: number | null; goal: boolean; outcome?: string; playerName?: string; minute?: string | null };
 type PassNode = { id: string; number: string; name: string; x: number; y: number };
 type PassLink = { from: string; to: string; count: number };
 type Network = { nodes: PassNode[]; links: PassLink[] };
@@ -36,10 +37,10 @@ export function visualFromEspn(data: DetailedMatchReport): VisualMatch {
   return {
     home: data.home.name, away: data.away.name,
     homeScore: data.home.score, awayScore: data.away.score,
-    context: [data.competition, data.date?.slice(0, 10)].filter(Boolean).join(' · '),
-    source: 'ESPN',
+    context: [data.competition && matchNameInArabic(data.competition), data.date && matchDateInArabic(data.date)].filter(Boolean).join(' · '),
+    source: 'إي إس بي إن',
     metrics: data.statistics.map(s => ({ ...s, home: numeric(s.home), away: numeric(s.away) })),
-    shots: [],
+    shots: data.shots ?? [],
   };
 }
 
@@ -47,8 +48,8 @@ export function visualFrom365(data: Scores365Report): VisualMatch {
   return {
     home: data.home.name, away: data.away.name,
     homeScore: data.home.score, awayScore: data.away.score,
-    context: [data.competition, data.date.slice(0, 10)].filter(Boolean).join(' · '),
-    source: '365Scores',
+    context: [data.competition, matchDateInArabic(data.date)].filter(Boolean).join(' · '),
+    source: '٣٦٥ سكورز',
     metrics: data.statistics.map(s => ({ ...s, home: numeric(s.home), away: numeric(s.away), percent: /%/.test((s.home || '') + (s.away || '')) })),
     shots: data.shots.map(s => ({ ...s, goal: /^goal$/i.test(s.outcome) })),
   };
@@ -58,15 +59,15 @@ export function visualFromSofa(data: SpatialReport): VisualMatch {
   return {
     home: data.home, away: data.away,
     homeScore: data.homeScore, awayScore: data.awayScore,
-    context: [data.competition, data.date?.slice(0, 10)].filter(Boolean).join(' · '),
-    source: 'SofaScore', metrics: data.statistics,
+    context: [data.competition, data.date && matchDateInArabic(data.date)].filter(Boolean).join(' · '),
+    source: 'سوفاسكور', metrics: data.statistics,
     shots: data.shots.filter((s): s is typeof s & { side: Side } => s.side === 'home' || s.side === 'away')
       .map(s => ({ ...s, goal: /^goal$/i.test(s.outcome) })),
   };
 }
 
-function Pitch({ children, label }: { children: React.ReactNode; label: string }) {
-  return <svg viewBox="-10 -10 320 400" role="img" aria-label={label} className="mx-auto block w-full max-w-[340px]">
+function Pitch({ children, label, interactive = false }: { children: React.ReactNode; label: string; interactive?: boolean }) {
+  return <svg viewBox="-10 -10 320 400" role={interactive ? 'group' : 'img'} aria-label={label} className="mx-auto block w-full max-w-[340px]">
     <g fill="none" stroke="currentColor" strokeWidth="1" opacity=".3">
       <rect x="10" y="10" width="280" height="360" />
       <path d="M10 190H290" /><circle cx="150" cy="190" r="38" />
@@ -81,9 +82,9 @@ const format = (n: number | null) => n === null ? '—' : String(Math.round(n * 
 const tabs = [['passes', 'شبكة التمريرات'], ['shots', 'خريطة التسديدات'], ['metrics', 'مؤشرات الأداء']] as const;
 type Tab = typeof tabs[number][0];
 
-export default function MatchVisualReport({ data, isDark = true }: { data: VisualMatch; isDark?: boolean }) {
-  const [tab, setTab] = useState<Tab>(data.demo ? 'passes' : 'metrics');
-  const [side, setSide] = useState<Side>('home');
+export default function MatchVisualReport({ data, isDark = true, shotsOnly = false, initialSide = 'home', singleTeam = false }: { data: VisualMatch; isDark?: boolean; shotsOnly?: boolean; initialSide?: Side; singleTeam?: boolean }) {
+  const [tab, setTab] = useState<Tab>(shotsOnly ? 'shots' : data.demo ? 'passes' : 'metrics');
+  const [side, setSide] = useState<Side>(initialSide);
   const [selected, setSelected] = useState<string | null>(null);
   const id = useId();
   const surface = isDark ? 'bg-[#081b15] text-gray-100 border-emerald-900/60' : 'bg-white text-gray-900 border-emerald-200';
@@ -100,6 +101,8 @@ export default function MatchVisualReport({ data, isDark = true }: { data: Visua
   const links = network?.links.filter(l => nodeIds.has(l.from) && nodeIds.has(l.to) && Number.isFinite(l.count) && l.count > 0) || [];
   const activeNode = nodes.find(n => n.id === selected);
   const shots = data.shots.filter(s => s.side === side && [s.x, s.y].every(v => Number.isFinite(v) && v >= 0 && v <= 100));
+  const activeShot = shots.find(shot => shot.id === selected);
+  const describeShot = (shot: Shot) => [shot.playerName && matchNameInArabic(shot.playerName), shot.minute && matchNumberInArabic(shot.minute), shot.outcome && /[\u0600-\u06FF]/.test(shot.outcome) ? shot.outcome : shot.goal ? 'هدف' : 'تسديدة', shot.xg != null && 'الأهداف المتوقعة ' + matchNumberInArabic(format(shot.xg))].filter(Boolean).join(' · ');
   const metrics = data.metrics.filter(m => m.home !== null || m.away !== null);
   const summaries = [
     metrics.find(m => /^(expectedGoals|expected_goals|xg)$/i.test(m.key) || /xG/.test(m.label)),
@@ -113,22 +116,23 @@ export default function MatchVisualReport({ data, isDark = true }: { data: Visua
       <span className={`rounded-lg px-2 py-1 text-xs ${panel}`}>{data.demo ? 'معاينة ببيانات افتراضية' : data.source}</span>
     </header>
     <div className="p-4 sm:p-5">
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-4 text-center">
-        <b className="min-w-0 break-words text-sm sm:text-lg">{data.home}</b>
-        <b dir="ltr" className="whitespace-nowrap text-2xl tabular-nums sm:text-3xl">{data.homeScore ?? '—'} – {data.awayScore ?? '—'}</b>
-        <b className="min-w-0 break-words text-sm sm:text-lg">{data.away}</b>
-      </div>
+      {!shotsOnly && <div className="grid grid-cols-2 gap-2 py-4 text-center">
+        {(['home','away'] as const).map(side => <div key={side} className="min-w-0">
+          <b className="break-words text-sm sm:text-lg">{matchNameInArabic(data[side])}</b>
+          <bdi className="block text-2xl font-bold tabular-nums">{matchNumberInArabic(side === 'home' ? data.homeScore : data.awayScore)}</bdi>
+        </div>)}
+      </div>}
       {data.demo && <p className={`mb-4 text-center text-xs ${subtle}`}>مواجهة افتراضية لعرض التصميم والتفاعل</p>}
       <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-3">
         {summaries.map(m => <div key={m.key} className={`rounded-2xl p-3 text-center ${panel}`}>
-          <p className={`text-xs ${subtle}`}>{m.label}</p><b dir="ltr" className="mt-2 block whitespace-nowrap text-sm tabular-nums sm:text-lg">{format(m.home)}{m.percent && m.home !== null ? '%' : ''} — {format(m.away)}{m.percent && m.away !== null ? '%' : ''}</b>
+          <p className={`text-xs ${subtle}`}>{m.label}</p><b dir="ltr" className="mt-2 block whitespace-nowrap text-sm tabular-nums sm:text-lg">{matchNumberInArabic(format(m.home))}{m.percent && m.home !== null ? '٪' : ''} — {matchNumberInArabic(format(m.away))}{m.percent && m.away !== null ? '٪' : ''}</b>
         </div>)}
       </div>
-      <div role="tablist" aria-label="أقسام التقرير المرئي" className="my-5 flex flex-wrap gap-2">
+      {!shotsOnly && <div role="tablist" aria-label="أقسام التقرير المرئي" className="my-5 flex flex-wrap gap-2">
         {tabs.map(([key, label]) => <button key={key} type="button" role="tab" id={`${id}-${key}`} aria-controls={`${id}-panel`} aria-selected={tab === key} className={`${button} ${tab === key ? selectedButton : neutralButton}`} onClick={() => { setTab(key); setSelected(null); }}>{label}</button>)}
-      </div>
-      <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tab}`} className={`rounded-2xl p-3 sm:p-4 ${panel}`}>
-        {tab !== 'metrics' && <div role="group" aria-label="الفريق المعروض" className="mb-4 flex flex-wrap gap-2">
+      </div>}
+      <div role={shotsOnly ? undefined : 'tabpanel'} id={`${id}-panel`} aria-labelledby={shotsOnly ? undefined : `${id}-${tab}`} className={`rounded-2xl p-3 sm:p-4 ${panel}`}>
+        {tab !== 'metrics' && !singleTeam && <div role="group" aria-label="الفريق المعروض" className="mb-4 flex flex-wrap gap-2">
           {(['home', 'away'] as const).map(s => <button key={s} type="button" aria-pressed={side === s} className={`${button} ${side === s ? selectedButton : neutralButton}`} onClick={() => { setSide(s); setSelected(null); }}>{data[s]}</button>)}
         </div>}
         {tab === 'passes' && <>
@@ -150,11 +154,23 @@ export default function MatchVisualReport({ data, isDark = true }: { data: Visua
         {tab === 'shots' && <>
           <h4 className="mb-2 text-sm font-bold">مواقع تسديدات {data[side]}</h4>
           {shots.length ? <>
-            <p className={`mb-3 text-xs leading-6 ${subtle}`}>الإحداثيات بحسب المصدر · حجم الدائرة يعكس xG عند توفره · إطار الدائرة يحدد الهدف</p>
-            <Pitch label={`مواقع تسديدات ${data[side]}`}>
-              {shots.map((s, i) => <circle key={`${s.id}-${i}`} cx={10 + s.y * 2.8} cy={370 - s.x * 3.6} r={s.xg !== null && Number.isFinite(s.xg) && s.xg >= 0 && s.xg <= 1 ? 4 + Math.sqrt(s.xg) * 13 : 5} fill={side === 'home' ? green : orange} fillOpacity={s.goal ? 1 : .35} stroke={s.goal ? 'currentColor' : 'none'} strokeWidth="2"><title>{s.goal ? 'هدف' : 'تسديدة'} · xG {format(s.xg)}</title></circle>)}
+            <p className={`mb-3 text-xs leading-6 ${subtle}`}>اضغط على نقطة لعرض تفاصيل التسديدة. الأهداف مميزة بإطار.</p>
+            <Pitch label={`مواقع تسديدات ${data[side]}`} interactive>
+              {shots.map((s, i) => <g key={`${s.id}-${i}`} role="button" tabIndex={0} aria-label={describeShot(s)}
+                aria-pressed={selected === s.id} className="cursor-pointer"
+                onClick={() => setSelected(s.id)} onKeyDown={event => {
+                  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelected(s.id); }
+                }}>
+                <circle cx={10 + s.y * 2.8} cy={370 - s.x * 3.6} r="11" fill="transparent" />
+                <circle cx={10 + s.y * 2.8} cy={370 - s.x * 3.6}
+                  r={s.xg !== null && Number.isFinite(s.xg) && s.xg >= 0 && s.xg <= 1 ? 4 + Math.sqrt(s.xg) * 13 : 6}
+                  fill={side === 'home' ? green : orange} fillOpacity={s.goal || selected === s.id ? 1 : .65}
+                  stroke={s.goal || selected === s.id ? 'currentColor' : 'none'} strokeWidth="2" />
+                <title>{describeShot(s)}</title>
+              </g>)}
             </Pitch>
-            <p className={`mt-3 text-xs ${subtle}`}>{shots.length} تسديدة بإحداثيات متاحة · الدوائر دون xG بحجم ثابت</p>
+            <p className={`mt-3 text-xs ${subtle}`}>{matchNumberInArabic(shots.length)} تسديدة بإحداثيات متاحة</p>
+            {activeShot && <p className="mt-3 text-sm" aria-live="polite">{describeShot(activeShot)}</p>}
           </> : <p className={`py-5 text-sm leading-7 ${subtle}`}>لم تصل إحداثيات تسديدات صالحة لهذا الفريق. عدد التسديدات الإجمالي يظهر في المؤشرات عندما يوفره المصدر.</p>}
         </>}
         {tab === 'metrics' && <>
@@ -162,7 +178,7 @@ export default function MatchVisualReport({ data, isDark = true }: { data: Visua
           {metrics.map(m => {
             const total = m.home !== null && m.away !== null && m.home >= 0 && m.away >= 0 ? m.home + m.away : 0;
             return <div key={m.key} className="border-b border-emerald-600/15 py-4 last:border-0">
-              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 text-sm"><b dir="ltr" className="tabular-nums">{format(m.home)}{m.percent && m.home !== null ? '%' : ''}</b><span className="text-center text-xs">{m.label}</span><b dir="ltr" className="tabular-nums">{format(m.away)}{m.percent && m.away !== null ? '%' : ''}</b></div>
+              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 text-sm"><b dir="ltr" className="tabular-nums">{matchNumberInArabic(format(m.home))}{m.percent && m.home !== null ? '٪' : ''}</b><span className="text-center text-xs">{m.label}</span><b dir="ltr" className="tabular-nums">{matchNumberInArabic(format(m.away))}{m.percent && m.away !== null ? '٪' : ''}</b></div>
               {total > 0 && <div className="mt-3 flex h-1.5 gap-1 overflow-hidden rounded-full" aria-hidden="true"><span style={{ width: `${m.home! / total * 100}%`, background: green }} /><span style={{ width: `${m.away! / total * 100}%`, background: orange }} /></div>}
             </div>;
           })}

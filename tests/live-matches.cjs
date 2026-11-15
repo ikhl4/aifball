@@ -32,7 +32,7 @@ function mount(path, fetcher) {
   const module = { exports: {} };
   const source = fs.readFileSync(path, 'utf8') + (path.endsWith('/LiveMatchCenter.tsx') ? '\nmodule.exports.default = FootballMatchCenter;' : '');
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
-  vm.runInNewContext(code, { module, exports: module.exports, React, require: name => name.includes('football-scoreboard') ? support('lib/football-scoreboard.ts') : name.includes('live-match-filters') ? support('lib/live-match-filters.ts') : name.includes('football-names-ar') ? support('lib/football-names-ar.ts') : React, fetch: (...args) => fetcher(...args), AbortController, Intl, Date,
+  vm.runInNewContext(code, { module, exports: module.exports, React, require: name => name.includes('football-scoreboard') ? support('lib/football-scoreboard.ts') : name.includes('live-match-filters') ? support('lib/live-match-filters.ts') : name.includes('football-names-ar') ? support('lib/football-names-ar.ts') : name.includes('match-display-ar') ? support('lib/match-display-ar.ts') : React, fetch: (...args) => fetcher(...args), AbortController, Intl, Date,
     setInterval: fn => { interval = fn; return 1; }, clearInterval() {}, console });
   function render(nextProps = props) { props = nextProps; index = 0; effectIndex = 0; tree = module.exports.default(props);
     effects.forEach(effect => { if (effect.fn) { const fn = effect.fn; effect.fn = null; effect.cleanup = fn(); } }); return tree; }
@@ -46,10 +46,30 @@ test('center isolates league failures and retains results during refresh', async
     return { ok: true, json: async () => ({ matches: { 'ksa.1': [sample()] }, failed: 1 }) };
   });
   app.render({language:'ar'}); await settle();
-  assert.match(app.text(), /Home/); assert.match(app.text(), /تعذّر تحديث/);
+  assert.match(app.text(), /هومي/); assert.match(app.text(), /تعذّر تحديث/);
   fail = true; app.refresh();
-  assert.match(app.text(), /Home/); assert.doesNotMatch(app.text(), /جاري جلب المباريات/);
-  await settle(); assert.match(app.text(), /Home/); app.unmount();
+  assert.match(app.text(), /هومي/); assert.doesNotMatch(app.text(), /جاري جلب المباريات/);
+  await settle(); assert.match(app.text(), /هومي/); app.unmount();
+});
+
+test('live and completed match buttons open the report for their own event', async () => {
+  const app = mount('app/components/LiveMatchCenter.tsx', async () => ({
+    ok: true, json: async () => ({ matches: { 'uefa.nations': [
+      sample('live-event', 'in'), sample('finished-event', 'post'), sample('scheduled-event'),
+    ] }, failed: 0 }),
+  }));
+  const visit = node => Array.isArray(node) ? node.flatMap(visit)
+    : node?.children ? [node, ...node.children.flatMap(visit)] : [];
+  app.render({language:'ar'}); await settle();
+  const reportButtons = () => visit(app.render()).filter(node =>
+    node.type === 'button' && node.children.includes('التحليل والإحصائيات'));
+  assert.equal(reportButtons().length, 2);
+  reportButtons()[0].props.onClick();
+  assert.ok(visit(app.render()).some(node => node.props.eventId === 'live-event' && node.props.refresh));
+  reportButtons()[1].props.onClick();
+  assert.ok(visit(app.render()).some(node => node.props.eventId === 'finished-event' && node.props.refresh === false));
+  assert.ok(!visit(app.render()).some(node => node.props.eventId === 'live-event'));
+  app.unmount();
 });
 
 test('widget shows a dash for scheduled games and labels tomorrow', async () => {

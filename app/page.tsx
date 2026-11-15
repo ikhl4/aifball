@@ -577,6 +577,7 @@ function renderFormattedText(
               playerName={attrs.player_name}
               clipUrl={attrs.clip_url}
               eventId={attrs.event}
+              initialView={/حلل|تحليل|analy[sz]e|analysis/i.test(userQuery || '') ? 'analysis' : 'overview'}
               leagueCode={attrs.league}
               isDark={isDark}
             />

@@ -7,3 +7,13 @@ test('model-generated numbers are replaced with exact source prose before visual
 test('unconfirmed player participation is removed rather than inherited from the model',async()=>{const text=await api.groundedMatchAnswer('شارك اللاعب بكل تأكيد '+tag.replace(' />',' player_name="Unknown" />'),'وفلان؟',undefined,async()=>({ok:true,json:async()=>fixture()}));assert.ok(!text.includes('شارك اللاعب بكل تأكيد'));assert.ok(text.includes('لن أنسب له مشاركة'));assert.ok(!text.includes('player_name='));});
 test('future event, wrong event identity and source failure never emit a report',async()=>{for(const f of [async()=>({ok:true,json:async()=>fixture('2099-01-01T00:00:00Z')}),async()=>({ok:false}),async()=>({ok:true,json:async()=>({...fixture(),header:{id:'444'}})})])assert.ok(!(await api.groundedMatchAnswer(tag,'إحصائيات',undefined,f)).includes('<aifball-match-report'));});
 test('SSE keeps message/conversation identity and emits verified text before message_end, including split UTF8 frames',async()=>{const events=[{event:'message',conversation_id:'c',message_id:'m',answer:'أرقام خاطئة 999 '+tag},{event:'message_end',conversation_id:'c',message_id:'m'}];const b=new TextEncoder().encode(events.map(e=>'data: '+JSON.stringify(e)+'\n\n').join(''));const upstream=new ReadableStream({start(c){for(let i=0;i<b.length;i+=7)c.enqueue(b.slice(i,i+7));c.close();}});const reader=api.groundedMatchStream(upstream,'إحصائيات').getReader();let text='';while(true){const r=await reader.read();if(r.done)break;text+=new TextDecoder().decode(r.value);}const result=text.trim().split('\n\n').map(s=>JSON.parse(s.slice(6)));assert.equal(result[0].message_id,'m');assert.equal(result[0].conversation_id,'c');assert.ok(!result[0].answer.includes('999'));assert.equal(result[1].event,'message_end');});
+
+test('chat report respects a requested Riyadh date and admits explicit live analysis',async()=>{
+ const f=fixture('2025-10-26T22:30:00Z');
+ const fetcher=async()=>({ok:true,json:async()=>f});
+ assert.match(await api.groundedMatchAnswer(tag,'إحصائيات مباراة 2025-10-27',undefined,fetcher),/<aifball-match-report/);
+ assert.doesNotMatch(await api.groundedMatchAnswer(tag,'إحصائيات مباراة 2025-10-26',undefined,fetcher),/<aifball-match-report/);
+ f.header.competitions[0].status.type.state='in';
+ assert.match(await api.groundedMatchAnswer(tag,'حلل المباراة مباشر',undefined,fetcher),/إحصائيات مؤقتة/);
+ assert.doesNotMatch(await api.groundedMatchAnswer(tag,'إحصائيات آخر مباراة',undefined,fetcher),/<aifball-match-report/);
+});

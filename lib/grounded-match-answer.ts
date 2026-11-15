@@ -1,16 +1,17 @@
 import {scores365Identity,normalize365Report} from './scores365-report';
+import { footballLeagues } from './football-scoreboard';
 import { COMPETITIONS } from './competitions';
 import { normalizeReport } from './match-report';
 import { normalizeSpatialReport,sofaMatchId } from './spatial-report';
-import { footballNameInArabic } from './football-names-ar';
+import { matchNameInArabic } from './match-display-ar';
 import { uniquePlayer } from './match-narrative';
-const ar=(s:string)=>footballNameInArabic(s)||s;
+const ar=matchNameInArabic;
 const xClip=(raw:string)=>{try{const u=new URL(raw);if(!['x.com','www.x.com','twitter.com','www.twitter.com'].includes(u.hostname.toLowerCase())||u.protocol!=='https:')return '';if(!/^\/[A-Za-z0-9_]{1,15}\/status\/\d+\/?$/.test(u.pathname))return '';return 'https://x.com'+u.pathname.replace(/\/$/,'');}catch{return '';}};
 const esc=(s:string)=>s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const number=(v:unknown)=>typeof v==='number'||typeof v==='string'?String(v):'غير متاح';
 const failure='تعذر جلب بيانات مؤكدة من المصدر لهذه المباراة. لن أعرض أرقاماً أو مشاركة لاعب غير متحقق منها. يمكنك إعادة المحاولة داخل الشات.';
 /** Replace model statistics with verified source values; keep provider identities scoped. */
-export async function groundedMatchAnswer(answer:string,_query:string,signal?:AbortSignal,fetcher:typeof fetch=fetch):Promise<string>{
+export async function groundedMatchAnswer(answer:string,query:string,signal?:AbortSignal,fetcher:typeof fetch=fetch):Promise<string>{
  const tag=answer.match(/<aifball-match-report\b([^>]*?)\/?\s*>/i);
  if(!tag)return answer;
  const attrs:Record<string,string>={};for(const m of tag[1].matchAll(/([a-z_]+)\s*=\s*"([^"]*)"/g))attrs[m[1]]=m[2].replace(/&amp;/g,'&');
@@ -30,17 +31,21 @@ export async function groundedMatchAnswer(answer:string,_query:string,signal?:Ab
    const backend=new URL('/sofascore/match-analysis',process.env.LANUS_API_URL||'https://aifball-python-api.onrender.com');backend.searchParams.set('match_url',attrs.match_url);
    const d=normalizeSpatialReport(await get(backend.toString(),process.env.LANUS_API_SECRET?{'x-api-key':process.env.LANUS_API_SECRET}:undefined),sofa);
    home=ar(d.home);away=ar(d.away);date=d.date||'';title=d.competition||'البطولة غير متاحة';state=d.status==='finished'?'انتهت':d.status==='inprogress'?'جارية':'الحالة غير مؤكدة';score=`${number(d.homeScore)} — ${number(d.awayScore)}`;source=attrs.match_url;metrics=d.statistics;players=d.players.map(p=>({name:p.name,statistics:p.stats}));outputTag=`match_url="${esc(source)}"`;
-  }else if(/^\d{1,12}$/.test(attrs.event||'')&&Object.prototype.hasOwnProperty.call(COMPETITIONS,attrs.league)){
+  }else if(/^\d{1,12}$/.test(attrs.event||'')&&(Object.prototype.hasOwnProperty.call(COMPETITIONS,attrs.league)||footballLeagues.some(([id])=>id===attrs.league&&id!=='all'))){
    const d=normalizeReport(await get(`https://site.api.espn.com/apis/site/v2/sports/soccer/${attrs.league}/summary?event=${attrs.event}`),attrs.event,attrs.league);
-   home=ar(d.home.name);away=ar(d.away.name);date=d.date||'';title=COMPETITIONS[attrs.league].ar;state=d.state==='post'?'انتهت':d.state==='in'?'جارية':'لم تبدأ';score=`${number(d.home.score)} — ${number(d.away.score)}`;source=d.sourceUrl;metrics=d.statistics;players=[...d.home.players,...d.away.players];outputTag=`event="${d.eventId}" league="${esc(d.league)}"`;
+   home=ar(d.home.name);away=ar(d.away.name);date=d.date||'';title=COMPETITIONS[attrs.league]?.ar||footballLeagues.find(([id])=>id===attrs.league)?.[1]||d.competition||attrs.league;state=d.state==='post'?'انتهت':d.state==='in'?'جارية':'لم تبدأ';score=`${number(d.home.score)} — ${number(d.away.score)}`;source=d.sourceUrl;metrics=d.statistics;players=[...d.home.players,...d.away.players];outputTag=`event="${d.eventId}" league="${esc(d.league)}"`;
   }else return failure;
   const timestamp=Date.parse(date);if(!Number.isFinite(timestamp)||timestamp>Date.now()||state==='لم تبدأ')return 'المصدر لم يؤكد مباراة بدأت بالفعل بهذا المعرّف؛ لن أقدّمها على أنها آخر مواجهة.';
-  if(state!=='انتهت')return 'لم أتمكن من تأكيد مباراة مكتملة بهذا المعرّف.';
-  const heading=`**${home} ضد ${away} — ${date.slice(0,10)} — ${title} — ${state}**\n\nالنتيجة (${home} ثم ${away}): **${score}**.`;
+  const isLiveRequest=/مباشر|الجارية|الجاريه|الآن|\blive\b/i.test(query);
+  if(state!=='انتهت'&&!(state==='جارية'&&isLiveRequest))return 'لم أتمكن من تأكيد حالة المباراة المطلوبة بهذا المعرّف.';
+  const requestedDate=query.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0];
+  const localDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(timestamp);
+  if(requestedDate&&requestedDate!==localDate)return 'المصدر أعاد مباراة بتاريخ مختلف عن التاريخ المطلوب؛ تعذّر تأكيد المواجهة المحددة.';
+  const heading=`**${home} ضد ${away} — ${localDate} — ${title} — ${state}**\n\nالنتيجة (${home} ثم ${away}): **${score}**.`;
   let prose='';let playerAttr='';
-  if(attrs.player_name){const p=uniquePlayer(players,attrs.player_name);if(p){prose=`\n\n**أداء ${p.name} في هذه المباراة:**\n\n`+(p.statistics.length?p.statistics.map(s=>`- ${s.label}: ${number(s.value)}.`).join('\n'):'الأرقام الفردية غير متاحة في استجابة المصدر.');playerAttr=` player_name="${esc(p.name)}"`;const clip=xClip(attrs.clip_url||'');if(clip){playerAttr+=` clip_url="${esc(clip)}"`;prose+=`\n\n**مقطع من المباراة على X:** [مشاهدة أداء ${p.name}](${clip})`;}}else prose=`\n\nلم أتمكن من تأكيد ${attrs.player_name.replace(/[<>]/g,'')} في قائمة هذه المباراة بالاسم المسترجع. لن أنسب له مشاركة أو أرقاماً؛ يمكنك تحديد الاسم داخل الشات.`;}
+  if(attrs.player_name){const p=uniquePlayer(players,attrs.player_name);if(p){prose=`\n\n**أداء ${ar(p.name)} في هذه المباراة:**\n\n`+(p.statistics.length?p.statistics.map(s=>`- ${s.label}: ${number(s.value)}.`).join('\n'):'الأرقام الفردية غير متاحة في استجابة المصدر.');playerAttr=` player_name="${esc(p.name)}"`;const clip=xClip(attrs.clip_url||'');if(clip){playerAttr+=` clip_url="${esc(clip)}"`;prose+=`\n\n**مقطع من المباراة على X:** [مشاهدة أداء ${p.name}](${clip})`;}}else prose=`\n\nلم أتمكن من تأكيد ${ar(attrs.player_name.replace(/[<>]/g,''))} في قائمة هذه المباراة بالاسم المسترجع. لن أنسب له مشاركة أو أرقاماً؛ يمكنك تحديد الاسم داخل الشات.`;}
   else prose='\n\n**إحصائيات المباراة من المصدر:**\n\n'+(metrics.length?metrics.map(m=>`- ${m.label}: ${home} ${number(m.home)}${m.percent&&m.home!=null?'%':''}، مقابل ${away} ${number(m.away)}${m.percent&&m.away!=null?'%':''}.`).join('\n'):'الإحصائيات التفصيلية غير متاحة.');
-  return heading+prose+'\n\nالأرقام الغائبة ليست صفراً. لا تتوفر خريطة حرارية أو مسارات تحرك إلا عند وصول إحداثيات مصدرية؛ أرقام المباراة وحدها لا تثبت أسلوب اللعب.\n\n[فتح مصدر المباراة]('+source+')\n\n'+`<aifball-match-report match="${esc(home+' ضد '+away+' · '+date.slice(0,10))}" ${outputTag}${playerAttr} />`;
+  return heading+(state==='جارية'?'\n\nهذه إحصائيات مؤقتة للمباراة الجارية.':'')+prose+'\n\nالأرقام الغائبة ليست صفراً. لا تتوفر خريطة حرارية أو مسارات تحرك إلا عند وصول إحداثيات مصدرية؛ أرقام المباراة وحدها لا تثبت أسلوب اللعب.\n\n[فتح مصدر المباراة]('+source+')\n\n'+`<aifball-match-report match="${esc(home+' ضد '+away+' · '+localDate)}" ${outputTag}${playerAttr} />`;
  }catch{return failure;}finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);}
 }
 /** Hold unverified answer deltas; preserve conversation/message identifiers and end order. */

@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import AppleSportsCenter from './AppleSportsCenter';
 import MatchSummary from './MatchSummary';
+import MatchReport from './MatchReport';
 import { filterLiveMatches, MATCH_FILTERS, matchFilterState, type MatchFilter } from '../../lib/live-match-filters';
-import { footballNameInArabic } from '../../lib/football-names-ar';
+import { matchNameInArabic, matchNumberInArabic } from '../../lib/match-display-ar';
 import { footballGroups, footballLeagues, type FootballBoard, type FootballEvent, type FootballTeam, type ScoresLanguage } from '../../lib/football-scoreboard';
 
 const dateOptions = [
@@ -39,7 +40,7 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
   const [date, setDate] = useState<(typeof dateOptions)[number][0]>('today');
   const [board, setBoard] = useState<FootballBoard>();
   const [failed, setFailed] = useState(false);
-  const [expanded, setExpanded] = useState('');
+  const [expanded, setExpanded] = useState<{ eventId: string; view: 'summary' | 'report' }>();
   const [search, setSearch] = useState('');
   const [league, setLeague] = useState('all-leagues');
   const [status, setStatus] = useState<MatchFilter>('all');
@@ -87,7 +88,7 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
     [id, events.filter(event => getTeams(event).some(team => favorites.includes(team.id)))])) : matches;
   const filtered = filterLiveMatches(input, league === 'all-leagues' ? 'all' : league === 'all' ? 'other-world' : league, search, status);
   const visible = filtered.visible;
-  const display = (team: FootballTeam) => ar ? footballNameInArabic(teamName(team)) || teamName(team) : teamName(team);
+  const display = (team: FootballTeam) => ar ? matchNameInArabic(teamName(team)) : teamName(team);
   const timeFormat = new Intl.DateTimeFormat(ar ? 'ar-SA' : 'en-GB', { timeZone: 'Asia/Riyadh', hour: 'numeric', minute: '2-digit' });
   const priorities = Object.entries(visible).flatMap(([code, events]) => events.map((event: FootballEvent) => {
     const teams = getTeams(event);
@@ -108,9 +109,12 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
     const competitors = event.competitions?.[0]?.competitors ?? [];
     const sides = ['home', 'away'].flatMap(key => competitors.filter(side => side.homeAway === key && side.team));
     const state = matchFilterState(event);
-    const open = expanded === event.id;
+    const open = expanded?.eventId === event.id;
+    const view = open ? expanded.view : undefined;
+    const reportLeague = code === 'other-world' ? 'all' : code;
+    const canReport = sides.length === 2 && (state === 'live' || state === 'finished');
     const timing = state === 'live' ? event.status?.type?.name === 'STATUS_HALFTIME' ? t('استراحة', 'Half-time')
-      : event.status?.displayClock ? t('مباشر', 'Live') + ' · ' + event.status.displayClock : t('مباشر', 'Live')
+      : event.status?.displayClock ? t('مباشر', 'Live') + ' · ' + (ar ? matchNumberInArabic(event.status.displayClock) : event.status.displayClock) : t('مباشر', 'Live')
       : state === 'finished' ? t('انتهت', 'Finished')
       : state === 'scheduled' ? timeFormat.format(new Date(event.date))
       : /POSTPONED/i.test(event.status?.type?.name ?? '') ? t('مؤجلة', 'Postponed')
@@ -118,12 +122,12 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
     return (
       <article key={event.id} className={`overflow-hidden ${box}`}>
         <div className="grid grid-cols-[1fr_auto] items-start gap-2 p-3">
-          <button type="button" aria-expanded={open} onClick={() => setExpanded(open ? '' : event.id)} className="min-w-0 space-y-2 text-start">
+          <button type="button" aria-expanded={view === 'summary'} onClick={() => setExpanded(view === 'summary' ? undefined : { eventId: event.id, view: 'summary' })} className="min-w-0 space-y-2 text-start">
             <span className="block text-xs font-bold text-emerald-600">{timing}</span>
             {sides.map(({ team, score }) => team && (
               <span key={team.id} className="flex items-center justify-between gap-3 font-semibold">
                 <span className="flex min-w-0 items-center gap-2">{team.logo && <img src={team.logo} alt="" className="h-6 w-6 object-contain" />}<bdi>{display(team)}</bdi></span>
-                {(state === 'live' || state === 'finished') && score != null && <bdi className={`min-w-8 rounded-md px-2 py-0.5 text-center font-bold ${isDark ? "bg-white/15 text-white" : "bg-gray-100 text-gray-700"}`}>{ar && /^\d+$/.test(score) ? Number(score).toLocaleString("ar-SA") : score}</bdi>}
+                {(state === 'live' || state === 'finished') && score != null && <bdi className={`min-w-8 rounded-md px-2 py-0.5 text-center font-bold ${isDark ? "bg-white/15 text-white" : "bg-gray-100 text-gray-700"}`}>{ar ? matchNumberInArabic(score) : score}</bdi>}
               </span>
             ))}
           </button>
@@ -133,7 +137,16 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
               className="h-8 w-8 rounded-lg text-lg text-emerald-600 hover:bg-emerald-500/15">{favorites.includes(team.id) ? '★' : '☆'}</button>)}
           </div>
         </div>
-        {open && <MatchSummary eventId={event.id} league={code === 'other-world' ? 'all' : code} isDark={isDark} language={language} />}
+        {canReport && <div className="px-3 pb-3">
+          <button type="button" aria-expanded={view === 'report'} className={chip(view === 'report')}
+            onClick={() => setExpanded(view === 'report' ? undefined : { eventId: event.id, view: 'report' })}>
+            {t('التحليل والإحصائيات', 'Analysis and statistics')}
+          </button>
+        </div>}
+        {view === 'summary' && <MatchSummary eventId={event.id} league={reportLeague} isDark={isDark} language={language} />}
+        {view === 'report' && canReport && <div className="px-2"><MatchReport key={event.id}
+          matchName={sides.map(({ team }) => team && display(team)).join(' — ')}
+          eventId={event.id} leagueCode={reportLeague} isDark={isDark} embedded refresh={state === 'live'} /></div>}
       </article>
     );
   }
@@ -143,13 +156,13 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
       <div className="flex flex-wrap gap-2">
         {dateOptions.map(([id, label, english]) => <button type="button" key={id} className={chip(date === id)} aria-pressed={date === id} onClick={() => {
           if (id === date) return;
-          setDate(id); setBoard(undefined); setFailed(false); setExpanded('');
+          setDate(id); setBoard(undefined); setFailed(false); setExpanded(undefined);
         }}>{t(label, english)}</button>)}
         <button type="button" className={chip(favoriteOnly)} aria-pressed={favoriteOnly} onClick={() => setFavoriteOnly(!favoriteOnly)}>{t('فرق مفضلة', 'Favorite teams')}</button>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         <input type="search" aria-label={t('ابحث عن فريق', 'Search teams')} placeholder={t('ابحث عن فريق', 'Search teams')} value={search} onChange={e => setSearch(e.target.value)} className={`p-2 ${box}`} />
-        <select aria-label={t('البطولة', 'Competition')} value={league} onChange={e => { setLeague(e.target.value); setExpanded(''); }} className={`p-2 ${box} ${isDark ? '[color-scheme:dark]' : ''}`}>
+        <select aria-label={t('البطولة', 'Competition')} value={league} onChange={e => { setLeague(e.target.value); setExpanded(undefined); }} className={`p-2 ${box} ${isDark ? '[color-scheme:dark]' : ''}`}>
           <option value="all-leagues">{t('كل البطولات', 'All competitions')}</option>
           {footballGroups.map(group => <optgroup key={group.id} label={t(group.ar, group.en)}>{group.leagues.map(([id, label, english]) =>
             <option key={id} value={id}>{t(label, english)}</option>)}</optgroup>)}
