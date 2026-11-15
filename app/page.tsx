@@ -1255,14 +1255,16 @@ export default function FootPlayChat() {
     const timeout=window.setTimeout(()=>controller.abort(),41000);
     try {
       const response=await fetch('/api/highlights/typed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query}),signal:controller.signal});
-      const result=await response.json() as {status:string;video?:{url:string;title?:string;channel?:string;canEmbed?:boolean}};
+      const result=await response.json() as {status:string;video?:{url:string;title?:string;channel?:string;canEmbed?:boolean};fixture?:{date:string;competition:string}};
       if(activeRequestSession.current!==id)return;
       const valid=result.status==='found'&&result.video&&/^https:\/\/www\.youtube\.com\/watch\?v=[\w-]{11}$/.test(result.video.url);
       const message:Message=valid
         ?{role:'assistant',content:'🎬 '+(result.video?.title||t('ملخص المباراة','Match highlights')),highlightVideo:result.video}
         :{role:'assistant',content:result.status==='fixture_not_found'
           ?t('ما قدرت أحدد المباراة الحديثة من النتائج المؤكدة. حدد التاريخ أو البطولة للبحث بدقة.','Could not identify a recent confirmed fixture. Specify the date or competition.')
-          :t('لم أعثر على فيديو موثّق لهذه المباراة من القنوات المعتمدة حاليًا.','No verified video found for this match on approved channels yet.')};
+          :result.fixture?.date
+            ?t('آخر مواجهة مؤكدة كانت بتاريخ '+result.fixture.date+' ضمن '+result.fixture.competition+'، لكن لم أجد فيديو موثقًا قابلًا للعرض حاليًا.','Latest confirmed meeting: '+result.fixture.date+' ('+result.fixture.competition+'). No verified playable highlight was found.')
+            :t('لم أعثر على فيديو موثّق لهذه المباراة من القنوات المعتمدة حاليًا.','No verified video found for this match on approved channels yet.')};
       const complete=[...previous,message];
       setMessages(complete);saveSession(id,conversationId,complete);
     }catch{

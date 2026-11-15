@@ -359,6 +359,10 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     if (candidateId) diagnostics.result = 'candidate_supplied';
     if (candidateId) { try { return { status: 'found', video: await check(candidateId) }; } catch { /* Try the official channel instead of declaring absence. */ } }
     const queries = [
+      // Regional rights holders first: Saudi Pro League highlights are often
+      // published by Thmanyah rather than beIN/TOD.
+      'رياضة ثمانية ملخص ' + (footballNameInArabic(match.home)||match.home) + ' ' + (footballNameInArabic(match.away)||match.away) + ' ' + match.date.slice(0,4),
+      'ملخص مباراة ' + (footballNameInArabic(match.home)||match.home) + ' ' + (footballNameInArabic(match.away)||match.away) + ' ' + match.date.slice(0,4),
       // Publisher-focused searches first: generic results are often old reposts,
       // while the original beIN/TOD upload is buried in the search results.
       'beIN SPORTS ملخص ' + (footballNameInArabic(match.home)||match.home) + ' ' + (footballNameInArabic(match.away)||match.away) + ' ' + match.date.slice(0,4),
