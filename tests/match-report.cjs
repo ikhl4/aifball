@@ -6,3 +6,18 @@ test('report binds to exact source event and team identifiers and preserves miss
 test('source links never accept another providers IDs or credentials',()=>{assert.equal(api.reportIdentity('https://www.365scores.com/match/123'),null);assert.equal(api.reportIdentity('https://evil.com/?gameId=123'),null);assert.equal(api.reportIdentity('https://u:p@espn.com/?gameId=123'),null);assert.equal(api.reportIdentity('https://www.espn.com/soccer/match/_/gameId/123').event,'123');});
 test('route rejects default matches, invalid leagues and impossible dates; selected event forwards identity',async()=>{let called=0;const route=load('app/api/match-report/route.ts',async()=>{called++;return {ok:true,json:async()=>fixture()};});for(const q of ['','?event=123','?league=esp.1&date=2025-02-31&action=search'])assert.equal((await route.GET(new Request('https://test/api/'+q))).status,400);assert.equal(called,0);});
 test('report prompts distinguish match reports from coaching exercises without inventing IDs',()=>{const p=load('lib/match-report-prompt.ts');assert.equal(p.isDetailedMatchQuery('حلل مباراة ريال مدريد وبرشلونة'),true);assert.equal(p.isDetailedMatchQuery('ابي تمرين تحضير مباراة'),false);assert.match(p.withMatchReportPresentation('تقرير مباراة'),/لا تخترعه/);});
+
+test('shot map uses source coordinates, assigns the correct team and omits unknown or invalid events',()=>{
+ const result=fixture();
+ const goal={id:'77',type:{type:'goal'},period:{number:2},team:{displayName:'B'},fieldPositionX:86.5,fieldPositionY:37,participants:[{athlete:{displayName:'Takefusa Kubo'}}],clock:{displayValue:"75'"}};
+ result.commentary=[{play:goal},{play:goal},{play:{...goal,id:'78',fieldPositionY:null}},{play:{...goal,id:'79',type:{type:'foul'}}},{play:{...goal,id:'80',team:{id:'unknown',displayName:'B'}}}];
+ const report=api.normalizeReport(result,'123','esp.1');
+ assert.deepEqual(JSON.parse(JSON.stringify(report.shots)),[{id:'77',x:86.5,y:37,side:'away',xg:null,goal:true,outcome:'هدف',playerName:'Takefusa Kubo',minute:"75'"}]);
+});
+test('Arabic names are consistent between the lineup and event labels',()=>{
+ const ar=load('lib/match-display-ar.ts');
+ assert.equal(ar.matchNameInArabic('Takefusa Kubo'),'تاكيفوسا كوبو');
+ assert.equal(ar.matchNameInArabic('Vinícius Júnior'),'فينيسيوس جونيور');
+ assert.equal(ar.matchNumberInArabic("90'+3'"),"٩٠'+٣'");
+ assert.equal(ar.matchNameInArabic('Singapore National Stadium'),'ملعب سنغافورة الوطني');
+});

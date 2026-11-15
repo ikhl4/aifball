@@ -2,11 +2,12 @@
 import React, { useEffect, useState } from 'react';
 import type { ScoresLanguage } from '../../lib/football-scoreboard';
 import type { MatchDetails } from '../../lib/match-details';
-import { footballNameInArabic } from '../../lib/football-names-ar';
+import { matchNameInArabic, matchNumberInArabic } from '../../lib/match-display-ar';
 
 export default function MatchSummary({ eventId, league, isDark = true, language = 'ar' }: { eventId: string; league: string; isDark?: boolean; language?: ScoresLanguage }) {
   const t = (ar: string, en: string) => language === 'ar' ? ar : en;
-  const teamName = (name: string) => language === 'ar' ? footballNameInArabic(name) || name : name;
+  const teamName = (name: string) => language === 'ar' ? matchNameInArabic(name) : name;
+  const displayNumber = (value: string | number | null | undefined) => language === 'ar' ? matchNumberInArabic(value) : value ?? '—';
   const [data, setData] = useState<MatchDetails | null>(null);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'events' | 'statistics' | 'players'>('events');
@@ -39,14 +40,14 @@ export default function MatchSummary({ eventId, league, isDark = true, language 
     {!data && !error && <p role="status">{t('جارٍ جلب تفاصيل المباراة…', 'Loading match details…')}</p>}
     {data && <div role="tabpanel">
       {tab === 'events' && (data.events.length ? <ol className="space-y-3">{data.events.map(e => <li key={e.id} className="border-b border-gray-500/20 pb-2">
-        <div className="flex justify-between gap-2"><span>{t(e.label, e.englishLabel)}{e.shootout ? t(' · الترجيح', ' · Shootout') : ''}</span><bdi dir="ltr">{e.minute || '—'}</bdi></div>
+        <div className="flex justify-between gap-2"><span>{t(e.label, e.englishLabel)}{e.shootout ? t(' · الترجيح', ' · Shootout') : ''}</span><bdi dir="ltr">{displayNumber(e.minute || null)}</bdi></div>
         <p className="text-xs text-gray-500 mt-1">{t('اللاعبون المرتبطون بالحدث', 'Players involved')}</p>
-        <p className="font-bold break-words">{e.players.join(' / ') || t('اسم اللاعب غير متاح', 'Player name unavailable')}</p>
+        <p className="font-bold break-words">{e.players.map(teamName).join(t('، ', ' / ')) || t('اسم اللاعب غير متاح', 'Player name unavailable')}</p>
         <p className="text-xs text-emerald-600">{teamName(e.teamId === data.home.id ? data.home.name : e.teamId === data.away.id ? data.away.name : t('الفريق غير متاح', 'Team unavailable'))}</p>
       </li>)}</ol> : <p>{data.state === 'pre' ? t('المباراة لم تبدأ بعد.', 'The match has not started.') : t('تفاصيل الأحداث', 'Event details') + ' ' + empty}</p>)}
-      {tab === 'statistics' && <><div className="grid grid-cols-3 text-center font-bold mb-3"><span>{teamName(data.home.name)}</span><span>{t('الإحصائية', 'Statistic')}</span><span>{teamName(data.away.name)}</span></div>{data.statistics.length ? data.statistics.map(s => <div key={s.key} className="grid grid-cols-3 text-center border-b border-gray-500/20 py-2"><bdi>{s.home == null ? '—' : s.home + (s.percent ? '%' : '')}</bdi><span>{t(s.label, s.key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase()))}</span><bdi>{s.away == null ? '—' : s.away + (s.percent ? '%' : '')}</bdi></div>) : <p>{t('الإحصائيات', 'Statistics')} {empty}</p>}</>}
-      {tab === 'players' && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{[data.home, data.away].map(team => <div key={team.id}><h3 className="font-bold text-emerald-600">{teamName(team.name)}</h3>{team.formation && <p>{t('الخطة', 'Formation')} <bdi dir="ltr">{team.formation}</bdi></p>}{!team.players.length ? <p>{t('التشكيلة', 'Lineups')} {empty}</p> : ([true, false, null] as const).map(starter => { const players = team.players.filter(p => p.starter === starter); return players.length ? <div key={String(starter)}><h4 className="font-bold mt-3 mb-2">{starter === true ? t('الأساسيون', 'Starters') : starter === false ? t('البدلاء', 'Substitutes') : t('لاعبون لم يحدد المصدر مشاركتهم', 'Participation not confirmed')}</h4><ul className="space-y-2">{players.map((p, i) => <li key={p.id || i} className="flex gap-2"><span className="text-gray-500">{p.jersey || '—'}</span><span className="break-words">{p.name} <small className="text-gray-500">{p.position}</small></span></li>)}</ul></div> : null; })}</div>)}</div>}
-      <p className="text-xs text-gray-500 mt-4">{t('آخر تحديث', 'Last updated')} {new Intl.DateTimeFormat(language === 'ar' ? 'ar-SA' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Riyadh' }).format(new Date(data.fetchedAt))} {t('بتوقيت الرياض', 'Riyadh time')}{data.venue ? ` · ${data.venue}` : ''}</p>
+      {tab === 'statistics' && <><div className="grid grid-cols-3 text-center font-bold mb-3"><span>{teamName(data.home.name)}</span><span>{t('الإحصائية', 'Statistic')}</span><span>{teamName(data.away.name)}</span></div>{data.statistics.length ? data.statistics.map(s => <div key={s.key} className="grid grid-cols-3 text-center border-b border-gray-500/20 py-2"><bdi>{s.home == null ? '—' : displayNumber(s.home + (s.percent ? '%' : ''))}</bdi><span>{t(s.label, s.key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase()))}</span><bdi>{s.away == null ? '—' : displayNumber(s.away + (s.percent ? '%' : ''))}</bdi></div>) : <p>{t('الإحصائيات', 'Statistics')} {empty}</p>}</>}
+      {tab === 'players' && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{[data.home, data.away].map(team => <div key={team.id}><h3 className="font-bold text-emerald-600">{teamName(team.name)}</h3>{team.formation && <p>{t('الخطة', 'Formation')} <bdi dir="ltr">{displayNumber(team.formation)}</bdi></p>}{!team.players.length ? <p>{t('التشكيلة', 'Lineups')} {empty}</p> : ([true, false, null] as const).map(starter => { const players = team.players.filter(p => p.starter === starter); return players.length ? <div key={String(starter)}><h4 className="font-bold mt-3 mb-2">{starter === true ? t('الأساسيون', 'Starters') : starter === false ? t('البدلاء', 'Substitutes') : t('لاعبون لم يحدد المصدر مشاركتهم', 'Participation not confirmed')}</h4><ul className="space-y-2">{players.map((p, i) => <li key={p.id || i} className="flex gap-2"><span className="text-gray-500">{displayNumber(p.jersey)}</span><span className="break-words">{teamName(p.name)} <small className="text-gray-500">{p.position}</small></span></li>)}</ul></div> : null; })}</div>)}</div>}
+      <p className="text-xs text-gray-500 mt-4">{t('آخر تحديث', 'Last updated')} {new Intl.DateTimeFormat(language === 'ar' ? 'ar-SA' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Riyadh' }).format(new Date(data.fetchedAt))} {t('بتوقيت الرياض', 'Riyadh time')}{data.venue ? ` · ${teamName(data.venue)}` : ''}</p>
     </div>}
   </section>;
 }

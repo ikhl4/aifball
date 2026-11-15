@@ -5,7 +5,7 @@ import AppleSportsCenter from './AppleSportsCenter';
 import MatchSummary from './MatchSummary';
 import MatchReport from './MatchReport';
 import { filterLiveMatches, MATCH_FILTERS, matchFilterState, type MatchFilter } from '../../lib/live-match-filters';
-import { footballNameInArabic } from '../../lib/football-names-ar';
+import { matchNameInArabic, matchNumberInArabic } from '../../lib/match-display-ar';
 import { footballGroups, footballLeagues, type FootballBoard, type FootballEvent, type FootballTeam, type ScoresLanguage } from '../../lib/football-scoreboard';
 
 const dateOptions = [
@@ -88,7 +88,7 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
     [id, events.filter(event => getTeams(event).some(team => favorites.includes(team.id)))])) : matches;
   const filtered = filterLiveMatches(input, league === 'all-leagues' ? 'all' : league === 'all' ? 'other-world' : league, search, status);
   const visible = filtered.visible;
-  const display = (team: FootballTeam) => ar ? footballNameInArabic(teamName(team)) || teamName(team) : teamName(team);
+  const display = (team: FootballTeam) => ar ? matchNameInArabic(teamName(team)) : teamName(team);
   const timeFormat = new Intl.DateTimeFormat(ar ? 'ar-SA' : 'en-GB', { timeZone: 'Asia/Riyadh', hour: 'numeric', minute: '2-digit' });
   const priorities = Object.entries(visible).flatMap(([code, events]) => events.map((event: FootballEvent) => {
     const teams = getTeams(event);
@@ -114,7 +114,7 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
     const reportLeague = code === 'other-world' ? 'all' : code;
     const canReport = sides.length === 2 && (state === 'live' || state === 'finished');
     const timing = state === 'live' ? event.status?.type?.name === 'STATUS_HALFTIME' ? t('استراحة', 'Half-time')
-      : event.status?.displayClock ? t('مباشر', 'Live') + ' · ' + event.status.displayClock : t('مباشر', 'Live')
+      : event.status?.displayClock ? t('مباشر', 'Live') + ' · ' + (ar ? matchNumberInArabic(event.status.displayClock) : event.status.displayClock) : t('مباشر', 'Live')
       : state === 'finished' ? t('انتهت', 'Finished')
       : state === 'scheduled' ? timeFormat.format(new Date(event.date))
       : /POSTPONED/i.test(event.status?.type?.name ?? '') ? t('مؤجلة', 'Postponed')
@@ -127,7 +127,7 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
             {sides.map(({ team, score }) => team && (
               <span key={team.id} className="flex items-center justify-between gap-3 font-semibold">
                 <span className="flex min-w-0 items-center gap-2">{team.logo && <img src={team.logo} alt="" className="h-6 w-6 object-contain" />}<bdi>{display(team)}</bdi></span>
-                {(state === 'live' || state === 'finished') && score != null && <bdi className={`min-w-8 rounded-md px-2 py-0.5 text-center font-bold ${isDark ? "bg-white/15 text-white" : "bg-gray-100 text-gray-700"}`}>{ar && /^\d+$/.test(score) ? Number(score).toLocaleString("ar-SA") : score}</bdi>}
+                {(state === 'live' || state === 'finished') && score != null && <bdi className={`min-w-8 rounded-md px-2 py-0.5 text-center font-bold ${isDark ? "bg-white/15 text-white" : "bg-gray-100 text-gray-700"}`}>{ar ? matchNumberInArabic(score) : score}</bdi>}
               </span>
             ))}
           </button>
