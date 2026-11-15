@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ANALYTICS_LEAGUES, aggregateAnalytics, normalizeAnalyticsEvent } from '../../../lib/analytics-core';
+import { ANALYTICS_LEAGUES, AGGREGATE_LEAGUES, aggregateAnalytics, normalizeAnalyticsEvent } from '../../../lib/analytics-core';
 
 export const dynamic = 'force-dynamic';
 const riyadhDay = (date: Date) => {
@@ -15,11 +15,17 @@ export async function GET(req: Request) {
   const params = new URL(req.url).searchParams;
   const league = params.get('league') || 'ksa.1';
   const days = Number(params.get('days') || '30');
+  const date = params.get('date');
+  const picked = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(date+'T00:00:00Z') : null;
+  if (date && (!picked || !Number.isFinite(picked.getTime()) || picked.toISOString().slice(0,10)!==date)) {
+    return NextResponse.json({ error:'تاريخ المباراة غير صالح.' }, { status:400 });
+  }
   if (!(league === 'all' || ANALYTICS_LEAGUES.some(x => x.id === league)) || ![7, 14, 30, 90].includes(days)) {
     return NextResponse.json({ error: 'الدوري أو الفترة غير مدعومين.' }, { status: 400 });
   }
-  const dates = windowDates(days);
-  const selected = league === 'all' ? ANALYTICS_LEAGUES : ANALYTICS_LEAGUES.filter(x => x.id === league);
+  const chosenDay = date?.replace(/-/g,'');
+  const dates = chosenDay ? { from:chosenDay, to:chosenDay } : windowDates(days);
+  const selected = ANALYTICS_LEAGUES.filter(x => league === 'all' ? AGGREGATE_LEAGUES.has(x.id) : x.id === league);
   const responses = await Promise.allSettled(selected.map(async ({ id, label }) => {
     const root = `https://site.api.espn.com/apis/site/v2/sports/soccer/${id}/scoreboard`;
     const fetchMonth = async (yearMonth: string) => {
@@ -47,14 +53,15 @@ export async function GET(req: Request) {
     const events = succeeded.flatMap(item => item.value);
     const normalized = events.map((event: any) => normalizeAnalyticsEvent(event, id, label)).filter((event): event is NonNullable<typeof event> => event !== null);
     const from = dates.from, to = dates.to;
-    return normalized.filter(m => {
+    const matches = normalized.filter(m => {
       const day = riyadhDay(new Date(m.date));
       return day >= from && day <= to;
     });
+    return { matches, partial: succeeded.length !== monthResponses.length };
   }));
-  const failed = selected.filter((_, index) => responses[index].status === 'rejected').map(x => x.label);
-  const matches = responses.flatMap(result => result.status === 'fulfilled' ? result.value : []);
-  if (failed.length === selected.length) return NextResponse.json({ error: 'تعذّر الحصول على بيانات مؤكدة من المصدر.' }, { status: 502 });
+  const failed = selected.filter((_, index) => responses[index].status === 'rejected' || (responses[index].status === 'fulfilled' && responses[index].value.partial)).map(x => x.label);
+  const matches = responses.flatMap(result => result.status === 'fulfilled' ? result.value.matches : []);
+  if (responses.every(result => result.status === 'rejected')) return NextResponse.json({ error: 'تعذّر الحصول على بيانات مؤكدة من المصدر.' }, { status: 502 });
   const unique = [...new Map(matches.map(m => [m.league + ':' + m.id, m])).values()].sort((a,b) => Date.parse(b.date) - Date.parse(a.date));
   return NextResponse.json({
     source: 'ESPN', fetchedAt: new Date().toISOString(), period: { days, ...dates }, league,

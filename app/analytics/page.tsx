@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
-export const metadata = { title: 'مركز التحليلات | فوتبلاي', description: 'لوحة تحليلات كرة القدم مع بيانات مباريات موثقة من ESPN.' };
+export const metadata = { title: 'مركز الاحصائيات | فوتبلاي', description: 'إحصائيات مباريات كرة القدم واللاعبين وخرائط الملعب.' };
 export default function AnalyticsPage() {
   return <main dir="rtl" className="min-h-screen bg-[#071711] text-white font-cairo">
     <div className="mx-auto max-w-6xl px-3 py-7 sm:px-6">

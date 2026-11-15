@@ -10,6 +10,7 @@ function load(path) {
   cache.set(path, module);
   const js = ts.transpileModule(fs.readFileSync(path, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   vm.runInNewContext(js, { module, exports: module.exports, URL, Date, require: name => {
+    if (name === './football-scoreboard') return load('lib/football-scoreboard.ts');
     if (name === './football-names-ar') return load('lib/football-names-ar.ts');
     throw Error('unexpected import: ' + name);
   } });
