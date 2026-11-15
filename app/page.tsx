@@ -19,7 +19,7 @@ import { appLanguageKey, type AppLanguage } from '../lib/app-language';
 import LiveMatchCenter from './components/LiveMatchCenter';
 import LeagueDashboard from './components/LeagueDashboard';
 import StandingsExplorer from './components/StandingsExplorer';
-import TodayHighlights from './components/TodayHighlights';
+import HighlightsPicker from './components/HighlightsPicker';
 import { COMPETITIONS, resolveStandingsRequest } from '../lib/competitions';
 import MatchReport from './components/MatchReport';
 import MatchHighlightCard from './components/MatchHighlightCard';
@@ -949,6 +949,7 @@ export default function FootPlayChat() {
 
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [showFantasyChoices, setShowFantasyChoices] = useState(false);
+  const [showHighlightsPicker, setShowHighlightsPicker] = useState(false);
   // Render the logo in the initial HTML, before client JavaScript is ready.
   const [intro, setIntro] = useState(true);
   useEffect(() => {
@@ -1683,6 +1684,19 @@ export default function FootPlayChat() {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
               <AppIcon name="activity" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>{t('مركز الانتقالات', 'Transfer center')}</span>
             </button>
+            <button type="button" onClick={() => setShowFantasyChoices(open => !open)} aria-expanded={showFantasyChoices}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
+              <AppIcon name="chart" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>{t('الفانتازي', 'Fantasy')}</span>
+            </button>
+            {showFantasyChoices && (
+              <div className="grid grid-cols-1 gap-1.5 px-3 pb-2">
+                {[
+                  { title: t('فانتازي روشن', 'Saudi Pro League fantasy'), query: 'أريد فانتازي دوري روشن السعودي: اعرض نصائح الجولة القادمة واللاعبين المقترحين مع رابط اللعبة الرسمي.' },
+                  { title: t('فانتازي البريميرليغ', 'Premier League fantasy'), query: 'أريد فانتازي الدوري الإنجليزي الممتاز: اعرض نصائح الجولة القادمة واللاعبين المقترحين مع رابط اللعبة الرسمي.' },
+                ].map(choice => <button key={choice.title} type="button" onClick={() => { setSidebarOpen(false); setShowFantasyChoices(false); void sendMessage(choice.query); }}
+                  className="rounded-lg border border-emerald-400/25 px-3 py-2 text-start text-xs font-bold text-white hover:bg-emerald-700/40">{choice.title}</button>)}
+              </div>
+            )}
             <button type="button" onClick={() => { setSidebarOpen(false); setShowStandings(true); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-xs font-bold transition ${isDarkMode ? 'text-gray-200 hover:bg-white/5' : 'text-white hover:bg-emerald-700/50'}`}>
               <AppIcon name="chart" size={19} className={isDarkMode ? "text-emerald-500" : "text-white"}/><span>{t('الترتيب', 'Standings')}</span>
@@ -1898,29 +1912,14 @@ export default function FootPlayChat() {
                 { title: t('إضافة التطبيق للرئيسية', 'Install app'), icon: 'plus', install: true },
                 { title: t('الأكاديمية التدريبية', 'Training academy'), icon: 'activity', href: '/academy' },
                 { title: 'FC 27', icon: 'pitch', href: 'https://www.futbin.com/' },
-                { title: t('الفانتازي', 'Fantasy'), icon: 'chart', fantasy: true },
+                { title: t('ملخصات المباريات', 'Match highlights'), icon: 'pitch', highlights: true },
               ].map(item => {
                 const style = 'flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-emerald-300/35 p-2 text-center text-[10px] font-bold backdrop-blur-md transition focus-visible:outline focus-visible:outline-emerald-600 sm:text-sm' + (isDarkMode ? ' bg-emerald-900/45 backdrop-blur-xl text-white hover:bg-emerald-950/45' : ' bg-white/60 text-gray-900 hover:bg-emerald-950/50 backdrop-blur-xl');
                 const label = <>{item.href ? <svg aria-hidden="true" width="27" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className={isDarkMode ? "text-emerald-300" : "text-emerald-800"}><path d="M7 7h10a4 4 0 0 1 4 3l1 5a2 2 0 0 1-3 2l-3-3H8l-3 3a2 2 0 0 1-3-2l1-5a4 4 0 0 1 4-3Z"/><path d="M7 9v4m-2-2h4m7-1h.01m3 2h.01"/></svg> : <AppIcon name={item.icon} size={23} className={isDarkMode ? "text-emerald-300" : "text-emerald-800"}/>}<span>{item.title}</span></>;
                 return item.href ? <a key={item.title} href={item.href} className={style}>{label}</a> :
-                  <button key={item.title} type="button" className={style} onClick={() => { if (item.install) setShowInstallHelp(open => !open); else if (item.fantasy) setShowFantasyChoices(open => !open);  }}>{label}</button>;
+                  <button key={item.title} type="button" className={style} onClick={() => { if (item.install) setShowInstallHelp(open => !open); else if (item.highlights) setShowHighlightsPicker(true);  }}>{label}</button>;
               })}
             </nav>
-            {showFantasyChoices && (
-              <section aria-label={t('اختر مسابقة الفانتازي', 'Choose a fantasy competition')} className={`mb-4 rounded-2xl border border-emerald-500/30 p-4 text-start ${isDarkMode ? 'bg-emerald-950/50 backdrop-blur-xl text-white' : 'bg-white text-slate-900'}`}>
-                <p className="mb-3 text-sm font-bold">{t('أي فانتازي تبي؟', 'Choose a fantasy competition')}</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { title: t('فانتازي روشن', 'Saudi Pro League fantasy'), query: 'أريد فانتازي دوري روشن السعودي: اعرض نصائح الجولة القادمة واللاعبين المقترحين مع رابط اللعبة الرسمي.' },
-                    { title: t('فانتازي البريميرليغ', 'Premier League fantasy'), query: 'أريد فانتازي الدوري الإنجليزي الممتاز: اعرض نصائح الجولة القادمة واللاعبين المقترحين مع رابط اللعبة الرسمي.' },
-                  ].map(choice => (
-                    <button key={choice.title} type="button" onClick={() => { setShowFantasyChoices(false); void sendMessage(choice.query); }} className={`rounded-xl border border-emerald-400/40 px-3 py-4 text-center text-xs font-bold transition hover:border-emerald-400 sm:text-sm ${isDarkMode ? 'bg-emerald-950/50 hover:bg-emerald-800/70' : 'bg-emerald-50 hover:bg-emerald-100'}`}>
-                      {choice.title}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
             {showInstallHelp && (
               <section className={`mb-4 rounded-xl border border-emerald-500/30 p-3 text-sm leading-7 ${isDarkMode ? 'bg-emerald-950/60 backdrop-blur-xl text-white' : 'bg-white text-gray-900'}`}>
                 <p>{t('آيفون: من سفاري اضغط مشاركة، ثم إضافة إلى الشاشة الرئيسية.', 'iPhone: in Safari, tap Share, then Add to Home Screen.')}</p>
@@ -1929,12 +1928,7 @@ export default function FootPlayChat() {
               </section>
             )}
 
-            <TodayHighlights
-              language={language}
-              isDark={isDarkMode}
-              disabled={loading}
-              onRequest={(query) => { void sendMessage(query); }}
-            />
+
 
             {/* بطاقات أسئلة الاستكشاف التفاعلية */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full">
@@ -2442,6 +2436,20 @@ export default function FootPlayChat() {
           </p>
         </div>
       </footer>
+
+      {showHighlightsPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 backdrop-blur-sm sm:p-4" onClick={() => setShowHighlightsPicker(false)}>
+          <div role="dialog" aria-modal="true" aria-label={t('ملخصات المباريات', 'Match highlights')} onClick={e => e.stopPropagation()}
+            className={`w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl border shadow-2xl ${isDarkMode?'border-emerald-600/40 bg-[#062116] text-white':'border-emerald-600/20 bg-white text-slate-900'}`}>
+            <div className={`sticky top-0 z-10 flex items-center justify-between border-b px-4 py-3 ${isDarkMode?'border-emerald-600/30 bg-[#062116]':'border-gray-200 bg-white'}`}>
+              <h2 className="text-base font-extrabold">🎬 {t('ملخصات المباريات', 'Match highlights')}</h2>
+              <button type="button" aria-label={t('إغلاق', 'Close')} onClick={() => setShowHighlightsPicker(false)} className="rounded-full px-3 py-2 text-lg">×</button>
+            </div>
+            <HighlightsPicker language={language} isDark={isDarkMode} disabled={loading}
+              onRequest={(query) => { setShowHighlightsPicker(false); void sendMessage(query); }}/>
+          </div>
+        </div>
+      )}
 
       {showStandings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowStandings(false)}>
