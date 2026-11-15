@@ -1282,8 +1282,7 @@ export default function FootPlayChat() {
     // Treat a named-match highlight as a VIDEO request, not a 60-second
     // narrative match report. Leave daily/league highlight requests unchanged.
     const namedHighlights=/ملخص|هايلايت|highlights?/i.test(query) &&
-      !/ملخصات|ملخصات اليوم|ملخصات أمس|ابرز المباريات|أبرز المباريات|مباريات اليوم|مباريات أمس|اليوم|امس|أمس/i.test(query) &&
-      /(?:ضد|مباراة| و | × | vs?\.? )/i.test(query);
+      !/ملخصات|مباريات اليوم|مباريات أمس|ملخصات امس|ملخصات أمس|أبرز المباريات|ابرز المباريات|today.s highlights|yesterday.s highlights|highlights of (?:today|yesterday)/i.test(query);
     if(namedHighlights && attachedFiles.length===0){void requestTypedHighlight(query);return;}
 
     const id =
