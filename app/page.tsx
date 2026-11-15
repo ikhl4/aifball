@@ -50,6 +50,7 @@ interface Message {
   imageUrls?: string[];
   feedback?: 'like' | 'dislike' | null;
   thinkingTime?: number;
+  highlightVideo?: { url: string; title?: string; channel?: string; canEmbed?: boolean };
 }
 
 interface ChatSession {
@@ -1048,6 +1049,47 @@ export default function FootPlayChat() {
       Math.ceil(DISCOVERY_QUESTIONS.length / CARDS_PER_PAGE)
     );
   }, []);
+
+  const requestDirectHighlight = async (match: {home:string;away:string;date:string;competition:string;display:string;status:'final'|'live'|'scheduled'}) => {
+    if (loading) return;
+    const id = currentSessionId || `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    if (!currentSessionId) setCurrentSessionId(id);
+    const userMsg: Message = { role:'user', content:match.display, userQuery:match.display };
+    const pre: Message[] = [...messages,userMsg];
+    const unavailable = language==='ar'?'لم أجد حتى الآن ملخص فيديو موثقًا لهذه المباراة من القنوات المعتمدة.':'No verified official highlights found yet for this fixture.';
+    if (match.status!=='final') {
+      const result: Message[] = [...pre,{role:'assistant',content: language==='ar'?'المباراة لم تنتهِ بعد. اطلب الملخص بعد صافرة النهاية ونشر الفيديو.':'The match is not finished yet. Check again after full time and publication.'}];
+      setMessages(result);saveSession(id,conversationId,result);return;
+    }
+    setMessages([...pre,{role:'assistant',content:language==='ar'?'جارٍ البحث عن فيديو الملخص…':'Searching for the highlight video…'}]);
+    setLoading(true);
+    const controller=new AbortController();
+    activeRequest.current=controller;
+    activeRequestSession.current=id;
+    const timer=window.setTimeout(()=>controller.abort(),32000);
+    try {
+      const response=await fetch('/api/highlights/find',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({home:match.home,away:match.away,date:match.date,competition:match.competition}),
+        signal:controller.signal
+      });
+      const payload=await response.json() as {status?:string;video?:{url:string;title?:string;channel?:string;canEmbed?:boolean}};
+      if(activeRequestSession.current!==id) return;
+      const found=response.ok && payload.status==='found' && payload.video && /^https:\/\/www\.youtube\.com\/watch\?v=[\w-]{11}$/.test(payload.video.url);
+      const assistant:Message=found
+        ? {role:'assistant',content:language==='ar'?'🎬 ملخص المباراة من '+(payload.video?.channel||'القناة الرسمية'):'🎬 Match highlights from '+(payload.video?.channel||'official publisher'),highlightVideo:payload.video}
+        : {role:'assistant',content:unavailable};
+      const result:Message[]=[...pre,assistant];
+      setMessages(result);saveSession(id,conversationId,result);
+    }catch{
+      if(activeRequestSession.current!==id)return;
+      const result:Message[]=[...pre,{role:'assistant',content:language==='ar'?'تعذّر الاتصال بمحرك الفيديو حاليًا. جرّب البحث مجددًا.':'Highlight search is temporarily unavailable. Please retry.'}];
+      setMessages(result);saveSession(id,conversationId,result);
+    }finally{
+      window.clearTimeout(timer);
+      if(activeRequestSession.current===id) {setLoading(false);activeRequestSession.current=null;activeRequest.current=null;}
+    }
+  };
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -2075,6 +2117,7 @@ export default function FootPlayChat() {
                             msg.userQuery,
                             loading && index === messages.length - 1
                           )}
+                          {msg.highlightVideo && <ChatVideoCard url={msg.highlightVideo.url} title={msg.highlightVideo.title} channel={msg.highlightVideo.channel} canEmbed={msg.highlightVideo.canEmbed} isDark={isDarkMode} />}
                           {!(loading && index === messages.length - 1) &&
                             /(?:آخر|اخر|أبرز|ابرز|جديد|عاجل|اخبار|أخبار|مستجدات|شائعات|انتقالات|صفقات|news|transfers)/i.test(msg.userQuery || '') && (
                               <FootballNewsCards
@@ -2446,7 +2489,8 @@ export default function FootPlayChat() {
               <button type="button" aria-label={t('إغلاق', 'Close')} onClick={() => setShowHighlightsPicker(false)} className="rounded-full px-3 py-2 text-lg">×</button>
             </div>
             <HighlightsPicker language={language} isDark={isDarkMode} disabled={loading}
-              onRequest={(query) => { setShowHighlightsPicker(false); void sendMessage(query); }}/>
+              onRequest={(query) => { setShowHighlightsPicker(false); void sendMessage(query); }}
+              onMatch={(match) => { setShowHighlightsPicker(false); void requestDirectHighlight(match); }}/>
           </div>
         </div>
       )}
