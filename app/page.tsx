@@ -1239,10 +1239,52 @@ export default function FootPlayChat() {
     event.target.value = '';
   };
 
+  const requestTypedHighlight = async (query: string) => {
+    if (loading) return;
+    const id=currentSessionId || `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    if(!currentSessionId)setCurrentSessionId(id);
+    const previous:Message[]=[...messages,{role:'user',content:query,userQuery:query}];
+    setInput('');
+    setAttachedFiles([]);
+    setMessages([...previous,{role:'assistant',content:t('جارٍ البحث عن فيديو الملخص…','Finding the highlight video…')}]);
+    setLoading(true);
+    setDirectHighlightLoading(true);
+    const controller=new AbortController();
+    activeRequest.current=controller;
+    activeRequestSession.current=id;
+    const timeout=window.setTimeout(()=>controller.abort(),41000);
+    try {
+      const response=await fetch('/api/highlights/typed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query}),signal:controller.signal});
+      const result=await response.json() as {status:string;video?:{url:string;title?:string;channel?:string;canEmbed?:boolean}};
+      if(activeRequestSession.current!==id)return;
+      const valid=result.status==='found'&&result.video&&/^https:\/\/www\.youtube\.com\/watch\?v=[\w-]{11}$/.test(result.video.url);
+      const message:Message=valid
+        ?{role:'assistant',content:'🎬 '+(result.video?.title||t('ملخص المباراة','Match highlights')),highlightVideo:result.video}
+        :{role:'assistant',content:result.status==='fixture_not_found'
+          ?t('ما قدرت أحدد المباراة الحديثة من النتائج المؤكدة. حدد التاريخ أو البطولة للبحث بدقة.','Could not identify a recent confirmed fixture. Specify the date or competition.')
+          :t('لم أعثر على فيديو موثّق لهذه المباراة من القنوات المعتمدة حاليًا.','No verified video found for this match on approved channels yet.')};
+      const complete=[...previous,message];
+      setMessages(complete);saveSession(id,conversationId,complete);
+    }catch{
+      if(activeRequestSession.current!==id)return;
+      const complete:Message[]=[...previous,{role:'assistant',content:t('تعذّر البحث عن الفيديو حاليًا. حاول مجددًا.','Video search is temporarily unavailable.')}];
+      setMessages(complete);saveSession(id,conversationId,complete);
+    }finally{
+      window.clearTimeout(timeout);
+      if(activeRequestSession.current===id){setLoading(false);setDirectHighlightLoading(false);activeRequest.current=null;activeRequestSession.current=null;}
+    }
+  };
+
   const sendMessage = async (textToSend?: string) => {
     const query = (textToSend ?? input).trim();
 
     if ((!query && attachedFiles.length === 0) || loading) return;
+    // Treat a named-match highlight as a VIDEO request, not a 60-second
+    // narrative match report. Leave daily/league highlight requests unchanged.
+    const namedHighlights=/ملخص|هايلايت|highlights?/i.test(query) &&
+      !/ملخصات|ملخصات اليوم|ملخصات أمس|ابرز المباريات|أبرز المباريات|مباريات اليوم|مباريات أمس|اليوم|امس|أمس/i.test(query) &&
+      /(?:ضد|مباراة| و | × | vs?\.? )/i.test(query);
+    if(namedHighlights && attachedFiles.length===0){void requestTypedHighlight(query);return;}
 
     const id =
       currentSessionId ||
