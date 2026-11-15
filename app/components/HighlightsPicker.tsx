@@ -40,8 +40,8 @@ function matchWeight(m:Match):number {
   return (importantLeagues[m.code]||30)+powers*24+(bigTeams.test(teams)?35:0)+(m.status==='live'?8:0);
 }
 
-export default function HighlightsPicker({ language='ar', isDark=true, onRequest, disabled=false }:{
-  language?: AppLanguage;isDark?:boolean;onRequest:(query:string)=>void;disabled?:boolean;
+export default function HighlightsPicker({ language='ar', isDark=true, onRequest, onMatch, disabled=false }:{
+  language?: AppLanguage;isDark?:boolean;onRequest:(query:string)=>void;onMatch?:(match:{home:string;away:string;date:string;competition:string;display:string;status:'final'|'live'|'scheduled'})=>void;disabled?:boolean;
 }) {
   const t=(ar:string,en:string)=>language==='ar'?ar:en;
   const [day,setDay]=useState<'today'|'yesterday'>('today');
@@ -73,17 +73,17 @@ export default function HighlightsPicker({ language='ar', isDark=true, onRequest
     const league=competitions.get(m.code);
     const comp=language==='ar'?league?.ar||m.code:league?.en||m.code;
     const date=dateKey(new Date(m.date));
-    const request=language==='ar'
-      ? `ابحث عن ملخص فيديو مباراة ${fixture} في ${comp} بتاريخ ${date}. تحقق من النتيجة وحالة المباراة قبل البحث. إذا انتهت ابحث عن ملخصها من القنوات الرسمية في يوتيوب، وأعطني ملخصًا كتابيًا قصيرًا ثم الفيديو داخل المحادثة إن وُجد وتأكدت أنه لنفس المباراة. إن لم ينشر الفيديو فلا تختلق رابطًا، وإن لم تنته المباراة أخبرني بالموعد أو الحالة بدل تقديم ملخص غير موجود.`
-      : `Find verified video highlights for ${fixture} in ${comp} on ${date}. Check whether the match has finished, provide a brief recap, and show an official YouTube video inline only if it matches this exact game. If not available, say so; for upcoming games give match details instead.`;
-    onRequest(request);
+        if(onMatch) {
+      onMatch({home:m.englishNames[0],away:m.englishNames[1],date,competition:comp,
+        display:language==='ar'?'ملخص '+fixture:'Highlights: '+fixture,status:m.status});
+      return;
+    }
+    onRequest(language==='ar'?'ملخص '+fixture+' '+date:'Highlights '+fixture+' '+date);
   };
   const customSend=()=>{
     const value=custom.trim().slice(0,180);
     if(!value)return;
-    onRequest(language==='ar'
-      ? `ابحث عن ملخص المباراة التالية: ${value}. حدد المباراة الصحيحة وتاريخها ونتيجتها، ثم ابحث عن فيديو ملخص من قناة رسمية واعرضه داخل الشات إن توفر، ولا تختلق فيديو أو تستخدم مباراة مختلفة. إذا لم تنته المباراة وضح ذلك.`
-      : `Find verified highlights for this specific match: ${value}. Verify its date and result, then show a matching official video inline if available. Do not invent links or confuse fixtures.`);
+    onRequest(language==='ar'?'ملخص مباراة '+value:'Match highlights '+value);
   };
   return <section dir={language==='ar'?'rtl':'ltr'} className="space-y-3 p-3 sm:p-4">
     <p className="text-xs opacity-75">{t('اضغط على المباراة، وفوتبلاي يبحث عن ملخصها داخل المحادثة.','Tap a match and AiFBall will search for its highlights in chat.')}</p>
