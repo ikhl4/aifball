@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { isNamedVideoHighlights, needsDurableResearch } from '../../../../lib/chat-intent';
 export const dynamic='force-dynamic';
 const checks: Array<[string,boolean,boolean]> = [
- ['ملخص الاتحاد والعين',true,true],
- ['ملخص مباراة الهلال و الاتحاد',true,true],
+ ['ملخص الاتحاد والعين',true,false],
+ ['ملخص مباراة الهلال و الاتحاد',true,false],
  ['Match highlights Ittihad KSA vs Al Ain UAE',true,true],
  ['ملخصات أمس',false,false],
  ['ملخص موسم الاتحاد',false,false],
@@ -11,7 +11,7 @@ const checks: Array<[string,boolean,boolean]> = [
  ['آخر مباراة للاتحاد',false,false],
  ['كيف تأسست كرة القدم؟',false,false],
  ['أخبار برشلونة اليوم',false,true],
- ['ملخص مباراة اليابان والبرازيل',true,true],
+ ['ملخص مباراة اليابان والبرازيل',true,false],
  ['ما هي نتيجة مباراة الاتحاد؟',false,false],
 ];
 export async function GET(){
