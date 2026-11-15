@@ -2,7 +2,7 @@
 // Ambiguous requests stay on the regular Dify route. Never infer facts here.
 const dailyHighlights = /ملخصات|مباريات (?:اليوم|أمس|امس)|أبرز (?:المباريات|الملخصات)|(?:today|yesterday)(?:'s|s)? (?:matches|highlights)|highlights (?:today|yesterday)|ملخص (?:اليوم|أمس|امس)/i;
 const videoWord = /ملخص|هايلايت|highlight(?:s)?/i;
-const pairing = /(?:\\sو[\\u0600-\\u06FF]+|\bvs?\.?\b|\bversus\b|\bagainst\b|\bمباراة\b|\bضد\b|\bو\b|\s[×x]\s)/i;
+const pairing = /(?:\sو[\u0600-\u06FF]+|(?:^|\s)و(?:\s|$)|\bvs?\.?\b|\bversus\b|\bagainst\b|مباراة|ضد|\s[×x]\s)/i;
 const researchWords = /بحث|ابحث|فتش|مقارنة|قارِن|قارن|تحليل|حلل|وثائقي|تفصيلي|تقرير|أخبار|اخبار|انجازات|إحصائيات|احصائيات|مسيرة|انتقالات|سوق|صور|صورة|راتب|عقد|قيمة سوقية|إصابات|اصابات|research|analy[sz]e|compare|news|report|career|statistics|stats|transfer|photo|injur|salary|contract|highlights?/i;
 
 /** Only confident single-match VIDEO requests bypass the model. */
