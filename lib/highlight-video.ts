@@ -339,7 +339,14 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
               diagnostics.searchMissingIdentity++; continue;
             }
             diagnostics.searchPublisherCandidates++;
-            if (!searchDateMatches(entry.published, match.date)) {
+            // Date labels are sometimes omitted from YouTube's search cards.
+            // A year printed in the video title, plus a known official channel,
+            // is a conservative fallback when the matching fixture is unambiguous.
+            const exactOfficial = verifiedPublisher(entry.handle, entry.channelId, entry.channelName);
+            const titleYear = new RegExp('(?:^|\\\\D)' + match.date.slice(0,4) + '(?:\\\\D|$)').test(entry.title);
+            const dateVerified = searchDateMatches(entry.published, match.date)
+              || (!entry.published.trim() && titleYear && exactOfficial);
+            if (!dateVerified) {
               diagnostics.searchDateRejected++;
               if (diagnostics.searchPublicationExamples.length < 5) diagnostics.searchPublicationExamples.push(entry.published.slice(0, 70));
               if (searchPublicationReason(entry.published, match.date) === 'missing') diagnostics.searchDateMissing++;
@@ -354,8 +361,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
             };
             // Allow a verified channel ID to corroborate a matching video title
             // even if YouTube omits the @handle from the search card.
-            const official = verifiedPublisher(entry.handle, entry.channelId, entry.channelName);
-            if (official) {
+            if (exactOfficial) {
               diagnostics.result = 'youtube_verified_publisher_search';
               return { status: 'found', video: searchVideo };
             }
