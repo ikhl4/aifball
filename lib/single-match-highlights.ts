@@ -40,7 +40,11 @@ export async function buildSingleMatchHighlights(query: string, signal?: AbortSi
   const explicitDate = start===end || /الامس|امس|yesterday|اليوم|today/.test(norm(query));
   const latest = new Date(end+'T12:00:00Z');
   const candidates:any[]=[];
-  const rounds=explicitDate?1:12; // Up to about two years for old rivalries.
+  // Highlights requests default to RECENT games, not any older meeting.
+  // A two-year backwards scan selected obsolete fixtures and took >1 minute
+  // during an international break. Only inspect current/recent 60-day window;
+  // older matches require an explicit date or season from the user.
+  const rounds=1;
   for(let round=0;round<rounds;round++){
    const windowEnd=explicitDate?end:new Date(latest.getTime()-round*60*86400000).toISOString().slice(0,10);
    const windowStart=explicitDate?start:new Date(latest.getTime()-(round+1)*60*86400000).toISOString().slice(0,10);
