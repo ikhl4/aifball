@@ -27,8 +27,15 @@ export async function POST(request:Request){
   const explicit=query.match(/\b(20\d\d-\d\d-\d\d)\b/)?.[1];
   const from=explicit||day(new Date(Date.now()-65*86400000));
   const to=explicit||today;
-  const dates=from.replace(/-/g,'')+(from===to?'':'-'+to.replace(/-/g,''));
-  const calls=await Promise.allSettled(leagues.map(async ([league,competition])=>{
+  // ESPN soccer returns HTTP 400 for YYYYMMDD-YYYYMMDD ranges.
+  // Month-scoped YYYYMM requests are supported and return the real fixtures.
+  const months:string[]=[];
+  let cursor=new Date(to.slice(0,7)+'-01T12:00:00Z');
+  while(months.length<3 && cursor.toISOString().slice(0,7)>=from.slice(0,7)){
+    months.push(cursor.toISOString().slice(0,7).replace('-',''));
+    cursor.setUTCMonth(cursor.getUTCMonth()-1);
+  }
+  const calls=await Promise.allSettled(leagues.flatMap(([league,competition])=>months.map(async dates=>{
     const r=await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/'+league+'/scoreboard?dates='+dates,{signal:controller.signal,cache:'no-store'});
     if(!r.ok)throw Error('scoreboard');
     const data=await r.json();
@@ -41,7 +48,7 @@ export async function POST(request:Request){
      if(local<from||local>to)return [];
      return [{home:names[0],away:names[1],date:local,competition,started:event.date}];
     });
-  }));
+  })));
   const fixtures=calls.flatMap(x=>x.status==='fulfilled'?x.value:[]).sort((a,b)=>b.started.localeCompare(a.started));
   // If more than one distinct pairing is mentioned, do not silently choose a match.
   if(!fixtures.length)return NextResponse.json({status:'fixture_not_found'});
