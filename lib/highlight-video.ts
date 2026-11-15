@@ -293,7 +293,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     const preferredHandles = [
       'tod_bybein','beinsports','thmanyahsports','beinsportsturkiye',
       'seriea','laliga','mls','adsportstv','alkasstvsports','stctvsports',
-      'theafchub','uefa','ittihadclub','daznfootball','foxsports',
+      'theafchub','uefa',
     ];
     const channelLabels: Record<string,string> = {
       tod_bybein:'TOD by beIN',beinsports:'beIN SPORTS',
@@ -301,10 +301,21 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
       seriea:'Serie A',laliga:'LaLiga',mls:'MLS',
       adsportstv:'AD Sports',alkasstvsports:'قنوات الكأس',
       stctvsports:'stc tv sports',theafchub:'The AFC Hub',
-      uefa:'UEFA',ittihadclub:'Al-Ittihad Club',
-      daznfootball:'DAZN Football',foxsports:'FOX Sports',
+      uefa:'UEFA',ittihadclub:'قناة نادي الاتحاد السعودي',
+      fcbarcelona:'FC Barcelona',daznfootball:'DAZN Football',foxsports:'FOX Sports',
     };
     const channelIdsByHandle = new Map(Object.entries(VERIFIED_CHANNEL_IDS).map(([id,handle])=>[handle,id]));
+    // Keep club channels behind broadcasting rights holders. Search only the
+    // two clubs actually involved; never return unrelated training or news.
+    const clubChannels = [
+      {handle:'ittihadclub',id:'UCivJETAP4VD7rXRgjdpVwNw',names:['al ittihad','al-ittihad','الاتحاد']},
+      {handle:'fcbarcelona',id:'UC14UlmYlSNiQCBe9Eookf_A',names:['fc barcelona','barcelona','برشلونة']},
+    ];
+    const clubsInFixture=clubChannels.filter(club=>[match.home,match.away].some(team=>{
+      const name=norm(team);
+      return club.names.some(alias=>name===norm(alias));
+    }));
+    channelIdsByHandle.set('fcbarcelona','UC14UlmYlSNiQCBe9Eookf_A');
     const played=Date.parse(match.date+'T00:00:00+03:00');
     async function publisherFeed(handle:string):Promise<HighlightVideo|null> {
       let id=channelIdsByHandle.get(handle);
@@ -331,10 +342,11 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
       }
       return null;
     }
-    // Short batches avoid blocking on a missing publisher. Preserve precedence:
-    // approved user channels first, then other verified sports publishers.
-    for(let offset=0;offset<preferredHandles.length && !c.signal.aborted;offset+=5) {
-      const batch=preferredHandles.slice(offset,offset+5);
+    // Broadcasters first; own club accounts are the next best source, not
+    // generic reposts. Additional licensed official sports publishers last.
+    const stages=[preferredHandles,clubsInFixture.map(club=>club.handle),['daznfootball','foxsports']];
+    for(const stage of stages) for(let offset=0;offset<stage.length && !c.signal.aborted;offset+=5) {
+      const batch=stage.slice(offset,offset+5);
       const results=await Promise.allSettled(batch.map(publisherFeed));
       for(const item of results) {
         if(item.status==='fulfilled' && item.value) {
