@@ -51,6 +51,7 @@ interface Message {
   feedback?: 'like' | 'dislike' | null;
   thinkingTime?: number;
   highlightVideo?: { url: string; title?: string; channel?: string; canEmbed?: boolean };
+  officialHighlights?: { url: string; title: string; channel: string; requiresLogin?: boolean };
 }
 
 interface ChatSession {
@@ -1073,11 +1074,16 @@ export default function FootPlayChat() {
         body:JSON.stringify({home:match.home,away:match.away,date:match.date,competition:match.competition}),
         signal:controller.signal
       });
-      const payload=await response.json() as {status?:string;video?:{url:string;title?:string;channel?:string;canEmbed?:boolean}};
+      const payload=await response.json() as {status?:string;video?:{url:string;title?:string;channel?:string;canEmbed?:boolean;requiresLogin?:boolean}};
       if(activeRequestSession.current!==id) return;
       const found=response.ok && payload.status==='found' && payload.video && /^https:\/\/www\.youtube\.com\/watch\?v=[\w-]{11}$/.test(payload.video.url);
+      const officialPage=response.ok && payload.status==='official_page' && payload.video &&
+        /^https:\/\/www\.uefa\.com\/uefanationsleague\/news\//.test(payload.video.url);
       const assistant:Message=found
         ? {role:'assistant',content:language==='ar'?'🎬 ملخص المباراة من '+(payload.video?.channel||'القناة الرسمية'):'🎬 Match highlights from '+(payload.video?.channel||'official publisher'),highlightVideo:payload.video}
+        : officialPage ? {role:'assistant',
+            content:language==='ar'?'🎬 الملخص موجود على موقع UEFA الرسمي. قد يتطلب تسجيل الدخول للمشاهدة.':'🎬 Official highlights are available on UEFA. Sign-in may be required.',
+            officialHighlights:{url:payload.video!.url,title:payload.video!.title||'ملخص المباراة',channel:'UEFA',requiresLogin:true}}
         : {role:'assistant',content:unavailable};
       const result:Message[]=[...pre,assistant];
       setMessages(result);saveSession(id,conversationId,result);
@@ -2118,6 +2124,7 @@ export default function FootPlayChat() {
                             loading && index === messages.length - 1
                           )}
                           {msg.highlightVideo && <ChatVideoCard url={msg.highlightVideo.url} title={msg.highlightVideo.title} channel={msg.highlightVideo.channel} canEmbed={msg.highlightVideo.canEmbed} isDark={isDarkMode} />}
+                          {msg.officialHighlights && <a href={msg.officialHighlights.url} target="_blank" rel="noopener noreferrer" className={`my-3 block rounded-xl border border-emerald-500/30 p-4 text-sm font-bold text-emerald-500 underline ${isDarkMode?'bg-emerald-950/35':'bg-emerald-50'}`}>▶ {language==='ar'?'مشاهدة ملخص '+msg.officialHighlights.title+' على UEFA (قد يلزم تسجيل الدخول)':'Watch '+msg.officialHighlights.title+' on UEFA (sign-in may be required)'}</a>}
                           {!(loading && index === messages.length - 1) &&
                             /(?:آخر|اخر|أبرز|ابرز|جديد|عاجل|اخبار|أخبار|مستجدات|شائعات|انتقالات|صفقات|news|transfers)/i.test(msg.userQuery || '') && (
                               <FootballNewsCards
