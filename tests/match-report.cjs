@@ -10,9 +10,10 @@ test('report prompts distinguish match reports from coaching exercises without i
 test('shot map uses source coordinates, assigns the correct team and omits unknown or invalid events',()=>{
  const result=fixture();
  const goal={id:'77',type:{type:'goal'},period:{number:2},team:{displayName:'B'},fieldPositionX:86.5,fieldPositionY:37,participants:[{athlete:{displayName:'Takefusa Kubo'}}],clock:{displayValue:"75'"}};
- result.commentary=[{play:goal},{play:goal},{play:{...goal,id:'78',fieldPositionY:null}},{play:{...goal,id:'79',type:{type:'foul'}}},{play:{...goal,id:'80',team:{id:'unknown',displayName:'B'}}}];
+ result.commentary=[{play:goal},{play:{...goal,id:'81',type:{type:'penalty---scored'}}},{play:{...goal,id:'82',type:{type:'goal---header'}}},{play:goal},{play:{...goal,id:'78',fieldPositionY:null}},{play:{...goal,id:'79',type:{type:'foul'}}},{play:{...goal,id:'80',team:{id:'unknown',displayName:'B'}}}];
  const report=api.normalizeReport(result,'123','esp.1');
- assert.deepEqual(JSON.parse(JSON.stringify(report.shots)),[{id:'77',x:86.5,y:37,side:'away',xg:null,goal:true,outcome:'هدف',playerName:'Takefusa Kubo',minute:"75'"}]);
+ assert.deepEqual(JSON.parse(JSON.stringify(report.shots[0])),{id:'77',x:86.5,y:37,side:'away',xg:null,goal:true,outcome:'هدف',playerName:'Takefusa Kubo',minute:"75'"});
+ assert.deepEqual(Array.from(report.shots.slice(1),shot=>[shot.outcome,shot.goal]),[['هدف من ركلة جزاء',true],['هدف بالرأس',true]]);
 });
 test('Arabic names are consistent between the lineup and event labels',()=>{
  const ar=load('lib/match-display-ar.ts');

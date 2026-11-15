@@ -102,7 +102,7 @@ export default function MatchVisualReport({ data, isDark = true, shotsOnly = fal
   const activeNode = nodes.find(n => n.id === selected);
   const shots = data.shots.filter(s => s.side === side && [s.x, s.y].every(v => Number.isFinite(v) && v >= 0 && v <= 100));
   const activeShot = shots.find(shot => shot.id === selected);
-  const describeShot = (shot: Shot) => [shot.playerName && matchNameInArabic(shot.playerName), shot.minute && matchNumberInArabic(shot.minute), shot.goal ? 'هدف' : shot.outcome && /[\u0600-\u06FF]/.test(shot.outcome) ? shot.outcome : 'تسديدة', shot.xg != null && 'الأهداف المتوقعة ' + matchNumberInArabic(format(shot.xg))].filter(Boolean).join(' · ');
+  const describeShot = (shot: Shot) => [shot.playerName && matchNameInArabic(shot.playerName), shot.minute && matchNumberInArabic(shot.minute), shot.outcome && /[\u0600-\u06FF]/.test(shot.outcome) ? shot.outcome : shot.goal ? 'هدف' : 'تسديدة', shot.xg != null && 'الأهداف المتوقعة ' + matchNumberInArabic(format(shot.xg))].filter(Boolean).join(' · ');
   const metrics = data.metrics.filter(m => m.home !== null || m.away !== null);
   const summaries = [
     metrics.find(m => /^(expectedGoals|expected_goals|xg)$/i.test(m.key) || /xG/.test(m.label)),
