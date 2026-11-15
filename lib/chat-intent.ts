@@ -20,7 +20,7 @@ export function needsDurableResearch(query:string):boolean {
   // A short single-season player stat question should stream as soon as
   // verified league figures are available; full career research stays durable.
   const quickSeasonStats = /(?:إحصائيات|احصائيات|أرقام|ارقام|stats|statistics|numbers)/i.test(q)
-    && /(?:هذا الموسم|الموسم الحالي|هالموسم|this season|current season|2026[\\/-]2027)/i.test(q)
+    && /(?:هذا الموسم|الموسم الحالي|هالموسم|this season|current season|2026.2027)/i.test(q)
     && !/(?:كامل|كاملة|تفصيل|المسيرة|مسيرته|career|all seasons|every competition|جميع البطولات)/i.test(q);
   if(quickSeasonStats)return false;
   // Brief club-news requests should stream immediately, without the signed-in
