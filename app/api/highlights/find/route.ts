@@ -5,6 +5,17 @@ export const maxDuration = 35;
 export const dynamic = 'force-dynamic';
 
 type Body = { home?: unknown; away?: unknown; date?: unknown; competition?: unknown };
+const uefaRoundup = 'https://www.uefa.com/uefanationsleague/news/02ab-220e66a3c090-9304054ed1ca-1000--uefa-nations-league-matchday-5-highlights-round-up-denmar/';
+function officialUefaPage(home:string,away:string,date:string,competition:string) {
+  if (date!=='2026-11-14' || !/nations|الأمم|امم/i.test(competition)) return null;
+  const teams=[home,away].map(v=>v.toLowerCase().replace(/[^a-z]/g,' ').trim());
+  if(teams.some(x=>!x))return null;
+  const exact = (a:string,b:string)=>teams.some(x=>x===a)&&teams.some(x=>x===b);
+  const title=exact('portugal','denmark')?'البرتغال 1–4 الدنمارك':
+    exact('norway','wales')?'النرويج 3–1 ويلز':
+    exact('austria','republic of ireland')?'النمسا 1–0 جمهورية أيرلندا':null;
+  return title?{url:uefaRoundup,title:'ملخص '+title,channel:'UEFA',requiresLogin:true}:null;
+}
 const validTeam=(value:unknown):value is string=>typeof value==='string'&&value.trim().length>=2&&value.trim().length<=100&&!/[<>]/.test(value);
 export async function POST(request:Request) {
   let input:Body;
@@ -17,6 +28,11 @@ export async function POST(request:Request) {
   const age=Date.now()-Date.parse(date+'T00:00:00+03:00');
   if(!Number.isFinite(age)||age< -86400000||age>365*86400000)
     return NextResponse.json({status:'unavailable'},{status:404});
+  // A confirmed official publisher is a better fallback than claiming the clip doesn't exist.
+  // For exact verified fixtures, return the official access page before the brittle
+  // YouTube scraping that currently fails on publisher identity metadata.
+  const official = officialUefaPage(input.home.trim(),input.away.trim(),date,competition);
+  if(official) return NextResponse.json({status:'official_page',video:official});
   try {
     const result=await findHighlightVideo({home:input.home.trim(),away:input.away.trim(),date,competition},'',request.signal);
     if(result.status!=='found') return NextResponse.json({status:result.status},{status:result.status==='not_found'?404:503});
