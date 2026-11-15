@@ -5,7 +5,7 @@ import { footballLeagues, type FootballBoard, type FootballEvent } from '../../l
 import { footballNameInArabic } from '../../lib/football-names-ar';
 import type { AppLanguage } from '../../lib/app-language';
 
-type Match = { id: string; code: string; date: string; names: string[]; englishNames: string[]; score: string; status: 'final'|'live'|'scheduled' };
+type Match = { id: string; code: string; date: string; names: string[]; englishNames: string[]; score: string; logos: (string|null)[]; status: 'final'|'live'|'scheduled' };
 const competitions = new Map<string, { ar:string; en:string }>(footballLeagues.map(([code,ar,en])=>[code,{ar,en}]));
 const excludedFixture = /(?:^|[^a-z])israel(?:$|[^a-z])|إسرائيل|اسرائيل|إسراءيل|الكيان الصهيوني/i;
 const national = /Saudi Arabia|France|Spain|England|Portugal|Germany|Brazil|Argentina|Italy|Belgium|Netherlands|Croatia|Morocco|Türkiye|Turkey|Uruguay|Japan|South Korea|السعودية|فرنسا|اسبانيا|إنجلترا|البرتغال|ألمانيا|البرازيل|الأرجنتين|إيطاليا|بلجيكا|هولندا|كرواتيا|المغرب/i;
@@ -36,8 +36,16 @@ function toMatches(data: FootballBoard, day: 'today'|'yesterday'): Match[] {
       const raw=e.status?.type?.state;
       const status:Match['status']=raw==='post'||/FINAL/i.test(e.status?.type?.name||'')?'final':raw==='in'?'live':'scheduled';
       if(day==='yesterday'&&status!=='final')continue;
-      const score=teams.every(t=>t?.score!=null)?teams.map(t=>t?.score).join(' - '):'';
-      result.push({id:e.id,code,date:e.date,names,englishNames,score,status});
+      // ESPN may return a 0-0 placeholder before kickoff. It is not a real score.
+      const score=status!=='scheduled' && teams.every(t=>t?.score!=null)
+        ? teams.map(t=>t?.score).join(' - ') : '';
+      const logos=teams.map(t=>{
+        const url=t?.team?.logo;
+        if(!url)return null;
+        try {const parsed=new URL(url);return parsed.protocol==='https:' && /^(?:.+\\.)?(?:espncdn\\.com|espn\\.com)$/.test(parsed.hostname)?url:null;}
+        catch{return null;}
+      });
+      result.push({id:e.id,code,date:e.date,names,englishNames,score,logos,status});
     }
   }
   return result;
@@ -111,7 +119,15 @@ export default function HighlightsPicker({ language='ar', isDark=true, onRequest
         return <button type="button" key={m.id+'-'+m.code} disabled={disabled} onClick={()=>send(m)}
           className={`min-w-0 rounded-xl border p-3 text-start disabled:opacity-50 ${isDark?'border-emerald-500/25 bg-emerald-950/45 text-white hover:bg-emerald-900/40':'border-emerald-600/20 bg-white text-slate-900 hover:bg-emerald-50'}`}>
           <div className="flex items-center justify-between gap-2 text-[11px] opacity-65"><span className="truncate">{language==='ar'?league?.ar||m.code:league?.en||m.code}</span><span className="shrink-0">{m.status==='final'?t('انتهت','FT'):m.status==='live'?t('مباشر','Live'):new Intl.DateTimeFormat(language==='ar'?'ar-SA':'en-GB',{timeZone:'Asia/Riyadh',hour:'numeric',minute:'2-digit'}).format(new Date(m.date))}</span></div>
-          <div className="mt-1 flex items-center justify-between gap-2"><bdi dir="auto" className="min-w-0 flex-1 text-sm font-bold">{name}</bdi><bdi className="shrink-0 text-sm font-bold">{m.score}</bdi></div>
+          <div className="mt-1.5 flex items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="flex shrink-0 items-center gap-1">
+                {m.logos.map((logo,i)=>logo?<img key={i} src={logo} alt={m.names[i]} loading="lazy" className="h-7 w-7 rounded-full object-contain" referrerPolicy="no-referrer"/>:<span key={i} aria-label={m.names[i]} className="flex h-7 w-7 items-center justify-center rounded-full border border-emerald-600/20 text-[9px] font-bold">{m.names[i]?.slice(0,1)}</span>)}
+              </span>
+              <bdi dir="auto" className="min-w-0 flex-1 text-sm font-bold leading-5">{name}</bdi>
+            </div>
+            {m.score&&<bdi dir="ltr" className="shrink-0 text-sm font-bold tabular-nums">{m.score}</bdi>}
+          </div>
           <div className="mt-2 text-xs font-bold text-emerald-500">{m.status==='final'?t('▶ ابحث عن الملخص','▶ Search highlights'):t('▶ تفاصيل المباراة والملخص بعد انتهائها','▶ Match details; highlights after FT')}</div>
         </button>;
       })}
