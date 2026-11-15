@@ -7,6 +7,7 @@ import type { AppLanguage } from '../../lib/app-language';
 
 type Match = { id: string; code: string; date: string; names: string[]; englishNames: string[]; score: string; status: 'final'|'live'|'scheduled' };
 const competitions = new Map<string, { ar:string; en:string }>(footballLeagues.map(([code,ar,en])=>[code,{ar,en}]));
+const excludedFixture = /(?:^|[^a-z])israel(?:$|[^a-z])|إسرائيل|اسرائيل|إسراءيل|الكيان الصهيوني/i;
 const national = /Saudi Arabia|France|Spain|England|Portugal|Germany|Brazil|Argentina|Italy|Belgium|Netherlands|Croatia|Morocco|Türkiye|Turkey|Uruguay|Japan|South Korea|السعودية|فرنسا|اسبانيا|إنجلترا|البرتغال|ألمانيا|البرازيل|الأرجنتين|إيطاليا|بلجيكا|هولندا|كرواتيا|المغرب/i;
 const bigTeams = /Real Madrid|Barcelona|Man City|Manchester|Arsenal|Liverpool|Chelsea|Bayern|PSG|Paris Saint|Juventus|Inter Milan|AC Milan|Al Hilal|Al Nassr|Al Ittihad|Al Ahli|الهلال|النصر|الاتحاد|الأهلي/i;
 const importantLeagues:Record<string,number> = {'uefa.nations':145,'fifa.friendly':115,'fifa.world':155,'fifa.worldq.uefa':135,'fifa.worldq.afc':132,'uefa.champions':125,'afc.champions':110,'ksa.1':108,'eng.1':105,'esp.1':100,'ita.1':95,'ger.1':95,'fra.1':90,'uefa.europa':90,'uefa.europa.conf':85};
@@ -26,6 +27,7 @@ function toMatches(data: FootballBoard, day: 'today'|'yesterday'): Match[] {
       if(teams.some(x=>!x?.team))continue;
       const englishNames=teams.map(t=>t?.team?.displayName||t?.team?.name||'');
       if(englishNames.some(x=>!x))continue;
+      if ([...englishNames, ...englishNames.map(x=>footballNameInArabic(x)||'')].some(x=>excludedFixture.test(x))) continue;
       // Only surface fixtures whose calendar day is confirmed in Riyadh.
       if(!e.date || dateKey(new Date(e.date))!==expected)continue;
       const names=englishNames.map(x=>footballNameInArabic(x)||x);
