@@ -4,7 +4,7 @@ export const dynamic='force-dynamic';
 export async function GET() {
  if(process.env.VERCEL_ENV!=='preview')return NextResponse.json({error:'disabled'},{status:404});
  const q='ملخص مباراة الاتحاد والعين الاماراتي';
- const windows=['20260911-20261115','20260916-20261115','20261102'];
+ const windows=['202611','202610','20261102'];
  return NextResponse.json(await Promise.all(windows.map(async dates=>{
    try{
      const r=await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/afc.champions/scoreboard?dates='+dates,{cache:'no-store',signal:AbortSignal.timeout(9000)});
