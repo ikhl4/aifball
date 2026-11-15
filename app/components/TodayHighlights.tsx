@@ -39,6 +39,7 @@ function espnMatches(board:FootballBoard):AppleMatch[] {
   return results;
 }
 const notable = /(?:الاتحاد|الهلال|النصر|الأهلي|ريال مدريد|برشلونة|مانشستر|ليفربول|أرسنال|تشيلسي|باريس|بايرن|دورتموند|يوفنتوس|ميلان|إنتر|أتلتيكو|al ittihad|al hilal|al nassr|al ahli|real madrid|barcelona|manchester|liverpool|arsenal|chelsea|paris|bayern|dortmund|juventus|milan|inter|atletico)/i;
+const nationalPowers = /(?:المنتخب السعودي|السعودية|فرنسا|إسبانيا|إنجلترا|البرتغال|ألمانيا|البرازيل|الأرجنتين|إيطاليا|بلجيكا|هولندا|كرواتيا|المغرب|تركيا|Saudi Arabia|France|Spain|England|Portugal|Germany|Brazil|Argentina|Italy|Belgium|Netherlands|Croatia|Morocco|T.rkiye)/i;
 
 function timeInRiyadh(value:string,language:AppLanguage):string {
   const d=new Date(value);
@@ -133,7 +134,8 @@ export default function TodayHighlights({
   const picks=useMemo(()=>matches
     .map(m=>{
       const teams=m.sides.map(s=>(s.name||'')+' '+(s.englishName||'')).join(' ');
-      const importance=(leaguePriority[m.competition]||0)+(notable.test(teams)?35:0)+(m.status==='final'?8:m.status==='live'?12:0);
+      const numberOfNationalPowers = m.sides.filter(side=>nationalPowers.test((side.englishName||'')+' '+side.name)).length;
+      const importance=(leaguePriority[m.competition]||0)+(notable.test(teams)?35:0)+numberOfNationalPowers*20+(m.status==='final'?8:m.status==='live'?12:0);
       return {match:m,importance};
     })
     .sort((a,b)=>b.importance-a.importance||a.match.start.localeCompare(b.match.start))
