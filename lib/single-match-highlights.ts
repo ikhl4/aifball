@@ -6,14 +6,22 @@ const norm = (s: string) => s.normalize('NFKD').toLowerCase().replace(/[\u0300-\
 const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 export function teamMentioned(query: string, name: string): boolean {
  const q = ' '+norm(query)+' ';
- const aliases = new Set([name, name.replace(/[-_]/g, ' '), name.replace(/^Al[- ]/i, 'Al '), footballNameInArabic(name) || name]);
- // ESPN sometimes spells Saudi club names with hyphens or alternative Latin transliterations.
- const key = norm(name);
- if (/al ?qad(?:s|i)|al ?qadsiah|al ?qadisiyah/.test(key)) aliases.add('القادسية');
- if (/al ?hilal/.test(key)) aliases.add('الهلال');
- const names = [...aliases].map(norm);
- if(names.includes('paris saint germain'))names.push('باريس','psg');
- return names.some(n=>n.length>=3&&(q.includes(' '+n+' ')||q.includes(' و'+n+' ')));
+ const key=norm(name);
+ const aliases=new Set<string>([name,name.replace(/[-_]/g,' '),footballNameInArabic(name)||name]);
+ // English queries often omit "Al" or add a country (Ittihad KSA, Al Ain UAE).
+ if(key.startsWith('al '))aliases.add(key.slice(3));
+ // ESPN's transliterations differ from the names fans enter in Arabic/English.
+ if(/^(?:al )?ittihad$/.test(key))['ittihad','al ittihad','الاتحاد','الاتحاد السعودي'].forEach(v=>aliases.add(v));
+ if(/^(?:al )?ain$/.test(key))['ain','al ain','العين','العين الاماراتي','العين الإماراتي'].forEach(v=>aliases.add(v));
+ if(/^(?:al )?hilal$/.test(key))['hilal','al hilal','الهلال','الهلال السعودي'].forEach(v=>aliases.add(v));
+ if(/shabab.*ahli|ahli.*dubai/.test(key))['shabab al ahli','shabab al ahly','shabab ahli','شباب الاهلي','شباب الأهلي','شباب الاهلي الاماراتي'].forEach(v=>aliases.add(v));
+ if(/al ?qad(?:s|i)|al ?qadsiah|al ?qadisiyah/.test(key))aliases.add('القادسية');
+ if(key==='paris saint germain') ['باريس','psg'].forEach(v=>aliases.add(v));
+ return [...aliases].map(norm).some(n=>n.length>=3&&(
+   q.includes(' '+n+' ') ||
+   // Arabic conjunction "و" may attach to a team name: "والعين".
+   (/[\u0600-\u06ff]/.test(n) && q.includes(' و'+n+' '))
+ ));
 }
 export function summaryDateRange(query: string, now = new Date()): [string,string] {
  const today = new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Riyadh'}).format(now), q=norm(query);
