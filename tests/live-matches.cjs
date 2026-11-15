@@ -52,6 +52,26 @@ test('center isolates league failures and retains results during refresh', async
   await settle(); assert.match(app.text(), /Home/); app.unmount();
 });
 
+test('live and completed match buttons open the report for their own event', async () => {
+  const app = mount('app/components/LiveMatchCenter.tsx', async () => ({
+    ok: true, json: async () => ({ matches: { 'uefa.nations': [
+      sample('live-event', 'in'), sample('finished-event', 'post'), sample('scheduled-event'),
+    ] }, failed: 0 }),
+  }));
+  const visit = node => Array.isArray(node) ? node.flatMap(visit)
+    : node?.children ? [node, ...node.children.flatMap(visit)] : [];
+  app.render({language:'ar'}); await settle();
+  const reportButtons = () => visit(app.render()).filter(node =>
+    node.type === 'button' && node.children.includes('التحليل والإحصائيات'));
+  assert.equal(reportButtons().length, 2);
+  reportButtons()[0].props.onClick();
+  assert.ok(visit(app.render()).some(node => node.props.eventId === 'live-event' && node.props.refresh));
+  reportButtons()[1].props.onClick();
+  assert.ok(visit(app.render()).some(node => node.props.eventId === 'finished-event' && node.props.refresh === false));
+  assert.ok(!visit(app.render()).some(node => node.props.eventId === 'live-event'));
+  app.unmount();
+});
+
 test('widget shows a dash for scheduled games and labels tomorrow', async () => {
   const app = mount('app/components/LiveSportsWidget.tsx', async () => response([sample()]));
   app.render({ date: 'tomorrow' }); await settle();
