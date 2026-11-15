@@ -917,6 +917,7 @@ export default function FootPlayChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [directHighlightLoading, setDirectHighlightLoading] = useState(false);
   const [loadingSeconds, setLoadingSeconds] = useState(0);
   const [chatNotice, setChatNotice] = useState('');
   const [historySearch, setHistorySearch] = useState('');
@@ -1061,8 +1062,9 @@ export default function FootPlayChat() {
       const result: Message[] = [...pre,{role:'assistant',content: language==='ar'?'المباراة لم تنتهِ بعد. اطلب الملخص بعد صافرة النهاية ونشر الفيديو.':'The match is not finished yet. Check again after full time and publication.'}];
       setMessages(result);saveSession(id,conversationId,result);return;
     }
-    setMessages([...pre,{role:'assistant',content:language==='ar'?'جارٍ البحث عن فيديو الملخص…':'Searching for the highlight video…'}]);
+    setMessages([...pre,{role:'assistant',content:language==='ar'?'جارٍ البحث عن الملخص…':'Finding the match highlights…'}]);
     setLoading(true);
+    setDirectHighlightLoading(true);
     const controller=new AbortController();
     activeRequest.current=controller;
     activeRequestSession.current=id;
@@ -1087,7 +1089,7 @@ export default function FootPlayChat() {
       setMessages(result);saveSession(id,conversationId,result);
     }finally{
       window.clearTimeout(timer);
-      if(activeRequestSession.current===id) {setLoading(false);activeRequestSession.current=null;activeRequest.current=null;}
+      if(activeRequestSession.current===id) {setLoading(false);setDirectHighlightLoading(false);activeRequestSession.current=null;activeRequest.current=null;}
     }
   };
 
@@ -2117,7 +2119,7 @@ export default function FootPlayChat() {
                             msg.userQuery,
                             loading && index === messages.length - 1
                           )}
-                          {msg.highlightVideo && <ChatVideoCard url={msg.highlightVideo.url} title={msg.highlightVideo.title} channel={msg.highlightVideo.channel} canEmbed={msg.highlightVideo.canEmbed} isDark={isDarkMode} openExternally />}
+                          {msg.highlightVideo && <ChatVideoCard url={msg.highlightVideo.url} title={msg.highlightVideo.title} channel={msg.highlightVideo.channel} canEmbed={msg.highlightVideo.canEmbed} isDark={isDarkMode} />}
                           {!(loading && index === messages.length - 1) &&
                             /(?:آخر|اخر|أبرز|ابرز|جديد|عاجل|اخبار|أخبار|مستجدات|شائعات|انتقالات|صفقات|news|transfers)/i.test(msg.userQuery || '') && (
                               <FootballNewsCards
@@ -2281,7 +2283,7 @@ export default function FootPlayChat() {
               ) : null
             )}
 
-            {loading && (
+            {loading && !directHighlightLoading && (
               <div className="flex items-start gap-4 w-full mt-4">
                 <div className="flex-shrink-0 mt-1 block">
                   <OriginalBrandLogo size="sm" />
