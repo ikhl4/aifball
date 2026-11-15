@@ -288,34 +288,71 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     // First check the publisher feeds the user selected. These feed entries
     // contain the publisher channel ID and absolute upload time, so a missing
     // YouTube watch-page player payload cannot suppress a genuine thumbnail.
-    const preferredFeeds = [
-      { id:'UCvuPuKPukGd8S2qr4msLAuQ', name:'TOD by beIN' },
-      { id:'UCJUCcJUeh0Cz2xyKwkw5Q1w', name:'beIN SPORTS' },
+    // All approved publishers use the same official RSS discovery pathway.
+    // Feed channel ID and publication date must be confirmed before rendering.
+    const preferredHandles = [
+      'tod_bybein','beinsports','thmanyahsports','beinsportsturkiye',
+      'seriea','laliga','mls','adsportstv','alkasstvsports','stctvsports',
+      'theafchub','uefa',
     ];
-    const feedResults = await Promise.allSettled(preferredFeeds.map(async publisher=>{
-      const url='https://www.youtube.com/feeds/videos.xml?channel_id='+publisher.id;
-      const xml=await html(url,c.signal,fetcher);
-      // Never accept an imitation channel or video title alone.
-      if(!xml.includes('<yt:channelId>'+publisher.id+'</yt:channelId>'))return null;
-      const played=Date.parse(match.date+'T00:00:00+03:00');
-      for(const entry of xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)){
+    const channelLabels: Record<string,string> = {
+      tod_bybein:'TOD by beIN',beinsports:'beIN SPORTS',
+      thmanyahsports:'ثمانية الرياضية',beinsportsturkiye:'beIN SPORTS Türkiye',
+      seriea:'Serie A',laliga:'LaLiga',mls:'MLS',
+      adsportstv:'AD Sports',alkasstvsports:'قنوات الكأس',
+      stctvsports:'stc tv sports',theafchub:'The AFC Hub',
+      uefa:'UEFA',ittihadclub:'قناة نادي الاتحاد السعودي',
+      fcbarcelona:'FC Barcelona',daznfootball:'DAZN Football',foxsports:'FOX Sports',
+    };
+    const channelIdsByHandle = new Map(Object.entries(VERIFIED_CHANNEL_IDS).map(([id,handle])=>[handle,id]));
+    // Keep club channels behind broadcasting rights holders. Search only the
+    // two clubs actually involved; never return unrelated training or news.
+    const clubChannels = [
+      {handle:'ittihadclub',id:'UCivJETAP4VD7rXRgjdpVwNw',names:['al ittihad','al-ittihad','الاتحاد']},
+      {handle:'fcbarcelona',id:'UC14UlmYlSNiQCBe9Eookf_A',names:['fc barcelona','barcelona','برشلونة']},
+    ];
+    const clubsInFixture=clubChannels.filter(club=>[match.home,match.away].some(team=>{
+      const name=norm(team);
+      return club.names.some(alias=>name===norm(alias));
+    }));
+    channelIdsByHandle.set('fcbarcelona','UC14UlmYlSNiQCBe9Eookf_A');
+    const played=Date.parse(match.date+'T00:00:00+03:00');
+    async function publisherFeed(handle:string):Promise<HighlightVideo|null> {
+      let id=channelIdsByHandle.get(handle);
+      if(!id) {
+        // Resolve missing channel IDs against the real verified YouTube handle.
+        // Never infer a channel ID from a search-result display name.
+        const page=await html('https://www.youtube.com/@'+handle+'/videos',c.signal,fetcher);
+        id=channelIndex(page,handle).channelId;
+      }
+      if(!id || !/^UC[\w-]{22}$/.test(id))return null;
+      const xml=await html('https://www.youtube.com/feeds/videos.xml?channel_id='+id,c.signal,fetcher);
+      if(!xml.includes('<yt:channelId>'+id+'</yt:channelId>'))return null;
+      for(const entry of xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)) {
         const chunk=entry[1];
-        const id=chunk.match(/<yt:videoId>([\w-]{11})<\/yt:videoId>/)?.[1];
+        const videoId=chunk.match(/<yt:videoId>([\w-]{11})<\/yt:videoId>/)?.[1];
         const rawTitle=chunk.match(/<title>([\s\S]*?)<\/title>/)?.[1]||'';
         const title=rawTitle.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
         const published=chunk.match(/<published>([^<]+)<\/published>/)?.[1]||'';
-        const timestamp=Date.parse(published);
-        if(!id||!matchesTeams(title,match)||!Number.isFinite(timestamp)||!Number.isFinite(played))continue;
-        if(timestamp<played-86400000||timestamp>played+14*86400000)continue;
-        const video:HighlightVideo={id,url:'https://www.youtube.com/watch?v='+id,title,channel:publisher.name,publishedAt:published,embeddable:false};
-        return video;
+        const publishedAt=Date.parse(published);
+        if(!videoId || !matchesTeams(title,match) || !Number.isFinite(publishedAt) || !Number.isFinite(played))continue;
+        if(publishedAt<played-86400000||publishedAt>played+14*86400000)continue;
+        return {id:videoId,url:'https://www.youtube.com/watch?v='+videoId,
+          title,channel:channelLabels[handle]||handle,publishedAt:published,embeddable:false};
       }
       return null;
-    }));
-    for(const item of feedResults){
-      if(item.status==='fulfilled'&&item.value){
-        diagnostics.result='preferred_official_feed';
-        return {status:'found',video:item.value};
+    }
+    // Broadcasters first; own club accounts are the next best source, not
+    // generic reposts. Additional licensed official sports publishers last.
+    const stages=[preferredHandles,clubsInFixture.map(club=>club.handle),['daznfootball','foxsports']];
+    for(const stage of stages) for(let offset=0;offset<stage.length && !c.signal.aborted;offset+=5) {
+      const batch=stage.slice(offset,offset+5);
+      const results=await Promise.allSettled(batch.map(publisherFeed));
+      for(const item of results) {
+        if(item.status==='fulfilled' && item.value) {
+          diagnostics.result='official_publisher_feed';
+          return {status:'found',video:item.value};
+        }
       }
     }
     const candidateId = youtubeVideoId(candidate);
