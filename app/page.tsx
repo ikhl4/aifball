@@ -2028,8 +2028,8 @@ export default function FootPlayChat() {
                   aria-label={`${card.tag}: ${card.question}`}
                   className={`flex flex-col justify-between text-start p-3 sm:p-4 rounded-2xl border backdrop-blur-[6px] min-h-[112px] sm:min-h-[126px] transition-all duration-500 cursor-pointer hover:border-emerald-400/60 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-wait disabled:opacity-60 ${
                     isDarkMode
-                      ? 'bg-emerald-950/45 backdrop-blur-xl border-emerald-500/40 text-white shadow-md'
-                      : 'bg-white/35 border-white/55 text-gray-950 shadow-sm'
+                      ? 'bg-emerald-950/15 backdrop-blur-xl border-emerald-500/25 text-white'
+                      : 'bg-white/15 border-white/35 text-gray-950'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
