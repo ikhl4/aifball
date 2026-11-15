@@ -17,5 +17,10 @@ export function isNamedVideoHighlights(query: string): boolean {
 export function needsDurableResearch(query:string):boolean {
   const q=query.trim();
   if(q.length>175) return true;
+  // Brief club-news requests should stream immediately, without the signed-in
+  // job-creation/polling round-trip. Deep research still uses resumable jobs.
+  const briefClubNews=/^(?:آخر|اخر|أحدث|احدث)?\s*(?:أخبار|اخبار|مستجدات)\s+(?:ال)?[\p{L}\p{M}\s-]{2,45}(?:\s+اليوم)?[؟?!.]*$/iu.test(q)
+    || /^(?:latest|recent)\s+(?:news|updates)\s+(?:about|on|for|of)?\s*[a-z\s-]{2,45}[?!.]*$/i.test(q);
+  if(briefClubNews) return false;
   return researchWords.test(q);
 }
