@@ -2,7 +2,7 @@
 import { footballNameInArabic } from './football-names-ar';
 import { youtubeVideoId } from './summary-presentation';
 
-export const HIGHLIGHT_CHANNELS = ['beinsports', 'ittihadclub', 'theafchub', 'tod_bybein', 'thmanyahsports', 'beinsportsturkiye', 'seriea', 'laliga', 'mls', 'adsportstv', 'alkasstvsports', 'stctvsports', 'uefa'] as const;
+export const HIGHLIGHT_CHANNELS = ['beinsports', 'ittihadclub', 'theafchub', 'tod_bybein', 'thmanyahsports', 'beinsportsturkiye', 'seriea', 'laliga', 'mls', 'adsportstv', 'alkasstvsports', 'stctvsports', 'uefa', 'foxsports', 'daznfootball'] as const;
 export type HighlightMatch = { home: string; away: string; date: string; competition?: string };
 export type HighlightVideo = { id: string; url: string; title: string; channel: string; publishedAt: string; embeddable: boolean };
 type ChannelIndex = { channelId: string; videos: { id: string; title: string }[] };
@@ -15,12 +15,14 @@ const OFFICIAL_CHANNEL_TITLES = new Set([
   'Serie A', 'Serie A Enilive', 'LaLiga', 'LaLiga EA SPORTS',
   'MLS', 'Major League Soccer', 'AD Sports', 'أبوظبي الرياضية',
   'قناة نادي الاتحاد السعودي', 'نادي الاتحاد السعودي', 'Al-Ittihad Club',
-  'The AFC Hub', 'UEFA',
+  'The AFC Hub', 'UEFA', 'FOX Sports', 'DAZN Football',
   'Alkass Sports Channels', 'قنوات الكأس', 'stc tv sports'
 ].map(name => name.toLowerCase()));
 // Verified official YouTube channel IDs, used if search omits @handles.
 const VERIFIED_CHANNEL_IDS: Record<string, string> = {
   UCyGa1YEx9ST66rYrJTGIKOw: 'uefa',
+  'UCwNqHDsnBCKT-olwJwIFyfg': 'foxsports',
+  'UCSZ21xyG8w_33KriMM69IxQ': 'daznfootball',
   UCvuPuKPukGd8S2qr4msLAuQ: 'tod_bybein',
   UCJUCcJUeh0Cz2xyKwkw5Q1w: 'beinsports',
   UCivJETAP4VD7rXRgjdpVwNw: 'ittihadclub',
@@ -292,6 +294,8 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
       'beIN SPORTS ملخص ' + (footballNameInArabic(match.home)||match.home) + ' ' + (footballNameInArabic(match.away)||match.away) + ' ' + match.date.slice(0,4),
       'TOD by beIN ' + match.home + ' ' + match.away + ' highlights ' + match.date.slice(0,4),
       'beIN SPORTS ' + match.home + ' ' + match.away + ' highlights ' + match.date,
+      'FOX Sports ' + match.home + ' ' + match.away + ' highlights ' + match.date.slice(0,4),
+      'DAZN Football ' + match.home + ' ' + match.away + ' highlights ' + match.date.slice(0,4),
       'site:youtube.com/watch ' + match.home + ' ' + match.away + ' highlights ' + match.date,
       'site:youtube.com/watch ' + (footballNameInArabic(match.home) || match.home) + ' ' + (footballNameInArabic(match.away) || match.away) + ' ملخص ' + match.date + ' ' + (match.competition || ''),
       'site:youtube.com/watch ' + (footballNameInArabic(match.home) || match.home) + ' ' + (footballNameInArabic(match.away) || match.away) + ' highlights ' + match.date.slice(0, 4) + ' ' + (match.competition || ''),
