@@ -4,7 +4,7 @@ export const dynamic='force-dynamic';
 export async function GET() {
  if(process.env.VERCEL_ENV!=='preview')return NextResponse.json({error:'Not available'},{status:404});
  const match={home:'Portugal',away:'Denmark',date:'2026-11-14'};
- const q='beIN SPORTS Portugal Denmark highlights 2026';
+ const q='ملخص البرتغال الدنمارك beIN SPORTS 2026';
  try { const r=await fetch('https://www.youtube.com/results?search_query='+encodeURIComponent(q),{cache:'no-store',signal:AbortSignal.timeout(9000)});
  if(!r.ok)return NextResponse.json({http:r.status});
  const entries=youtubeSearchEntries(pageJson(await r.text(),'ytInitialData'));
