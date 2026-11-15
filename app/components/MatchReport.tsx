@@ -12,6 +12,7 @@ import { COMPETITIONS } from '../../lib/competitions';
 import XPostEmbed from './XPostEmbed';
 import MatchPlayerHeatmap from './MatchPlayerHeatmap';
 import MatchStatisticsBoard from './MatchStatisticsBoard';
+import FootballTeamBadge from './FootballTeamBadge';
 import { reportIdentity,type DetailedMatchReport } from '../../lib/match-report';
 const leagues=[...new Map([...footballLeagues.map(([id,ar])=>[id,ar] as [string,string]),...Object.entries(COMPETITIONS).map(([id,c])=>[id,c.ar] as [string,string])])];
 type MatchReportProps = {
@@ -71,9 +72,9 @@ function EspnMatchReport({matchName,isDark=true,autoMatchUrl,eventId,leagueCode,
  {data&&<><div className={`p-4 sm:p-6 text-center ${isDark ? "bg-gradient-to-bl from-[#164835] to-[#0c241b]" : "bg-gradient-to-bl from-emerald-100 to-white"}`}>
   <p className="text-xs opacity-70">{localCompetition} · {matchDateInArabic(data.date)} · {data.state==='post'?'انتهت':data.state==='in'?'جارية':data.state==='pre'?'لم تبدأ':'حالة المباراة غير متاحة'}</p>
   <div className="mt-4 grid grid-cols-3 items-center gap-2 text-center font-black">
-   <div className="min-w-0">{homeLogo&&<img src={homeLogo} alt="" width="40" height="40" className="mx-auto mb-1 h-10 w-10 object-contain"/>}<p>{data.home.name}</p></div>
+   <div className="flex min-w-0 flex-col items-center gap-1.5"><FootballTeamBadge name={data.home.name} logo={homeLogo||data.home.logo} size={44}/><p>{data.home.name}</p></div>
    <div aria-label="النتيجة" className="flex justify-center gap-2 text-3xl text-emerald-600 dark:text-emerald-400"><bdi>{matchNumberInArabic(data.home.score)}</bdi><span aria-hidden="true">–</span><bdi>{matchNumberInArabic(data.away.score)}</bdi></div>
-   <div className="min-w-0">{awayLogo&&<img src={awayLogo} alt="" width="40" height="40" className="mx-auto mb-1 h-10 w-10 object-contain"/>}<p>{data.away.name}</p></div>
+   <div className="flex min-w-0 flex-col items-center gap-1.5"><FootballTeamBadge name={data.away.name} logo={awayLogo||data.away.logo} size={44}/><p>{data.away.name}</p></div>
   </div>
   {data.venue&&<p className="text-xs mt-3 opacity-70">{matchNameInArabic(data.venue)}</p>}
  </div>
@@ -82,7 +83,7 @@ function EspnMatchReport({matchName,isDark=true,autoMatchUrl,eventId,leagueCode,
  <div aria-label="شرح إحصائيات المباراة" className="p-5 space-y-2 text-sm leading-8"><h3 className="font-bold text-emerald-500">قراءة الأرقام</h3>{matchNarrative(data.home.name,data.away.name,data.statistics).map(line=><p key={line}>{matchNumberInArabic(line)}</p>)}{!data.statistics.length&&<p>لم يوفر المصدر إحصائيات تفصيلية لهذه المباراة.</p>}<p className="text-xs opacity-70">هذه مقارنة للأرقام المتاحة؛ لا تكفي وحدها لإثبات أسلوب اللعب أو تحركات اللاعبين.</p></div>
  <MatchVisualReport key={data.eventId} data={visualFromEspn(data)} isDark={isDark}/>
  </>}
- {(tab==='overview'||tab==='shots')&&<MatchStatisticsBoard key={data.eventId} data={sourceData!} isDark={isDark} view={tab} homeLogo={homeLogo} awayLogo={awayLogo}/>}
+ {(tab==='overview'||tab==='shots')&&<MatchStatisticsBoard key={data.eventId} data={sourceData!} isDark={isDark} view={tab} homeLogo={homeLogo||data.home.logo} awayLogo={awayLogo||data.away.logo}/>}
  {tab==='heat'&&<div className="p-4 sm:p-5">
   <label className="block font-bold">اختر لاعبًا من المباراة
    <select className={`mt-2 block w-full rounded-xl border border-emerald-600/40 p-2 text-sm ${theme}`} value={player??''} onChange={e=>setPlayer(e.target.value||null)}>

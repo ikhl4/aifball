@@ -1,7 +1,7 @@
 import { footballNameInArabic } from './football-names-ar';
 import { footballLeagues } from './football-scoreboard';
 
-export const ANALYTICS_LEAGUES = footballLeagues.filter(([id]) => id !== 'all').map(([id,label]) => ({ id, label }));
+export const ANALYTICS_LEAGUES: { id:string; label:string }[] = footballLeagues.filter(([id]) => id !== 'all').map(([id,label]) => ({ id, label }));
 export const AGGREGATE_LEAGUES = new Set<string>([
   'ksa.1','eng.1','esp.1','ita.1','ger.1','fra.1','uefa.champions','afc.champions','usa.1',
 ]);
@@ -29,8 +29,8 @@ export function normalizeAnalyticsEvent(raw: any, league: string, competition: s
     return footballNameInArabic(original) || original;
   };
   const logo = (item: any) => {
-    const value = item.team?.logos?.find((logo: any) => typeof logo?.href === 'string' && /^https:\/\//.test(logo.href))?.href ?? item.team?.logo;
-    return typeof value === 'string' && /^https:\/\//.test(value) ? value : null;
+    const logos = Array.isArray(item.team?.logos) ? item.team.logos.map((logo: any) => logo?.href) : [];
+    return [item.team?.logo, ...logos].find(href => typeof href === 'string' && /^https:\/\//.test(href)) ?? null;
   };
   const score = (item: any) => state === 'pre' || item.score == null || item.score === '' || !Number.isFinite(Number(item.score)) ? null : Number(item.score);
   const href = raw?.links?.find((link: any) => isSafeEspn(link?.href))?.href;

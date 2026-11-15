@@ -50,3 +50,37 @@ test('completed-match aggregation never includes live or missing goals', () => {
   assert.equal(stats.goals,8); assert.equal(stats.averageGoals,4);
   assert.equal(stats.teams.find(t => t.name==='الاتحاد').wins,1);
 });
+
+test('daily all includes domestic and international coverage, with Riyadh dates and no duplicates', async () => {
+  const mod = { exports: {} };
+  const requests = [];
+  const riyadhDay = '20261116';
+  const early = { ...event('10','pre',null,null), date:'2026-11-15T22:30:00Z' };
+  const saudi = { ...event('12','in',2,0), date:'2026-11-16T17:30:00Z' };
+  const nations = { ...event('13','post',2,1), date:'2026-11-16T18:30:00Z' };
+  const outside = { ...event('14','pre',null,null), date:'2026-11-16T22:30:00Z' };
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/api/analytics/route.ts','utf8'), {
+    compilerOptions:{ module:ts.ModuleKind.CommonJS, target:ts.ScriptTarget.ES2020 },
+  }).outputText, {
+    exports:mod.exports, module:mod, URL, Date, AbortSignal,
+    require: id => id === 'next/server' ? {NextResponse:{json:(data,options)=>Response.json(data,options)}} : load('lib/analytics-core.ts'),
+    fetch: async path => {
+      const url = new URL(path);
+      const league = url.pathname.split('/').at(-2);
+      const interval = url.searchParams.get('dates');
+      requests.push([league,interval]);
+      const boards = {'ksa.1':[saudi], 'uefa.nations':[nations], all:interval===riyadhDay?[nations,outside]:[early]};
+      return Response.json({events:boards[league]||[]});
+    },
+  });
+  const response = await mod.exports.GET(new Request('https://test/api/analytics?date=2026-11-16'));
+  const body = await response.json();
+  assert.equal(response.status,200);
+  assert.equal(body.period.days,1);
+  assert.deepEqual(body.matches.map(m=>[m.id,m.league]),[['10','all'],['12','ksa.1'],['13','uefa.nations']]);
+  assert.ok(requests.some(([league,interval])=>league==='jpn.1'&&interval===riyadhDay));
+  requests.length=0;
+  const leagueResponse=await mod.exports.GET(new Request('https://test/api/analytics?league=ksa.1&date=2026-11-16'));
+  assert.deepEqual((await leagueResponse.json()).matches.map(m=>m.league),['ksa.1']);
+  assert.deepEqual(requests.map(([league])=>league),['ksa.1','ksa.1']);
+});

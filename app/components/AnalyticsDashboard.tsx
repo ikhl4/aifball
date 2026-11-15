@@ -5,6 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ANALYTICS_LEAGUES, aggregateAnalytics, type AnalyticsMatch } from '../../lib/analytics-core';
+import FootballTeamBadge from './FootballTeamBadge';
 import { matchDateInArabic, matchNumberInArabic } from '../../lib/match-display-ar';
 
 const MatchReport = dynamic(() => import('./MatchReport'));
@@ -14,15 +15,15 @@ type Payload = ReturnType<typeof aggregateAnalytics> & {
   partial: boolean; failed: string[]; period: { days: number; from: string; to: string };
 };
 const STATUS = { pre:'قادمة', in:'مباشر', post:'انتهت' };
-const periods = [7, 14, 30, 90];
+const periods = [1, 7, 14, 30, 90];
 const stateTypes = { all:'الكل', in:'مباشر', post:'النتائج', pre:'قادمة' } as const;
 type FilterState = keyof typeof stateTypes;
 const count = (n: number | null) => matchNumberInArabic(n);
 const day = new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Riyadh',month:'2-digit',day:'2-digit'});
 
 export default function AnalyticsDashboard({ compact = false, isDark = true }: { compact?: boolean; isDark?: boolean }) {
-  const [league, setLeague] = useState('ksa.1');
-  const [days, setDays] = useState(30);
+  const [league, setLeague] = useState('all');
+  const [days, setDays] = useState(1);
   const [date, setDate] = useState('');
   const [team, setTeam] = useState('');
   const [state, setState] = useState<FilterState>('all');
@@ -87,13 +88,13 @@ export default function AnalyticsDashboard({ compact = false, isDark = true }: {
       <div className={`my-3 grid grid-cols-2 gap-2 rounded-xl border p-3 sm:grid-cols-4 ${panel}`}>
         <label className="min-w-0 space-y-1 text-xs font-bold">البطولة
           <select value={league} onChange={e=>{setLeague(e.target.value);setTeam('');setSelected(null);}} className={field}>
-            <option value="all">البطولات الكبرى مجمّعة</option>
+            <option value="all">كل البطولات</option>
             {ANALYTICS_LEAGUES.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}
           </select>
         </label>
         <label className="min-w-0 space-y-1 text-xs font-bold">الفترة
           <select value={days} disabled={!!date} onChange={e=>{setDays(Number(e.target.value));setTeam('');setSelected(null);}} className={field}>
-            {periods.map(n=><option key={n} value={n}>آخر {count(n)} يومًا</option>)}
+            {periods.map(n=><option key={n} value={n}>{n===1?'اليوم':`آخر ${count(n)} يومًا`}</option>)}
           </select>
         </label>
         <label className="min-w-0 space-y-1 text-xs font-bold">الفريق
@@ -112,11 +113,12 @@ export default function AnalyticsDashboard({ compact = false, isDark = true }: {
       {loading && <p role="status" className={`rounded-xl border p-4 text-sm ${panel}`}>جارٍ جلب المباريات لهذه الفترة…</p>}
       {error && <p role="alert" className={`rounded-xl border p-4 text-sm ${panel}`}>{error} <button className="me-2 underline" type="button" onClick={()=>setRetry(n=>n+1)}>إعادة المحاولة</button></p>}
       {data && <>
+        {league==='all' && days!==1 && !date && <p className="mb-2 text-xs opacity-75">الفترات المجمّعة تعرض البطولات الكبرى. اختر بطولة للعرض التفصيلي.</p>}
         {data.partial && <p role="status" className="mb-3 rounded-xl border border-amber-600/30 px-3 py-2 text-xs">تغطية جزئية · تعذّر جلب {data.failed.join('، ')}.</p>}
         {section==='matches'&&<section aria-label="سجل المباريات" className="min-w-0">
-          <h3 className="mb-2 font-black">المباريات</h3>
+          <h3 className="mb-2 font-black">{!date && days===1 ? 'مباريات اليوم' : 'المباريات'}</h3>
           {visible.length ? <div data-statistics-scroll className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3">
-            {visible.slice(0,compact?3:50).map(m=>{
+            {(compact?visible.slice(0,3):visible).map(m=>{
               const active=selected?.id===m.id&&selected?.league===m.league;
               return <button type="button" key={m.league+':'+m.id} aria-pressed={active} onClick={()=>chooseMatch(m)}
                 className={`w-[min(80%,19rem)] shrink-0 snap-start rounded-2xl border p-3 text-start hover:border-emerald-400 focus-visible:outline-emerald-500 ${panel} ${active?'ring-1 ring-inset ring-emerald-500':''}`}>
@@ -126,7 +128,7 @@ export default function AnalyticsDashboard({ compact = false, isDark = true }: {
                 <div className="my-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center text-xs font-black">
                   {[[m.home,m.homeLogo],[m.away,m.awayLogo]].map(([name,logo], i)=><React.Fragment key={i}>
                     {i>0&&<span className="flex gap-1.5 text-xl"><bdi>{count(m.homeScore)}</bdi><span aria-hidden="true">–</span><bdi>{count(m.awayScore)}</bdi></span>}
-                    <div className="min-w-0">{logo&&<img alt="" src={logo} width={30} height={30} className="mx-auto mb-1 h-[30px] w-[30px] object-contain"/>}<span>{name}</span></div>
+                    <div className="flex min-w-0 flex-col items-center gap-1"><FootballTeamBadge name={name||''} logo={logo} size={36}/><span>{name}</span></div>
                   </React.Fragment>)}
                 </div>
                 <div className="flex justify-between gap-2 text-[11px]"><span className="opacity-75">{matchDateInArabic(m.date)}</span><span className="font-bold underline">فتح الإحصائيات</span></div>

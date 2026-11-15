@@ -5,6 +5,7 @@ import { matchNameInArabic, matchNumberInArabic, matchDateInArabic } from '../..
 import { sameProviderMatch } from '../../lib/match-heatmap-source';
 import type { DetailedMatchReport } from '../../lib/match-report';
 import { normalize365Report, type Scores365Report } from '../../lib/scores365-report';
+import FootballTeamBadge from './FootballTeamBadge';
 import { visualFrom365, visualFromEspn } from './MatchVisualReport';
 
 type View = 'overview' | 'shots';
@@ -227,7 +228,7 @@ export default function MatchStatisticsBoard({ data, homeLogo, awayLogo, isDark,
     {view === 'overview' ? <>
       <div className={`grid grid-cols-2 gap-4 rounded-xl border p-3 text-center ${panel}`}>
         {[[visual.home, homeLogo], [visual.away, awayLogo]].map(([name, logo], index) => <div key={index} className="flex min-w-0 items-center justify-center gap-2 text-sm font-black">
-          {logo && <img src={logo} alt="" width="28" height="28" className="h-7 w-7 object-contain" />}
+          <FootballTeamBadge name={matchNameInArabic(name||'')} logo={logo} size={30}/>
           <span>{matchNameInArabic(name || '')}</span>
         </div>)}
       </div>

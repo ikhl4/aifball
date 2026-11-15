@@ -13,24 +13,34 @@ const windowDates = (days: number) => {
 };
 export async function GET(req: Request) {
   const params = new URL(req.url).searchParams;
-  const league = params.get('league') || 'ksa.1';
-  const days = Number(params.get('days') || '30');
+  const league = params.get('league') || 'all';
+  const days = Number(params.get('days') || '1');
   const date = params.get('date');
   const picked = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(date+'T00:00:00Z') : null;
   if (date && (!picked || !Number.isFinite(picked.getTime()) || picked.toISOString().slice(0,10)!==date)) {
     return NextResponse.json({ error:'تاريخ المباراة غير صالح.' }, { status:400 });
   }
-  if (!(league === 'all' || ANALYTICS_LEAGUES.some(x => x.id === league)) || ![7, 14, 30, 90].includes(days)) {
+  if (!(league === 'all' || ANALYTICS_LEAGUES.some(x => x.id === league)) || ![1, 7, 14, 30, 90].includes(days)) {
     return NextResponse.json({ error: 'الدوري أو الفترة غير مدعومين.' }, { status: 400 });
   }
   const chosenDay = date?.replace(/-/g,'');
   const dates = chosenDay ? { from:chosenDay, to:chosenDay } : windowDates(days);
-  const selected = ANALYTICS_LEAGUES.filter(x => league === 'all' ? AGGREGATE_LEAGUES.has(x.id) : x.id === league);
+  const singleDay = dates.from === dates.to;
+  const selected = ANALYTICS_LEAGUES.filter(x => league === 'all' ? singleDay || AGGREGATE_LEAGUES.has(x.id) : x.id === league);
+  if (league === 'all' && singleDay) selected.push({ id:'all', label:'بطولات عالمية أخرى' });
+  const first = new Date(Date.UTC(Number(dates.from.slice(0, 4)), Number(dates.from.slice(4, 6)) - 1, 1));
+  const last = new Date(Date.UTC(Number(dates.to.slice(0, 4)), Number(dates.to.slice(4, 6)) - 1, 1));
+  const months: string[] = [];
+  for (let month = first; month <= last; month = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 1))) {
+    months.push(String(month.getUTCFullYear()) + String(month.getUTCMonth() + 1).padStart(2, '0'));
+  }
+  const currentDay = new Date(Date.UTC(Number(dates.to.slice(0,4)), Number(dates.to.slice(4,6))-1, Number(dates.to.slice(6,8))));
+  const previousDay = new Date(currentDay.getTime()-86_400_000).toISOString().slice(0,10).replace(/-/g,'');
   const responses = await Promise.allSettled(selected.map(async ({ id, label }) => {
     const root = `https://site.api.espn.com/apis/site/v2/sports/soccer/${id}/scoreboard`;
-    const fetchMonth = async (yearMonth: string) => {
-      const response = await fetch(root + '?dates=' + yearMonth + '&limit=500', {
-        cache: 'no-store',
+    const fetchScoreboard = async (interval: string) => {
+      const response = await fetch(root + '?dates=' + interval + '&limit=500', {
+        ...(singleDay ? { next:{ revalidate:25 } } : { cache:'no-store' as const }),
         signal: AbortSignal.timeout(12000),
         headers: { 'User-Agent': 'Mozilla/5.0' },
       });
@@ -39,17 +49,14 @@ export async function GET(req: Request) {
       if (!Array.isArray(data?.events)) throw new Error('Invalid scoreboard');
       return data.events as any[];
     };
-    // ESPN may reject YYYYMMDD-YYYYMMDD ranges. Query individual calendar months,
-    // then filter events to the exact Riyadh-day interval requested.
-    const months: string[] = [];
-    const first = new Date(Date.UTC(Number(dates.from.slice(0, 4)), Number(dates.from.slice(4, 6)) - 1, 1));
-    const last = new Date(Date.UTC(Number(dates.to.slice(0, 4)), Number(dates.to.slice(4, 6)) - 1, 1));
-    for (let month = first; month <= last; month = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 1))) {
-      months.push(String(month.getUTCFullYear()) + String(month.getUTCMonth() + 1).padStart(2, '0'));
-    }
-    const monthResponses = await Promise.allSettled(months.map(fetchMonth));
-    const succeeded = monthResponses.filter((item): item is PromiseFulfilledResult<any[]> => item.status === 'fulfilled');
-    if (!succeeded.length) throw new Error('All monthly ESPN requests failed');
+    // The global feed also covers the preceding UTC date for early Riyadh kickoffs.
+    // A directly selected competition checks both UTC dates itself.
+    const intervals = singleDay
+      ? (id === 'all' || league !== 'all' ? [dates.to, previousDay] : [dates.to])
+      : months;
+    const boardResponses = await Promise.allSettled(intervals.map(fetchScoreboard));
+    const succeeded = boardResponses.filter((item): item is PromiseFulfilledResult<any[]> => item.status === 'fulfilled');
+    if (!succeeded.length) throw new Error('All ESPN requests failed');
     const events = succeeded.flatMap(item => item.value);
     const normalized = events.map((event: any) => normalizeAnalyticsEvent(event, id, label)).filter((event): event is NonNullable<typeof event> => event !== null);
     const from = dates.from, to = dates.to;
@@ -57,14 +64,20 @@ export async function GET(req: Request) {
       const day = riyadhDay(new Date(m.date));
       return day >= from && day <= to;
     });
-    return { matches, partial: succeeded.length !== monthResponses.length };
+    return { matches, partial: succeeded.length !== boardResponses.length };
   }));
   const failed = selected.filter((_, index) => responses[index].status === 'rejected' || (responses[index].status === 'fulfilled' && responses[index].value.partial)).map(x => x.label);
   const matches = responses.flatMap(result => result.status === 'fulfilled' ? result.value.matches : []);
   if (responses.every(result => result.status === 'rejected')) return NextResponse.json({ error: 'تعذّر الحصول على بيانات مؤكدة من المصدر.' }, { status: 502 });
-  const unique = [...new Map(matches.map(m => [m.league + ':' + m.id, m])).values()].sort((a,b) => Date.parse(b.date) - Date.parse(a.date));
+  const seen = new Set<string>();
+  const unique = matches.filter(m => {
+    if (seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  })
+    .sort((a,b) => singleDay ? Date.parse(a.date) - Date.parse(b.date) : Date.parse(b.date) - Date.parse(a.date));
   return NextResponse.json({
-    source: 'ESPN', fetchedAt: new Date().toISOString(), period: { days, ...dates }, league,
-    partial: failed.length > 0, failed, ...aggregateAnalytics(unique), matches: unique.slice(0, 600),
+    source: 'ESPN', fetchedAt: new Date().toISOString(), period: { days:singleDay ? 1 : days, ...dates }, league,
+    partial: failed.length > 0, failed, ...aggregateAnalytics(unique), matches: singleDay ? unique : unique.slice(0, 600),
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
