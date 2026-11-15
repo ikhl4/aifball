@@ -399,6 +399,10 @@ export async function POST(req: Request) {
     console.log('Sending to Dify:', { query, conversation_id, hasFiles: files.length > 0 });
 
     const playerCareer = /مسير|لاعب|بطاق|راتب|عقد|سوقي|career|player|profile|salary|contract/i.test(query) || /^(?:[\p{L}\p{M}]+[ \t]+){1,4}[\p{L}\p{M}]+[؟?]?$/u.test(query.trim());
+    const briefSeasonStats = /(?:إحصائيات|احصائيات|أرقام|ارقام|stats|statistics|numbers)/i.test(query)
+      && /(?:هذا الموسم|الموسم الحالي|هالموسم|this season|current season|2026[\\/-]2027)/i.test(query)
+      && !/(?:كامل|كاملة|تفصيل|المسيرة|مسيرته|career|all seasons|every competition|جميع البطولات)/i.test(query);
+    const quickSeasonStatsRules = '\\nطلب إحصائيات لاعب للموسم الحالي: حدد هوية اللاعب والنادي والموسم 2026-2027 أولاً. استخرج من صفحة إحصائية مباشرة موثوقة (رابطة الدوري أو FotMob أو 365Scores أو SofaScore) ثلاثة أرقام مرتبة: المباريات، الأهداف، الصناعات. اعرض الأرقام التي تحققت منها فورًا، مع اسم البطولة بدقة مثل «دوري روشن فقط»، حتى لو لم يتوفر إجمالي جميع البطولات. لا تسمِّ بيانات الدوري «جميع المسابقات»، ولا تجمع أرقام بطولات متعددة دون التحقق. إذا عُرف رقمان ولم تتوفر الصناعة فلا تخفِ الرقمين؛ اكتب الصناعة «غير متاح» فقط. إن وجدت إجمالي جميع المسابقات المؤكد فأضفه بشكل منفصل. اختصر الإجابة لبطاقة أو سطور قصيرة مناسبة للجوال؛ لا تسرد اعتذارًا طويلًا ولا تُصرّ على استكمال تاريخ اللاعب أو بطولاته أو راتبه لأن المستخدم لم يطلبها. لا تختلق أي رقم أو تدّع التحقق من مقتطف بحث فقط.\\n';
     const nameOnlyPlayer = !conversation_id && !hasImage && /^[\p{L}\p{M}]+(?:[ \t]+[\p{L}\p{M}]+){1,3}[؟?]?$/u.test(query.trim()) && !/^(?:متى|كيف|لماذا|وين|من|هل|كم|وش|ايش|ما|أين|where|when|how|who|what)(?:\s|$)/i.test(query.trim());
     const fastPlayerInstruction = '\nابدأ بإرسال بطاقة اللاعب فور تأكيد هويته وصورته الأساسية. لا تنتظر جمع جميع الأرقام والبطولات قبل إرسال أول محتوى مفيد؛ استكمل التفاصيل الموثقة بعد البطاقة في نفس الرد. ابحث عن المصادر المستقلة الضرورية فقط، ولا تكرر البحث عن معلومة تم التحقق منها. لا تخترع أرقامًا أو سنوات.\n';
     const wantsTweet = /(?:اكتب|جهز|صغ|سو|اعطني|أعطني|ابي|أبي|ابغى|أبغى|اريد|أريد|write|draft|compose).{0,50}(?:تغريد|بوست|منشور|tweet|post)|(?:تغريد|بوست|منشور|tweet|post).{0,50}(?:عن|حول|بشأن|for|about)|(?:اغرد|أغرد|غرد|غردلي|tweet about|post about)/i.test(query);
@@ -412,7 +416,7 @@ export async function POST(req: Request) {
         ? withMatchReportPresentation(query)
         : analysis
           ? withAnalysisPresentation(query)
-          : (conversation_id ? withMatchConversationContext(query) : query) + (playerCareer ? PLAYER_CAREER_RULES + (nameOnlyPlayer ? fastPlayerInstruction : '') : '');
+          : (conversation_id ? withMatchConversationContext(query) : query) + (briefSeasonStats ? quickSeasonStatsRules : (playerCareer ? PLAYER_CAREER_RULES + (nameOnlyPlayer ? fastPlayerInstruction : '') : ''));
     const fixtureContext = singleReport && !/\bvideo_status="found"/.test(singleReport)
       ? '\nبيانات المباراة المؤكدة من مصدر النتائج (لا تعرض رسالة فشل الفيديو قبل تجربة DuckDuckGo المتصلة):\n'
         + singleReport.replace(/\s+video_status="[^"]*"/, '')
