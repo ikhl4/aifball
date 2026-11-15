@@ -21,6 +21,7 @@ const OFFICIAL_CHANNEL_TITLES = new Set([
 // Verified official YouTube channel IDs, used if search omits @handles.
 const VERIFIED_CHANNEL_IDS: Record<string, string> = {
   UCyGa1YEx9ST66rYrJTGIKOw: 'uefa',
+  UCvuPuKPukGd8S2qr4msLAuQ: 'tod_bybein',
   UCJUCcJUeh0Cz2xyKwkw5Q1w: 'beinsports',
   UCivJETAP4VD7rXRgjdpVwNw: 'ittihadclub',
   UCnj0TjaM0wyxkAWW_nz8_1g: 'theafchub',
@@ -264,6 +265,11 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
     if (candidateId) diagnostics.result = 'candidate_supplied';
     if (candidateId) { try { return { status: 'found', video: await check(candidateId) }; } catch { /* Try the official channel instead of declaring absence. */ } }
     const queries = [
+      // Publisher-focused searches first: generic results are often old reposts,
+      // while the original beIN/TOD upload is buried in the search results.
+      'beIN SPORTS ملخص ' + (footballNameInArabic(match.home)||match.home) + ' ' + (footballNameInArabic(match.away)||match.away) + ' ' + match.date.slice(0,4),
+      'TOD by beIN ' + match.home + ' ' + match.away + ' highlights ' + match.date.slice(0,4),
+      'beIN SPORTS ' + match.home + ' ' + match.away + ' highlights ' + match.date,
       'site:youtube.com/watch ' + match.home + ' ' + match.away + ' highlights ' + match.date,
       'site:youtube.com/watch ' + (footballNameInArabic(match.home) || match.home) + ' ' + (footballNameInArabic(match.away) || match.away) + ' ملخص ' + match.date + ' ' + (match.competition || ''),
       'site:youtube.com/watch ' + (footballNameInArabic(match.home) || match.home) + ' ' + (footballNameInArabic(match.away) || match.away) + ' highlights ' + match.date.slice(0, 4) + ' ' + (match.competition || ''),
@@ -315,7 +321,7 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
         diagnostics.youtubeVideoEntries += videos.size;
         const matched = [...videos].filter(([, title]) => matchesTeams(title, match));
         diagnostics.youtubeMatchedTitles += matched.length;
-        for (const [id] of matched.slice(0, 10)) {
+        for (const [id] of matched.slice(0, 16)) {
           try { const video = await check(id); diagnostics.result = 'youtube_verified'; return { status: 'found', video }; }
           catch (err) {
             diagnostics.youtubeWatchRejected++;
@@ -346,6 +352,8 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
               title: entry.title, channel: entry.channelName,
               publishedAt: '', embeddable: false,
             };
+            // Allow a verified channel ID to corroborate a matching video title
+            // even if YouTube omits the @handle from the search card.
             const official = verifiedPublisher(entry.handle, entry.channelId, entry.channelName);
             if (official) {
               diagnostics.result = 'youtube_verified_publisher_search';
@@ -357,6 +365,8 @@ export async function findHighlightVideo(match: HighlightMatch, candidate = '', 
       } catch { failed = true; diagnostics.youtubeSearchErrors++; }
     }
     const channels = [...HIGHLIGHT_CHANNELS];
+    // Search publishers the user chose first, not an alphabetic or generic sequence.
+    channels.sort((a,b) => Number(['beinsports','tod_bybein'].includes(b))-Number(['beinsports','tod_bybein'].includes(a)));
     if (/روشن|saudi|ksa/i.test(match.competition || '')) channels.sort((a, b) => Number(b === 'thmanyahsports') - Number(a === 'thmanyahsports'));
     for (let offset = 0; offset < channels.length && !c.signal.aborted; offset += 3) {
       const results = await Promise.allSettled(channels.slice(offset, offset + 3).map(async handle => {
