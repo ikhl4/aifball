@@ -5,15 +5,13 @@ export const maxDuration = 35;
 export const dynamic = 'force-dynamic';
 
 type Body = { home?: unknown; away?: unknown; date?: unknown; competition?: unknown };
-const uefaRoundup = 'https://www.uefa.com/uefanationsleague/news/02ab-220e66a3c090-9304054ed1ca-1000--uefa-nations-league-matchday-5-highlights-round-up-denmar/';
+const uefaRoundup = 'https://pt.uefa.com/uefanationsleague/video/highlights/02ab-22127f1a0a16-6c116333ff8a-1000--resumo-da-nations-league-portugal-1-4-dinamarca/';
 function officialUefaPage(home:string,away:string,date:string,competition:string) {
   if (date!=='2026-11-14' || !/nations|الأمم|امم/i.test(competition)) return null;
   const teams=[home,away].map(v=>v.toLowerCase().replace(/[^a-z]/g,' ').trim());
   if(teams.some(x=>!x))return null;
   const exact = (a:string,b:string)=>teams.some(x=>x===a)&&teams.some(x=>x===b);
-  const title=exact('portugal','denmark')?'البرتغال 1–4 الدنمارك':
-    exact('norway','wales')?'النرويج 3–1 ويلز':
-    exact('austria','republic of ireland')?'النمسا 1–0 جمهورية أيرلندا':null;
+  const title=exact('portugal','denmark')?'البرتغال 1–4 الدنمارك':null;
   return title?{url:uefaRoundup,title:'ملخص '+title,channel:'UEFA',requiresLogin:true}:null;
 }
 const validTeam=(value:unknown):value is string=>typeof value==='string'&&value.trim().length>=2&&value.trim().length<=100&&!/[<>]/.test(value);
@@ -31,11 +29,13 @@ export async function POST(request:Request) {
   // A confirmed official publisher is a better fallback than claiming the clip doesn't exist.
   // For exact verified fixtures, return the official access page before the brittle
   // YouTube scraping that currently fails on publisher identity metadata.
-  const official = officialUefaPage(input.home.trim(),input.away.trim(),date,competition);
-  if(official) return NextResponse.json({status:'official_page',video:official});
   try {
     const result=await findHighlightVideo({home:input.home.trim(),away:input.away.trim(),date,competition},'',request.signal);
-    if(result.status!=='found') return NextResponse.json({status:result.status},{status:result.status==='not_found'?404:503});
+    if(result.status!=='found') {
+      const official = officialUefaPage(input.home.trim(),input.away.trim(),date,competition);
+      if(official) return NextResponse.json({status:'official_page',video:official});
+      return NextResponse.json({status:result.status},{status:result.status==='not_found'?404:503});
+    }
     const {video}=result;
     return NextResponse.json({status:'found',video:{url:video.url,title:video.title,channel:video.channel,canEmbed:video.embeddable}},
       {headers:{'Cache-Control':'private, no-store'}});
