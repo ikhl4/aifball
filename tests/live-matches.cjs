@@ -139,8 +139,13 @@ test('now and today retain a match still in progress across Riyadh midnight', as
     { ...sample('final', 'post'), date: '2026-12-31T19:00:00Z' },
     { ...sample('upcoming'), date: '2027-01-01T15:00:00Z' },
   ];
-  const get = route(async url => response(url.includes('/ksa.1/') ? events : []), '2026-12-31T21:15:00Z', 'league=all&grouped=1');
-  for (const [tab, ids] of [['now', ['in-progress']], ['today', ['in-progress', 'upcoming']], ['yesterday', ['in-progress', 'final']]]) {
+  const get = route(async url => {
+    const date = new URL(url).searchParams.get('dates');
+    assert.match(date, /^\d{8}$/);
+    if (!url.includes('/ksa.1/')) return response([]);
+    return response(events.filter(event => event.date.startsWith(date === '20261231' ? '2026-12-31' : '2027-01-01')));
+  }, '2026-12-31T21:15:00Z', 'league=all&grouped=1');
+  for (const [tab, ids] of [['now', ['in-progress']], ['today', ['upcoming', 'in-progress']], ['yesterday', ['in-progress', 'final']]]) {
     const result = await get(tab);
     assert.equal(result.status, 200);
     assert.equal(JSON.stringify(result.data.matches['ksa.1'].map(match => match.id)), JSON.stringify(ids));

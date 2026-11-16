@@ -46,28 +46,40 @@ export async function GET(request: Request) {
     // Include previous-day kickoffs still in progress after midnight in Riyadh.
     const codes = footballLeagues.map(([id]) => id);
     const results = await Promise.allSettled(codes.map(async code => {
-      if (code !== 'all') return (await scoreboard(code, current ? `${previous}-${date}` : date)).events as FootballEvent[];
+      if (!current && code !== 'all') return { events: (await scoreboard(code, date)).events as FootballEvent[], partial: false };
       const days = await Promise.allSettled([scoreboard(code, date), scoreboard(code, previous)]);
-      if (days.every(result => result.status === 'rejected')) throw new Error('World scoreboard unavailable');
-      return days.flatMap(result => result.status === 'fulfilled' ? result.value.events as FootballEvent[] : []);
+      if (days.every(result => result.status === 'rejected')) throw new Error('Scoreboard unavailable');
+      return {
+        events: days.flatMap(result => result.status === 'fulfilled' ? result.value.events as FootballEvent[] : []),
+        partial: days.some(result => result.status === 'rejected'),
+      };
     }));
     if (results.every(result => result.status === 'rejected')) return NextResponse.json({ error: 'تعذّر جلب النتائج' }, { status: 502 });
     const seen = new Set<string>();
     const matches: Record<string, FootballEvent[]> = {};
     results.forEach((result, index) => {
       if (result.status !== 'fulfilled') return;
-      matches[codes[index]] = result.value.filter(event => {
+      matches[codes[index]] = result.value.events.filter(event => {
         if (!include(event) || seen.has(event.id)) return false;
         seen.add(event.id);
         return true;
       });
     });
-    return NextResponse.json({ matches, failed: results.filter(result => result.status === 'rejected').length }, { headers });
+    return NextResponse.json({ matches, failed: results.filter(result => result.status === 'rejected' || result.value.partial).length }, { headers });
   }
 
   try {
-    const board = await scoreboard(league, liveOnly ? `${previous}-${date}` : date);
-    return NextResponse.json(liveOnly ? { ...board, events: board.events.filter(include) } : board, { headers });
+    if (!liveOnly) return NextResponse.json(await scoreboard(league, date), { headers });
+    const days = await Promise.allSettled([scoreboard(league, date), scoreboard(league, previous)]);
+    const boards = days.flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
+    if (!boards.length) throw new Error('Scoreboard unavailable');
+    const events = new Map<string, FootballEvent>();
+    for (const board of boards) {
+      for (const event of board.events as FootballEvent[]) {
+        if (!events.has(event.id)) events.set(event.id, event);
+      }
+    }
+    return NextResponse.json({ ...boards[0], events: [...events.values()].filter(include) }, { headers });
   } catch {
     return NextResponse.json({ error: 'تعذّر جلب النتائج' }, { status: 502 });
   }
