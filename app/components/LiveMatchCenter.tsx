@@ -12,7 +12,7 @@ import { matchNameInArabic, matchNumberInArabic } from '../../lib/match-display-
 import { footballGroups, footballLeagues, type FootballBoard, type FootballEvent, type FootballTeam, type ScoresLanguage } from '../../lib/football-scoreboard';
 
 const dateOptions = [
-  ['yesterday', 'أمس', 'Yesterday'], ['today', 'اليوم', 'Today'], ['tomorrow', 'غدًا', 'Tomorrow'],
+  ['now', 'الآن', 'Now'], ['yesterday', 'أمس', 'Yesterday'], ['today', 'اليوم', 'Today'], ['tomorrow', 'غدًا', 'Tomorrow'],
 ] as const;
 const englishFilters = { all: 'All', live: 'Live now', scheduled: 'Upcoming', finished: 'Finished' };
 const nationalPriority = new Set(['Argentina', 'Brazil', 'England', 'France', 'Germany', 'Italy', 'Spain', 'Portugal', 'Netherlands', 'Uruguay', 'Egypt', 'Morocco', 'Japan', 'South Korea', 'Qatar', 'Iraq', 'United Arab Emirates', 'Kuwait', 'Jordan']);
@@ -41,6 +41,8 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
   const ar = language === 'ar';
   const t = (arabic: string, english: string) => ar ? arabic : english;
   const [date, setDate] = useState<(typeof dateOptions)[number][0]>('today');
+  const liveOnly = date === 'now';
+  const autoRefresh = liveOnly || date === 'today';
   const [board, setBoard] = useState<FootballBoard>();
   const [failed, setFailed] = useState(false);
   const [expanded, setExpanded] = useState<{ eventId: string; view: 'summary' | 'report' }>();
@@ -81,15 +83,15 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
       }
     };
     void refresh();
-    const timer = date === 'today' ? setInterval(refresh, 30000) : undefined;
+    const timer = autoRefresh ? setInterval(refresh, 30000) : undefined;
     return () => { controller.abort(); clearInterval(timer); };
-  }, [date]);
+  }, [date, autoRefresh]);
 
   const { all: otherWorld, ...specific } = board?.matches ?? {};
   const matches = { ...specific, 'other-world': otherWorld ?? [] };
   const input = favoriteOnly ? Object.fromEntries(Object.entries(matches).map(([id, events]) =>
     [id, events.filter(event => getTeams(event).some(team => favorites.includes(team.id)))])) : matches;
-  const filtered = filterLiveMatches(input, league === 'all-leagues' ? 'all' : league === 'all' ? 'other-world' : league, search, status);
+  const filtered = filterLiveMatches(input, league === 'all-leagues' ? 'all' : league === 'all' ? 'other-world' : league, search, liveOnly ? 'live' : status);
   const visible = filtered.visible;
   const display = (team: FootballTeam) => ar ? matchNameInArabic(teamName(team)) : teamName(team);
   const timeFormat = new Intl.DateTimeFormat(ar ? 'ar-SA' : 'en-GB', { timeZone: 'Asia/Riyadh', hour: 'numeric', minute: '2-digit' });
@@ -102,7 +104,7 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
       : topLeagues.has(code) ? 35 : 0;
     return { code, event, score };
   })).filter(item => item.score > 0).sort((a, b) =>
-    b.score - a.score || Number(matchFilterState(b.event) === 'live') - Number(matchFilterState(a.event) === 'live') || a.event.date.localeCompare(b.event.date)
+    Number(matchFilterState(b.event) === 'live') - Number(matchFilterState(a.event) === 'live') || b.score - a.score || a.event.date.localeCompare(b.event.date)
   ).slice(0, 6);
   const prioritized = new Set(priorities.map(item => item.event.id));
   const box = `rounded-2xl border ${isDark ? 'border-white/15 bg-white/5' : 'border-emerald-900/15 bg-white'}`;
@@ -116,8 +118,8 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
     const view = open ? expanded.view : undefined;
     const reportLeague = code === 'other-world' ? 'all' : code;
     const canReport = sides.length === 2 && (state === 'live' || state === 'finished');
-    const timing = state === 'live' ? event.status?.type?.name === 'STATUS_HALFTIME' ? t('استراحة', 'Half-time')
-      : event.status?.displayClock ? t('مباشر', 'Live') + ' · ' + (ar ? matchNumberInArabic(event.status.displayClock) : event.status.displayClock) : t('مباشر', 'Live')
+    const timing = state === 'live' ? event.status?.type?.name === 'STATUS_HALFTIME' ? t('الآن · استراحة', 'Now · Half-time')
+      : event.status?.displayClock ? t('الآن', 'Now') + ' · ' + (ar ? matchNumberInArabic(event.status.displayClock) : event.status.displayClock) : t('الآن', 'Now')
       : state === 'finished' ? t('انتهت', 'Finished')
       : state === 'scheduled' ? timeFormat.format(new Date(event.date))
       : /POSTPONED/i.test(event.status?.type?.name ?? '') ? t('مؤجلة', 'Postponed')
@@ -126,7 +128,7 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
       <article key={event.id} className={`overflow-hidden ${box}`}>
         <div className="grid grid-cols-[1fr_auto] items-start gap-2 p-3">
           <button type="button" aria-expanded={view === 'summary'} onClick={() => setExpanded(view === 'summary' ? undefined : { eventId: event.id, view: 'summary' })} className="min-w-0 space-y-2 text-start">
-            <span className="block text-xs font-bold text-emerald-600">{timing}</span>
+            <span className={state === 'live' ? 'inline-flex rounded-full bg-red-700 px-2 py-1 text-xs font-bold text-white' : 'block text-xs font-bold text-emerald-600'}>{timing}</span>
             {sides.map(({ team, score }) => team && (
               <span key={team.id} className="flex items-center justify-between gap-3 font-semibold">
                 <span className="flex min-w-0 items-center gap-2">{officialClubBadge(teamName(team))
@@ -174,13 +176,13 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
             <option key={id} value={id}>{t(label, english)}</option>)}</optgroup>)}
         </select>
       </div>
-      <div className="flex flex-wrap gap-2" role="group" aria-label={t('حالة المباراة', 'Match status')}>
+      {!liveOnly && <div className="flex flex-wrap gap-2" role="group" aria-label={t('حالة المباراة', 'Match status')}>
         {MATCH_FILTERS.map(filter => <button type="button" key={filter.id} className={chip(status === filter.id)} aria-pressed={status === filter.id} onClick={() => setStatus(filter.id)}>{t(filter.label, englishFilters[filter.id])}</button>)}
-      </div>
-      <p className="text-xs opacity-70">{t('توقيت الرياض', 'Riyadh time')}{date === 'today' ? t(' · تحديث كل ٣٠ ثانية', ' · Refreshes every 30 seconds') : ''}</p>
+      </div>}
+      <p className="text-xs opacity-70">{t('توقيت الرياض', 'Riyadh time')}{autoRefresh ? t(' · تحديث كل ٣٠ ثانية', ' · Refreshes every 30 seconds') : ''}</p>
       {(failed || !!board?.failed) && <p role="status" className="text-sm text-emerald-600">{t('تعذّر تحديث بعض النتائج.', 'Some scores could not be refreshed.')}</p>}
       {!board && !failed && <p role="status">{t('جارٍ جلب المباريات…', 'Loading matches…')}</p>}
-      {board && !Object.values(visible).some(events => events.length) && <p role="status">{favoriteOnly && !favorites.length ? t('اضغط النجمة بجانب أي فريق لإضافته للمفضلة.', 'Select the star next to a team to favorite it.') : t('لا توجد مباريات مطابقة في البيانات المتاحة.', 'No matching matches in the available data.')}</p>}
+      {board && !Object.values(visible).some(events => events.length) && <p role="status">{favoriteOnly && !favorites.length ? t('اضغط النجمة بجانب أي فريق لإضافته للمفضلة.', 'Select the star next to a team to favorite it.') : liveOnly ? t('لا توجد مباريات مباشرة الآن ضمن اختياراتك.', 'No live matches for your current filters.') : t('لا توجد مباريات مطابقة في البيانات المتاحة.', 'No matching matches in the available data.')}</p>}
       {league === 'all-leagues' && priorities.length > 0 && <section className="space-y-2">
         <h3 className="font-bold text-emerald-600">{t('أهم المباريات', 'Top matches')}</h3>
         {priorities.map(({ event, code }) => row(event, code))}

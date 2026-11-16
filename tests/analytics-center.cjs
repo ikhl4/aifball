@@ -53,6 +53,11 @@ test('completed-match aggregation never includes live or missing goals', () => {
 
 test('daily all limits leagues and keeps featured official and friendly matches on the Riyadh date', async () => {
   const mod = { exports: {} };
+  class Clock extends Date {
+    constructor(...args) { super(...(args.length ? args : ['2026-11-15T21:15:00Z'])); }
+  }
+  const previousLive = { ...event('17','in',2,0), date:'2026-11-15T20:00:00Z' };
+  const previousFinal = { ...event('18','post',1,0), date:'2026-11-15T18:00:00Z' };
   const requests = [];
   const riyadhDay = '20261116';
   const early = { ...event('10','pre',null,null), date:'2026-11-15T22:30:00Z' };
@@ -68,7 +73,7 @@ test('daily all limits leagues and keeps featured official and friendly matches 
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/api/analytics/route.ts','utf8'), {
     compilerOptions:{ module:ts.ModuleKind.CommonJS, target:ts.ScriptTarget.ES2020 },
   }).outputText, {
-    exports:mod.exports, module:mod, URL, Date, AbortSignal,
+    exports:mod.exports, module:mod, URL, Date:Clock, AbortSignal,
     require: id => id === 'next/server' ? {NextResponse:{json:(data,options)=>Response.json(data,options)}} : load('lib/analytics-core.ts'),
     fetch: async path => {
       const url = new URL(path);
@@ -76,7 +81,7 @@ test('daily all limits leagues and keeps featured official and friendly matches 
       const interval = url.searchParams.get('dates');
       requests.push([league,interval]);
       const boards = {
-        'ksa.1':[saudi],
+        'ksa.1':interval===riyadhDay?[saudi]:[previousLive,previousFinal],
         'uefa.nations':interval===riyadhDay?[nations,lowPriority,outside]:[nations],
         'fifa.friendly':interval===riyadhDay?[friendly]:[early],
       };
@@ -96,4 +101,8 @@ test('daily all limits leagues and keeps featured official and friendly matches 
   assert.deepEqual(requests.map(([league])=>league),['ksa.1','ksa.1']);
   const nationalResponse=await mod.exports.GET(new Request('https://test/api/analytics?league=uefa.nations&date=2026-11-16'));
   assert.deepEqual((await nationalResponse.json()).matches.map(m=>m.id),['13','15']);
+  const now = await mod.exports.GET(new Request('https://test/api/analytics?league=ksa.1&live=1'));
+  assert.deepEqual((await now.json()).matches.map(m=>m.id),['17','12']);
+  const today = await mod.exports.GET(new Request('https://test/api/analytics?league=ksa.1'));
+  assert.deepEqual((await today.json()).matches.map(m=>m.id),['17','12']);
 });

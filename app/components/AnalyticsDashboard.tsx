@@ -14,9 +14,9 @@ type Payload = ReturnType<typeof aggregateAnalytics> & {
   matches: AnalyticsMatch[]; source: string; fetchedAt: string;
   partial: boolean; failed: string[]; period: { days: number; from: string; to: string };
 };
-const STATUS = { pre:'قادمة', in:'مباشر', post:'انتهت' };
+const STATUS = { pre:'قادمة', in:'مباشر الآن', post:'انتهت' };
 const periods = [1, 7, 14, 30, 90];
-const stateTypes = { all:'الكل', in:'مباشر', post:'النتائج', pre:'قادمة' } as const;
+const stateTypes = { all:'الكل', in:'الآن', post:'النتائج', pre:'قادمة' } as const;
 type FilterState = keyof typeof stateTypes;
 const count = (n: number | null) => matchNumberInArabic(n);
 const day = new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Riyadh',month:'2-digit',day:'2-digit'});
@@ -35,21 +35,34 @@ export default function AnalyticsDashboard({ compact = false, isDark = true }: {
   const [retry, setRetry] = useState(0);
   const report = useRef<HTMLDivElement>(null);
   const showingStandings = section==='standings';
+  const liveOnly = state==='in';
+  const queryDate = liveOnly ? '' : date;
+  const queryDays = liveOnly ? 1 : days;
   useEffect(() => {
     if (showingStandings) return;
     const controller = new AbortController();
     setLoading(true); setData(null); setError('');
-    const params = new URLSearchParams({ league, days: String(days), ...(date ? { date } : {}) });
-    fetch('/api/analytics?'+params, { cache:'no-store', signal:controller.signal })
-      .then(async res => {
-        const json = await res.json();
-        if (!res.ok) throw Error('تعذّر تحميل المباريات.');
-        if (!controller.signal.aborted) setData(json as Payload);
-      })
-      .catch(err=>{if(!controller.signal.aborted)setError(err.message || 'تعذّر جلب المباريات.');})
-      .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
-    return () => controller.abort();
-  }, [league, days, date, retry, showingStandings]);
+    const params = new URLSearchParams({ league, days: String(queryDays), ...(queryDate ? { date:queryDate } : {}), ...(liveOnly ? { live:'1' } : {}) });
+    let pending = false;
+    async function refresh() {
+      if (pending) return;
+      pending = true;
+      try {
+        const response = await fetch('/api/analytics?'+params, { cache:'no-store', signal:controller.signal });
+        if (!response.ok) throw Error('تعذّر تحميل المباريات.');
+        const json = await response.json() as Payload;
+        if (!controller.signal.aborted) { setData(json); setError(''); }
+      } catch {
+        if (!controller.signal.aborted) setError('تعذّر تحميل المباريات.');
+      } finally {
+        pending = false;
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+    void refresh();
+    const timer = !queryDate && queryDays===1 ? window.setInterval(refresh, 30000) : undefined;
+    return () => { controller.abort(); window.clearInterval(timer); };
+  }, [league, queryDays, queryDate, liveOnly, retry, showingStandings]);
 
   const matches = data?.matches;
   const teams = useMemo(() => [...new Set((matches || []).flatMap(m => [m.home, m.away]))].sort((a,b)=>a.localeCompare(b,'ar')), [matches]);
@@ -93,7 +106,7 @@ export default function AnalyticsDashboard({ compact = false, isDark = true }: {
           </select>
         </label>
         <label className="min-w-0 space-y-1 text-xs font-bold">الفترة
-          <select value={days} disabled={!!date} onChange={e=>{setDays(Number(e.target.value));setTeam('');setSelected(null);}} className={field}>
+          <select value={days} disabled={liveOnly || !!date} onChange={e=>{setDays(Number(e.target.value));setTeam('');setSelected(null);}} className={field}>
             {periods.map(n=><option key={n} value={n}>{n===1?'اليوم':`آخر ${count(n)} يومًا`}</option>)}
           </select>
         </label>
@@ -103,19 +116,19 @@ export default function AnalyticsDashboard({ compact = false, isDark = true }: {
           </select>
         </label>
         <label className="min-w-0 space-y-1 text-xs font-bold">تاريخ المباراة
-          <input type="date" value={date} onChange={e=>{setDate(e.target.value);setTeam('');setSelected(null);}} className={field+' block'} />
+          <input type="date" disabled={liveOnly} value={date} onChange={e=>{setDate(e.target.value);setTeam('');setSelected(null);}} className={field+' block'} />
         </label>
-        {date&&<button type="button" onClick={()=>{setDate('');setTeam('');setSelected(null);}} className="justify-self-start px-1 text-xs font-bold underline">مسح التاريخ</button>}
+        {date&&!liveOnly&&<button type="button" onClick={()=>{setDate('');setTeam('');setSelected(null);}} className="justify-self-start px-1 text-xs font-bold underline">مسح التاريخ</button>}
       </div>
       <div role="group" aria-label="حالة المباريات" className="mb-3 flex flex-wrap gap-1">
-        {(Object.entries(stateTypes) as [FilterState,string][]).map(([id,title])=><button type="button" key={id} aria-pressed={state===id} className={chip(state===id)} onClick={()=>{setState(id);setSelected(null);}}>{title}</button>)}
+        {(Object.entries(stateTypes) as [FilterState,string][]).map(([id,title])=><button type="button" key={id} aria-pressed={state===id} className={chip(state===id)} onClick={()=>{if (liveOnly !== (id==='in')) setTeam(''); setState(id);setSelected(null);}}>{title}</button>)}
       </div>
       {loading && <p role="status" className={`rounded-xl border p-4 text-sm ${panel}`}>جارٍ جلب المباريات لهذه الفترة…</p>}
       {error && <p role="alert" className={`rounded-xl border p-4 text-sm ${panel}`}>{error} <button className="me-2 underline" type="button" onClick={()=>setRetry(n=>n+1)}>إعادة المحاولة</button></p>}
       {data && <>
         {data.partial && <p role="status" className="mb-3 rounded-xl border border-amber-600/30 px-3 py-2 text-xs">بعض المباريات غير متاحة حاليًا.</p>}
         {section==='matches'&&<section aria-label="سجل المباريات" className="min-w-0">
-          <h3 className="mb-2 font-black">{!date && days===1 ? 'مباريات اليوم' : 'المباريات'}</h3>
+          <h3 className="mb-2 font-black">{liveOnly ? 'المباريات المباشرة الآن' : !date && days===1 ? 'مباريات اليوم' : 'المباريات'}</h3>
           {visible.length ? <div data-statistics-scroll className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3">
             {(compact?visible.slice(0,3):visible).map(m=>{
               const active=selected?.id===m.id&&selected?.league===m.league;
@@ -130,10 +143,10 @@ export default function AnalyticsDashboard({ compact = false, isDark = true }: {
                     <div className="flex min-w-0 flex-col items-center gap-1"><FootballTeamBadge name={name||''} logo={logo} size={36}/><span>{name}</span></div>
                   </React.Fragment>)}
                 </div>
-                <div className="flex justify-between gap-2 text-[11px]"><span className="opacity-75">{matchDateInArabic(m.date)}</span><span className="font-bold underline">فتح الإحصائيات</span></div>
+                <div className="flex justify-between gap-2 text-[11px]"><span className="opacity-75">{m.state==='in' ? 'تجري الآن' : matchDateInArabic(m.date, m.state==='pre')}</span><span className="font-bold underline">فتح الإحصائيات</span></div>
               </button>;
             })}
-          </div> : <p className={`rounded-xl border p-4 text-sm ${panel}`}>لا توجد مباريات مطابقة للفلاتر.</p>}
+          </div> : <p className={`rounded-xl border p-4 text-sm ${panel}`}>{liveOnly ? 'لا توجد مباريات مباشرة الآن ضمن اختياراتك.' : 'لا توجد مباريات مطابقة للفلاتر.'}</p>}
           <div ref={report} className="scroll-mt-20">
             {selected && <MatchReport key={selected.league+':'+selected.id} matchName={selected.home+' × '+selected.away} eventId={selected.id} leagueCode={selected.league}
               homeLogo={selected.homeLogo} awayLogo={selected.awayLogo} embedded refresh={selected.state==='in'} isDark={isDark} />}
