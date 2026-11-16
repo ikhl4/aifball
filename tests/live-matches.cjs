@@ -95,13 +95,13 @@ test('missing competitors do not crash either component', async () => {
   }
 });
 
-function route(fetcher, now = '2026-12-31T22:30:00Z') {
+function route(fetcher, now = '2026-12-31T22:30:00Z', query = 'league=ksa.1') {
   const module = { exports: {} };
   class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } }
   const code = ts.transpileModule(fs.readFileSync('app/api/espn/route.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
-  vm.runInNewContext(code, { module, exports: module.exports, require: () => ({ NextResponse: { json: (data, options) => ({ data, status: options?.status || 200 }) } }),
+  vm.runInNewContext(code, { module, exports: module.exports, require: id => id.includes('football-scoreboard') ? support('lib/football-scoreboard.ts') : id.includes('live-match-filters') ? support('lib/live-match-filters.ts') : ({ NextResponse: { json: (data, options) => ({ data, status: options?.status || 200 }) } }),
     fetch: fetcher, Date: Clock, Intl, URL, AbortController, AbortSignal, setTimeout, clearTimeout, console: { error() {} } });
-  return date => module.exports.GET(new Request(`https://example.test/api/espn?league=ksa.1&date=${date}`));
+  return date => module.exports.GET(new Request(`https://example.test/api/espn?${query}&date=${date}`));
 }
 
 test('Riyadh date handles midnight, month and year rollover', async () => {
@@ -131,4 +131,18 @@ test('match details retain the last success on refresh failure and abort on clos
   assert.match(app.text(), /هدف موثّق/);
   assert.match(app.text(), /آخر تحديث/);
   app.unmount(); assert.equal(signal.aborted, true);
+});
+
+test('now and today retain a match still in progress across Riyadh midnight', async () => {
+  const events = [
+    { ...sample('in-progress', 'in'), date: '2026-12-31T20:00:00Z' },
+    { ...sample('final', 'post'), date: '2026-12-31T19:00:00Z' },
+    { ...sample('upcoming'), date: '2027-01-01T15:00:00Z' },
+  ];
+  const get = route(async url => response(url.includes('/ksa.1/') ? events : []), '2026-12-31T21:15:00Z', 'league=all&grouped=1');
+  for (const [tab, ids] of [['now', ['in-progress']], ['today', ['in-progress', 'upcoming']], ['yesterday', ['in-progress', 'final']]]) {
+    const result = await get(tab);
+    assert.equal(result.status, 200);
+    assert.equal(JSON.stringify(result.data.matches['ksa.1'].map(match => match.id)), JSON.stringify(ids));
+  }
 });

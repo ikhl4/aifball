@@ -16,6 +16,7 @@ export async function GET(req: Request) {
   const league = params.get('league') || 'all';
   const days = Number(params.get('days') || '1');
   const date = params.get('date');
+  const liveOnly = params.get('live') === '1';
   const picked = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(date+'T00:00:00Z') : null;
   if (date && (!picked || !Number.isFinite(picked.getTime()) || picked.toISOString().slice(0,10)!==date)) {
     return NextResponse.json({ error:'تاريخ المباراة غير صالح.' }, { status:400 });
@@ -24,7 +25,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'الدوري أو الفترة غير مدعومين.' }, { status: 400 });
   }
   const chosenDay = date?.replace(/-/g,'');
-  const dates = chosenDay ? { from:chosenDay, to:chosenDay } : windowDates(days);
+  const dates = liveOnly ? windowDates(1) : chosenDay ? { from:chosenDay, to:chosenDay } : windowDates(days);
   const singleDay = dates.from === dates.to;
   const selected = ANALYTICS_LEAGUES.filter(x => league === 'all' ? FEATURED_ANALYTICS_LEAGUES.has(x.id) : x.id === league);
   const first = new Date(Date.UTC(Number(dates.from.slice(0, 4)), Number(dates.from.slice(4, 6)) - 1, 1));
@@ -59,7 +60,9 @@ export async function GET(req: Request) {
     const from = dates.from, to = dates.to;
     const matches = normalized.filter(m => {
       const day = riyadhDay(new Date(m.date));
-      return day >= from && day <= to;
+      const liveNow = m.state === 'in' && (day === to || day === previousDay);
+      if (liveOnly) return liveNow;
+      return (day >= from && day <= to) || (!chosenDay && singleDay && liveNow);
     });
     return { matches, partial: succeeded.length !== boardResponses.length };
   }));
@@ -72,7 +75,9 @@ export async function GET(req: Request) {
     seen.add(m.id);
     return true;
   })
-    .sort((a,b) => singleDay ? Date.parse(a.date) - Date.parse(b.date) : Date.parse(b.date) - Date.parse(a.date));
+    .sort((a,b) => singleDay
+      ? Number(b.state === 'in') - Number(a.state === 'in') || Date.parse(a.date) - Date.parse(b.date)
+      : Date.parse(b.date) - Date.parse(a.date));
   return NextResponse.json({
     source: 'ESPN', fetchedAt: new Date().toISOString(), period: { days:singleDay ? 1 : days, ...dates }, league,
     partial: failed.length > 0, failed, ...aggregateAnalytics(unique), matches: singleDay ? unique : unique.slice(0, 600),

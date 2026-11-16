@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { matchFilterState } from '../../../lib/live-match-filters';
 import { footballLeagues, type FootballEvent } from '../../../lib/football-scoreboard';
 
 export const maxDuration = 20;
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
   const dateQuery = searchParams.get('date') || 'today';
   const combined = league === 'all' && searchParams.get('grouped') === '1';
   if (league.length > 100 || !/^(?:all|[a-z]+(?:\.[a-z0-9_]+)+)$/i.test(league) ||
-      !['today', 'yesterday', 'tomorrow'].includes(dateQuery)) {
+      !['now', 'today', 'yesterday', 'tomorrow'].includes(dateQuery)) {
     return NextResponse.json({ error: 'الدوري أو التاريخ غير صالح' }, { status: 400 });
   }
 
@@ -30,12 +31,22 @@ export async function GET(request: Request) {
   today.setUTCDate(today.getUTCDate() + (dateQuery === 'yesterday' ? -1 : dateQuery === 'tomorrow' ? 1 : 0));
   const day = today.toISOString().slice(0, 10);
   const date = day.replace(/-/g, '');
+  const liveOnly = dateQuery === 'now';
+  const current = liveOnly || dateQuery === 'today';
+  const previousDate = new Date(today.getTime() - 86_400_000).toISOString().slice(0, 10);
+  const previous = previousDate.replace(/-/g, '');
+  const include = (event: FootballEvent) => {
+    const start = new Date(event.date);
+    if (!event.id || !Number.isFinite(start.getTime())) return false;
+    const kickoff = riyadh.format(start);
+    const live = current && (kickoff === day || kickoff === previousDate) && matchFilterState(event) === 'live';
+    return liveOnly ? live : kickoff === day || live;
+  };
   if (combined) {
-    // Fetch the preceding UTC day too. Early Riyadh kickoffs can fall on that day.
-    const previous = new Date(today.getTime() - 86_400_000).toISOString().slice(0, 10).replace(/-/g, '');
+    // Include previous-day kickoffs still in progress after midnight in Riyadh.
     const codes = footballLeagues.map(([id]) => id);
     const results = await Promise.allSettled(codes.map(async code => {
-      if (code !== 'all') return (await scoreboard(code, date)).events as FootballEvent[];
+      if (code !== 'all') return (await scoreboard(code, current ? `${previous}-${date}` : date)).events as FootballEvent[];
       const days = await Promise.allSettled([scoreboard(code, date), scoreboard(code, previous)]);
       if (days.every(result => result.status === 'rejected')) throw new Error('World scoreboard unavailable');
       return days.flatMap(result => result.status === 'fulfilled' ? result.value.events as FootballEvent[] : []);
@@ -46,8 +57,7 @@ export async function GET(request: Request) {
     results.forEach((result, index) => {
       if (result.status !== 'fulfilled') return;
       matches[codes[index]] = result.value.filter(event => {
-        const start = new Date(event.date);
-        if (!event.id || !Number.isFinite(start.getTime()) || riyadh.format(start) !== day || seen.has(event.id)) return false;
+        if (!include(event) || seen.has(event.id)) return false;
         seen.add(event.id);
         return true;
       });
@@ -56,7 +66,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    return NextResponse.json(await scoreboard(league, date), { headers });
+    const board = await scoreboard(league, liveOnly ? `${previous}-${date}` : date);
+    return NextResponse.json(liveOnly ? { ...board, events: board.events.filter(include) } : board, { headers });
   } catch {
     return NextResponse.json({ error: 'تعذّر جلب النتائج' }, { status: 502 });
   }
