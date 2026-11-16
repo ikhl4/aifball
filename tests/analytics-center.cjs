@@ -51,7 +51,7 @@ test('completed-match aggregation never includes live or missing goals', () => {
   assert.equal(stats.teams.find(t => t.name==='الاتحاد').wins,1);
 });
 
-test('daily all includes domestic and international coverage, with Riyadh dates and no duplicates', async () => {
+test('daily all limits leagues and keeps featured official and friendly matches on the Riyadh date', async () => {
   const mod = { exports: {} };
   const requests = [];
   const riyadhDay = '20261116';
@@ -59,6 +59,12 @@ test('daily all includes domestic and international coverage, with Riyadh dates 
   const saudi = { ...event('12','in',2,0), date:'2026-11-16T17:30:00Z' };
   const nations = { ...event('13','post',2,1), date:'2026-11-16T18:30:00Z' };
   const outside = { ...event('14','pre',null,null), date:'2026-11-16T22:30:00Z' };
+  early.competitions[0].competitors[0].team.displayName='Comoros';
+  nations.competitions[0].competitors[0].team.displayName='Spain';
+  const lowPriority = { ...event('15','post',2,1), date:'2026-11-16T19:30:00Z' };
+  const friendly = { ...event('16','pre',null,null), date:'2026-11-16T20:30:00Z' };
+  friendly.competitions[0].competitors[1].team.abbreviation='JPN';
+  outside.competitions[0].competitors[0].team.abbreviation='ENG';
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/api/analytics/route.ts','utf8'), {
     compilerOptions:{ module:ts.ModuleKind.CommonJS, target:ts.ScriptTarget.ES2020 },
   }).outputText, {
@@ -69,7 +75,11 @@ test('daily all includes domestic and international coverage, with Riyadh dates 
       const league = url.pathname.split('/').at(-2);
       const interval = url.searchParams.get('dates');
       requests.push([league,interval]);
-      const boards = {'ksa.1':[saudi], 'uefa.nations':[nations], all:interval===riyadhDay?[nations,outside]:[early]};
+      const boards = {
+        'ksa.1':[saudi],
+        'uefa.nations':interval===riyadhDay?[nations,lowPriority,outside]:[nations],
+        'fifa.friendly':interval===riyadhDay?[friendly]:[early],
+      };
       return Response.json({events:boards[league]||[]});
     },
   });
@@ -77,10 +87,13 @@ test('daily all includes domestic and international coverage, with Riyadh dates 
   const body = await response.json();
   assert.equal(response.status,200);
   assert.equal(body.period.days,1);
-  assert.deepEqual(body.matches.map(m=>[m.id,m.league]),[['10','all'],['12','ksa.1'],['13','uefa.nations']]);
-  assert.ok(requests.some(([league,interval])=>league==='jpn.1'&&interval===riyadhDay));
+  assert.deepEqual(body.matches.map(m=>[m.id,m.league]),[['10','fifa.friendly'],['12','ksa.1'],['13','uefa.nations'],['16','fifa.friendly']]);
+  assert.ok(requests.some(([league,interval])=>league==='fra.1'&&interval===riyadhDay));
+  assert.ok(!requests.some(([league])=>['all','jpn.1','usa.1','fifa.world.u20','uefa.champions'].includes(league)));
   requests.length=0;
   const leagueResponse=await mod.exports.GET(new Request('https://test/api/analytics?league=ksa.1&date=2026-11-16'));
   assert.deepEqual((await leagueResponse.json()).matches.map(m=>m.league),['ksa.1']);
   assert.deepEqual(requests.map(([league])=>league),['ksa.1','ksa.1']);
+  const nationalResponse=await mod.exports.GET(new Request('https://test/api/analytics?league=uefa.nations&date=2026-11-16'));
+  assert.deepEqual((await nationalResponse.json()).matches.map(m=>m.id),['13','15']);
 });

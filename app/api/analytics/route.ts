@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ANALYTICS_LEAGUES, AGGREGATE_LEAGUES, aggregateAnalytics, normalizeAnalyticsEvent } from '../../../lib/analytics-core';
+import { ANALYTICS_LEAGUES, FEATURED_ANALYTICS_LEAGUES, isFeaturedAnalyticsEvent, aggregateAnalytics, normalizeAnalyticsEvent } from '../../../lib/analytics-core';
 
 export const dynamic = 'force-dynamic';
 const riyadhDay = (date: Date) => {
@@ -26,8 +26,7 @@ export async function GET(req: Request) {
   const chosenDay = date?.replace(/-/g,'');
   const dates = chosenDay ? { from:chosenDay, to:chosenDay } : windowDates(days);
   const singleDay = dates.from === dates.to;
-  const selected = ANALYTICS_LEAGUES.filter(x => league === 'all' ? singleDay || AGGREGATE_LEAGUES.has(x.id) : x.id === league);
-  if (league === 'all' && singleDay) selected.push({ id:'all', label:'بطولات عالمية أخرى' });
+  const selected = ANALYTICS_LEAGUES.filter(x => league === 'all' ? FEATURED_ANALYTICS_LEAGUES.has(x.id) : x.id === league);
   const first = new Date(Date.UTC(Number(dates.from.slice(0, 4)), Number(dates.from.slice(4, 6)) - 1, 1));
   const last = new Date(Date.UTC(Number(dates.to.slice(0, 4)), Number(dates.to.slice(4, 6)) - 1, 1));
   const months: string[] = [];
@@ -49,16 +48,14 @@ export async function GET(req: Request) {
       if (!Array.isArray(data?.events)) throw new Error('Invalid scoreboard');
       return data.events as any[];
     };
-    // The global feed also covers the preceding UTC date for early Riyadh kickoffs.
-    // A directly selected competition checks both UTC dates itself.
-    const intervals = singleDay
-      ? (id === 'all' || league !== 'all' ? [dates.to, previousDay] : [dates.to])
-      : months;
+    // Early Riyadh fixtures can start on the preceding UTC date.
+    const intervals = singleDay ? [dates.to, previousDay] : months;
     const boardResponses = await Promise.allSettled(intervals.map(fetchScoreboard));
     const succeeded = boardResponses.filter((item): item is PromiseFulfilledResult<any[]> => item.status === 'fulfilled');
     if (!succeeded.length) throw new Error('All ESPN requests failed');
     const events = succeeded.flatMap(item => item.value);
-    const normalized = events.map((event: any) => normalizeAnalyticsEvent(event, id, label)).filter((event): event is NonNullable<typeof event> => event !== null);
+    const selectedEvents = league === 'all' ? events.filter(event => isFeaturedAnalyticsEvent(event,id)) : events;
+    const normalized = selectedEvents.map((event: any) => normalizeAnalyticsEvent(event, id, label)).filter((event): event is NonNullable<typeof event> => event !== null);
     const from = dates.from, to = dates.to;
     const matches = normalized.filter(m => {
       const day = riyadhDay(new Date(m.date));

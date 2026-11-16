@@ -113,7 +113,6 @@ export default function AnalyticsDashboard({ compact = false, isDark = true }: {
       {loading && <p role="status" className={`rounded-xl border p-4 text-sm ${panel}`}>جارٍ جلب المباريات لهذه الفترة…</p>}
       {error && <p role="alert" className={`rounded-xl border p-4 text-sm ${panel}`}>{error} <button className="me-2 underline" type="button" onClick={()=>setRetry(n=>n+1)}>إعادة المحاولة</button></p>}
       {data && <>
-        {league==='all' && days!==1 && !date && <p className="mb-2 text-xs opacity-75">الفترات المجمّعة تعرض البطولات الكبرى. اختر بطولة للعرض التفصيلي.</p>}
         {data.partial && <p role="status" className="mb-3 rounded-xl border border-amber-600/30 px-3 py-2 text-xs">تغطية جزئية · تعذّر جلب {data.failed.join('، ')}.</p>}
         {section==='matches'&&<section aria-label="سجل المباريات" className="min-w-0">
           <h3 className="mb-2 font-black">{!date && days===1 ? 'مباريات اليوم' : 'المباريات'}</h3>

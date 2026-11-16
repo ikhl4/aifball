@@ -1,10 +1,46 @@
 import { footballNameInArabic } from './football-names-ar';
-import { footballLeagues } from './football-scoreboard';
+import { footballGroups, footballLeagues } from './football-scoreboard';
 
 export const ANALYTICS_LEAGUES: { id:string; label:string }[] = footballLeagues.filter(([id]) => id !== 'all').map(([id,label]) => ({ id, label }));
-export const AGGREGATE_LEAGUES = new Set<string>([
-  'ksa.1','eng.1','esp.1','ita.1','ger.1','fra.1','uefa.champions','afc.champions','usa.1',
+const featuredDomesticLeagues = ['eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'ksa.1'];
+const seniorNationalCompetitions = new Set<string>(
+  footballGroups.find(group => group.id === 'international')?.leagues
+    .map(([id]) => id).filter(id => !/\.u\d+$/.test(id)),
+);
+export const FEATURED_ANALYTICS_LEAGUES = new Set([
+  ...featuredDomesticLeagues, ...seniorNationalCompetitions,
 ]);
+
+const nationalTeamKey = (name: string) => name.normalize('NFKD').replace(/\p{M}/gu, '')
+  .toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+const featuredNationalTeams = new Set([
+  'Saudi Arabia', 'KSA', 'Bahrain', 'BHR', 'Kuwait', 'KUW', 'Oman', 'OMA', 'Qatar', 'QAT',
+  'United Arab Emirates', 'UAE', 'ARE', 'Yemen', 'YEM', 'Iraq', 'IRQ', 'Jordan', 'JOR',
+  'Palestine', 'PLE', 'PSE', 'Lebanon', 'LBN', 'Syria', 'Syrian Arab Republic', 'SYR',
+  'Egypt', 'EGY', 'Libya', 'LBY', 'Tunisia', 'TUN', 'Algeria', 'ALG', 'DZA', 'Morocco', 'MAR',
+  'Mauritania', 'MTN', 'MRT', 'Sudan', 'SDN', 'SUD', 'Somalia', 'SOM', 'Djibouti', 'DJI', 'Comoros', 'COM',
+  'Argentina', 'ARG', 'Brazil', 'BRA', 'Uruguay', 'URU', 'Colombia', 'COL',
+  'England', 'ENG', 'France', 'FRA', 'Germany', 'GER', 'DEU', 'Italy', 'ITA', 'Spain', 'ESP',
+  'Portugal', 'POR', 'Netherlands', 'NED', 'NLD', 'Belgium', 'BEL', 'Croatia', 'CRO', 'HRV',
+  'Switzerland', 'SUI', 'CHE', 'Denmark', 'DEN', 'DNK', 'Türkiye', 'Turkey', 'TUR',
+  'United States', 'USA', 'USMNT', 'Mexico', 'MEX', 'Canada', 'CAN',
+  'Japan', 'JPN', 'South Korea', 'Korea Republic', 'KOR', 'Australia', 'AUS', 'Iran', 'IR Iran', 'IRN',
+  'Senegal', 'SEN', 'Nigeria', 'NGA', 'Ivory Coast', "Côte d'Ivoire", 'CIV', 'Cameroon', 'CMR', 'Ghana', 'GHA',
+].flatMap(name => {
+  const arabic = footballNameInArabic(name);
+  return arabic ? [nationalTeamKey(name), nationalTeamKey(arabic)] : [nationalTeamKey(name)];
+}));
+
+export function isFeaturedAnalyticsEvent(event: any, league: string) {
+  if (!seniorNationalCompetitions.has(league)) return featuredDomesticLeagues.includes(league);
+  const competitors = event?.competitions?.[0]?.competitors;
+  if (!Array.isArray(competitors)) return false;
+  return competitors.some(competitor => {
+    const team = competitor?.team;
+    return [team?.abbreviation, team?.displayName, team?.shortDisplayName, team?.name]
+      .some(name => typeof name === 'string' && featuredNationalTeams.has(nationalTeamKey(name)));
+  });
+}
 
 export type AnalyticsMatch = {
   id: string; league: string; competition: string; date: string;
