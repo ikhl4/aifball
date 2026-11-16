@@ -7,8 +7,8 @@ import { matchDateInArabic, matchNameInArabic, matchNumberInArabic } from '../..
 import type { SpatialReport } from '../../lib/spatial-report';
 
 type Side = 'home' | 'away';
-type Metric = { key: string; label: string; home: number | null; away: number | null; percent?: boolean };
-type Shot = { id: string; x: number; y: number; side: Side; xg: number | null; goal: boolean; outcome?: string; playerName?: string; minute?: string | null };
+type Metric = { key: string; label: string; home: number | null; away: number | null; percent?: boolean; homeText?: string | null; awayText?: string | null };
+type Shot = { id: string; x: number; y: number; side: Side; xg: number | null; goal: boolean; outcome?: string; playerName?: string; minute?: string | null; period?: number };
 type PassNode = { id: string; number: string; name: string; x: number; y: number };
 type PassLink = { from: string; to: string; count: number };
 type Network = { nodes: PassNode[]; links: PassLink[] };
@@ -39,7 +39,7 @@ export function visualFromEspn(data: DetailedMatchReport): VisualMatch {
     homeScore: data.home.score, awayScore: data.away.score,
     context: [data.competition && matchNameInArabic(data.competition), data.date && matchDateInArabic(data.date)].filter(Boolean).join(' · '),
     source: 'إي إس بي إن',
-    metrics: data.statistics.map(s => ({ ...s, home: numeric(s.home), away: numeric(s.away) })),
+    metrics: data.statistics.map(s => ({ ...s, home: numeric(s.home), away: numeric(s.away), homeText:s.home, awayText:s.away })),
     shots: data.shots ?? [],
   };
 }
@@ -50,8 +50,8 @@ export function visualFrom365(data: Scores365Report): VisualMatch {
     homeScore: data.home.score, awayScore: data.away.score,
     context: [data.competition, matchDateInArabic(data.date)].filter(Boolean).join(' · '),
     source: '٣٦٥ سكورز',
-    metrics: data.statistics.map(s => ({ ...s, home: numeric(s.home), away: numeric(s.away), percent: /%/.test((s.home || '') + (s.away || '')) })),
-    shots: data.shots.map(s => ({ ...s, goal: /^goal$/i.test(s.outcome) })),
+    metrics: data.statistics.map(s => ({ ...s, home: numeric(s.home), away: numeric(s.away), homeText:s.home, awayText:s.away, percent: /%/.test((s.home || '') + (s.away || '')) })),
+    shots: data.shots.map(s => ({ ...s, goal: /^(?:goal|هدف)(?:$| )/i.test(s.outcome) })),
   };
 }
 
@@ -62,7 +62,7 @@ export function visualFromSofa(data: SpatialReport): VisualMatch {
     context: [data.competition, data.date && matchDateInArabic(data.date)].filter(Boolean).join(' · '),
     source: 'سوفاسكور', metrics: data.statistics,
     shots: data.shots.filter((s): s is typeof s & { side: Side } => s.side === 'home' || s.side === 'away')
-      .map(s => ({ ...s, goal: /^goal$/i.test(s.outcome) })),
+      .map(s => ({ ...s, goal: /^(?:goal|هدف)(?:$| )/i.test(s.outcome) })),
   };
 }
 

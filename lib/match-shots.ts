@@ -27,6 +27,6 @@ export function matchCommentaryShots(commentary: unknown, home: Team, away: Team
     seen.add(play.id);
     return [{ id: play.id, x, y, side, xg: null, goal: kind.startsWith('goal') || kind === 'penalty-scored',
       outcome: outcomes[kind], playerName: String(play.participants?.[0]?.athlete?.displayName || ''),
-      minute: String(play.clock?.displayValue || '') }];
+      minute: String(play.clock?.displayValue || ''), period: play.period.number as number }];
   });
 }

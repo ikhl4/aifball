@@ -1,16 +1,46 @@
 import { footballNameInArabic } from './football-names-ar';
+import { footballGroups, footballLeagues } from './football-scoreboard';
 
-export const ANALYTICS_LEAGUES = [
-  { id: 'ksa.1', label: 'دوري روشن السعودي' },
-  { id: 'eng.1', label: 'الدوري الإنجليزي' },
-  { id: 'esp.1', label: 'الدوري الإسباني' },
-  { id: 'ita.1', label: 'الدوري الإيطالي' },
-  { id: 'ger.1', label: 'الدوري الألماني' },
-  { id: 'fra.1', label: 'الدوري الفرنسي' },
-  { id: 'uefa.champions', label: 'دوري أبطال أوروبا' },
-  { id: 'afc.champions', label: 'دوري أبطال آسيا للنخبة' },
-  { id: 'usa.1', label: 'الدوري الأمريكي' },
-] as const;
+export const ANALYTICS_LEAGUES: { id:string; label:string }[] = footballLeagues.filter(([id]) => id !== 'all').map(([id,label]) => ({ id, label }));
+const featuredDomesticLeagues = ['eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'ksa.1'];
+const seniorNationalCompetitions = new Set<string>(
+  footballGroups.find(group => group.id === 'international')?.leagues
+    .map(([id]) => id).filter(id => !/\.u\d+$/.test(id)),
+);
+export const FEATURED_ANALYTICS_LEAGUES = new Set([
+  ...featuredDomesticLeagues, ...seniorNationalCompetitions,
+]);
+
+const nationalTeamKey = (name: string) => name.normalize('NFKD').replace(/\p{M}/gu, '')
+  .toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+const featuredNationalTeams = new Set([
+  'Saudi Arabia', 'KSA', 'Bahrain', 'BHR', 'Kuwait', 'KUW', 'Oman', 'OMA', 'Qatar', 'QAT',
+  'United Arab Emirates', 'UAE', 'ARE', 'Yemen', 'YEM', 'Iraq', 'IRQ', 'Jordan', 'JOR',
+  'Palestine', 'PLE', 'PSE', 'Lebanon', 'LBN', 'Syria', 'Syrian Arab Republic', 'SYR',
+  'Egypt', 'EGY', 'Libya', 'LBY', 'Tunisia', 'TUN', 'Algeria', 'ALG', 'DZA', 'Morocco', 'MAR',
+  'Mauritania', 'MTN', 'MRT', 'Sudan', 'SDN', 'SUD', 'Somalia', 'SOM', 'Djibouti', 'DJI', 'Comoros', 'COM',
+  'Argentina', 'ARG', 'Brazil', 'BRA', 'Uruguay', 'URU', 'Colombia', 'COL',
+  'England', 'ENG', 'France', 'FRA', 'Germany', 'GER', 'DEU', 'Italy', 'ITA', 'Spain', 'ESP',
+  'Portugal', 'POR', 'Netherlands', 'NED', 'NLD', 'Belgium', 'BEL', 'Croatia', 'CRO', 'HRV',
+  'Switzerland', 'SUI', 'CHE', 'Denmark', 'DEN', 'DNK', 'Türkiye', 'Turkey', 'TUR',
+  'United States', 'USA', 'USMNT', 'Mexico', 'MEX', 'Canada', 'CAN',
+  'Japan', 'JPN', 'South Korea', 'Korea Republic', 'KOR', 'Australia', 'AUS', 'Iran', 'IR Iran', 'IRN',
+  'Senegal', 'SEN', 'Nigeria', 'NGA', 'Ivory Coast', "Côte d'Ivoire", 'CIV', 'Cameroon', 'CMR', 'Ghana', 'GHA',
+].flatMap(name => {
+  const arabic = footballNameInArabic(name);
+  return arabic ? [nationalTeamKey(name), nationalTeamKey(arabic)] : [nationalTeamKey(name)];
+}));
+
+export function isFeaturedAnalyticsEvent(event: any, league: string) {
+  if (!seniorNationalCompetitions.has(league)) return featuredDomesticLeagues.includes(league);
+  const competitors = event?.competitions?.[0]?.competitors;
+  if (!Array.isArray(competitors)) return false;
+  return competitors.some(competitor => {
+    const team = competitor?.team;
+    return [team?.abbreviation, team?.displayName, team?.shortDisplayName, team?.name]
+      .some(name => typeof name === 'string' && featuredNationalTeams.has(nationalTeamKey(name)));
+  });
+}
 
 export type AnalyticsMatch = {
   id: string; league: string; competition: string; date: string;
@@ -35,8 +65,8 @@ export function normalizeAnalyticsEvent(raw: any, league: string, competition: s
     return footballNameInArabic(original) || original;
   };
   const logo = (item: any) => {
-    const value = item.team?.logos?.find((logo: any) => typeof logo?.href === 'string' && /^https:\/\//.test(logo.href))?.href;
-    return typeof value === 'string' ? value : null;
+    const logos = Array.isArray(item.team?.logos) ? item.team.logos.map((logo: any) => logo?.href) : [];
+    return [item.team?.logo, ...logos].find(href => typeof href === 'string' && /^https:\/\//.test(href)) ?? null;
   };
   const score = (item: any) => state === 'pre' || item.score == null || item.score === '' || !Number.isFinite(Number(item.score)) ? null : Number(item.score);
   const href = raw?.links?.find((link: any) => isSafeEspn(link?.href))?.href;

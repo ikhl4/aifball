@@ -32,9 +32,13 @@ export function resolveHeatmapSource(raw: any, match: HeatmapMatch): string | nu
   return `https://www.365scores.com/football/match/${competition}-${game.competitionId}/${teams[0].nameForURL}-${teams[1].nameForURL}-${teams[0].id}-${teams[1].id}-${game.competitionId}#id=${game.id}`;
 }
 
+export function sameProviderMatch(report: Scores365Report, match: HeatmapMatch) {
+  return sameTeam(report.home.name, match.home) && sameTeam(report.away.name, match.away) &&
+    sameKickoff(match.date, report.date);
+}
+
 export function heatmapPlayer(report: Scores365Report, match: HeatmapMatch, side: 'home' | 'away', player: string) {
-  if (!sameTeam(report.home.name, match.home) || !sameTeam(report.away.name, match.away) ||
-      !sameKickoff(match.date, report.date)) return null;
+  if (!sameProviderMatch(report, match)) return null;
   const players = report[side].players.filter(candidate => sameName(candidate.name, player));
   return players.length === 1 && players[0].hasHeatmap ? players[0] : null;
 }

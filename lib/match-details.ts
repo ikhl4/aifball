@@ -15,7 +15,9 @@ export function normalizeMatchDetails(raw: any, eventId: string, league: string)
     const id = String(c.team.id);
     const box = list(raw.boxscore?.teams).find(t => String(t.team?.id) === id);
     const roster = list(raw.rosters).find(t => String(t.team?.id) === id);
-    return { id, name: c.team.displayName || c.team.shortDisplayName || 'الفريق غير متاح', score: value(c.score),
+    const logos = list(c.team.logos).map(logo => logo?.href);
+    const logo = [c.team.logo, ...logos].find(href => typeof href === 'string' && /^https:\/\//.test(href)) ?? null;
+    return { id, logo, name: c.team.displayName || c.team.shortDisplayName || 'الفريق غير متاح', score: value(c.score),
       formation: value(roster?.formation),
       statistics: Object.fromEntries(list(box?.statistics).map(s => [s.name, value(s.displayValue)])),
       players: list(roster?.roster).map(p => ({ id: value(p.athlete?.id), name: p.athlete?.displayName || 'اسم اللاعب غير متاح', jersey: value(p.jersey), starter: typeof p.starter === 'boolean' ? p.starter : null, position: ({ G: 'حارس', D: 'دفاع', M: 'وسط', F: 'هجوم' } as Record<string,string>)[p.position?.abbreviation] || '' })) };

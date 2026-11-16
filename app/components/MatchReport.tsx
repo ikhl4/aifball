@@ -11,11 +11,13 @@ import React,{useEffect,useRef,useState} from 'react';
 import { COMPETITIONS } from '../../lib/competitions';
 import XPostEmbed from './XPostEmbed';
 import MatchPlayerHeatmap from './MatchPlayerHeatmap';
+import MatchStatisticsBoard from './MatchStatisticsBoard';
+import FootballTeamBadge from './FootballTeamBadge';
 import { reportIdentity,type DetailedMatchReport } from '../../lib/match-report';
-const leagues=Object.entries(COMPETITIONS).map(([id,c])=>[id,c.ar]);
+const leagues=[...new Map([...footballLeagues.map(([id,ar])=>[id,ar] as [string,string]),...Object.entries(COMPETITIONS).map(([id,c])=>[id,c.ar] as [string,string])])];
 type MatchReportProps = {
  matchName:string; isDark?:boolean; autoMatchUrl?:string; eventId?:string; leagueCode?:string;
- playerName?:string; clipUrl?:string; embedded?:boolean; refresh?:boolean; initialView?:'analysis'|'overview';
+ homeLogo?:string|null; awayLogo?:string|null; playerName?:string; clipUrl?:string; embedded?:boolean; refresh?:boolean; initialView?:'analysis'|'overview';
 };
 export default function MatchReport(props: MatchReportProps){
  let report:React.ReactNode;
@@ -25,7 +27,7 @@ export default function MatchReport(props: MatchReportProps){
  else report=<EspnMatchReport {...props}/>;
  return <>{report}{props.clipUrl&&props.playerName&&<XPostEmbed url={props.clipUrl} playerName={props.playerName} isDark={props.isDark}/>}</>;
 }
-function EspnMatchReport({matchName,isDark=true,autoMatchUrl,eventId,leagueCode,playerName,embedded=false,refresh=false,initialView='overview'}:MatchReportProps){
+function EspnMatchReport({matchName,isDark=true,autoMatchUrl,eventId,leagueCode,homeLogo,awayLogo,playerName,embedded=false,refresh=false,initialView='overview'}:MatchReportProps){
  const identity=autoMatchUrl?reportIdentity(autoMatchUrl):null;
  const [league,setLeague]=useState(leagueCode||identity?.league||'esp.1'),[date,setDate]=useState(''),[event,setEvent]=useState(eventId||identity?.event||'');
  const [sourceData,setData]=useState<DetailedMatchReport|null>(null),[loading,setLoading]=useState(false),[error,setError]=useState(''),[choices,setChoices]=useState<{event:string;league:string;name:string;date:string|null}[]|null>(null),[tab,setTab]=useState(initialView as string),[player,setPlayer]=useState<string|null>(null);
@@ -57,35 +59,44 @@ function EspnMatchReport({matchName,isDark=true,autoMatchUrl,eventId,leagueCode,
  const data=sourceData&&{...sourceData,home:{...sourceData.home,name:matchNameInArabic(sourceData.home.name)},away:{...sourceData.away,name:matchNameInArabic(sourceData.away.name)}};
  const allPlayers=data?[...data.home.players.map(p=>({...p,team:data.home.name,teamId:data.home.id})),...data.away.players.map(p=>({...p,team:data.away.name,teamId:data.away.id}))]:[];
  const selected=allPlayers.find(p=>`${p.teamId}:${p.id}`===player);
- const visual=data?visualFromEspn(data):null;
  const selectedSide=selected?.teamId===data?.away.id?'away':'home';
- const playerShots=visual?.shots.filter(shot=>shot.side===selectedSide&&shot.playerName===selected?.name)??[];
  const localCompetition=data&&(COMPETITIONS[data.league]?.ar||footballLeagues.find(([id])=>id===data.league)?.[1]||matchNameInArabic(data.competition||'البطولة غير متاحة'));
  return <section dir="rtl" aria-label="تقرير المباراة التفصيلي" className={`my-5 w-full rounded-3xl border overflow-hidden ${theme}`}>
- <header className="p-5 border-b border-emerald-700/30"><h2 className="font-black text-xl mt-2">{matchName}</h2><p className="text-xs leading-7 opacity-70 mt-2">أرقام المباراة المحددة من إي إس بي إن.</p></header>
+ <header className={`border-b border-emerald-600/25 p-4 sm:p-5 ${isDark ? "bg-[#102d22]" : "bg-emerald-50"}`}><h2 className="font-black text-lg sm:text-xl">{matchName}</h2></header>
  {!embedded&&<details className="m-4"><summary className="text-xs cursor-pointer text-emerald-500">اختيار مباراة أخرى بالتاريخ (اختياري)</summary><form className="p-4 flex flex-wrap gap-3" onSubmit={e=>{e.preventDefault();const selectedDate=String(new FormData(e.currentTarget).get('matchDate')||'');void load(true,event,league,selectedDate);}}><label className="text-xs">البطولة<select aria-label="بطولة التقرير" className={`block p-2 rounded-lg border mt-1 ${theme}`} value={league} onChange={e=>{active.current?.abort();generation.current++;setLoading(false);setData(null);setLeague(e.target.value);setEvent('');setChoices(null);}}>{leagues.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label><label className="text-xs">تاريخ المباراة<input name="matchDate" aria-label="تاريخ المباراة" required type="date" defaultValue="" onChange={e=>{active.current?.abort();generation.current++;setLoading(false);setChoices(null);setDate(e.target.value);}} className={`block p-2 rounded-lg border mt-1 ${theme}`}/></label><button className={button} disabled={loading} type="submit">البحث عن المباراة</button></form></details>}
  {identity?.event&&!leagueCode&&!identity.league&&<div className="px-4 pb-3"><p className="text-xs mb-2">الرابط يحدد المباراة؛ حدد بطولتها ثم افتح التقرير.</p><button className={button} disabled={loading} onClick={()=>void load(false)}>فتح المباراة المرتبطة</button></div>}
  {loading&&<p role="status" className="p-5 text-emerald-500">جارٍ التحقق من المباراة وجلب التقرير…</p>}{error&&<p role="alert" className="p-4 text-amber-500">{error}</p>}
  {choices&&<div className="p-4 space-y-2"><p className="text-xs opacity-70">اختر المواجهة المقصودة؛ لا يتم اختيار أول نتيجة تلقائياً.</p>{choices.length===0&&<p>لا توجد مباريات لهذا التاريخ في استجابة المصدر.</p>}{choices.map(c=><button key={c.event} className={button+' w-full text-right'} onClick={()=>{setEvent(c.event);void load(false,c.event,c.league);}}>{matchNameInArabic(c.name)} · {matchDateInArabic(c.date)}</button>)}</div>}
  {!loading&&!data&&!choices&&!error&&<p className="p-5 text-sm leading-8">لم تصل هوية مباراة مؤكدة للعرض البصري. يمكنك متابعة السؤال داخل الشات لتحديد المواجهة.</p>}
  {data&&playerName&&!uniquePlayer(allPlayers,playerName)&&<p role="status" className="p-4 text-amber-500">لم يتطابق اسم اللاعب مع قائمة المباراة بشكل فريد؛ لم نختر لاعباً آخر.</p>}
- {data&&<><div className="p-5 bg-emerald-600/10 text-center">
+ {data&&<><div className={`p-4 sm:p-6 text-center ${isDark ? "bg-gradient-to-bl from-[#164835] to-[#0c241b]" : "bg-gradient-to-bl from-emerald-100 to-white"}`}>
   <p className="text-xs opacity-70">{localCompetition} · {matchDateInArabic(data.date)} · {data.state==='post'?'انتهت':data.state==='in'?'جارية':data.state==='pre'?'لم تبدأ':'حالة المباراة غير متاحة'}</p>
-  <div className="mt-4 grid grid-cols-2 gap-4 text-lg font-bold">
-   {[data.home,data.away].map(team=><div key={team.id} className="min-w-0"><p>{team.name}</p>
-    <bdi className="mt-1 block text-3xl text-emerald-500">{matchNumberInArabic(team.score)}</bdi></div>)}
+  <div className="mt-4 grid grid-cols-3 items-center gap-2 text-center font-black">
+   <div className="flex min-w-0 flex-col items-center gap-1.5"><FootballTeamBadge name={data.home.name} logo={homeLogo||data.home.logo} size={44}/><p>{data.home.name}</p></div>
+   <div aria-label="النتيجة" className="flex justify-center gap-2 text-3xl text-emerald-600 dark:text-emerald-400"><bdi>{matchNumberInArabic(data.home.score)}</bdi><span aria-hidden="true">–</span><bdi>{matchNumberInArabic(data.away.score)}</bdi></div>
+   <div className="flex min-w-0 flex-col items-center gap-1.5"><FootballTeamBadge name={data.away.name} logo={awayLogo||data.away.logo} size={44}/><p>{data.away.name}</p></div>
   </div>
   {data.venue&&<p className="text-xs mt-3 opacity-70">{matchNameInArabic(data.venue)}</p>}
  </div>
- <nav aria-label="أقسام التقرير" className="flex flex-wrap gap-2 p-4">{[['overview','إحصائيات المباراة'],['analysis','التحليل'],['lineup','إحصائيات اللاعبين'],['events','أحداث المباراة'],['shots','خريطة التسديدات'],['coverage','تغطية البيانات']].map(([id,title])=><button key={id} aria-pressed={tab===id} className={button+(tab===id?' bg-emerald-600 text-white':'')} onClick={()=>{setTab(id);setPlayer(null);}}>{title}</button>)}</nav>
+ <nav aria-label="أقسام التقرير" data-statistics-scroll className="flex gap-2 overflow-x-auto border-y border-emerald-600/20 p-3">{[['overview','الإحصائيات'],['shots','خريطة التسديدات'],['heat','الخرائط الحرارية'],['lineup','التشكيلة واللاعبون'],['events','الأحداث'],['analysis','التحليل'],['coverage','المصادر والتغطية']].map(([id,title])=><button key={id} aria-pressed={tab===id} className={button+' shrink-0'+(tab===id?' bg-emerald-600 text-white':'')} onClick={()=>{setTab(id);setPlayer(null);}}>{title}</button>)}</nav>
  {tab==='analysis'&&<>
  <div aria-label="شرح إحصائيات المباراة" className="p-5 space-y-2 text-sm leading-8"><h3 className="font-bold text-emerald-500">قراءة الأرقام</h3>{matchNarrative(data.home.name,data.away.name,data.statistics).map(line=><p key={line}>{matchNumberInArabic(line)}</p>)}{!data.statistics.length&&<p>لم يوفر المصدر إحصائيات تفصيلية لهذه المباراة.</p>}<p className="text-xs opacity-70">هذه مقارنة للأرقام المتاحة؛ لا تكفي وحدها لإثبات أسلوب اللعب أو تحركات اللاعبين.</p></div>
  <MatchVisualReport key={data.eventId} data={visualFromEspn(data)} isDark={isDark}/>
  </>}
- {tab==='overview'&&<div className="p-4"><div className="grid grid-cols-2 gap-3 mb-5">{[data.home,data.away].map(t=><div key={t.id} className="rounded-2xl border border-emerald-700/30 p-4"><p className="text-xs opacity-70">{t.name} · الأهداف المتوقعة</p><p className="text-2xl font-black text-emerald-500 mt-2">{t.statistics.expectedGoals==null?'غير متاح':matchNumberInArabic(t.statistics.expectedGoals)}</p></div>)}</div><table className="w-full text-sm"><caption className="text-xs pb-3">المقارنة من المصدر نفسه · «—» تعني غير متاح</caption><thead><tr><th>{data.home.name}</th><th>المؤشر</th><th>{data.away.name}</th></tr></thead><tbody>{data.statistics.map(s=><tr key={s.key} className="border-t border-emerald-700/20"><td className="p-3 text-center font-bold">{matchNumberInArabic(s.home)}{s.percent&&s.home!=null?'٪':''}</td><th className="text-xs font-normal">{s.label}</th><td className="p-3 text-center font-bold">{matchNumberInArabic(s.away)}{s.percent&&s.away!=null?'٪':''}</td></tr>)}</tbody></table></div>}
+ {(tab==='overview'||tab==='shots')&&<MatchStatisticsBoard key={data.eventId} data={sourceData!} isDark={isDark} view={tab} homeLogo={homeLogo||data.home.logo} awayLogo={awayLogo||data.away.logo}/>}
+ {tab==='heat'&&<div className="p-4 sm:p-5">
+  <label className="block font-bold">اختر لاعبًا من المباراة
+   <select className={`mt-2 block w-full rounded-xl border border-emerald-600/40 p-2 text-sm ${theme}`} value={player??''} onChange={e=>setPlayer(e.target.value||null)}>
+    <option value="">اختر اللاعب</option>
+    {allPlayers.filter(p=>p.id).map(p=><option key={p.teamId+':'+p.id} value={p.teamId+':'+p.id}>{matchNameInArabic(p.name)} · {p.team}</option>)}
+   </select>
+  </label>
+  {!allPlayers.length&&<p className="mt-3 text-sm opacity-75">لم يوفر المصدر قائمة اللاعبين لهذه المباراة.</p>}
+  {selected&&sourceData&&<MatchPlayerHeatmap home={sourceData.home.name} away={sourceData.away.name} date={sourceData.date??''}
+    side={selectedSide} player={selected.name} started={sourceData.state==='in'||sourceData.state==='post'} live={sourceData.state==='in'} />}
+ </div>}
  {tab==='lineup'&&<div className="p-4">{selected?<article aria-label="بطاقة أداء اللاعب" className="rounded-2xl border border-emerald-600/40 p-5"><button className={button} onClick={()=>setPlayer(null)}>العودة للتشكيلتين</button><p className="text-emerald-500 text-xs mt-5">أداء اللاعب في هذه المباراة</p><h3 className="text-2xl font-black mt-2">{matchNameInArabic(selected.name)}</h3><p className="text-xs mt-2 opacity-70">{selected.team} · {selected.position||'المركز غير متاح'} · الرقم {matchNumberInArabic(selected.jersey)}</p><p className="text-sm leading-8 mt-4">{selected.statistics.length?selected.statistics.map(s=>`${s.label}: ${s.value}`).join("، ")+".":"الأرقام التفصيلية غير متاحة في المصدر."}</p><div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5">{selected.statistics.map(s=><div key={s.key} className="rounded-xl p-4 border border-emerald-700/30"><p className="text-2xl font-bold">{matchNumberInArabic(s.value)}</p><p className="text-xs mt-2 opacity-70">{s.label}</p></div>)}</div>{!selected.statistics.length&&<p className="mt-4">لم يوفر المصدر أرقاماً تفصيلية لهذا اللاعب.</p>}{sourceData&&<MatchPlayerHeatmap home={sourceData.home.name} away={sourceData.away.name} date={sourceData.date??''} side={selectedSide} player={selected.name} started={sourceData.state==='in'||sourceData.state==='post'} live={sourceData.state==='in'} />}</article>:<div className="grid sm:grid-cols-2 gap-4">{[data.home,data.away].map(t=><section key={t.id} className="rounded-2xl border border-emerald-700/30 p-4"><h3 className="font-bold">{t.name}</h3><p className="text-xs my-2 text-emerald-500">الخطة: {t.formation?<bdi dir="ltr">{matchNumberInArabic(t.formation)}</bdi>:'غير متاحة'}</p>{[[true,'الأساسيون'],[false,'البدلاء'],[null,'حالة المشاركة غير محددة']].map(([starter,title])=><div key={String(starter)}><h4 className="text-xs opacity-60 mt-4 mb-2">{title}</h4>{t.players.filter(p=>p.starter===starter).map((p,i)=><button disabled={!p.id} key={p.id||i} className="w-full flex justify-between text-right rounded-lg px-3 py-3 hover:bg-emerald-600/10 border-b border-emerald-700/20" onClick={()=>setPlayer(`${t.id}:${p.id}`)}><span><b className="text-emerald-500 ml-2">{matchNumberInArabic(p.jersey)}</b>{' '}{matchNameInArabic(p.name)}</span><small className="opacity-60">{p.position} ←</small></button>)}</div>)}{!t.players.length&&<p>التشكيلة غير متاحة.</p>}</section>)}</div>}</div>}
  {tab==='events'&&<ol className="p-5 space-y-3">{data.events.map(e=><li key={e.id} className="rounded-xl p-3 border border-emerald-700/20"><b className="text-emerald-500 ml-3">{matchNumberInArabic(e.minute)}</b>{e.label} · {e.players.map(matchNameInArabic).join('، ')||'الاسم غير متاح'}{e.shootout?' · ترجيح':''}</li>)}{!data.events.length&&<li>الأحداث غير متاحة.</li>}</ol>}
- {tab==='shots'&&visual&&<div className="p-3"><MatchVisualReport key={data.eventId} data={visual} isDark={isDark} shotsOnly /></div>}
  {tab==='coverage'&&<div className="p-5 text-sm leading-8"><h3 className="font-bold">ما الذي يغطيه هذا التقرير؟</h3><p>إحصائيات وتشكيلات وأحداث المباراة بحسب سجل إي إس بي إن. أي أرقام معروضة تخص المباراة المختارة فقط.</p><p>تظهر خريطة التسديدات عند توفر إحداثياتها في سجل المباراة. الأهداف المتوقعة والخرائط الحرارية تُعرض حسب تغطية المصدر.</p><p>دقة التمرير أو التحركات السابقة أو إجماليات المسيرة لا تُقدّر لملء الحقول الغائبة.</p></div>}
  <footer className="p-4 border-t border-emerald-700/30 text-xs leading-7 opacity-70"><a className="text-emerald-500 underline" href={data.sourceUrl} target="_blank" rel="noopener noreferrer">المصدر: إي إس بي إن · فتح المباراة ↗</a><p>{data.scope}</p><p>وقت الجلب: {matchDateInArabic(data.fetchedAt,true)} بتوقيت الرياض</p></footer></>}
  </section>;

@@ -146,7 +146,8 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
         {view === 'summary' && <MatchSummary eventId={event.id} league={reportLeague} isDark={isDark} language={language} />}
         {view === 'report' && canReport && <div className="px-2"><MatchReport key={event.id}
           matchName={sides.map(({ team }) => team && display(team)).join(' — ')}
-          eventId={event.id} leagueCode={reportLeague} isDark={isDark} embedded refresh={state === 'live'} /></div>}
+          eventId={event.id} leagueCode={reportLeague} isDark={isDark} embedded refresh={state === 'live'}
+          homeLogo={sides[0]?.team?.logo} awayLogo={sides[1]?.team?.logo} /></div>}
       </article>
     );
   }
