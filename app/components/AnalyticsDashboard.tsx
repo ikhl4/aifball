@@ -43,7 +43,7 @@ export default function AnalyticsDashboard({ compact = false, isDark = true }: {
     fetch('/api/analytics?'+params, { cache:'no-store', signal:controller.signal })
       .then(async res => {
         const json = await res.json();
-        if (!res.ok) throw Error(json.error || 'تعذّر جلب المباريات.');
+        if (!res.ok) throw Error('تعذّر تحميل المباريات.');
         if (!controller.signal.aborted) setData(json as Payload);
       })
       .catch(err=>{if(!controller.signal.aborted)setError(err.message || 'تعذّر جلب المباريات.');})
@@ -84,7 +84,7 @@ export default function AnalyticsDashboard({ compact = false, isDark = true }: {
     {!compact&&<nav aria-label="أقسام مركز الاحصائيات" data-statistics-scroll className={`my-3 flex gap-1 overflow-x-auto rounded-xl border p-1 ${panel}`}>
       {([['matches','المباريات'],['numbers','مؤشرات البطولة'],['standings','الترتيب']] as const).map(([id,title])=><button type="button" key={id} className={chip(section===id)} aria-pressed={section===id} onClick={()=>setSection(id)}>{title}</button>)}
     </nav>}
-    {section==='standings' ? <StandingsExplorer isDark={isDark} /> : <>
+    {section==='standings' ? <StandingsExplorer isDark={isDark} showAttribution={false} /> : <>
       <div className={`my-3 grid grid-cols-2 gap-2 rounded-xl border p-3 sm:grid-cols-4 ${panel}`}>
         <label className="min-w-0 space-y-1 text-xs font-bold">البطولة
           <select value={league} onChange={e=>{setLeague(e.target.value);setTeam('');setSelected(null);}} className={field}>
@@ -113,7 +113,7 @@ export default function AnalyticsDashboard({ compact = false, isDark = true }: {
       {loading && <p role="status" className={`rounded-xl border p-4 text-sm ${panel}`}>جارٍ جلب المباريات لهذه الفترة…</p>}
       {error && <p role="alert" className={`rounded-xl border p-4 text-sm ${panel}`}>{error} <button className="me-2 underline" type="button" onClick={()=>setRetry(n=>n+1)}>إعادة المحاولة</button></p>}
       {data && <>
-        {data.partial && <p role="status" className="mb-3 rounded-xl border border-amber-600/30 px-3 py-2 text-xs">تغطية جزئية · تعذّر جلب {data.failed.join('، ')}.</p>}
+        {data.partial && <p role="status" className="mb-3 rounded-xl border border-amber-600/30 px-3 py-2 text-xs">بعض المباريات غير متاحة حاليًا.</p>}
         {section==='matches'&&<section aria-label="سجل المباريات" className="min-w-0">
           <h3 className="mb-2 font-black">{!date && days===1 ? 'مباريات اليوم' : 'المباريات'}</h3>
           {visible.length ? <div data-statistics-scroll className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3">
@@ -133,7 +133,7 @@ export default function AnalyticsDashboard({ compact = false, isDark = true }: {
                 <div className="flex justify-between gap-2 text-[11px]"><span className="opacity-75">{matchDateInArabic(m.date)}</span><span className="font-bold underline">فتح الإحصائيات</span></div>
               </button>;
             })}
-          </div> : <p className={`rounded-xl border p-4 text-sm ${panel}`}>لا توجد مباريات مطابقة للفلاتر في استجابة المصدر.</p>}
+          </div> : <p className={`rounded-xl border p-4 text-sm ${panel}`}>لا توجد مباريات مطابقة للفلاتر.</p>}
           <div ref={report} className="scroll-mt-20">
             {selected && <MatchReport key={selected.league+':'+selected.id} matchName={selected.home+' × '+selected.away} eventId={selected.id} leagueCode={selected.league}
               homeLogo={selected.homeLogo} awayLogo={selected.awayLogo} embedded refresh={selected.state==='in'} isDark={isDark} />}
@@ -153,7 +153,6 @@ export default function AnalyticsDashboard({ compact = false, isDark = true }: {
             {totals.teams.length?totals.teams.slice(0,6).map(t=><div key={t.id} className="flex justify-between gap-2 border-t border-emerald-500/20 py-2 text-xs"><span>{t.name}</span><b>{count(t.goalsFor)} هدف · {count(t.played)} مباراة</b></div>):<p className="text-xs">لا توجد نتائج مكتملة في الفترة.</p>}
           </div>
         </div>}
-        <p className="mt-3 text-[11px] opacity-75">المصدر إي إس بي إن · آخر جلب {matchDateInArabic(data.fetchedAt,true)} بتوقيت الرياض.</p>
       </>}
     </>}
   </section>;

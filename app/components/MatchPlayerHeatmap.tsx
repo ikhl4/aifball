@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { matchNameInArabic, matchNumberInArabic, matchDateInArabic } from '../../lib/match-display-ar';
+import { matchNameInArabic, matchNumberInArabic } from '../../lib/match-display-ar';
 import { heatmapPlayer, type HeatmapMatch } from '../../lib/match-heatmap-source';
 import { normalize365Report, type Scores365Report } from '../../lib/scores365-report';
 
@@ -77,8 +77,7 @@ export default function MatchPlayerHeatmap({ home, away, date, side, player, sta
       const width = artwork.naturalWidth * scale;
       const height = artwork.naturalHeight * scale;
       ctx.drawImage(artwork, (1600-width)/2, 193+(572-height)/2, width, height);
-      const when = current.report.fetchedAt ? ' · ' + matchDateInArabic(current.report.fetchedAt,true) : '';
-      ctx.fillText('فوتبلاي · ٣٦٥ سكورز' + when, 800, 824, 1400);
+      ctx.fillText('فوتبلاي', 800, 824, 1400);
       const blob = await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,'image/png'));
       if (!blob) throw new Error();
       const href = URL.createObjectURL(blob);
@@ -101,16 +100,14 @@ export default function MatchPlayerHeatmap({ home, away, date, side, player, sta
       <img key={image} ref={heatmap} src={image} alt={`خريطة حرارة ${matchNameInArabic(player)} في هذه المباراة`} className="mx-auto mt-3 max-h-[480px] w-full rounded-lg object-contain"
         onError={() => setFailedImage(image)}/>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs opacity-80">أماكن نشاط اللاعب · <a href={current?.report?.sourceUrl} target="_blank" rel="noreferrer" className="underline">٣٦٥ سكورز</a>
-          {current?.report?.fetchedAt && ' · جُلبت '+matchDateInArabic(current.report.fetchedAt,true)}</p>
         <button type="button" onClick={()=>void exportHeatmap()} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white">تنزيل الخريطة بالعرض</button>
       </div>
       {failedExport === image && <p role="alert" className="mt-2 text-xs text-amber-600">تعذر تجهيز صورة الخريطة.</p>}
     </> : <p role="status" className="mt-2 text-xs leading-6 opacity-75">
-      {!started ? 'تظهر الخريطة بعد بدء المباراة إذا أتاحها المصدر.'
+      {!started ? 'يمكن عرض الخريطة بعد بدء المباراة عند توفرها.'
         : !date ? 'وقت المباراة غير متاح للتحقق من الخريطة.'
         : !current ? 'جارٍ التحقق من خريطة اللاعب…'
-        : current.unavailable || failedImage === image ? 'تعذر جلب خريطة اللاعب من المصدر.'
+        : current.unavailable || failedImage === image ? 'خريطة اللاعب غير متاحة حاليًا.'
         : 'لا توجد خريطة حرارية مؤكدة لهذا اللاعب في هذه المباراة.'}
     </p>}
   </section>;

@@ -12,6 +12,7 @@ type DataRecord = Record<string, unknown>;
 type StandingZone = 'qualification' | 'relegation' | null;
 
 interface LeagueDashboardProps {
+  showAttribution?: boolean;
   leagueName?: string;
   leagueCode?: string;
   season?: string;
@@ -227,8 +228,8 @@ const UI = {
     gf: 'له',
     ga: 'عليه',
     points: 'نقاط',
-    qualification: 'مركز تأهل وفق بيانات المصدر',
-    relegation: 'مركز هبوط وفق بيانات المصدر',
+    qualification: 'مركز تأهل',
+    relegation: 'مركز هبوط',
     teamsCount: 'عدد الفرق المعروضة',
     group: 'المجموعة',
     overall: 'الترتيب العام',
@@ -686,6 +687,7 @@ export default function LeagueDashboard({
   season = '',
   isDark = true,
   lang = 'ar',
+  showAttribution = true,
 }: LeagueDashboardProps) {
   const t = UI[lang];
   const isArabic = lang === 'ar';
@@ -992,7 +994,7 @@ export default function LeagueDashboard({
           </button>
         </div>
 
-        <div className="flex items-center justify-between gap-2 mt-4 text-[11px] text-gray-500">
+        {showAttribution && <div className="flex items-center justify-between gap-2 mt-4 text-[11px] text-gray-500">
           <span>
             {t.source}:{' '}
             <bdi dir="ltr">
@@ -1008,7 +1010,7 @@ export default function LeagueDashboard({
               {t.updated}: {formattedUpdatedAt}
             </span>
           )}
-        </div>
+        </div>}
       </div>
 
       {!loading && groups.length > 1 && (
