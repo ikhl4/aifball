@@ -1,5 +1,8 @@
 'use client';
 
+import FootballTeamBadge from './FootballTeamBadge';
+import { officialClubBadge } from '../../lib/official-club-badges';
+
 import { useEffect, useState } from 'react';
 import AppleSportsCenter from './AppleSportsCenter';
 import MatchSummary from './MatchSummary';
@@ -126,7 +129,9 @@ function FootballMatchCenter({ isDark, language }: { isDark: boolean; language: 
             <span className="block text-xs font-bold text-emerald-600">{timing}</span>
             {sides.map(({ team, score }) => team && (
               <span key={team.id} className="flex items-center justify-between gap-3 font-semibold">
-                <span className="flex min-w-0 items-center gap-2">{team.logo && <img src={team.logo} alt="" className="h-6 w-6 object-contain" />}<bdi>{display(team)}</bdi></span>
+                <span className="flex min-w-0 items-center gap-2">{officialClubBadge(teamName(team))
+                  ? <FootballTeamBadge name={teamName(team)} size={24} />
+                  : team.logo && <img src={team.logo} alt="" className="h-6 w-6 object-contain" />}<bdi>{display(team)}</bdi></span>
                 {(state === 'live' || state === 'finished') && score != null && <bdi className={`min-w-8 rounded-md px-2 py-0.5 text-center font-bold ${isDark ? "bg-white/15 text-white" : "bg-gray-100 text-gray-700"}`}>{ar ? matchNumberInArabic(score) : score}</bdi>}
               </span>
             ))}

@@ -1,5 +1,7 @@
-
 'use client';
+
+import FootballTeamBadge from './FootballTeamBadge';
+import { officialClubBadge } from '../../lib/official-club-badges';
 
 import AppIcon from './AppIcon';
 import { COMPETITIONS } from '../../lib/competitions';
@@ -1263,7 +1265,9 @@ export default function LeagueDashboard({
                         className={`sticky ${teamSticky} z-10 py-3.5 px-3 ${teamAlign} font-bold border-b ${stickyBg} ${cellBorder}`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          {team.logo ? (
+                          {officialClubBadge(teamName) ? (
+                            <FootballTeamBadge name={teamName} size={32} />
+                          ) : team.logo ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={team.logo}
