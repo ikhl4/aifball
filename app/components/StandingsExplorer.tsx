@@ -7,7 +7,7 @@ import LeagueDashboard from './LeagueDashboard';
 import OtherSportsRankings from './OtherSportsRankings';
 import { footballNameInArabic } from '../../lib/football-names-ar';
 
-export default function StandingsExplorer({ isDark = true, language = 'ar' }: { isDark?: boolean; language?: AppLanguage }) {
+export default function StandingsExplorer({ isDark = true, language = 'ar', showAttribution = true }: { isDark?: boolean; language?: AppLanguage; showAttribution?: boolean }) {
   const t = (ar: string, en: string) => language === 'ar' ? ar : en;
   const [league, setLeague] = useState('ksa.1');
   const [otherSports, setOtherSports] = useState(false);
@@ -68,18 +68,18 @@ export default function StandingsExplorer({ isDark = true, language = 'ar' }: { 
         </select>
       </label>
       {tab === 'standings' ? <>
-        <p className="text-xs text-gray-500 leading-relaxed">{t('الترتيب حسب آخر موسم متاح من المصدر، ويعرض مجموعات بطولات المنتخبات والتصفيات.', 'Standings use the latest available season and show competition groups.')}</p>
+        <p className="text-xs text-gray-500 leading-relaxed">{t('الترتيب حسب آخر موسم متاح، ويعرض مجموعات بطولات المنتخبات والتصفيات.', 'Standings use the latest available season and show competition groups.')}</p>
         {selectedCompetition?.searchOnly && !selectedCompetition.standingsSource ? (
           <section className={`rounded-xl border p-3 space-y-2 ${isDark?'border-emerald-900 bg-[#111b16]':'border-emerald-200 bg-emerald-50'}`}>
             <h2 className="text-sm font-bold">{selectedCompetition[language]}</h2>
-            <p className="text-xs text-gray-500">{t('ترتيب هذه البطولة غير متاح عبر المصدر الحالي.', 'Verified standings are unavailable from the current source.')}</p>
-            {selectedCompetition.officialUrl && <a href={selectedCompetition.officialUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-emerald-500">{t('صفحة البطولة الرسمية','Official competition page')}</a>}
+            <p className="text-xs text-gray-500">{t('ترتيب هذه البطولة غير متاح حاليًا.', 'Standings are currently unavailable.')}</p>
+            {showAttribution && selectedCompetition.officialUrl && <a href={selectedCompetition.officialUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-emerald-500">{t('صفحة البطولة الرسمية','Official competition page')}</a>}
           </section>
-        ) : <LeagueDashboard key={league} leagueCode={league} season="" isDark={isDark} lang={language}/>}
+        ) : <LeagueDashboard key={league} leagueCode={league} season="" isDark={isDark} lang={language} showAttribution={showAttribution}/>}
       </> : <section className={`overflow-hidden rounded-xl border ${isDark?'border-emerald-800 bg-[#11251b]':'border-emerald-200 bg-white'}`}>
         <header className="flex items-center justify-between gap-2 p-3">
           <h2 className="text-sm font-extrabold">{tab==='goals'?t('ترتيب الهدافين','Top scorers'):t('ترتيب صناع اللعب','Top assists')}</h2>
-          <span className="text-xs opacity-60">{leaderSource}</span>
+          {showAttribution && <span className="text-xs opacity-60">{leaderSource}</span>}
         </header>
         {leadersStatus==='loading' && <p role="status" className="p-3 text-sm">{t('جارٍ جلب الأرقام الموثقة…','Loading verified statistics…')}</p>}
         {leadersStatus==='unavailable' && <p role="status" className="p-3 text-sm">{t('لا تتوفر بيانات مؤكدة للهدافين أو صناع اللعب في هذه البطولة حاليًا.', 'Verified leaderboard data is unavailable for this competition.')}</p>}

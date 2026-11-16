@@ -82,7 +82,7 @@ const format = (n: number | null) => n === null ? '—' : String(Math.round(n * 
 const tabs = [['passes', 'شبكة التمريرات'], ['shots', 'خريطة التسديدات'], ['metrics', 'مؤشرات الأداء']] as const;
 type Tab = typeof tabs[number][0];
 
-export default function MatchVisualReport({ data, isDark = true, shotsOnly = false, initialSide = 'home', singleTeam = false }: { data: VisualMatch; isDark?: boolean; shotsOnly?: boolean; initialSide?: Side; singleTeam?: boolean }) {
+export default function MatchVisualReport({ data, isDark = true, shotsOnly = false, initialSide = 'home', singleTeam = false, showAttribution = true }: { data: VisualMatch; isDark?: boolean; shotsOnly?: boolean; initialSide?: Side; singleTeam?: boolean; showAttribution?: boolean }) {
   const [tab, setTab] = useState<Tab>(shotsOnly ? 'shots' : data.demo ? 'passes' : 'metrics');
   const [side, setSide] = useState<Side>(initialSide);
   const [selected, setSelected] = useState<string | null>(null);
@@ -113,7 +113,7 @@ export default function MatchVisualReport({ data, isDark = true, shotsOnly = fal
   return <section dir="rtl" aria-label="تقرير فوتبلاي المرئي" className={`my-5 w-full overflow-hidden rounded-3xl border font-[Cairo] ${surface}`}>
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-600/20 p-4 sm:p-5">
       <div><h3 className="text-base font-bold">فوتبلاي · تقرير المباراة</h3><p className={`mt-1 text-xs ${subtle}`}>{data.context}</p></div>
-      <span className={`rounded-lg px-2 py-1 text-xs ${panel}`}>{data.demo ? 'معاينة ببيانات افتراضية' : data.source}</span>
+      {(data.demo || showAttribution) && <span className={`rounded-lg px-2 py-1 text-xs ${panel}`}>{data.demo ? 'معاينة ببيانات افتراضية' : data.source}</span>}
     </header>
     <div className="p-4 sm:p-5">
       {!shotsOnly && <div className="grid grid-cols-2 gap-2 py-4 text-center">
@@ -149,7 +149,7 @@ export default function MatchVisualReport({ data, isDark = true, shotsOnly = fal
             </Pitch>
             <div className="mt-4 flex flex-wrap gap-2">{nodes.map(n => <button key={n.id} type="button" aria-pressed={selected === n.id} className={`${button} ${selected === n.id ? selectedButton : neutralButton}`} onClick={() => setSelected(selected === n.id ? null : n.id)}>{n.number} · {n.name}</button>)}</div>
             <p aria-live="polite" className="mt-4 text-sm">{activeNode ? `${activeNode.name} · ${links.filter(l => l.from === activeNode.id || l.to === activeNode.id).length} روابط تمرير موضحة` : 'اختر لاعبًا لإبراز روابط تمريره.'}</p>
-          </> : <p className={`py-5 text-sm leading-7 ${subtle}`}>شبكة التمريرات غير متاحة لهذه المباراة في استجابة المصدر. يلزم متوسط مواقع اللاعبين وعدد التمريرات بينهم لرسمها.</p>}
+          </> : <p className={`py-5 text-sm leading-7 ${subtle}`}>شبكة التمريرات غير متاحة لهذه المباراة.</p>}
         </>}
         {tab === 'shots' && <>
           <h4 className="mb-2 text-sm font-bold">مواقع تسديدات {data[side]}</h4>
@@ -171,7 +171,7 @@ export default function MatchVisualReport({ data, isDark = true, shotsOnly = fal
             </Pitch>
             <p className={`mt-3 text-xs ${subtle}`}>{matchNumberInArabic(shots.length)} تسديدة بإحداثيات متاحة</p>
             {activeShot && <p className="mt-3 text-sm" aria-live="polite">{describeShot(activeShot)}</p>}
-          </> : <p className={`py-5 text-sm leading-7 ${subtle}`}>لم تصل إحداثيات تسديدات صالحة لهذا الفريق. عدد التسديدات الإجمالي يظهر في المؤشرات عندما يوفره المصدر.</p>}
+          </> : <p className={`py-5 text-sm leading-7 ${subtle}`}>إحداثيات التسديدات غير متاحة لهذا الفريق.</p>}
         </>}
         {tab === 'metrics' && <>
           <h4 className="text-sm font-bold">مقارنة مؤشرات الأداء</h4><p className={`my-2 text-xs ${subtle}`}>{data.home} يمينًا · {data.away} يسارًا · «—» تعني غير متاح</p>
@@ -182,10 +182,10 @@ export default function MatchVisualReport({ data, isDark = true, shotsOnly = fal
               {total > 0 && <div className="mt-3 flex h-1.5 gap-1 overflow-hidden rounded-full" aria-hidden="true"><span style={{ width: `${m.home! / total * 100}%`, background: green }} /><span style={{ width: `${m.away! / total * 100}%`, background: orange }} /></div>}
             </div>;
           })}
-          {!metrics.length && <p className={`py-5 text-sm ${subtle}`}>مؤشرات الأداء غير متاحة في استجابة المصدر.</p>}
+          {!metrics.length && <p className={`py-5 text-sm ${subtle}`}>مؤشرات الأداء غير متاحة لهذه المباراة.</p>}
         </>}
       </div>
-      <footer className={`mt-4 flex flex-wrap justify-between gap-2 text-xs ${subtle}`}><span>من الرياض إلى العالم</span><span>{data.demo ? 'القيم والإحداثيات افتراضية للتوضيح فقط' : `بيانات المباراة · ${data.source}`}</span></footer>
+      <footer className={`mt-4 flex flex-wrap justify-between gap-2 text-xs ${subtle}`}><span>من الرياض إلى العالم</span>{(data.demo || showAttribution) && <span>{data.demo ? 'القيم والإحداثيات افتراضية للتوضيح فقط' : `بيانات المباراة · ${data.source}`}</span>}</footer>
     </div>
   </section>;
 }

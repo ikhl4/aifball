@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { matchNameInArabic, matchNumberInArabic, matchDateInArabic } from '../../lib/match-display-ar';
+import { matchNameInArabic, matchNumberInArabic } from '../../lib/match-display-ar';
 import { sameProviderMatch } from '../../lib/match-heatmap-source';
 import type { DetailedMatchReport } from '../../lib/match-report';
 import { normalize365Report, type Scores365Report } from '../../lib/scores365-report';
@@ -70,7 +70,7 @@ function StatLine({ metric }: { metric: Visual['metrics'][number] }) {
   </div>;
 }
 
-function landscapeImage(visual: Visual, title: string, stamp: string, isDark: boolean, metrics: Visual['metrics'], shots?: Visual['shots']) {
+function landscapeImage(visual: Visual, title: string, isDark: boolean, metrics: Visual['metrics'], shots?: Visual['shots']) {
   const canvas = document.createElement('canvas');
   canvas.width = 1600;
   canvas.height = 900;
@@ -136,7 +136,7 @@ function landscapeImage(visual: Visual, title: string, stamp: string, isDark: bo
       ctx.globalAlpha = 1;
     });
   }
-  text(`${visual.source}  ·  ${stamp}`, 800, 846, 19, muted, 600);
+  text('فوتبلاي', 800, 846, 19, muted, 600);
   return new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
 }
 
@@ -186,8 +186,6 @@ export default function MatchStatisticsBoard({ data, homeLogo, awayLogo, isDark,
   const split = groups.map((g, idx) => ({ title:g.title, metrics:visual.metrics.filter(m => groups.findIndex(group => group.pattern.test(m.key+' '+m.label)) === idx) }));
   const shots = visual.shots.filter(s => (side === 'all' || side === s.side) && (period === 'all' || shotPeriod(s) === (period === 'first' ? 1 : 2)));
   const currentShot = shots.find(s => s.id === selected);
-  const fetchedAt = sourceReport?.fetchedAt || (!sourceReport ? data.fetchedAt : '');
-  const stamp = fetchedAt ? matchDateInArabic(fetchedAt, true) + ' بتوقيت الرياض' : 'وقت الجلب غير متاح';
   const button = 'rounded-lg border border-emerald-600/35 px-3 py-2 text-xs font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500';
   const chosen = ' bg-emerald-700 text-white';
   const panel = isDark ? 'bg-[#102b21] border-emerald-500/20' : 'bg-emerald-50/45 border-emerald-700/20';
@@ -195,7 +193,7 @@ export default function MatchStatisticsBoard({ data, homeLogo, awayLogo, isDark,
   async function share() {
     setShareError(false);
     try {
-      const blob = await landscapeImage(visual, view === 'shots' ? 'خريطة التسديدات · '+periods[period] : 'إحصائيات المباراة', stamp, isDark, visual.metrics, view === 'shots' ? shots : undefined);
+      const blob = await landscapeImage(visual, view === 'shots' ? 'خريطة التسديدات · '+periods[period] : 'إحصائيات المباراة', isDark, visual.metrics, view === 'shots' ? shots : undefined);
       if (!blob) throw new Error();
       const file = new File([blob], 'aifball-match-statistics.png', { type:'image/png' });
       if (navigator.canShare?.({ files:[file] })) {
@@ -213,18 +211,18 @@ export default function MatchStatisticsBoard({ data, homeLogo, awayLogo, isDark,
 
   return <div className="space-y-4 p-3 sm:p-5">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div className="flex flex-wrap gap-2" role="group" aria-label="مصدر الأرقام">
-        <button type="button" className={button+(provider==='espn'?chosen:'')} aria-pressed={provider==='espn'} onClick={()=>{setProvider('espn');setSelected(null);}}>إي إس بي إن</button>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="عرض الإحصائيات">
+        <button type="button" className={button+(provider==='espn'?chosen:'')} aria-pressed={provider==='espn'} onClick={()=>{setProvider('espn');setSelected(null);}}>الإحصائيات الأساسية</button>
         {date && data.state !== 'pre' && <button type="button" className={button+(provider==='365'?chosen:'')}
           disabled={request>0&&additional===undefined} aria-pressed={provider==='365'} onClick={()=>{
             setProvider('365');setSelected(null);
             if (!additional) { setAdditional(undefined); setRequest(n=>n+1); }
-          }}>٣٦٥ سكورز</button>}
+          }}>إحصائيات إضافية</button>}
       </div>
       <button type="button" className={button+' bg-emerald-700 text-white disabled:opacity-50'} disabled={!canExport || provider==='365'&&!additional} onClick={()=>void share()}>مشاركة بطاقة أفقية</button>
     </div>
     {shareError && <p role="alert" className="text-sm text-amber-600">تعذر تجهيز صورة المشاركة.</p>}
-    {provider==='365'&&!additional ? <p role="status" className="rounded-xl border border-emerald-600/25 p-4 text-sm">{additional===undefined?'جارٍ مطابقة المباراة مع ٣٦٥ سكورز…':'تعذّر جلب إحصائيات مؤكدة لهذه المباراة من ٣٦٥ سكورز.'}</p> : <>
+    {provider==='365'&&!additional ? <p role="status" className="rounded-xl border border-emerald-600/25 p-4 text-sm">{additional===undefined?'جارٍ تحميل الإحصائيات الإضافية…':'الإحصائيات الإضافية غير متاحة لهذه المباراة.'}</p> : <>
     {view === 'overview' ? <>
       <div className={`grid grid-cols-2 gap-4 rounded-xl border p-3 text-center ${panel}`}>
         {[[visual.home, homeLogo], [visual.away, awayLogo]].map(([name, logo], index) => <div key={index} className="flex min-w-0 items-center justify-center gap-2 text-sm font-black">
@@ -237,7 +235,7 @@ export default function MatchStatisticsBoard({ data, homeLogo, awayLogo, isDark,
           <h3 className="border-b border-emerald-500/20 pb-2 text-sm font-black">{group.title}</h3>
           {group.metrics.map(metric=><StatLine key={metric.key} metric={metric}/>)}
         </section>)}
-      </div> : <p role="status" className="p-3 text-sm">المصدر لم يوفر إحصائيات رقمية لهذه المباراة.</p>}
+      </div> : <p role="status" className="p-3 text-sm">الإحصائيات غير متاحة لهذه المباراة.</p>}
     </> : <>
       <div className="flex flex-wrap gap-2" role="group" aria-label="فترة التسديدات">
         {(Object.entries(periods) as [Period,string][]).map(([id,name])=><button type="button" key={id} aria-pressed={period===id} className={button+(period===id?chosen:'')} onClick={()=>{setPeriod(id);setSelected(null);}}>{name}</button>)}
@@ -263,7 +261,6 @@ export default function MatchStatisticsBoard({ data, homeLogo, awayLogo, isDark,
         </p>}
       </> : <p className="rounded-xl border border-dashed border-emerald-600/35 p-5 text-sm">إحداثيات التسديدات غير متاحة لهذا الاختيار.</p>}
     </>}
-    <p className="text-xs leading-6 opacity-80">المصدر <a className="font-bold underline" href={sourceReport?.sourceUrl||data.sourceUrl} target="_blank" rel="noreferrer">{visual.source}</a> · {stamp}</p>
     </>}
   </div>;
 }

@@ -1,5 +1,7 @@
-
 'use client';
+
+import FootballTeamBadge from './FootballTeamBadge';
+import { officialClubBadge } from '../../lib/official-club-badges';
 
 import AppIcon from './AppIcon';
 import { COMPETITIONS } from '../../lib/competitions';
@@ -12,6 +14,7 @@ type DataRecord = Record<string, unknown>;
 type StandingZone = 'qualification' | 'relegation' | null;
 
 interface LeagueDashboardProps {
+  showAttribution?: boolean;
   leagueName?: string;
   leagueCode?: string;
   season?: string;
@@ -227,8 +230,8 @@ const UI = {
     gf: 'له',
     ga: 'عليه',
     points: 'نقاط',
-    qualification: 'مركز تأهل وفق بيانات المصدر',
-    relegation: 'مركز هبوط وفق بيانات المصدر',
+    qualification: 'مركز تأهل',
+    relegation: 'مركز هبوط',
     teamsCount: 'عدد الفرق المعروضة',
     group: 'المجموعة',
     overall: 'الترتيب العام',
@@ -686,6 +689,7 @@ export default function LeagueDashboard({
   season = '',
   isDark = true,
   lang = 'ar',
+  showAttribution = true,
 }: LeagueDashboardProps) {
   const t = UI[lang];
   const isArabic = lang === 'ar';
@@ -992,7 +996,7 @@ export default function LeagueDashboard({
           </button>
         </div>
 
-        <div className="flex items-center justify-between gap-2 mt-4 text-[11px] text-gray-500">
+        {showAttribution && <div className="flex items-center justify-between gap-2 mt-4 text-[11px] text-gray-500">
           <span>
             {t.source}:{' '}
             <bdi dir="ltr">
@@ -1008,7 +1012,7 @@ export default function LeagueDashboard({
               {t.updated}: {formattedUpdatedAt}
             </span>
           )}
-        </div>
+        </div>}
       </div>
 
       {!loading && groups.length > 1 && (
@@ -1261,7 +1265,9 @@ export default function LeagueDashboard({
                         className={`sticky ${teamSticky} z-10 py-3.5 px-3 ${teamAlign} font-bold border-b ${stickyBg} ${cellBorder}`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          {team.logo ? (
+                          {officialClubBadge(teamName) ? (
+                            <FootballTeamBadge name={teamName} size={32} />
+                          ) : team.logo ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={team.logo}

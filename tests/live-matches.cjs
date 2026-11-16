@@ -32,7 +32,7 @@ function mount(path, fetcher) {
   const module = { exports: {} };
   const source = fs.readFileSync(path, 'utf8') + (path.endsWith('/LiveMatchCenter.tsx') ? '\nmodule.exports.default = FootballMatchCenter;' : '');
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
-  vm.runInNewContext(code, { module, exports: module.exports, React, require: name => name.includes('football-scoreboard') ? support('lib/football-scoreboard.ts') : name.includes('live-match-filters') ? support('lib/live-match-filters.ts') : name.includes('football-names-ar') ? support('lib/football-names-ar.ts') : name.includes('match-display-ar') ? support('lib/match-display-ar.ts') : React, fetch: (...args) => fetcher(...args), AbortController, Intl, Date,
+  vm.runInNewContext(code, { module, exports: module.exports, React, require: name => name.includes('football-scoreboard') ? support('lib/football-scoreboard.ts') : name.includes('live-match-filters') ? support('lib/live-match-filters.ts') : name.includes('football-names-ar') ? support('lib/football-names-ar.ts') : name.includes('match-display-ar') ? support('lib/match-display-ar.ts') : name.includes('official-club-badges') ? support('lib/official-club-badges.ts') : React, fetch: (...args) => fetcher(...args), AbortController, Intl, Date,
     setInterval: fn => { interval = fn; return 1; }, clearInterval() {}, console });
   function render(nextProps = props) { props = nextProps; index = 0; effectIndex = 0; tree = module.exports.default(props);
     effects.forEach(effect => { if (effect.fn) { const fn = effect.fn; effect.fn = null; effect.cleanup = fn(); } }); return tree; }
