@@ -12,6 +12,9 @@ function config() {
 }
 
 export async function POST(req: Request) {
+  if (!process.env.CLERK_SECRET_KEY) {
+    return NextResponse.json({ error: 'Background jobs unavailable' }, { status: 503 });
+  }
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
   const service = config();

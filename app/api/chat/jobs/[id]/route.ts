@@ -4,6 +4,9 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!process.env.CLERK_SECRET_KEY) {
+    return NextResponse.json({ error: 'Background jobs unavailable' }, { status: 503 });
+  }
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
   const base = process.env.AIFBALL_RENDER_API_URL?.replace(/\/$/, '');

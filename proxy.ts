@@ -1,21 +1,16 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { clerkMiddleware } from '@clerk/nextjs/server';
+import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 
-// يمكنك لاحقاً تحديد المسارات التي تتطلب تسجيل دخول إجباري هنا
-const isProtectedRoute = createRouteMatcher([
-  // '/api/chat(.*)', 
-]);
+const authenticate = clerkMiddleware();
 
-export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
-    await auth.protect();
-  }
-});
+export default function proxy(request: NextRequest, event: NextFetchEvent) {
+  if (!process.env.CLERK_SECRET_KEY) return NextResponse.next();
+  return authenticate(request, event);
+}
 
 export const config = {
   matcher: [
-    // استثناء ملفات Next.js الداخلية والملفات الثابتة والصور
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // تشغيل الـ middleware دائما لطلبات الـ API
     '/(api|trpc)(.*)',
   ],
 };
