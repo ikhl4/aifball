@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
   const base = process.env.AIFBALL_RENDER_API_URL?.replace(/\/$/, '');
@@ -11,9 +11,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   if (!base || !token || !/^https:\/\//.test(base)) {
     return NextResponse.json({ error: 'Background jobs unavailable' }, { status: 503 });
   }
-  if (!/^[0-9a-f-]{36}$/i.test(params.id)) return NextResponse.json({ error: 'Invalid job ID' }, { status: 400 });
+  const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: 'Invalid job ID' }, { status: 400 });
   try {
-    const url = base + '/internal/chat-jobs/' + params.id + '?owner=' + encodeURIComponent(userId);
+    const url = base + '/internal/chat-jobs/' + id + '?owner=' + encodeURIComponent(userId);
     const response = await fetch(url, { headers: { Authorization: 'Bearer ' + token },
       cache: 'no-store', signal: AbortSignal.timeout(15000) });
     const payload = await response.json();
