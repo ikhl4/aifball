@@ -299,9 +299,9 @@ export async function POST(req: Request) {
       // Never send a recognized latest-match question to a second, slow Dify
       // discovery path after a provider failure.
       const answer = found.match
-        ? latestMatchText(directTeam, found.match) + (found.complete ? '' : '\\n\\n**تنبيه:** بعض البطولات لم تستجب؛ هذه أحدث نتيجة عُثر عليها، وليست بالضرورة آخر مباراة في جميع البطولات.')
+        ? latestMatchText(directTeam, found.match) + (found.complete ? '' : '\n\n**التغطية جزئية.** قد توجد مباراة أحدث لم أتمكن من التحقق منها.')
         : 'تعذر استرجاع نتيجة مكتملة حديثة لـ' + directTeam + ' من مصدر المباريات حالياً. لا توجد نتيجة مؤكدة يمكن عرضها.';
-      console.info('[AIFBALL_LATEST_DIRECT]', JSON.stringify({team:directTeam,complete:found.complete,hasMatch:Boolean(found.match)}));
+      console.info('[AIFBALL_LATEST_DIRECT]', JSON.stringify({team:directTeam,complete:found.complete,hasMatch:Boolean(found.match),durationMs:Math.round(performance.now()-requestStarted)}));
       const events = [{event:'message',answer,conversation_id},{event:'message_end',conversation_id}];
       return new Response(events.map(event => 'data: '+JSON.stringify(event)+'\n\n').join(''), {
         headers: {'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform'}
