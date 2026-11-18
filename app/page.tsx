@@ -1911,19 +1911,30 @@ export default function FootPlayChat() {
             {t('مباشر', 'Live')}
           </button>
 
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
-              isDarkMode
-                ? 'bg-white/5 border-white/10 text-yellow-400'
-                : 'bg-gray-100 border-gray-200 text-gray-600'
-            }`}
-            aria-label={`المظهر: ${themePreference === 'system' ? 'تلقائي حسب الجوال' : themePreference === 'light' ? 'نهاري' : 'ليلي'}. اضغط للتبديل`}
-            title={`المظهر: ${themePreference === 'system' ? 'تلقائي حسب الجوال' : themePreference === 'light' ? 'نهاري' : 'ليلي'}`}
-          >
-            <AppIcon name={themePreference === 'system' ? 'smartphone' : themePreference === 'dark' ? 'moon' : 'sun'}/>
-          </button>
+          <div className="flex shrink-0 flex-col items-center gap-0.5">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
+                isDarkMode
+                  ? 'bg-white/5 border-white/10 text-yellow-400'
+                  : 'bg-gray-100 border-gray-200 text-gray-600'
+              }`}
+              aria-label={`المظهر: ${themePreference === 'system' ? 'تلقائي حسب الجوال' : themePreference === 'light' ? 'نهاري' : 'ليلي'}. اضغط للتبديل`}
+              title={`المظهر: ${themePreference === 'system' ? 'تلقائي حسب الجوال' : themePreference === 'light' ? 'نهاري' : 'ليلي'}`}
+            >
+              <AppIcon name={themePreference === 'system' ? 'smartphone' : themePreference === 'dark' ? 'moon' : 'sun'}/>
+            </button>
+            <div dir="ltr" role="group" aria-label={t('لغة التطبيق', 'App language')} className="flex rounded-md border border-emerald-600/25 p-px">
+              {(['ar', 'en'] as const).map(lang => (
+                <button key={lang} type="button" aria-label={lang === 'ar' ? 'العربية' : 'English'}
+                  aria-pressed={language === lang} onClick={() => changeLanguage(lang)}
+                  className={`min-h-6 min-w-6 rounded px-0.5 text-[9px] font-bold leading-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${language === lang ? 'bg-emerald-700 text-white' : ''}`}>
+                  {lang.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <button
             type="button"
