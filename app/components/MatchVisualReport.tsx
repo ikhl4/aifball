@@ -110,7 +110,7 @@ export default function MatchVisualReport({ data, isDark = true, shotsOnly = fal
     metrics.find(m => /^(possessionPct|ballPossession|possession|ball_possession)$/i.test(m.key) || m.label === 'الاستحواذ'),
   ].filter((m): m is Metric => !!m);
 
-  return <section dir="rtl" aria-label="تقرير فوتبلاي المرئي" className={`my-5 w-full overflow-hidden rounded-3xl border font-[Cairo] ${surface}`}>
+  return <section dir="rtl" aria-label="تقرير فوتبلاي المرئي" className={`my-5 w-full overflow-hidden rounded-3xl border font-thmanyah ${surface}`}>
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-600/20 p-4 sm:p-5">
       <div><h3 className="text-base font-bold">فوتبلاي · تقرير المباراة</h3><p className={`mt-1 text-xs ${subtle}`}>{data.context}</p></div>
       {(data.demo || showAttribution) && <span className={`rounded-lg px-2 py-1 text-xs ${panel}`}>{data.demo ? 'معاينة ببيانات افتراضية' : data.source}</span>}

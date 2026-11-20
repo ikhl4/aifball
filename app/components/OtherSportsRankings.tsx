@@ -35,7 +35,7 @@ export default function OtherSportsRankings({language='ar'}:{language?:AppLangua
     const selected=categories.find(s=>s.id===id);
     if(selected)setCode(selected.options[0][0]);
   };
-  return <section dir={language==='ar'?'rtl':'ltr'} className="space-y-3 font-cairo">
+  return <section dir={language==='ar'?'rtl':'ltr'} className="space-y-3 font-thmanyah">
     <header><h3 className="text-lg font-extrabold">{tr('جداول وتصنيفات الرياضات الأخرى','Other sports standings & rankings')}</h3>
       <p className="mt-1 text-xs opacity-70">{tr('اختر الرياضة والبطولة لعرض الترتيب المتاح بالعربية. النتائج من مصادر خارجية.','Select a sport and competition for available rankings.')}</p></header>
     <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-3" role="group" aria-label={tr('الرياضة','Sport')}>

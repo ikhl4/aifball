@@ -5,7 +5,7 @@ import FootballNewsCards from '../components/FootballNewsCards';
 
 export default function WorldNewsPage() {
  const [query,setQuery]=useState('');
- return <main dir="rtl" className="min-h-screen bg-emerald-950 text-white px-4 py-7 sm:px-8" style={{fontFamily:"'Cairo',sans-serif"}}>
+ return <main dir="rtl" className="min-h-screen bg-emerald-950 text-white px-4 py-7 sm:px-8" style={{fontFamily:"var(--font-thmanyah),sans-serif"}}>
   <div className="mx-auto max-w-5xl">
    <header className="flex flex-wrap items-center justify-between gap-3 mb-5">
     <div><p className="text-emerald-300 text-sm">AiFBall · الأخبار العالمية</p><h1 className="text-2xl sm:text-3xl font-black mt-1">آخر أخبار كرة القدم خلال 24 ساعة</h1></div>

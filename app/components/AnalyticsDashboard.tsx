@@ -85,7 +85,7 @@ export default function AnalyticsDashboard({ compact = false, isDark = true }: {
     window.requestAnimationFrame(()=>report.current?.scrollIntoView({block:'start'}));
   }
 
-  return <section dir="rtl" aria-label="مركز الاحصائيات" className={`min-w-0 font-cairo text-right ${isDark?'text-emerald-50':'text-[#103e2a]'}`}>
+  return <section dir="rtl" aria-label="مركز الاحصائيات" className={`min-w-0 font-thmanyah text-right ${isDark?'text-emerald-50':'text-[#103e2a]'}`}>
     <header className={`relative overflow-hidden rounded-[1.6rem] border px-5 py-6 sm:px-8 sm:py-9 ${isDark?'border-emerald-500/25 bg-gradient-to-bl from-[#1a5a42] to-[#102b21]':'border-emerald-900/15 bg-gradient-to-bl from-[#d8f6e7] to-white'}`}>
       <div aria-hidden="true" className="pointer-events-none absolute -end-16 -top-16 h-56 w-56 rounded-full border border-current opacity-15 before:absolute before:inset-6 before:rounded-full before:border before:border-current after:absolute after:inset-16 after:rounded-full after:border after:border-current" />
       <div className="relative">
