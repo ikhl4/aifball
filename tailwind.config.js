@@ -7,6 +7,10 @@ module.exports = {
   theme: {
     typography: require('./typography'),
     extend: {
+      fontFamily: {
+        sans: ['var(--font-thmanyah)', 'sans-serif'],
+        thmanyah: ['var(--font-thmanyah)', 'sans-serif'],
+      },
       colors: {
         gray: {
           50: '#F9FAFB',

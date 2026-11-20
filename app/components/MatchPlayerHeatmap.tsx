@@ -55,6 +55,9 @@ export default function MatchPlayerHeatmap({ home, away, date, side, player, sta
     setFailedExport(undefined);
     try {
       await artwork.decode();
+      const fontFamily = getComputedStyle(document.body).fontFamily;
+      await document.fonts.load(`700 27px ${fontFamily}`);
+      await document.fonts.load(`900 48px ${fontFamily}`);
       if (!artwork.naturalWidth || !artwork.naturalHeight) throw new Error();
       const canvas = document.createElement('canvas');
       canvas.width = 1600;
@@ -69,9 +72,9 @@ export default function MatchPlayerHeatmap({ home, away, date, side, player, sta
       ctx.fillStyle = '#e2fbed';
       ctx.textAlign = 'center';
       ctx.direction = 'rtl';
-      ctx.font = '800 48px Cairo, Tahoma, sans-serif';
+      ctx.font = `900 48px ${fontFamily}`;
       ctx.fillText(matchNameInArabic(player), 800, 110, 1350);
-      ctx.font = '700 27px Cairo, Tahoma, sans-serif';
+      ctx.font = `700 27px ${fontFamily}`;
       ctx.fillText('الخريطة الحرارية · ' + matchNameInArabic(home) + ' × ' + matchNameInArabic(away), 800, 160, 1400);
       const scale = Math.min(1350 / artwork.naturalWidth, 572 / artwork.naturalHeight);
       const width = artwork.naturalWidth * scale;

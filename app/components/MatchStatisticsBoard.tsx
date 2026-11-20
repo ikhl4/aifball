@@ -70,7 +70,9 @@ function StatLine({ metric }: { metric: Visual['metrics'][number] }) {
   </div>;
 }
 
-function landscapeImage(visual: Visual, title: string, isDark: boolean, metrics: Visual['metrics'], shots?: Visual['shots']) {
+async function landscapeImage(visual: Visual, title: string, isDark: boolean, metrics: Visual['metrics'], shots?: Visual['shots']) {
+  const fontFamily = getComputedStyle(document.body).fontFamily;
+  await Promise.all([500, 700, 900].map(weight => document.fonts.load(`${weight} 32px ${fontFamily}`)));
   const canvas = document.createElement('canvas');
   canvas.width = 1600;
   canvas.height = 900;
@@ -84,7 +86,7 @@ function landscapeImage(visual: Visual, title: string, isDark: boolean, metrics:
   const ink = isDark ? '#f1fff7' : '#0d3827';
   const muted = isDark ? '#b0d7c4' : '#256449';
   const text = (label: string, x: number, y: number, size: number, color = ink, weight = 700, align: CanvasTextAlign = 'center') => {
-    ctx.font = `${weight} ${size}px Cairo, Tahoma, sans-serif`;
+    ctx.font = `${weight} ${size}px ${fontFamily}`;
     ctx.textAlign = align;
     ctx.fillStyle = color;
     ctx.fillText(label, x, y, align === 'center' ? 760 : 460);

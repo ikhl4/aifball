@@ -66,7 +66,7 @@ export default function AcademyPage() {
   };
   const dailyPlan=(agePlans[ageGroup] || agePlans.U19)[trainingDay];
   const filtered=useMemo(()=>drills.filter(d=>(category==='الكل'||d.category===category)&&[d.title,d.objective,d.category].some(x=>x.includes(query.trim()))),[category,query]);
-  return <main dir="rtl" className="min-h-screen bg-emerald-950 text-white px-4 py-8 sm:px-8" style={{fontFamily:"'Cairo', sans-serif"}}>
+  return <main dir="rtl" className="min-h-screen bg-emerald-950 text-white px-4 py-8 sm:px-8" style={{fontFamily:"var(--font-thmanyah), sans-serif"}}>
     <div className="mx-auto max-w-5xl">
       <header className="mb-7 flex items-center justify-between gap-4">
         <div><p className="text-emerald-300 text-sm">AiFBall Academy</p><h1 className="text-2xl sm:text-4xl font-bold mt-2">الأكاديمية التدريبية</h1><p className="mt-2 text-emerald-100/80 text-sm">مكتبة تمارين كروية قابلة للبحث — المرحلة الأولى</p></div>

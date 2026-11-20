@@ -682,7 +682,7 @@ function renderFormattedText(
         };
         const heading = attrs.kind === 'results' ? 'نتائج المباريات' : attrs.kind === 'draw' ? 'قرعة البطولة' : attrs.kind === 'match' ? 'يوم المباراة' : 'جدول المباريات';
         elements.push(
-          <section key={i} dir="rtl" aria-label={heading} style={{ fontFamily: "Cairo, sans-serif" }} className="my-4 overflow-hidden rounded-3xl border border-emerald-700 bg-gradient-to-br from-[#08140f] via-[#123b2c] to-black p-5 text-white sm:p-8">
+          <section key={i} dir="rtl" aria-label={heading} style={{ fontFamily: "var(--font-thmanyah), sans-serif" }} className="my-4 overflow-hidden rounded-3xl border border-emerald-700 bg-gradient-to-br from-[#08140f] via-[#123b2c] to-black p-5 text-white sm:p-8">
             <div className="flex items-center gap-3 text-sm font-bold text-emerald-300">
               {logoId && <img src={`https://images.fotmob.com/image_resources/logo/leaguelogo/${logoId}.png`} alt="" className="h-10 w-10 rounded-md bg-white object-contain p-1" onError={event => { event.currentTarget.hidden = true; }} />}
               <span>{attrs.competition}</span>
@@ -1641,7 +1641,7 @@ export default function FootPlayChat() {
     <div
       dir={language === 'en' ? 'ltr' : 'rtl'}
       lang={language}
-      className={`flex flex-col h-[100dvh] relative overflow-hidden font-cairo transition-colors duration-300 ${
+      className={`flex flex-col h-[100dvh] relative overflow-hidden font-thmanyah transition-colors duration-300 ${
         isDarkMode
           ? 'bg-[#022c22] text-white'
           : 'bg-white text-black'
@@ -1664,16 +1664,7 @@ export default function FootPlayChat() {
         </svg>
       </div>
 
-      {/* خط Cairo */}
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap');
-
-        .font-cairo,
-        .font-cairo * {
-          font-family: 'Cairo', sans-serif !important;
-          font-feature-settings: 'calt' 1, 'liga' 1;
-        }
-
         .aifball-day-reply h1, .aifball-day-reply h2, .aifball-day-reply h3,
         .aifball-day-reply h4, .aifball-day-reply h5, .aifball-day-reply h6 {
           color: #1D6B35 !important;
@@ -1979,7 +1970,7 @@ export default function FootPlayChat() {
           </nav>
         )}
         {messages.length === 0 ? (homeScreen === 'home' ? (
-          <div className="flex-1 flex flex-col justify-center my-auto py-2" style={{ fontFamily: "Cairo, sans-serif" }}>
+          <div className="flex-1 flex flex-col justify-center my-auto py-2" style={{ fontFamily: "var(--font-thmanyah), sans-serif" }}>
             <div className="text-start space-y-3 mb-5 px-1">
               <div className={`inline-flex items-center gap-2 text-xs sm:text-sm font-bold tracking-widest uppercase pb-1 border-b-2 border-emerald-500/40 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-900'}`}>
                 <AppIcon name="pitch"/>

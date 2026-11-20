@@ -115,10 +115,10 @@ export default function TacticalLesson({ name = '', isDark = true, trainingFirst
             {showArrows && frame.arrows.map((arrow, i) => { const a=players.find(p=>p.id===arrow.from), b=players.find(p=>p.id===arrow.to); return a && b ? <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={arrow.kind === 'pass' ? '#f4d773' : arrow.kind === 'shot' ? '#ff7575' : '#a2d3ff'} strokeWidth="0.65" strokeDasharray={arrow.kind === 'run' ? '1.5 1' : undefined} markerEnd={`url(#${uid}-${arrow.kind})`} opacity="0.9" /> : null; })}
             {players.map(p => <g key={p.id} role={editing ? 'button' : undefined} tabIndex={editing ? 0 : undefined} aria-label={`اللاعب ${p.number}: ${p.role}`} style={{cursor:editing?'grab':'default'}} onPointerDown={e=>{if(!editing)return; e.preventDefault(); setSelected(p.id); dragging.current=p.id; e.currentTarget.setPointerCapture(e.pointerId);}} onKeyDown={e=>{if(editing&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setSelected(p.id);}}}>
               <circle cx={p.x} cy={p.y} r={selected===p.id?3.1:2.5} fill={p.side==='team'?'#19bb87':'#ee9455'} stroke={selected===p.id?'#fff':'#092e25'} strokeWidth="0.55" className={editing?'':'motion-reduce:transition-none'} style={{transition:editing?'none':'cx 850ms ease, cy 850ms ease'}} />
-              <text x={p.x} y={p.y+0.9} textAnchor="middle" fontSize="2.4" fontFamily="Arial, sans-serif" fontWeight="bold" fill="#071a12" pointerEvents="none">{p.number}</text>
+              <text x={p.x} y={p.y+0.9} textAnchor="middle" fontSize="2.4" fontFamily="var(--font-thmanyah), sans-serif" fontWeight="bold" fill="#071a12" pointerEvents="none">{p.number}</text>
             </g>)}
             <circle cx={frame.ball[0]} cy={frame.ball[1]+3.3} r="1.1" className="motion-reduce:transition-none" fill="#fff" stroke="#10231b" strokeWidth="0.4" style={{transition:'cx 850ms ease, cy 850ms ease'}} />
-            <text x="4" y="64" fontSize="1.8" fill="#c5d9d0" fontFamily="Arial">AiFBall · Teaching scenario</text>
+            <text x="4" y="64" fontSize="1.8" fill="#c5d9d0" fontFamily="var(--font-thmanyah), sans-serif">AiFBall · Teaching scenario</text>
           </svg>
           <p className={`text-xs mt-2 ${muted}`}>● أخضر: مجموعة التطبيق · ● برتقالي: المنافس · أبيض: الكرة · خط أصفر: تمرير · أزرق متقطع: تحرك · أحمر: تسديد. الإحداثيات تقريبية.</p>
           {isCustomized && <p className="mt-2 text-xs text-amber-600">مشهد معدّل بواسطتك؛ الشرح التدريبي الأصلي لا يتغير تلقائياً مع تعديل اللاعبين.</p>}

@@ -928,7 +928,7 @@ export default function LeagueDashboard({
     <div
       dir={isArabic ? 'rtl' : 'ltr'}
       lang={lang}
-      className={`w-full min-w-0 overflow-hidden rounded-2xl sm:rounded-3xl border shadow-xl font-cairo ${
+      className={`w-full min-w-0 overflow-hidden rounded-2xl sm:rounded-3xl border shadow-xl font-thmanyah ${
         isDark
           ? 'bg-[#1a1c1e] border-gray-800 text-white'
           : 'bg-white border-gray-200 text-gray-900'

@@ -69,7 +69,7 @@ export default function LiveSportsWidget({ league = 'ksa.1', isDark = true, date
   }
 
   return (
-    <div dir="rtl" className={`w-full font-cairo rounded-2xl border shadow-xl my-4 overflow-hidden ${isDark ? 'border-gray-800/80 bg-[#131a2a]' : 'border-gray-200 bg-white'}`}>
+    <div dir="rtl" className={`w-full font-thmanyah rounded-2xl border shadow-xl my-4 overflow-hidden ${isDark ? 'border-gray-800/80 bg-[#131a2a]' : 'border-gray-200 bg-white'}`}>
       <div className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? 'bg-emerald-950/60 border-gray-800/80' : 'bg-emerald-50 border-gray-200'}`}>
         <span className={`font-bold text-sm flex items-center gap-2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
           <span className="w-2 h-2 rounded-full bg-emerald-500"></span> مباريات {dateLabel}
