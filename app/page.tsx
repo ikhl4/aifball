@@ -1,6 +1,8 @@
 
 'use client';
 
+import { consumeChatStream, createChatAnswer } from '../lib/chat-stream';
+
 import { introArtwork } from './intro-artwork';
 
 import AppIcon, { SportIconText } from './components/AppIcon';
@@ -896,22 +898,6 @@ function renderFormattedText(
   return elements;
 }
 
-function parseSSEFrame(frame: string): DataRecord | null {
-  const data = frame
-    .split(/\r?\n/)
-    .filter((line) => line.startsWith('data:'))
-    .map((line) => line.slice(5).trimStart())
-    .join('\n');
-
-  if (!data || data === '[DONE]') return null;
-
-  try {
-    return asRecord(JSON.parse(data));
-  } catch {
-    return null;
-  }
-}
-
 export default function FootPlayChat() {
   const { user } = useUser();
 
@@ -1497,66 +1483,31 @@ export default function FootPlayChat() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       if (!res.body) throw new Error('لا يوجد تدفق استجابة من الخادم.');
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-
-      let buffer = '';
-      const handleFrame = (frame: string) => {
-        const event = parseSSEFrame(frame);
-        if (!event) return;
-
-        if (typeof event.conversation_id === 'string') {
+      const streamedAnswer = createChatAnswer();
+      await consumeChatStream(res.body, event => {
+        if (typeof event.conversation_id === 'string' && event.conversation_id) {
           conv = event.conversation_id;
-
-          if (activeRequestSession.current === id) {
-            setConversationId(conv);
-          }
+          if (activeRequestSession.current === id) setConversationId(conv);
         }
-
-        if (event.event === 'error') {
-          throw new Error(
-            typeof event.message === 'string'
-              ? event.message
-              : 'Dify stream error'
-          );
+        if (event.event === 'error' || (event.event === 'workflow_finished' &&
+            (event.data as DataRecord | undefined)?.status === 'failed')) {
+          throw new Error('Dify stream error');
         }
-
         if (event.event === 'message_end') {
           responseDone = true;
+          return false;
         }
-
-        if (
-          (event.event === 'message' || event.event === 'agent_message') &&
-          typeof event.answer === 'string'
-        ) {
-          answer += event.answer;
-          if (firstAnswerMs === null && event.answer.length > 0) firstAnswerMs = performance.now() - started;
+        const next = streamedAnswer.apply(event);
+        if (next !== null) {
+          answer = next;
+          if (firstAnswerMs === null && answer.length > 0) firstAnswerMs = performance.now() - started;
           receivedAnswer = true;
-
-          update(
-            answer,
-            Math.max(1, Math.floor((performance.now() - started) / 1000))
-          );
+          update(answer, Math.max(1, Math.floor((performance.now() - started) / 1000)));
         }
-      };
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      }, () => {
         streamedChunks++;
         if (firstByteMs === null) firstByteMs = performance.now() - started;
-
-        buffer += decoder.decode(value, { stream: true });
-        const frames = buffer.split(/\r?\n\r?\n/);
-        buffer = frames.pop() ?? '';
-
-        for (const frame of frames) handleFrame(frame);
-        if (responseDone) break;
-      }
-
-      buffer += decoder.decode();
-
-      if (buffer.trim()) handleFrame(buffer);
+      });
 
       if (receivedAnswer && !responseDone) {
         update(`${answer}\n\n${t('انقطع الاتصال قبل اكتمال الرد.', 'The connection ended before the reply finished.')}`);

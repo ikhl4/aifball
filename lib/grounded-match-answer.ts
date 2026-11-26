@@ -1,3 +1,4 @@
+import { createChatAnswer } from './chat-stream';
 import {scores365Identity,normalize365Report} from './scores365-report';
 import { footballLeagues } from './football-scoreboard';
 import { COMPETITIONS } from './competitions';
@@ -51,10 +52,10 @@ export async function groundedMatchAnswer(answer:string,query:string,signal?:Abo
 /** Hold unverified answer deltas; preserve conversation/message identifiers and end order. */
 export function groundedMatchStream(upstream:ReadableStream<Uint8Array>,query:string,signal?:AbortSignal):ReadableStream<Uint8Array>{
  const encoder=new TextEncoder(),decoder=new TextDecoder();let reader:ReadableStreamDefaultReader<Uint8Array>;
- return new ReadableStream({async start(out){reader=upstream.getReader();let buffer='',answer='',meta:any={},end:any=null;
+ return new ReadableStream({async start(out){const accumulated=createChatAnswer();reader=upstream.getReader();let buffer='',answer='',meta:any={},end:any=null;
   const send=(event:any)=>out.enqueue(encoder.encode('data: '+JSON.stringify(event)+'\n\n'));
   const frame=(text:string)=>{const data=text.split('\n').filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trimStart()).join('\n');if(!data||data==='[DONE]')return;let e:any;try{e=JSON.parse(data);}catch{return;}
-   if(e.event==='message'||e.event==='agent_message'){answer+=typeof e.answer==='string'?e.answer:'';meta={...e,answer:undefined};}else if(e.event==='message_end')end=e;else send(e);
+   const next=accumulated.apply(e);if(next!==null){answer=next;meta={...e,answer:undefined};}else if(e.event==='message_end')end=e;else send(e);
   };
   try{while(true){const {done,value}=await reader.read();buffer+=decoder.decode(value,{stream:!done}).replace(/\r\n/g,'\n');let boundary;while((boundary=buffer.indexOf('\n\n'))>=0){frame(buffer.slice(0,boundary));buffer=buffer.slice(boundary+2);}if(done)break;}if(buffer.trim())frame(buffer);
    if(!end)throw Error('INCOMPLETE_STREAM');
