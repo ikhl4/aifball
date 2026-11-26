@@ -14,16 +14,23 @@ export function parseSSEFrame(frame: string): ChatEvent | null {
  * https://docs.dify.ai/en/api-reference/guides/streaming
  */
 export function createChatAnswer() {
-  let answer = '', prefix = '', agent = false;
+  let answer = '', seed = '', card = '', agent = false;
   return {
     apply(event: ChatEvent): string | null {
       if (typeof event.answer !== 'string') return null;
-      if (event.event === 'aifball_player_seed') prefix = event.answer;
-      else if (event.event === 'message_replace') { prefix = ''; answer = event.answer; }
+      if (event.event === 'aifball_player_seed') { seed = event.answer; card = seed; }
+      else if (event.event === 'message_replace') { card = seed; answer = event.answer; }
       else if (event.event === 'agent_message') { agent = true; answer += event.answer; }
       else if (event.event === 'message') answer = agent ? event.answer : answer + event.answer;
       else return null;
-      return prefix && !/<aifball-player\b[^>]*\/?\s*>/i.test(answer) ? prefix + '\n\n' + answer : answer;
+      if (!seed) return answer;
+      // Render one independent card on its own line, even when the Agent wraps
+      // its tag in prose/fences or omits it from a final message. Moderation still
+      // replaces all model prose; the app-owned lookup widget remains separate.
+      const tag = answer.match(/<aifball-player\b[^>]*\/?\s*>/i)?.[0];
+      if (tag) card = tag.replace(/[\r\n]+/g, ' ');
+      const prose = answer.replace(/<aifball-player\b[^>]*\/?\s*>/gi, '').trimStart();
+      return card + '\n\n' + prose;
     },
   };
 }

@@ -72,7 +72,15 @@ test('independent player lookup card survives an Agent final answer that omits i
  assert.equal(a.apply({event:'aifball_player_seed',answer:seed}),seed+'\n\n');
  a.apply({event:'agent_message',answer:'سيرة اللاعب'});
  assert.equal(a.apply({event:'message',answer:'السيرة النهائية'}),seed+'\n\nالسيرة النهائية');
- const full='<aifball-player name="نيكو باز" lookup_name="Nico Paz" />\nقصة المسيرة';
+ const full='<aifball-player name="نيكو باز" lookup_name="Nico Paz" />\n\nقصة المسيرة';
  assert.equal(a.apply({event:'message',answer:full}),full);
- assert.equal(a.apply({event:'message_replace',answer:'بديل'}),'بديل');
+ assert.equal(a.apply({event:'message_replace',answer:'بديل'}),seed+'\n\nبديل');
+});
+
+test('inline and multiline model card tags become one standalone widget, never a disappearing inline tag', () => {
+ const a=stream.createChatAnswer();a.apply({event:'aifball_player_seed',answer:'<aifball-player name="نيكو باز" />'});
+ const output=a.apply({event:'agent_message',answer:'<aifball-player\n name="نيكو باز" lookup_name="Nico Paz" />قصة المسيرة'});
+ assert.equal(output,'<aifball-player  name="نيكو باز" lookup_name="Nico Paz" />\n\nقصة المسيرة');
+ assert.equal((output.match(/<aifball-player/g)||[]).length,1);
+ assert.equal(a.apply({event:'message',answer:'قصة المسيرة'}),output);
 });

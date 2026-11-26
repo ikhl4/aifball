@@ -121,6 +121,7 @@ async function entityForName(name: string, signal: AbortSignal) {
   const search = await json(wikidata({ action: 'wbsearchentities', search: name, language, uselang: 'en', limit: '4' }), signal);
   const matches = list(search.search).filter(item => /^Q\d+$/.test(item.id) &&
     [item.match?.text, item.label].some(label => typeof label === 'string' && normalizePlayerName(label) === normalizePlayerName(name)) && /football|soccer|كرة قدم/i.test(item.description || ''));
+  if (matches.length > 1) return { ambiguous: true };
   if (matches.length !== 1) return undefined;
   const data = await json(wikidata({ action: 'wbgetentities', ids: matches[0].id, props: 'labels|claims|aliases', languages: 'ar|en' }), signal);
   const entity = data.entities?.[matches[0].id];
@@ -160,6 +161,7 @@ async function lookupPlayerData(name: string, season: string): Promise<PlayerDat
     let selected = uniqueEspnPlayer(search, [canonical, name]);
     if (!selected.player && !selected.ambiguous) {
       const aliases = await entityTask;
+      if (aliases?.ambiguous) return { ...result, status: 'ambiguous' };
       const names = [aliases?.labels?.en?.value, ...list(aliases?.aliases?.en).map(alias => alias.value)].filter((value): value is string => typeof value === 'string');
       selected = uniqueEspnPlayer(search, [canonical, name, ...names]);
     }
@@ -183,6 +185,7 @@ async function lookupPlayerData(name: string, season: string): Promise<PlayerDat
     }));
     rows = rows.map(row => summaries.find(scoped => scoped?.league === row.league && scoped.matches !== null) || row);
     const resolvedEntity = await entityTask;
+    if (resolvedEntity?.ambiguous) return { ...result, status: 'ambiguous' };
     const photo = await photoTask;
     return { ...result, status: 'found', canonicalName: athlete.displayName,
       arabicName: resolvedEntity?.labels?.ar?.value, club: club?.displayName,

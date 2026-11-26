@@ -75,3 +75,8 @@ test('roster enrichment rejects another team, season or competition and reads ap
  const r=data.scopedRosterRow(roster,row,'255850','114','2026-2027');assert.equal(r.matches,5);assert.equal(r.starts,4);assert.equal(r.assists,0);
  for(const bad of [{...roster,team:{id:'580',isNational:true}},{...roster,season:{displayName:'2025-26 UEFA Champions League'}},{...roster,season:{displayName:'2026-27 Serie A'}}])assert.equal(data.scopedRosterRow(bad,row,'255850','114','2026-2027'),undefined);
 });
+test('a shared nickname requests disambiguation instead of choosing the retired or active namesake', async () => {
+ const fake=async url=>({ok:true,json:async()=>String(url).includes('wikidata')?{search:[{id:'Q1',label:'Javi Guerra',description:'Spanish footballer',match:{text:'Javi Guerra'}},{id:'Q2',label:'Javier Guerra Moreno',description:'Spanish footballer',match:{text:'Javi Guerra'}}]}:{items:[]}});
+ const service=load('lib/player-profile-data.ts',{},fake);
+ assert.equal((await service.loadPlayerData('Javi Guerra','2026-2027')).status,'ambiguous');
+});
