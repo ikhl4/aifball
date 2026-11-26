@@ -14,15 +14,16 @@ export function parseSSEFrame(frame: string): ChatEvent | null {
  * https://docs.dify.ai/en/api-reference/guides/streaming
  */
 export function createChatAnswer() {
-  let answer = '', agent = false;
+  let answer = '', prefix = '', agent = false;
   return {
     apply(event: ChatEvent): string | null {
       if (typeof event.answer !== 'string') return null;
-      if (event.event === 'message_replace') answer = event.answer;
+      if (event.event === 'aifball_player_seed') prefix = event.answer;
+      else if (event.event === 'message_replace') { prefix = ''; answer = event.answer; }
       else if (event.event === 'agent_message') { agent = true; answer += event.answer; }
       else if (event.event === 'message') answer = agent ? event.answer : answer + event.answer;
       else return null;
-      return answer;
+      return prefix && !/<aifball-player\b[^>]*\/?\s*>/i.test(answer) ? prefix + '\n\n' + answer : answer;
     },
   };
 }

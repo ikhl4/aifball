@@ -1,3 +1,4 @@
+import { currentFootballSeason } from '../../../lib/player-profile-data';
 import { playerPresentationRules } from '../../../lib/player-prompt';
 import { parseSSEFrame } from '../../../lib/chat-stream';
 import { playerPromptIntent } from '../../../lib/chat-intent';
@@ -389,7 +390,7 @@ export async function POST(req: Request) {
 
     // Queries, conversation IDs and provider errors must stay out of public diagnostics.
 
-    const { playerCareer } = playerPromptIntent(query, { conversationId: conversation_id, hasImage });
+    const { playerCareer, nameOnlyPlayer } = playerPromptIntent(query, { conversationId: conversation_id, hasImage });
 
     const wantsTweet = /(?:اكتب|جهز|صغ|سو|اعطني|أعطني|ابي|أبي|ابغى|أبغى|اريد|أريد|write|draft|compose).{0,50}(?:تغريد|بوست|منشور|tweet|post)|(?:تغريد|بوست|منشور|tweet|post).{0,50}(?:عن|حول|بشأن|for|about)|(?:اغرد|أغرد|غرد|غردلي|tweet about|post about)/i.test(query);
     const baseQuery = /انتقالات|ميركاتو|سوق الانتقال|صفقات|transfers|transfer window/i.test(query)
@@ -467,7 +468,7 @@ export async function POST(req: Request) {
     if (traceLatency) console.info('[AiFBall latency]', JSON.stringify({
       stage: 'dify_headers', preDifyMs, difyHeadersMs, guidedQueryChars: guidedQuery.length,
     }));
-    let observedBody = apiRes.body;
+    let observedBody: ReadableStream<Uint8Array> | null = apiRes.body;
     if (observedBody && traceLatency) {
       let firstChunk = true;
       let chunkCount = 0;
@@ -511,6 +512,17 @@ export async function POST(req: Request) {
             stage: 'dify_stream_end', totalMs: Math.round(performance.now() - requestStarted), chunkCount,
           }));
         },
+      }));
+    }
+
+    // A lookup card is independent of Agent prose. It contains no asserted facts:
+    // identity, photos and statistics are confirmed by the profile endpoint.
+    if (observedBody && nameOnlyPlayer) {
+      const escape = (value: string) => value.replace(/[&"<>]/g, c => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' }[c] || c));
+      const tag = `<aifball-player name="${escape(query)}" current_season="${currentFootballSeason()}" lookup_pending="true" />`;
+      observedBody = observedBody.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+        start(controller) { controller.enqueue(new TextEncoder().encode('data: ' + JSON.stringify({ event: 'aifball_player_seed', answer: tag }) + '\n\n')); },
+        transform(chunk, controller) { controller.enqueue(chunk); },
       }));
     }
 

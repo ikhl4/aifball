@@ -122,7 +122,7 @@ async function entityForName(name: string, signal: AbortSignal) {
   const matches = list(search.search).filter(item => /^Q\d+$/.test(item.id) &&
     [item.match?.text, item.label].some(label => typeof label === 'string' && normalizePlayerName(label) === normalizePlayerName(name)) && /football|soccer|كرة قدم/i.test(item.description || ''));
   if (matches.length !== 1) return undefined;
-  const data = await json(wikidata({ action: 'wbgetentities', ids: matches[0].id, props: 'labels|claims', languages: 'ar|en' }), signal);
+  const data = await json(wikidata({ action: 'wbgetentities', ids: matches[0].id, props: 'labels|claims|aliases', languages: 'ar|en' }), signal);
   const entity = data.entities?.[matches[0].id];
   if (!list(entity?.claims?.P31).some(c => c.mainsnak?.datavalue?.value?.id === 'Q5')) return undefined;
   return entity;
@@ -143,7 +143,7 @@ export async function loadPlayerData(name: string, season = currentFootballSeaso
   if (pending.size >= 64) return { status: 'unavailable', season, rows: [], checkedAt: new Date().toISOString() };
   const task = lookupPlayerData(name, season).then(value => {
     if (cache.size >= 128) cache.delete(cache.keys().next().value!);
-    cache.set(key, { until: Date.now() + (value.status === 'found' ? 600000 : 15000), value }); return value;
+    cache.set(key, { until: Date.now() + (value.status === 'found' && value.rows.length > 0 ? 600000 : 15000), value }); return value;
   }).finally(() => pending.delete(key));
   pending.set(key, task); return task;
 }
@@ -157,7 +157,12 @@ async function lookupPlayerData(name: string, season: string): Promise<PlayerDat
     const entity = directSearch ? undefined : await entityTask;
     const canonical = entity?.labels?.en?.value || name;
     const search = directSearch ? await directSearch : await json('https://site.web.api.espn.com/apis/common/v3/search?' + new URLSearchParams({ query: canonical, type: 'player', sport: 'soccer', limit: '4' }), signal);
-    const selected = uniqueEspnPlayer(search, [canonical, name]);
+    let selected = uniqueEspnPlayer(search, [canonical, name]);
+    if (!selected.player && !selected.ambiguous) {
+      const aliases = await entityTask;
+      const names = [aliases?.labels?.en?.value, ...list(aliases?.aliases?.en).map(alias => alias.value)].filter((value): value is string => typeof value === 'string');
+      selected = uniqueEspnPlayer(search, [canonical, name, ...names]);
+    }
     if (!selected.player) return { ...result, status: selected.ambiguous ? 'ambiguous' : 'not_found' };
     const candidate = selected.player;
     const league = /^[a-z0-9._-]{1,50}$/.test(candidate.league || '') ? candidate.league : null;

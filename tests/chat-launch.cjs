@@ -67,3 +67,12 @@ test('verification wrapper verifies the final replacement and does not leak unve
   assert.equal(verified, 'replacement'); assert.equal(received.length, 2);
   assert.equal(received[0].answer, 'checked replacement'); assert.equal(received[1].conversation_id, 'same');
 });
+test('independent player lookup card survives an Agent final answer that omits it, without duplicate cards', () => {
+ const a=stream.createChatAnswer();const seed='<aifball-player name="نيكو باز" lookup_pending="true" />';
+ assert.equal(a.apply({event:'aifball_player_seed',answer:seed}),seed+'\n\n');
+ a.apply({event:'agent_message',answer:'سيرة اللاعب'});
+ assert.equal(a.apply({event:'message',answer:'السيرة النهائية'}),seed+'\n\nالسيرة النهائية');
+ const full='<aifball-player name="نيكو باز" lookup_name="Nico Paz" />\nقصة المسيرة';
+ assert.equal(a.apply({event:'message',answer:full}),full);
+ assert.equal(a.apply({event:'message_replace',answer:'بديل'}),'بديل');
+});

@@ -48,7 +48,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   const providerFields: Record<string, string> = {};
   if (season && verifiedRows.length) {
     providerFields['season_' + season.replace('-', '_') + '_competitions'] = verifiedRows.map(row =>
-      [footballNameInArabic(row.team) || row.team, COMPETITIONS[row.league]?.ar || row.competition, row.source, row.matches, row.starts,
+      [footballNameInArabic(row.team) || row.team, COMPETITIONS[row.league]?.ar || ({ 'ger.dfb_pokal': 'كأس ألمانيا', 'eng.league_cup': 'كأس الرابطة الإنجليزية', 'esp.copa_del_rey': 'كأس ملك إسبانيا', 'ita.coppa_italia': 'كأس إيطاليا', 'eng.fa': 'كأس الاتحاد الإنجليزي' } as Record<string, string>)[row.league] || row.competition, row.source, row.matches, row.starts,
         row.substitutes, row.minutes, row.goals, row.assists, row.yellows, row.reds]
         .map(value => value === null ? '' : String(value)).join('|')).join(';');
   }
@@ -173,6 +173,10 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
           <p className="mt-1 text-xs sm:text-sm opacity-80 break-words">{[fetched?.club ? (footballNameInArabic(fetched.club) || fetched.club) : details?.club, details?.nationality || (fetched?.nationality ? (footballNameInArabic(fetched.nationality) || fetched.nationality) : '')].filter(Boolean).join(' · ')}</p>
         </div>
       </div>
+
+      {suppliedDetails?.lookup_pending === 'true' && fetched?.status !== 'found' && (
+        <p role="status" className="text-xs opacity-65">{provider?.key !== lookupKey ? 'جاري التحقق من هوية اللاعب وبياناته…' : 'لم تتأكد الهوية من المصدر؛ حدّد اسم اللاعب الكامل أو ناديه.'}</p>
+      )}
 
       {visiblePhoto && fetched?.photo?.url === visiblePhoto && (
         <p className="text-[10px] leading-4 opacity-65">

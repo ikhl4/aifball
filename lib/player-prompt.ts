@@ -2,7 +2,7 @@ import { currentFootballSeason } from './player-profile-data';
 /** One source of presentation rules; the component retrieves season figures independently. */
 export function playerPresentationRules(now = new Date()) {
   return `
-طلب بطاقة لاعب كرة قدم. تاريخ التحقق ${now.toISOString().slice(0, 10)}، والموسم الافتراضي ${currentFootballSeason(now)}؛ احترم أي موسم حدده المستخدم، وMLS موسم سنة واحدة.
+طلب بطاقة لاعب كرة قدم. تاريخ التحقق ${new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Riyadh' }).format(now)}، والموسم الافتراضي ${currentFootballSeason(now)}؛ احترم أي موسم حدده المستخدم، وMLS موسم سنة واحدة.
 أولاً حدّد هوية اللاعب من السؤال والسياق؛ إذا احتمل الاسم أكثر من لاعب اسأل سؤال توضيح قصيراً. لا تخلط المعتزل بالنشط أو الأسماء المتشابهة.
 عند وضوح الهوية، ابدأ فوراً وقبل البحث الطويل بوسم واحد في سطر مستقل:
 <aifball-player name="اسم اللاعب بالعربية" lookup_name="الاسم الإنجليزي الكامل للبحث" current_season="الموسم المطلوب" />
