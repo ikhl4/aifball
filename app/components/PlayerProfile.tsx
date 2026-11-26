@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { PlayerData } from '../../lib/player-profile-data';
+import { footballNameInArabic } from '../../lib/football-names-ar';
+import { COMPETITIONS } from '../../lib/competitions';
 
 interface PlayerProfileProps {
   playerName: string;
@@ -8,32 +11,6 @@ interface PlayerProfileProps {
   selectedSeason?: string;
   details?: Record<string, string>;
   isDark?: boolean;
-}
-
-type StatRow = Record<string, unknown>;
-
-const fields = [
-  ['المباريات', ['matches', 'MP', 'Playing Time MP']],
-  ['الدقائق', ['minutes', 'Min', 'Playing Time Min']],
-  ['الأهداف', ['goals', 'Gls', 'Performance Gls']],
-  ['الصناعات', ['assists', 'Ast', 'Performance Ast']],
-  ['البطاقات الصفراء', ['yellow_cards', 'CrdY', 'Performance CrdY']],
-  ['البطاقات الحمراء', ['red_cards', 'CrdR', 'Performance CrdR']],
-] as const;
-
-function read(row: StatRow, keys: readonly string[]) {
-  return keys.map(key => row[key]).find(value =>
-    typeof value === 'number' && Number.isFinite(value) ||
-    typeof value === 'string' && value.trim() !== ''
-  ) as string | number | undefined;
-}
-
-function normalizeSourceRow(row: StatRow): StatRow {
-  return Object.fromEntries(Object.entries(row).map(([key, value]) => {
-    // Python serializes FBref's two-level column labels as tuple strings.
-    const pair = key.match(/^\('([^']*)', '([^']*)'\)$/);
-    return [pair ? [pair[1], pair[2]].filter(Boolean).join(' ') : key, value];
-  }));
 }
 
 function safeSource(source?: string) {
@@ -46,14 +23,36 @@ function safeSource(source?: string) {
   }
 }
 
-export default function PlayerProfile({ playerName, seasons, selectedSeason, details, isDark = true }: PlayerProfileProps) {
+export default function PlayerProfile({ playerName, seasons, selectedSeason, details: suppliedDetails, isDark = true }: PlayerProfileProps) {
   const available = [...new Set((seasons ?? '').split(',').map(value => value.trim())
     .filter(value => /^\d{4}(?:-\d{4})?$/.test(value)))].sort().reverse();
   const [selection, setSelection] = useState(selectedSeason ?? '');
-  const inferredSeason = details?.current_season && /^\d{4}(?:-\d{4})?$/.test(details.current_season) ? details.current_season : undefined;
+  const inferredSeason = suppliedDetails?.current_season && /^\d{4}(?:-\d{4})?$/.test(suppliedDetails.current_season) ? suppliedDetails.current_season : undefined;
   const season = available.includes(selection) ? selection : (available[0] || inferredSeason);
-  const [result, setResult] = useState<{ name: string; season: string; row?: StatRow }>();
-  const current = result?.name === playerName && result.season === season ? result : undefined;
+  const lookupName = suppliedDetails?.lookup_name || playerName;
+  const [provider, setProvider] = useState<{ key: string; data?: PlayerData }>();
+  const lookupKey = lookupName + ':' + (season || '');
+  const fetched = provider?.key === lookupKey ? provider.data : undefined;
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams({ name: lookupName });
+    if (season) params.set('season', season);
+    setProvider(undefined);
+    fetch('/api/player-profile?' + params, { signal: controller.signal })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => { if (!controller.signal.aborted) setProvider({ key: lookupKey, data: data || undefined }); })
+      .catch(() => { if (!controller.signal.aborted) setProvider({ key: lookupKey }); });
+    return () => controller.abort();
+  }, [lookupName, lookupKey, season]);
+  const verifiedRows = fetched?.status === 'found' ? fetched.rows : [];
+  const providerFields: Record<string, string> = {};
+  if (season && verifiedRows.length) {
+    providerFields['season_' + season.replace('-', '_') + '_competitions'] = verifiedRows.map(row =>
+      [footballNameInArabic(row.team) || row.team, COMPETITIONS[row.league]?.ar || row.competition, row.source, row.matches, row.starts,
+        row.substitutes, row.minutes, row.goals, row.assists, row.yellows, row.reds]
+        .map(value => value === null ? '' : String(value)).join('|')).join(';');
+  }
+  const details = { ...suppliedDetails, ...providerFields };
 
   const seasonKey = season ? 'season_' + season.replace('-', '_') : '';
   const seasonSummary = seasonKey ? details?.[seasonKey] : undefined;
@@ -92,43 +91,6 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   const verifiedSeasonTotal = allCompetitionRows.length === 1 ? allCompetitionRows[0] : undefined;
   const hasSeasonSummary = competitions.length > 0 || Boolean(seasonSummary?.trim() && safeSource(seasonSource));
 
-  useEffect(() => {
-    if (!season || hasSeasonSummary) return;
-    const controller = new AbortController();
-    const params = new URLSearchParams({ source: 'fbref', action: 'player-stats', playerName, season });
-    async function load() {
-      let row: StatRow | undefined;
-      try {
-        const response = await fetch('/api/advanced?' + params, { signal: controller.signal });
-        if (!response.ok) throw new Error('Player statistics unavailable');
-        const payload = await response.json();
-        if (Array.isArray(payload.data)) {
-          const matches = payload.data
-            .filter((entry: unknown): entry is StatRow =>
-              entry !== null && typeof entry === 'object' && !Array.isArray(entry)
-            )
-            .map(normalizeSourceRow)
-            .filter((entry: StatRow) => String(read(entry, ['player', 'Player', 'player_name']) ?? '')
-              .trim().toLowerCase() === playerName.trim().toLowerCase()
-          );
-          if (matches.length === 1) row = matches[0];
-        }
-      } catch {
-        // Missing source data is displayed as unavailable.
-      }
-      if (!controller.signal.aborted) setResult({ name: playerName, season, row });
-    }
-    void load();
-    return () => controller.abort();
-  }, [playerName, season, hasSeasonSummary]);
-
-  const stats = current?.row
-    ? fields.flatMap(([label, keys]) => {
-        const value = read(current.row!, keys);
-        return value === undefined ? [] : [{ label, value }];
-      })
-    : [];
-
   // Career totals come only from the explicitly sourced career summary.
   // Do not combine them with single-season figures or invent missing values.
   const careerSource = safeSource(details?.career_source);
@@ -165,39 +127,9 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     ? details?.contract_end : undefined;
   const currentClub = details?.club || 'النادي الحالي غير متاح';
 
-  const photo = [details?.image_url, details?.photo_url, details?.portrait_url].map(safeSource).find(Boolean);
-  const knownWikipediaTitle = /(?:cristiano|ronaldo|رونالدو)/i.test(playerName) ? 'Cristiano_Ronaldo'
-    : /(?:lionel|messi|ميسي)/i.test(playerName) ? 'Lionel_Messi'
-    : /(?:neymar|نيمار)/i.test(playerName) ? 'Neymar' : undefined;
-  const [wikiPhoto, setWikiPhoto] = useState<string>();
-  const [photoFailed, setPhotoFailed] = useState(false);
-  useEffect(() => {
-    setWikiPhoto(undefined);
-    setPhotoFailed(false);
-    const controller = new AbortController();
-    const params = new URLSearchParams({
-      action: 'query', generator: 'search', gssearch: playerName + ' footballer',
-      gsrlimit: '5', prop: 'pageimages', piprop: 'thumbnail', pithumbsize: '420',
-      format: 'json', origin: '*',
-    });
-    fetch('https://en.wikipedia.org/w/api.php?' + params, { signal: controller.signal })
-      .then(response => response.ok ? response.json() : null)
-      .then(payload => {
-        const pages = Object.values(payload?.query?.pages ?? {}) as Array<{ thumbnail?: { source?: string } }>;
-        const source = pages.map(page => safeSource(page.thumbnail?.source)).find(Boolean);
-        if (!controller.signal.aborted && source) setWikiPhoto(source);
-      }).catch(() => {});
-    if (knownWikipediaTitle) {
-      fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + knownWikipediaTitle, { signal: controller.signal })
-        .then(response => response.ok ? response.json() : null)
-        .then(payload => {
-          const source = safeSource(payload?.thumbnail?.source);
-          if (!controller.signal.aborted && source) setWikiPhoto(previous => previous || source);
-        }).catch(() => {});
-    }
-    return () => controller.abort();
-  }, [playerName, photo]);
-  const visiblePhoto = photo && !photoFailed ? photo : wikiPhoto;
+  const photo = [fetched?.photo?.url, details?.image_url, details?.photo_url, details?.portrait_url].map(safeSource).find(Boolean);
+  const [failedPhoto, setFailedPhoto] = useState<string>();
+  const visiblePhoto = photo && photo !== failedPhoto ? photo : undefined;
   const individualHonours = details?.individual_awards || details?.individual_honours || details?.individual_achievements;
   const teamHonours = details?.trophies_detail || details?.team_honours || details?.honours;
   const honours = [
@@ -217,7 +149,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     const href = safeSource(source);
     return value?.trim() && href ? [{ label, value, source: href }] : [];
   });
-  if (!facts.length && !competitions.length && !careerTotals.length && !trophyCount && !contractDate && !season && !honours.length) return null;
+  if (!playerName.trim()) return null;
 
   const showCareer = view === 'career' || (view === null && (careerFirst || !season));
   const showSeason = view === 'season' || (view === null && !showCareer);
@@ -233,18 +165,24 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
       <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-700/20 bg-emerald-800/5 p-2.5 sm:p-3">
         {visiblePhoto ? (
           <img src={visiblePhoto} alt={`صورة ${playerName}`} loading="lazy" referrerPolicy="no-referrer"
-            onError={() => setPhotoFailed(true)}
+            onError={() => setFailedPhoto(photo)}
             className="h-24 w-20 sm:h-36 sm:w-28 shrink-0 rounded-xl bg-black/10 object-cover object-top" />
         ) : null}
         <div className="min-w-0 flex-1">
-          <h2 className="text-base sm:text-xl font-extrabold leading-snug break-words">{playerName}</h2>
-          <p className="mt-1 text-xs sm:text-sm opacity-80 break-words">{[details?.club, details?.nationality].filter(Boolean).join(' · ')}</p>
+          <h2 className="text-base sm:text-xl font-extrabold leading-snug break-words">{fetched?.arabicName || playerName}</h2>
+          <p className="mt-1 text-xs sm:text-sm opacity-80 break-words">{[fetched?.club ? (footballNameInArabic(fetched.club) || fetched.club) : details?.club, details?.nationality || (fetched?.nationality ? (footballNameInArabic(fetched.nationality) || fetched.nationality) : '')].filter(Boolean).join(' · ')}</p>
         </div>
       </div>
 
+      {visiblePhoto && fetched?.photo?.url === visiblePhoto && (
+        <p className="text-[10px] leading-4 opacity-65">
+          تصوير: {fetched.photo.artist} · <a href={fetched.photo.source} target="_blank" rel="noopener noreferrer" className="underline">{fetched.photo.license}</a>
+        </p>
+      )}
+
       <div className="flex gap-1.5 rounded-xl border border-emerald-700/20 p-1" role="group" aria-label="نطاق إحصائيات اللاعب">
         <button type="button" aria-pressed={showCareer} onClick={() => setView('career')} className={`flex-1 rounded-lg px-2 py-2 text-xs sm:text-sm font-bold ${showCareer ? 'bg-emerald-700 text-white' : 'hover:bg-emerald-700/10'}`}>كل المواسم</button>
-        <button type="button" aria-pressed={showSeason} onClick={() => setView('season')} className={`flex-1 rounded-lg px-2 py-2 text-xs sm:text-sm font-bold ${showSeason ? 'bg-emerald-700 text-white' : 'hover:bg-emerald-700/10'}`}>الموسم الحالي</button>
+        <button type="button" aria-pressed={showSeason} onClick={() => setView('season')} className={`flex-1 rounded-lg px-2 py-2 text-xs sm:text-sm font-bold ${showSeason ? 'bg-emerald-700 text-white' : 'hover:bg-emerald-700/10'}`}>أرقام الموسم</button>
       </div>
       {showCareer && (
         <div className="space-y-2">
@@ -283,19 +221,12 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
                 {primaryLabels.map(label => metric(label, numbers.find(item => item.label === label)?.value))}
               </dl>
             </div>
-          )) : verifiedSeasonTotal ? null : stats.length ? (
-            <div className="space-y-2">
-              <p className="text-xs opacity-75">إحصائيات الدوري فقط من المصدر الاحتياطي؛ إجمالي الموسم بجميع البطولات غير متاح بعد.</p>
-              <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
-                {primaryLabels.map(label => metric(label, stats.find(item => item.label === label)?.value))}
-              </dl>
-            </div>
-          ) : (
+          )) : verifiedSeasonTotal ? null : (
             <div className="space-y-2">
               <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
                 {primaryLabels.map(label => metric(label, undefined))}
               </dl>
-              <p role="status" className="text-xs opacity-65">{hasSeasonSummary ? seasonSummary : current ? 'لم يتم التحقق من إحصائيات الموسم بعد.' : 'جاري التحقق من أرقام الموسم…'}</p>
+              <p role="status" className="text-xs opacity-65">{hasSeasonSummary ? seasonSummary : provider?.key !== lookupKey ? 'جاري التحقق من أرقام الموسم…' : fetched?.status === 'ambiguous' ? 'الاسم يطابق أكثر من لاعب؛ حدّد النادي لتأكيد الهوية.' : 'لم تصل أرقام موثقة لهذا الموسم. لن نعرض موسمًا آخر أو نستبدل القيم الغائبة بصفر.'}</p>
             </div>
           )}
         </div>

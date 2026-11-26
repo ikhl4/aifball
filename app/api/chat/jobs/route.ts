@@ -1,3 +1,5 @@
+import { playerPromptIntent } from '../../../../lib/chat-intent';
+import { playerPresentationRules } from '../../../../lib/player-prompt';
 import { preferredAnswerLanguage } from '../../../../lib/app-language';
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
@@ -27,7 +29,7 @@ export async function POST(req: Request) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + service.token },
       body: JSON.stringify({ owner: userId, idempotency_key: body.idempotency_key,
-        query: body.query.trim() + preferredAnswerLanguage(body.language), conversation_id: body.conversation_id || '' }),
+        query: body.query.trim() + (playerPromptIntent(body.query, { conversationId: body.conversation_id }).playerCareer ? playerPresentationRules() : '') + preferredAnswerLanguage(body.language), conversation_id: body.conversation_id || '' }),
       cache: 'no-store',
       signal: AbortSignal.timeout(15000),
     });

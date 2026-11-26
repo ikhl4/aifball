@@ -1484,6 +1484,7 @@ export default function FootPlayChat() {
       if (!res.body) throw new Error('لا يوجد تدفق استجابة من الخادم.');
 
       const streamedAnswer = createChatAnswer();
+      let workflowStarted = false;
       await consumeChatStream(res.body, event => {
         if (typeof event.conversation_id === 'string' && event.conversation_id) {
           conv = event.conversation_id;
@@ -1493,7 +1494,8 @@ export default function FootPlayChat() {
             (event.data as DataRecord | undefined)?.status === 'failed')) {
           throw new Error('Dify stream error');
         }
-        if (event.event === 'message_end') {
+        if (event.event === 'workflow_started') workflowStarted = true;
+        if (event.event === 'message_end' && !workflowStarted || event.event === 'workflow_finished') {
           responseDone = true;
           return false;
         }
@@ -1501,7 +1503,7 @@ export default function FootPlayChat() {
         if (next !== null) {
           answer = next;
           if (firstAnswerMs === null && answer.length > 0) firstAnswerMs = performance.now() - started;
-          receivedAnswer = true;
+          receivedAnswer = answer.trim().length > 0;
           update(answer, Math.max(1, Math.floor((performance.now() - started) / 1000)));
         }
       }, () => {
