@@ -99,3 +99,8 @@ test('saved and background replies normalize fenced/inline cards without changin
  assert.equal(stream.normalizePlayerMarkup('شرح\n```js\nconst x = 1;\n```'),'شرح\n```js\nconst x = 1;\n```');
  assert.equal(stream.normalizePlayerMarkup('نص عادي'),'نص عادي');
 });
+
+test('explicit player requests never seed a lookup with request words included in the name', () => {
+ for(const q of ['راتب ميسي','بطاقة محمد نور','مسيرة نيكو باز','أرقام محمد نور','إحصائيات نيكو باز']){assert.equal(intent(q).playerCareer,true,q);assert.equal(intent(q).nameOnlyPlayer,false,q);}
+ assert.equal(intent('أرقام الهلال').playerCareer,false);
+});

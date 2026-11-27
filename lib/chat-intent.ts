@@ -11,5 +11,6 @@ export function playerPromptIntent(query: string, options: { conversationId?: st
   // Bare names are inferred only at the start of a conversation; short followups
   // such as «كم عمره» retain their existing conversation context.
   const bareName = !options.conversationId && !question && !club && /^[\p{L}\p{M}]+(?:[ \t]+[\p{L}\p{M}]+){1,3}$/u.test(q);
-  return { playerCareer: explicit || bareName, nameOnlyPlayer: bareName };
+  const statistics = /^(?:أرقام|ارقام|إحصائيات|احصائيات|stats|statistics)(?:\s|$)/i.test(q);
+  return { playerCareer: explicit || (statistics && !club) || bareName, nameOnlyPlayer: bareName && !explicit && !statistics };
 }
