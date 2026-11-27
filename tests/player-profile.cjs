@@ -4,7 +4,7 @@ const fs = require('node:fs'), ts = require('typescript'), vm = require('node:vm
 function load(file, mocks = {}, fetcher = fetch) {
  const m = { exports: {} };
  vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,
-  { exports: m.exports, module: m, require: name => mocks[name] || (name === './football-names-ar' ? load('lib/football-names-ar.ts') : {}), fetch: fetcher, URL, URLSearchParams, AbortSignal, AbortController, Date, setTimeout, clearTimeout, console });
+  { exports: m.exports, module: m, require: name => mocks[name] || (name === './football-names-ar' ? load('lib/football-names-ar.ts') : name === './chat-intent' ? load('lib/chat-intent.ts') : {}), fetch: fetcher, URL, URLSearchParams, AbortSignal, AbortController, Date, setTimeout, clearTimeout, console });
  return m.exports;
 }
 const data = load('lib/player-profile-data.ts');
@@ -90,6 +90,13 @@ test('Odegaard spelling folds preserve exact unique identity and reject two matc
 test('existing Arabic dictionary names supply exact search hints and unknown names remain unchanged', () => {
  for(const [arabic,english] of [['هاري كين','Harry Kane'],['آدم وارتون','Adam Wharton'],['نيكو باز','Nico Paz'],['محمد صلاح','Mohamed Salah']])assert.equal(data.playerLookupName(arabic),english);
  assert.equal(data.playerLookupName('لاعب غير معروف'),'لاعب غير معروف');
+});
+test('Sorloth short spellings resolve for search without rewriting a different full name', () => {
+ for(const name of ['سورلوث','سورلوت','Sorloth','Sørloth'])assert.equal(data.playerLookupName(name),'Alexander Sørloth');
+ for(const name of ['Goran Sorloth','غوران سورلوث'])assert.equal(data.playerLookupName(name),name);
+ const candidate={id:'188230',type:'player',sport:'soccer',displayName:'Alexander Sørloth'};
+ assert.equal(data.uniqueEspnPlayer({items:[candidate]},[data.playerLookupName('سورلوث')]).player.id,'188230');
+ assert.equal(data.uniqueEspnPlayer({items:[candidate,{...candidate,id:'9'}]},[data.playerLookupName('سورلوث')]).ambiguous,true);
 });
 test('profile GET retries a transient failure once, without a chat request or retries for unknown identities', async () => {
  const service=load('lib/player-profile-client.ts');

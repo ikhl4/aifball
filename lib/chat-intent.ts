@@ -1,4 +1,13 @@
 /** Conservative prompt selection; this is a hint, never a player identity lookup. */
+const shortPlayerNames: Record<string, string> = {
+  'سورلوث': 'Alexander Sørloth', 'سورلوت': 'Alexander Sørloth',
+  'sorloth': 'Alexander Sørloth', 'sørloth': 'Alexander Sørloth',
+};
+/** Explicit search spellings only; never fuzzy-match an arbitrary one-word topic. */
+export function playerNameSearchHint(query: string): string | undefined {
+  const key = query.normalize('NFKC').toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g, '').trim();
+  return Object.prototype.hasOwnProperty.call(shortPlayerNames, key) ? shortPlayerNames[key] : undefined;
+}
 export function playerPromptIntent(query: string, options: { conversationId?: string; hasImage?: boolean } = {}) {
   const q = query.normalize('NFKC').replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[؟?!.,،]/g, ' ').replace(/\s+/g, ' ').trim();
   const none = { playerCareer: false, nameOnlyPlayer: false };
@@ -10,7 +19,8 @@ export function playerPromptIntent(query: string, options: { conversationId?: st
   const club = /(?:ريال مدريد|بايرن ميونخ|كريستال بالاس|توتنهام|إشبيلية|اشبيلية|فالنسيا|كومو|نابولي|الاتحاد|الهلال|النصر|الأهلي|الاهلي|برشلونة|برشلونه|منتخب|نادي|\b(?:real madrid|bayern munich|crystal palace|tottenham|sevilla|valencia|como|napoli|barcelona|club|fc|united|city)\b)/i.test(q);
   // Bare names are inferred only at the start of a conversation; short followups
   // such as «كم عمره» retain their existing conversation context.
-  const bareName = !options.conversationId && !question && !club && /^[\p{L}\p{M}]+(?:[ \t]+[\p{L}\p{M}]+){1,3}$/u.test(q);
+  const bareName = !question && !club && (Boolean(playerNameSearchHint(q)) ||
+    (!options.conversationId && /^[\p{L}\p{M}]+(?:[ \t]+[\p{L}\p{M}]+){1,3}$/u.test(q)));
   const statistics = /^(?:أرقام|ارقام|إحصائيات|احصائيات|stats|statistics)(?:\s|$)/i.test(q);
   return { playerCareer: explicit || (statistics && !club) || bareName, nameOnlyPlayer: bareName && !explicit && !statistics };
 }

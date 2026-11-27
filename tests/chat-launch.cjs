@@ -10,6 +10,16 @@ function load(file, mocks = {}) {
 const intent = load('lib/chat-intent.ts').playerPromptIntent;
 const stream = load('lib/chat-stream.ts');
 const summary = load('lib/verified-summary.ts', { './chat-stream': stream });
+test('known single-word player requests get the same immediate card path in a fresh or existing chat', () => {
+ const {playerPromptIntent,playerLookupSeed}=load('lib/chat-intent.ts');
+ for(const name of ['سورلوث','سورلوت','Sorloth','Sørloth'])for(const options of [{},{conversationId:'existing'}]){
+  assert.equal(playerPromptIntent(name,options).playerCareer,true);
+  assert.equal(playerPromptIntent(name,options).nameOnlyPlayer,true);
+  assert.ok(playerLookupSeed(name,options).includes('lookup_pending="true"'));
+ }
+ for(const topic of ['مرحبا','هلا','شكرا','ساعدني','التدريب','النرويج','كيف','تحليل','مباراة','Sorloth news','غوران','sorlothson'])assert.equal(playerPromptIntent(topic).nameOnlyPlayer,false,topic);
+ assert.equal(playerLookupSeed('سورلوث',{hasImage:true}),'');
+});
 test('local lookup card exists before upstream traffic and remains single when the server seed arrives', () => {
  const seed=load('lib/chat-intent.ts').playerLookupSeed;
  const tag=seed('هاري كين',{},new Date('2026-11-27T00:00:00Z'));

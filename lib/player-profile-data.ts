@@ -1,5 +1,6 @@
 /** Public provider data only. Never infer a player's identity from the first search hit. */
 import { footballNameForSearch } from './football-names-ar';
+import { playerNameSearchHint } from './chat-intent';
 export type PlayerSeasonRow = {
   team: string; competition: string; league: string; source: string;
   matches: number | null; starts: number | null; substitutes: number | null;
@@ -24,7 +25,7 @@ const searchSpellings: Record<string, string> = {
   'مارتن اوديغارد': 'Martin Ødegaard', 'مارتين اوديغارد': 'Martin Ødegaard',
   'مارتن اوديجارد': 'Martin Ødegaard', 'مارتين اوديجارد': 'Martin Ødegaard',
 };
-export const playerLookupName = (name: string) => searchSpellings[normalizePlayerName(name)] || footballNameForSearch(name);
+export const playerLookupName = (name: string) => playerNameSearchHint(name) || searchSpellings[normalizePlayerName(name)] || footballNameForSearch(name);
 export function currentFootballSeason(now = new Date()) {
   const year = now.getUTCFullYear() - (now.getUTCMonth() < 6 ? 1 : 0);
   return `${year}-${year + 1}`;
