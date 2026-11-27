@@ -8,6 +8,18 @@ export function playerNameSearchHint(query: string): string | undefined {
   const key = query.normalize('NFKC').toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g, '').trim();
   return Object.prototype.hasOwnProperty.call(shortPlayerNames, key) ? shortPlayerNames[key] : undefined;
 }
+/** These exact bare spellings were verified to match multiple provider athletes.
+ * Do not extend this guard to names with a club/full-name qualifier or arbitrary names.
+ */
+export function ambiguousPlayerQuestion(query: string, options: { hasImage?: boolean; english?: boolean } = {}): string | undefined {
+  if (options.hasImage) return;
+  const key = query.normalize('NFKC').toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/\s+/g, ' ').trim();
+  if (!['خافي غيرا', 'خافي غويرا', 'javi guerra'].includes(key)) return;
+  return options.english
+    ? 'Do you mean Javi Guerra, the Valencia midfielder, or the retired Spanish striker?'
+    : 'هل تقصد خافي غيرا لاعب وسط فالنسيا، أم خافي غيرا المهاجم الإسباني المعتزل؟';
+}
 export function playerPromptIntent(query: string, options: { conversationId?: string; hasImage?: boolean } = {}) {
   const q = query.normalize('NFKC').replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[؟?!.,،]/g, ' ').replace(/\s+/g, ' ').trim();
   const none = { playerCareer: false, nameOnlyPlayer: false };
@@ -27,7 +39,7 @@ export function playerPromptIntent(query: string, options: { conversationId?: st
 
 /** Fact-free lookup placeholder: safe to show before any paid model request. */
 export function playerLookupSeed(query: string, options: { conversationId?: string; hasImage?: boolean } = {}, now = new Date()): string {
-  if (!playerPromptIntent(query, options).nameOnlyPlayer) return '';
+  if (ambiguousPlayerQuestion(query, options) || !playerPromptIntent(query, options).nameOnlyPlayer) return '';
   const escape = (value: string) => value.replace(/[&"<>]/g, c => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' }[c] || c));
   const year = now.getUTCFullYear() - (now.getUTCMonth() < 6 ? 1 : 0);
   return `<aifball-player name="${escape(query.trim())}" current_season="${year}-${year + 1}" lookup_pending="true" />`;

@@ -37,6 +37,16 @@ test('non-player requests never get long player research instructions', () => {
     assert.equal(intent(q).playerCareer, false, q);
   }
 });
+test('known ambiguous bare names ask before lookup or generation; qualifiers and other intents remain untouched', () => {
+  const { ambiguousPlayerQuestion, playerLookupSeed } = load('lib/chat-intent.ts');
+  for (const q of ['خافي غيرا', 'خَافي غويرا', 'Javi Guerra', '  JAVI   GUERRA  ']) {
+    assert.match(ambiguousPlayerQuestion(q), /فالنسيا.*المعتزل/);
+    assert.equal(playerLookupSeed(q), '');
+  }
+  assert.match(ambiguousPlayerQuestion('Javi Guerra', { english: true }), /Valencia.*retired/);
+  for (const q of ['خافي غيرا لاعب فالنسيا', 'Javi Guerra retired striker', 'مسيرة خافي غيرا', 'أخبار خافي غيرا', 'Lucas Bergvall', 'كم عمره']) assert.equal(ambiguousPlayerQuestion(q), undefined, q);
+  assert.equal(ambiguousPlayerQuestion('Javi Guerra', { hasImage: true }), undefined);
+});
 test('Arabic and English names still use player rules; followups and images retain context', () => {
   for (const q of ['لينارت كارل', 'محمد نور', 'كريستيانو رونالدو', 'Lionel Messi', 'Cole Palmer']) assert.equal(intent(q).nameOnlyPlayer, true, q);
   for (const q of ['راتب ميسي', 'مسيرة محمد نور', 'عقد اللاعب', 'player profile Lionel Messi']) assert.equal(intent(q).playerCareer, true, q);

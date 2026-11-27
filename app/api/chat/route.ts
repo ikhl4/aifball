@@ -1,7 +1,7 @@
 import { currentFootballSeason } from '../../../lib/player-profile-data';
 import { playerPresentationRules } from '../../../lib/player-prompt';
 import { parseSSEFrame } from '../../../lib/chat-stream';
-import { playerPromptIntent } from '../../../lib/chat-intent';
+import { playerPromptIntent, ambiguousPlayerQuestion } from '../../../lib/chat-intent';
 import { preferredAnswerLanguage } from '../../../lib/app-language';
 // Vercel preview rebuild trigger for PR #50 - 2026-11-05 rerun; no production merge.
 // Preview redeploy trigger: structured highlights fallback, unrestricted discovery experiment; production unchanged.
@@ -263,6 +263,14 @@ export async function POST(req: Request) {
     const hasImage = Array.isArray(body?.files) && body.files.some((file: { type?: string } | null) => file?.type === 'image');
     const query = (typeof body?.query === 'string' ? body.query.trim() : '') || (hasImage ? 'اقرأ الصورة المرفقة ووضح ما يظهر فيها.' : '');
     if (!query) return NextResponse.json({ error: 'السؤال فارغ' }, { status: 400 });
+    const identityQuestion = ambiguousPlayerQuestion(query, { hasImage, english });
+    if (identityQuestion) {
+      const conversation_id = typeof body?.conversation_id === 'string' ? body.conversation_id : '';
+      const events = [{ event: 'message', answer: identityQuestion, conversation_id }, { event: 'message_end', conversation_id }];
+      return new Response(events.map(event => 'data: ' + JSON.stringify(event) + '\n\n').join(''), {
+        headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform' },
+      });
+    }
     // Fast path: same ESPN scoreboard data family used by the live match center.
     // Never claim a latest result when one of the relevant competitions failed.
     const directTeam = !english && !hasImage ? requestedTeam(query) : null;
