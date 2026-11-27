@@ -29,7 +29,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   const [selection, setSelection] = useState(selectedSeason ?? '');
   const inferredSeason = suppliedDetails?.current_season && /^\d{4}(?:-\d{4})?$/.test(suppliedDetails.current_season) ? suppliedDetails.current_season : undefined;
   const season = available.includes(selection) ? selection : (available[0] || inferredSeason);
-  const lookupName = suppliedDetails?.lookup_name || playerName;
+  const lookupName = suppliedDetails?.lookup_origin || suppliedDetails?.lookup_name || playerName;
   const [provider, setProvider] = useState<{ key: string; data?: PlayerData }>();
   const lookupKey = lookupName + ':' + (season || '');
   const fetched = provider?.key === lookupKey ? provider.data : undefined;

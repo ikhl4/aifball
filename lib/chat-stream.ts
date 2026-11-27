@@ -28,7 +28,15 @@ export function createChatAnswer() {
       // its tag in prose/fences or omits it from a final message. Moderation still
       // replaces all model prose; the app-owned lookup widget remains separate.
       const tag = answer.match(/<aifball-player\b[^>]*\/?\s*>/i)?.[0];
-      if (tag) card = tag.replace(/[\r\n]+/g, ' ');
+      if (tag) {
+        card = tag.replace(/[\r\n]+/g, ' ');
+        const origin = seed.match(/\bname="([^"]*)"/)?.[1];
+        const season = seed.match(/\bcurrent_season="([^"]*)"/)?.[1];
+        // Model transliterations are hints, never a reason to discard an already
+        // source-matched profile. Keep this request's lookup identity stable.
+        if (origin) card = card.replace(/\slookup_origin="[^"]*"/g, '').replace(/\s*\/?>$/, ` lookup_origin="${origin}" />`);
+        if (season && !/\bcurrent_season=/.test(card)) card = card.replace(/\s*\/?>$/, ` current_season="${season}" />`);
+      }
       const prose = answer.replace(/<aifball-player\b[^>]*\/?\s*>/gi, '').trimStart();
       return card + '\n\n' + prose;
     },
