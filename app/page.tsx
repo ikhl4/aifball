@@ -1,7 +1,7 @@
 
 'use client';
 
-import { consumeChatStream, createChatAnswer } from '../lib/chat-stream';
+import { consumeChatStream, createChatAnswer, normalizePlayerMarkup } from '../lib/chat-stream';
 
 import { introArtwork } from './intro-artwork';
 
@@ -347,6 +347,7 @@ function renderFormattedText(
   userQuery?: string,
   isStreaming = false
 ): React.ReactNode[] {
+  text = normalizePlayerMarkup(text);
   const storyParts = splitAnalysisStory(text);
   if (storyParts.some(part => part.kind !== 'text')) {
     return storyParts.flatMap((part, index): React.ReactNode[] => {

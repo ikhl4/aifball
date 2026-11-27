@@ -43,6 +43,16 @@ export function createChatAnswer() {
   };
 }
 
+/** Normalize existing/saved and background-worker replies as well as live streams. */
+export function normalizePlayerMarkup(text: string): string {
+  return text.replace(/```(?:html|xml)?\s*\n\s*(<aifball-player\b[^>]*\/?\s*>)\s*\n```/gi, '$1')
+    .replace(/<aifball-player\b[^>]*\/?\s*>/gi, (tag: string, offset: number, input: string) => {
+      const before = offset > 0 && input[offset - 1] !== '\n' ? '\n' : '';
+      const after = input[offset + tag.length] !== '\n' ? '\n' : '';
+      return before + tag.replace(/[\r\n]+/g, ' ') + after;
+    });
+}
+
 /** Decode UTF-8 across arbitrary network boundaries and release/cancel on exit. */
 export async function consumeChatStream(stream: ReadableStream<Uint8Array>, onEvent: (event: ChatEvent) => boolean | void,
   onChunk?: () => void) {

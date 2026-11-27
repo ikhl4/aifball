@@ -403,7 +403,7 @@ export async function POST(req: Request) {
         ? withMatchReportPresentation(query)
         : analysis
           ? withAnalysisPresentation(query)
-          : (conversation_id ? withMatchConversationContext(query) : query) + (playerCareer ? playerPresentationRules() : '');
+          : (conversation_id && body?.has_match_context === true ? withMatchConversationContext(query) : query) + (playerCareer ? playerPresentationRules() : '');
     const fixtureContext = singleReport && !/\bvideo_status="found"/.test(singleReport)
       ? '\nبيانات المباراة المؤكدة من مصدر النتائج (لا تعرض رسالة فشل الفيديو قبل تجربة DuckDuckGo المتصلة):\n'
         + singleReport.replace(/\s+video_status="[^"]*"/, '')

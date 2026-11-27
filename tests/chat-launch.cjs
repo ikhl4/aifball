@@ -91,3 +91,11 @@ test('later English spellings cannot replace the source lookup identity or remov
  assert.ok(text.includes('lookup_origin="نيكو باز"'));assert.ok(text.includes('current_season="2026-2027"'));
  assert.ok(text.endsWith('\n\nسيرة'));
 });
+
+test('saved and background replies normalize fenced/inline cards without changing ordinary code or prose', () => {
+ const tag='<aifball-player name="نيكو باز" lookup_name="Nico Paz" />';
+ assert.equal(stream.normalizePlayerMarkup(tag+'قصة المسيرة'),tag+'\nقصة المسيرة');
+ assert.equal(stream.normalizePlayerMarkup('```html\n'+tag+'\n```\nقصة المسيرة'),tag+'\nقصة المسيرة');
+ assert.equal(stream.normalizePlayerMarkup('شرح\n```js\nconst x = 1;\n```'),'شرح\n```js\nconst x = 1;\n```');
+ assert.equal(stream.normalizePlayerMarkup('نص عادي'),'نص عادي');
+});
