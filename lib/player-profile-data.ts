@@ -106,7 +106,8 @@ export function normalizeCommonsPhoto(payload: ObjectData): PlayerPhoto | undefi
   const license = text(metadata?.LicenseShortName?.value), artist = text(metadata?.Artist?.value);
   // A known file and usable attribution are required; do not treat every public photo as freely reusable.
   if (!url || !source || !artist || !/^(?:CC (?:BY(?:-SA)?(?: [\d.]+)?|0)|Public domain)/i.test(license)) return undefined;
-  return { url, source, artist, license, licenseUrl: safeUrl(metadata?.LicenseUrl?.value, ['creativecommons.org', 'www.creativecommons.org']) };
+  const licenseAddress = typeof metadata?.LicenseUrl?.value === 'string' ? metadata.LicenseUrl.value.replace(/^http:\/\/(www\.)?creativecommons\.org\//, 'https://creativecommons.org/') : undefined;
+  return { url, source, artist, license, licenseUrl: safeUrl(licenseAddress, ['creativecommons.org', 'www.creativecommons.org']) };
 }
 async function json(url: string, signal: AbortSignal): Promise<ObjectData> {
   const response = await fetch(url, { signal, headers: { 'User-Agent': 'AiFBall/1.0 (https://aifball.com; football profiles)', Accept: 'application/json' }, next: { revalidate: 600 } });

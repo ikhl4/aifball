@@ -1,6 +1,8 @@
 
 'use client';
 
+import { pollChatJob } from '../lib/chat-jobs-client';
+
 import { consumeChatStream, createChatAnswer, normalizePlayerMarkup } from '../lib/chat-stream';
 
 import { introArtwork } from './intro-artwork';
@@ -900,7 +902,7 @@ function renderFormattedText(
 }
 
 export default function FootPlayChat() {
-  const { user } = useUser();
+  const { user, isLoaded: authLoaded } = useUser();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -971,53 +973,62 @@ export default function FootPlayChat() {
   const durableJobRef = useRef<{ jobId: string; sessionId: string } | null>(null);
   const DURABLE_JOB_KEY = 'aifball-active-durable-job';
   const pollDurableJob = useCallback(async (jobId: string, sessionId: string, signal: AbortSignal) => {
-    while (!signal.aborted) {
-      try {
-        const response = await fetch('/api/chat/jobs/' + encodeURIComponent(jobId), { signal, cache: 'no-store' });
-        if (!response.ok) throw new Error('Job polling failed');
-        const job: { status: string; answer: string; conversation_id: string; error?: string } = await response.json();
-        const stored = sessionsRef.current.find(item => item.id === sessionId);
-        if (stored) {
-          const msgs = [...stored.messages];
-          if (msgs.length && msgs[msgs.length - 1].role === 'assistant') {
-            msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: job.answer ||
-              (job.status === 'failed' ? job.error || 'تعذر إكمال البحث.' : 'جاري البحث…') };
-            const entry = { ...stored, messages: msgs, conversationId: job.conversation_id || stored.conversationId,
-              updatedAt: new Date().toISOString() };
-            sessionsRef.current = [entry, ...sessionsRef.current.filter(item => item.id !== sessionId)];
-            setSessions([...sessionsRef.current]);
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionsRef.current)); } catch {}
-            if (activeRequestSession.current === sessionId) {
-              setMessages(msgs);
-              setConversationId(entry.conversationId);
-            }
-          }
-        }
-        if (job.status === 'completed' || job.status === 'failed') {
-          try { localStorage.removeItem(DURABLE_JOB_KEY); } catch {}
-          durableJobRef.current = null;
-          if (activeRequestSession.current === sessionId) {
-            activeRequestSession.current = null;
-            setLoading(false);
-          }
-          return;
-        }
-      } catch (error) {
-        if (signal.aborted) return;
-        // Transient network loss: keep the job identifier and retry.
-      }
-      await new Promise(resolve => setTimeout(resolve, 2500));
+    const result = await pollChatJob(jobId, { signal, onUpdate(job) {
+      const stored = sessionsRef.current.find(item => item.id === sessionId);
+      if (!stored) return;
+      const msgs = [...stored.messages];
+      if (!msgs.length || msgs[msgs.length - 1].role !== 'assistant') return;
+      msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: job.answer ||
+        (job.status === 'failed' ? 'تعذر إكمال البحث.' : 'جاري البحث…') };
+      const entry = { ...stored, messages: msgs, conversationId: job.conversation_id || stored.conversationId, updatedAt: new Date().toISOString() };
+      sessionsRef.current = [entry, ...sessionsRef.current.filter(item => item.id !== sessionId)];
+      setSessions([...sessionsRef.current]);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionsRef.current)); } catch {}
+      if (activeRequestSession.current === sessionId) { setMessages(msgs); setConversationId(entry.conversationId); }
+    } });
+    if (result === 'aborted') {
+      if (activeRequestSession.current === sessionId) { activeRequestSession.current = null; setLoading(false); }
+      return;
+    }
+    if (result === 'completed' || result === 'failed' || result === 'missing') {
+      try { localStorage.removeItem(DURABLE_JOB_KEY); } catch {}
+      durableJobRef.current = null;
+    }
+    if (activeRequestSession.current === sessionId) {
+      activeRequestSession.current = null;
+      setLoading(false);
+      const notices = {
+        failed: 'تعذر إكمال البحث بالخلفية. يمكنك إعادة المحاولة.',
+        missing: 'لم يعد البحث المحفوظ متاحًا لهذا الحساب. يمكنك إعادة إرسال السؤال.',
+        unauthenticated: 'سجّل الدخول إلى الحساب نفسه لاستكمال البحث المحفوظ.',
+        unavailable: 'تعذر استرجاع البحث الآن. احتفظنا بمعرّفه للمحاولة عند عودتك.',
+        paused: 'البحث لم يكتمل بعد. احتفظنا بمعرّفه ويمكن استعادته عند عودتك.',
+      };
+      if (result !== 'completed') setChatNotice(notices[result]);
     }
   }, []);
 
   useEffect(() => {
+    if (!authLoaded) return;
     let saved: { jobId: string; sessionId: string } | null = null;
     try { saved = JSON.parse(localStorage.getItem(DURABLE_JOB_KEY) || 'null'); } catch {}
     if (!saved?.jobId || !saved?.sessionId) return;
+    if (!user?.id) {
+      if (activeRequestSession.current === saved.sessionId) setLoading(false);
+      setChatNotice('سجّل الدخول لاستكمال البحث المحفوظ.');
+      return;
+    }
     durableJobRef.current = saved;
     const controller = new AbortController();
+    activeRequest.current = controller;
     // Restore the last session when the page was terminated while searching.
-    const session = sessionsRef.current.find(item => item.id === saved.sessionId);
+    let session = sessionsRef.current.find(item => item.id === saved.sessionId);
+    if (!session) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        if (Array.isArray(stored)) session = stored.find((item: ChatSession) => item.id === saved!.sessionId && Array.isArray(item.messages));
+      } catch {}
+    }
     if (session) {
       activeRequestSession.current = saved.sessionId;
       setCurrentSessionId(saved.sessionId);
@@ -1027,7 +1038,7 @@ export default function FootPlayChat() {
     }
     void pollDurableJob(saved.jobId, saved.sessionId, controller.signal);
     return () => controller.abort();
-  }, [pollDurableJob]);
+  }, [pollDurableJob, authLoaded, user?.id]);
 
 
   const suggestionCards = language === 'ar' ? getDiscoveryQuestions(discoveryPage) : englishDiscoveryQuestions[discoveryPage % englishDiscoveryQuestions.length];
@@ -1417,7 +1428,7 @@ export default function FootPlayChat() {
           if (job.id) {
             const pending = { jobId: job.id, sessionId: id };
             durableJobRef.current = pending;
-            localStorage.setItem(DURABLE_JOB_KEY, JSON.stringify(pending));
+            try { localStorage.setItem(DURABLE_JOB_KEY, JSON.stringify(pending)); } catch { setChatNotice('تعذر حفظ البحث على هذا الجهاز؛ أبقِ الصفحة مفتوحة حتى يكتمل.'); }
             // Polling is independent of the original request and resumes after reload.
             durableHandled = true;
             await pollDurableJob(job.id, id, controller.signal);

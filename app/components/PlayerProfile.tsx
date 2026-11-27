@@ -180,7 +180,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
 
       {visiblePhoto && fetched?.photo?.url === visiblePhoto && (
         <p className="text-[10px] leading-4 opacity-65">
-          تصوير: {fetched.photo.artist} · <a href={fetched.photo.source} target="_blank" rel="noopener noreferrer" className="underline">{fetched.photo.license}</a>
+          تصوير: <a href={fetched.photo.source} target="_blank" rel="noopener noreferrer" className="underline">{fetched.photo.artist}</a> · <a href={fetched.photo.licenseUrl || fetched.photo.source} target="_blank" rel="noopener noreferrer" className="underline">{fetched.photo.license}</a>
         </p>
       )}
 
