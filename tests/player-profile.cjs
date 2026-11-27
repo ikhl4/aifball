@@ -79,6 +79,36 @@ test('a shared nickname requests disambiguation instead of choosing the retired 
  const fake=async url=>({ok:true,json:async()=>String(url).includes('wikidata')?{search:[{id:'Q1',label:'Javi Guerra',description:'Spanish footballer',match:{text:'Javi Guerra'}},{id:'Q2',label:'Javier Guerra Moreno',description:'Spanish footballer',match:{text:'Javi Guerra'}}]}:{items:[]}});
  const service=load('lib/player-profile-data.ts',{},fake);
  assert.equal((await service.loadPlayerData('Javi Guerra','2026-2027')).status,'ambiguous');
+ assert.equal((await service.loadPlayerData('خافي غيرا','2026-2027')).status,'ambiguous');
+});
+test('appearance enrichment keeps known goals and assists when a roster omits them, and validates the combined row', () => {
+ const row={...data.normalizePlayerRows({statistics:stats},detail(),'114','2026-2027')[1],minutes:360,yellows:1,reds:0};
+ const roster={team:{id:'114',isNational:false},season:{displayName:'2026-27 UEFA Champions League'},athletes:[{id:'255850',statistics:{splits:{categories:[{stats:[{name:'appearances',displayValue:'5'},{name:'subIns',displayValue:'1'}]}]}}}]};
+ const r=data.scopedRosterRow(roster,row,'255850','114','2026-2027');
+ assert.equal(r.matches,5);assert.equal(r.starts,4);assert.equal(r.goals,3);assert.equal(r.assists,0);assert.equal(r.minutes,360);assert.equal(r.yellows,1);assert.equal(r.reds,0);
+ const fields=roster.athletes[0].statistics.splits.categories[0].stats;
+ fields.push({name:'totalGoals',displayValue:'0'});
+ assert.equal(data.scopedRosterRow(roster,row,'255850','114','2026-2027').goals,0);
+ assert.equal(data.scopedRosterRow(roster,{...row,minutes:9999},'255850','114','2026-2027'),undefined);
+ fields.splice(1,1);
+ assert.equal(data.scopedRosterRow(roster,{...row,starts:9},'255850','114','2026-2027'),undefined);
+});
+test('Arabic McTominay spellings are search hints and still need exact provider identity', () => {
+ const hit={id:'255850',type:'player',sport:'soccer',displayName:'Scott McTominay'};
+ for(const name of ['سكوت مكتوميناي','سكوت ماكتوميناي','سكوت ماكتومناي']) {
+  const query=data.playerLookupName(name);assert.equal(query,'Scott McTominay');
+  assert.equal(data.uniqueEspnPlayer({items:[hit]},[query]).player.id,'255850');
+  assert.equal(data.uniqueEspnPlayer({items:[{...hit,displayName:'Another McTominay'}]},[query]).player,undefined);
+ }
+ assert.equal(data.playerLookupName('مكتوميناي'),'مكتوميناي');
+});
+test('lookup messages distinguish network failure, identity ambiguity and absent season data', () => {
+ const message=load('lib/player-profile-status.ts').playerProfileStatus;
+ assert.ok(message(false).includes('جاري'));
+ for(const status of [undefined,'unavailable']) assert.ok(message(true,status).includes('الاتصال'));
+ assert.ok(message(true,'ambiguous').includes('أكثر من لاعب'));
+ assert.ok(message(true,'not_found').includes('اسم مطابق'));
+ assert.ok(message(true,'found').includes('لهذا الموسم'));
 });
 test('Odegaard spelling folds preserve exact unique identity and reject two matching athletes', () => {
  const hit={id:'203669',type:'player',sport:'soccer',displayName:'Martin Ødegaard'};

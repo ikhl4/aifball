@@ -6,6 +6,7 @@ import { footballNameInArabic } from '../../lib/football-names-ar';
 import { COMPETITIONS } from '../../lib/competitions';
 import SeasonText from './SeasonText';
 import { fetchPlayerProfile } from '../../lib/player-profile-client';
+import { playerProfileStatus } from '../../lib/player-profile-status';
 
 interface PlayerProfileProps {
   playerName: string;
@@ -36,6 +37,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   const [lookupRetry, setLookupRetry] = useState(0);
   const lookupKey = lookupName + ':' + (season || '');
   const fetched = provider?.key === lookupKey ? provider.data : undefined;
+  const lookupStatus = playerProfileStatus(provider?.key === lookupKey, fetched?.status);
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams({ name: lookupName });
@@ -177,7 +179,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
       </div>
 
       {suppliedDetails?.lookup_pending === 'true' && fetched?.status !== 'found' && (
-        <p role="status" className="text-xs opacity-65">{provider?.key !== lookupKey ? 'جاري التحقق من هوية اللاعب وبياناته…' : 'لم تتأكد الهوية من المصدر؛ حدّد اسم اللاعب الكامل أو ناديه.'}</p>
+        <p role="status" className="text-xs opacity-65">{lookupStatus}</p>
       )}
 
       {visiblePhoto && fetched?.photo?.url === visiblePhoto && (
@@ -232,7 +234,9 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
               <dl className="grid grid-cols-3 gap-1.5 sm:gap-2">
                 {primaryLabels.map(label => metric(label, undefined))}
               </dl>
-              <p role="status" className="text-xs opacity-65">{hasSeasonSummary ? seasonSummary : provider?.key !== lookupKey ? 'جاري التحقق من أرقام الموسم…' : fetched?.status === 'ambiguous' ? 'الاسم يطابق أكثر من لاعب؛ حدّد النادي لتأكيد الهوية.' : 'لم تصل أرقام موثقة لهذا الموسم. لن نعرض موسمًا آخر أو نستبدل القيم الغائبة بصفر.'}</p>
+              {hasSeasonSummary || !(suppliedDetails?.lookup_pending === 'true' && fetched?.status !== 'found') ? (
+                <p role="status" className="text-xs opacity-65">{hasSeasonSummary ? seasonSummary : lookupStatus}</p>
+              ) : null}
               {provider?.key === lookupKey && fetched?.status !== 'ambiguous' && !hasSeasonSummary && (
                 <button type="button" onClick={() => setLookupRetry(value => value + 1)} className="text-xs underline" title="جلب بيانات البطاقة فقط دون إرسال السؤال مجددًا">إعادة جلب بيانات اللاعب</button>
               )}

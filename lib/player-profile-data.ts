@@ -24,6 +24,10 @@ export const normalizePlayerName = (name: string) => name.normalize('NFKD').toLo
 const searchSpellings: Record<string, string> = {
   'مارتن اوديغارد': 'Martin Ødegaard', 'مارتين اوديغارد': 'Martin Ødegaard',
   'مارتن اوديجارد': 'Martin Ødegaard', 'مارتين اوديجارد': 'Martin Ødegaard',
+  'سكوت مكتوميناي': 'Scott McTominay', 'سكوت ماكتوميناي': 'Scott McTominay',
+  'سكوت ماكتومناي': 'Scott McTominay',
+  // This spelling remains ambiguous until the provider establishes one identity.
+  'خافي غيرا': 'Javi Guerra', 'خافي غويرا': 'Javi Guerra',
 };
 export const playerLookupName = (name: string) => playerNameSearchHint(name) || searchSpellings[normalizePlayerName(name)] || footballNameForSearch(name);
 export function currentFootballSeason(now = new Date()) {
@@ -96,13 +100,17 @@ export function scopedRosterRow(payload: ObjectData, row: PlayerSeasonRow, athle
   if (players.length !== 1) return undefined;
   const categories = players[0].statistics?.splits?.categories;
   const numbers = Object.fromEntries(list(categories).flatMap(c => list(c.stats)).map(s => [s.name, integer(s.displayValue)]));
-  const matches = numbers.appearances ?? null, substitutes = numbers.subIns ?? null;
+  const matches = numbers.appearances ?? null, substitutes = numbers.subIns ?? row.substitutes;
   if (matches === null || matches > 100 || (substitutes !== null && substitutes > matches)) return undefined;
-  const goals = numbers.totalGoals ?? null, assists = numbers.goalAssists ?? null;
+  // The roster fills gaps in this exact scope; omitted fields must not erase
+  // verified overview figures. Explicit zero remains a real value.
+  const goals = numbers.totalGoals ?? row.goals, assists = numbers.goalAssists ?? row.assists;
   if (goals !== null && goals > matches * 8 || assists !== null && assists > matches * 8) return undefined;
-  return { ...row, matches, substitutes, starts: substitutes !== null ? matches - substitutes : null,
-    goals, assists, minutes: numbers.minutes ?? numbers.minutesPlayed ?? null,
-    yellows: numbers.yellowCards ?? null, reds: numbers.redCards ?? null };
+  const starts = substitutes !== null ? matches - substitutes : row.starts;
+  const minutes = numbers.minutes ?? numbers.minutesPlayed ?? row.minutes;
+  if (starts !== null && starts > matches || minutes !== null && minutes > matches * 130) return undefined;
+  return { ...row, matches, substitutes, starts, goals, assists, minutes,
+    yellows: numbers.yellowCards ?? row.yellows, reds: numbers.redCards ?? row.reds };
 }
 const safeUrl = (value: unknown, hosts: string[]) => {
   try { const u = new URL(String(value)); return u.protocol === 'https:' && !u.username && !u.password && hosts.includes(u.hostname) ? u.href : undefined; } catch { return undefined; }
