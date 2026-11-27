@@ -4,7 +4,7 @@ const fs = require('node:fs'), ts = require('typescript'), vm = require('node:vm
 function load(file, mocks = {}, fetcher = fetch) {
  const m = { exports: {} };
  vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,
-  { exports: m.exports, module: m, require: name => mocks[name] || {}, fetch: fetcher, URL, URLSearchParams, AbortSignal, Date, setTimeout, clearTimeout, console });
+  { exports: m.exports, module: m, require: name => mocks[name] || (name === './football-names-ar' ? load('lib/football-names-ar.ts') : {}), fetch: fetcher, URL, URLSearchParams, AbortSignal, AbortController, Date, setTimeout, clearTimeout, console });
  return m.exports;
 }
 const data = load('lib/player-profile-data.ts');
@@ -86,6 +86,24 @@ test('Odegaard spelling folds preserve exact unique identity and reject two matc
  assert.equal(data.uniqueEspnPlayer({items:[hit,{...hit,id:'999'}]},['Martin Odegaard']).ambiguous,true);
  for(const name of ['مارتن اوديغارد','مارتن أوديغارد','مارتين أوديغارد','مارتن أوديجارد'])assert.equal(data.playerLookupName(name),'Martin Ødegaard');
  assert.equal(data.playerLookupName('مارتن'),'مارتن');
+});
+test('existing Arabic dictionary names supply exact search hints and unknown names remain unchanged', () => {
+ for(const [arabic,english] of [['هاري كين','Harry Kane'],['آدم وارتون','Adam Wharton'],['نيكو باز','Nico Paz'],['محمد صلاح','Mohamed Salah']])assert.equal(data.playerLookupName(arabic),english);
+ assert.equal(data.playerLookupName('لاعب غير معروف'),'لاعب غير معروف');
+});
+test('profile GET retries a transient failure once, without a chat request or retries for unknown identities', async () => {
+ const service=load('lib/player-profile-client.ts');
+ const signal=new AbortController().signal,params=new URLSearchParams({name:'هاري كين'});
+ const found={status:'found',rows:[],season:'2026-2027',checkedAt:''};
+ let calls=0;
+ const recovered=await service.fetchPlayerProfile(params,signal,async (url,options)=>{
+  calls++;assert.ok(String(url).startsWith('/api/player-profile?'));assert.equal(options.method,undefined);
+  return {ok:true,json:async()=>calls===1?{...found,status:'unavailable'}:found};
+ });
+ assert.equal(recovered.status,'found');assert.equal(calls,2);
+ calls=0;await service.fetchPlayerProfile(params,signal,async()=>{calls++;throw Error('network');});assert.equal(calls,2);
+ calls=0;await service.fetchPlayerProfile(params,signal,async()=>{calls++;return {ok:true,json:async()=>({...found,status:'not_found'})};});assert.equal(calls,1);
+ const stopped=new AbortController();stopped.abort();calls=0;await service.fetchPlayerProfile(params,stopped.signal,async()=>{calls++;});assert.equal(calls,0);
 });
 test('Arabic and Latin Odegaard requests share verified data and photo without Arabic provider guesses', async () => {
  let searches=0;

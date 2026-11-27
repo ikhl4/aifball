@@ -14,3 +14,11 @@ export function playerPromptIntent(query: string, options: { conversationId?: st
   const statistics = /^(?:أرقام|ارقام|إحصائيات|احصائيات|stats|statistics)(?:\s|$)/i.test(q);
   return { playerCareer: explicit || (statistics && !club) || bareName, nameOnlyPlayer: bareName && !explicit && !statistics };
 }
+
+/** Fact-free lookup placeholder: safe to show before any paid model request. */
+export function playerLookupSeed(query: string, options: { conversationId?: string; hasImage?: boolean } = {}, now = new Date()): string {
+  if (!playerPromptIntent(query, options).nameOnlyPlayer) return '';
+  const escape = (value: string) => value.replace(/[&"<>]/g, c => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' }[c] || c));
+  const year = now.getUTCFullYear() - (now.getUTCMonth() < 6 ? 1 : 0);
+  return `<aifball-player name="${escape(query.trim())}" current_season="${year}-${year + 1}" lookup_pending="true" />`;
+}

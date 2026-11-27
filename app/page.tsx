@@ -2,6 +2,7 @@
 'use client';
 
 import { pollChatJob } from '../lib/chat-jobs-client';
+import { playerLookupSeed } from '../lib/chat-intent';
 
 import { consumeChatStream, createChatAnswer, normalizePlayerMarkup } from '../lib/chat-stream';
 
@@ -978,8 +979,12 @@ export default function FootPlayChat() {
       if (!stored) return;
       const msgs = [...stored.messages];
       if (!msgs.length || msgs[msgs.length - 1].role !== 'assistant') return;
-      msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: job.answer ||
-        (job.status === 'failed' ? 'تعذر إكمال البحث.' : 'جاري البحث…') };
+      const savedCard = msgs[msgs.length - 1].content.match(/^<aifball-player\b[^>]*\/?\s*>/i)?.[0];
+      const accumulated = createChatAnswer();
+      if (savedCard) accumulated.apply({ event: 'aifball_player_seed', answer: savedCard });
+      const content = job.answer ? accumulated.apply({ event: 'message_replace', answer: job.answer }) : undefined;
+      msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: content ||
+        (job.status === 'failed' ? (savedCard ? savedCard + '\n\n' : '') + 'تعذر إكمال البحث.' : savedCard || 'جاري البحث…') };
       const entry = { ...stored, messages: msgs, conversationId: job.conversation_id || stored.conversationId, updatedAt: new Date().toISOString() };
       sessionsRef.current = [entry, ...sessionsRef.current.filter(item => item.id !== sessionId)];
       setSessions([...sessionsRef.current]);
@@ -1365,9 +1370,10 @@ export default function FootPlayChat() {
       return;
     }
 
+    const lookupSeed = playerLookupSeed(query, { conversationId, hasImage: files.length > 0 });
     const initial: Message[] = [
       ...base,
-      { role: 'assistant', content: '', userQuery: query },
+      { role: 'assistant', content: lookupSeed, userQuery: query },
     ];
 
     setMessages(initial);
@@ -1388,7 +1394,7 @@ export default function FootPlayChat() {
     let responseDone = false;
     let durableHandled = false;
 
-    let answer = '';
+    let answer = lookupSeed;
     let conv = conversationId;
     let receivedAnswer = false;
     let latest = initial;
@@ -1496,6 +1502,7 @@ export default function FootPlayChat() {
       if (!res.body) throw new Error('لا يوجد تدفق استجابة من الخادم.');
 
       const streamedAnswer = createChatAnswer();
+      if (lookupSeed) streamedAnswer.apply({ event: 'aifball_player_seed', answer: lookupSeed });
       let workflowStarted = false;
       await consumeChatStream(res.body, event => {
         if (typeof event.conversation_id === 'string' && event.conversation_id) {
@@ -1514,7 +1521,7 @@ export default function FootPlayChat() {
         const next = streamedAnswer.apply(event);
         if (next !== null) {
           answer = next;
-          if (firstAnswerMs === null && answer.length > 0) firstAnswerMs = performance.now() - started;
+          if (firstAnswerMs === null && event.event !== 'aifball_player_seed' && answer.length > 0) firstAnswerMs = performance.now() - started;
           receivedAnswer = answer.trim().length > 0;
           update(answer, Math.max(1, Math.floor((performance.now() - started) / 1000)));
         }
@@ -2093,7 +2100,7 @@ export default function FootPlayChat() {
                                 }`}
                               >
                                 <AppIcon name="clock" size={14} className="text-emerald-500"/>
-                                {t('زمن استقبال الإجابة', 'Response time')}{' '}
+                                {t('مدة توليد الرد', 'Reply generation time')}{' '}
                                 {language === 'en' ? msg.thinkingTime + ' s' : formatSeconds(msg.thinkingTime)}
                               </span>
                             </div>

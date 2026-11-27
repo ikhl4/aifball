@@ -10,6 +10,17 @@ function load(file, mocks = {}) {
 const intent = load('lib/chat-intent.ts').playerPromptIntent;
 const stream = load('lib/chat-stream.ts');
 const summary = load('lib/verified-summary.ts', { './chat-stream': stream });
+test('local lookup card exists before upstream traffic and remains single when the server seed arrives', () => {
+ const seed=load('lib/chat-intent.ts').playerLookupSeed;
+ const tag=seed('هاري كين',{},new Date('2026-11-27T00:00:00Z'));
+ assert.ok(tag.includes('name="هاري كين"'));assert.ok(tag.includes('lookup_pending="true"'));
+ assert.equal(seed('كم عمره'), '');assert.equal(seed('هاري كين',{conversationId:'previous'}),'');assert.equal(seed('هاري كين',{hasImage:true}),'');
+ const accumulated=stream.createChatAnswer();
+ assert.equal(accumulated.apply({event:'aifball_player_seed',answer:tag}).split('<aifball-player').length-1,1);
+ accumulated.apply({event:'aifball_player_seed',answer:tag});
+ const final=accumulated.apply({event:'agent_message',answer:'<aifball-player name="هاري كين" lookup_name="Harry Kane" />\nقصة المسيرة'});
+ assert.equal(final.split('<aifball-player').length-1,1);assert.ok(final.includes('lookup_origin="هاري كين"'));
+});
 
 test('non-player requests never get long player research instructions', () => {
   for (const q of ['ترتيب الدوري السعودي', 'جدول مباريات اليوم', 'أخبار محمد صلاح', 'قارن ميسي ورونالدو', 'تمارين ضد الضغط', 'ملخص مباراة نابولي', 'الهلال والاتحاد', 'ريال مدريد', 'بايرن ميونخ', 'كم عمره', 'وش الأفضل', 'اكتب تغريدة', 'Premier League table', 'Crystal Palace', 'training drills']) {

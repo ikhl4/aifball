@@ -570,6 +570,20 @@ function normalizeName(name: string): string {
 }
 
 const NORMALIZED_NAMES = new Map(Object.entries(ARABIC_NAMES).map(([name, translated]) => [normalizeName(name), translated]));
+const arabicSearchKey = (value: string) => normalizeName(value).replace(/[\u064b-\u065f\u0670\u0640]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي');
+const SEARCH_NAMES = new Map<string, string[]>();
+for (const [name, translated] of Object.entries(ARABIC_NAMES)) {
+  const key = arabicSearchKey(translated);
+  const names = SEARCH_NAMES.get(key) || [];
+  if (!names.some(existing => normalizeName(existing) === normalizeName(name))) names.push(name);
+  SEARCH_NAMES.set(key, names);
+}
+
+/** An exact, unambiguous dictionary spelling is a search hint, not proof of identity. */
+export function footballNameForSearch(name: string): string {
+  const names = SEARCH_NAMES.get(arabicSearchKey(name));
+  return names?.length === 1 ? names[0] : name;
+}
 
 export function footballNameInArabic(name: string): string | null {
   return NORMALIZED_NAMES.get(normalizeName(name)) || null;

@@ -1,4 +1,5 @@
 /** Public provider data only. Never infer a player's identity from the first search hit. */
+import { footballNameForSearch } from './football-names-ar';
 export type PlayerSeasonRow = {
   team: string; competition: string; league: string; source: string;
   matches: number | null; starts: number | null; substitutes: number | null;
@@ -23,7 +24,7 @@ const searchSpellings: Record<string, string> = {
   'مارتن اوديغارد': 'Martin Ødegaard', 'مارتين اوديغارد': 'Martin Ødegaard',
   'مارتن اوديجارد': 'Martin Ødegaard', 'مارتين اوديجارد': 'Martin Ødegaard',
 };
-export const playerLookupName = (name: string) => searchSpellings[normalizePlayerName(name)] || name;
+export const playerLookupName = (name: string) => searchSpellings[normalizePlayerName(name)] || footballNameForSearch(name);
 export function currentFootballSeason(now = new Date()) {
   const year = now.getUTCFullYear() - (now.getUTCMonth() < 6 ? 1 : 0);
   return `${year}-${year + 1}`;
@@ -154,7 +155,8 @@ export async function loadPlayerData(name: string, season = currentFootballSeaso
   if (pending.size >= 64) return { status: 'unavailable', season, rows: [], checkedAt: new Date().toISOString() };
   const task = lookupPlayerData(lookup, season).then(value => {
     if (cache.size >= 128) cache.delete(cache.keys().next().value!);
-    cache.set(key, { until: Date.now() + (value.status === 'found' && value.rows.length > 0 ? 600000 : 15000), value }); return value;
+    if (value.status !== 'unavailable') cache.set(key, { until: Date.now() + (value.status === 'found' && value.rows.length > 0 ? 600000 : 15000), value });
+    return value;
   }).finally(() => pending.delete(key));
   pending.set(key, task); return task;
 }

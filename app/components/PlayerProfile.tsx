@@ -5,6 +5,7 @@ import type { PlayerData } from '../../lib/player-profile-data';
 import { footballNameInArabic } from '../../lib/football-names-ar';
 import { COMPETITIONS } from '../../lib/competitions';
 import SeasonText from './SeasonText';
+import { fetchPlayerProfile } from '../../lib/player-profile-client';
 
 interface PlayerProfileProps {
   playerName: string;
@@ -32,6 +33,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   const season = available.includes(selection) ? selection : (available[0] || inferredSeason);
   const lookupName = suppliedDetails?.lookup_origin || suppliedDetails?.lookup_name || playerName;
   const [provider, setProvider] = useState<{ key: string; data?: PlayerData }>();
+  const [lookupRetry, setLookupRetry] = useState(0);
   const lookupKey = lookupName + ':' + (season || '');
   const fetched = provider?.key === lookupKey ? provider.data : undefined;
   useEffect(() => {
@@ -39,12 +41,11 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
     const params = new URLSearchParams({ name: lookupName });
     if (season) params.set('season', season);
     setProvider(undefined);
-    fetch('/api/player-profile?' + params, { signal: controller.signal })
-      .then(response => response.ok ? response.json() : null)
+    fetchPlayerProfile(params, controller.signal)
       .then(data => { if (!controller.signal.aborted) setProvider({ key: lookupKey, data: data || undefined }); })
       .catch(() => { if (!controller.signal.aborted) setProvider({ key: lookupKey }); });
     return () => controller.abort();
-  }, [lookupName, lookupKey, season]);
+  }, [lookupName, lookupKey, season, lookupRetry]);
   const verifiedRows = fetched?.status === 'found' ? fetched.rows : [];
   const providerFields: Record<string, string> = {};
   if (season && verifiedRows.length) {
@@ -232,6 +233,9 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
                 {primaryLabels.map(label => metric(label, undefined))}
               </dl>
               <p role="status" className="text-xs opacity-65">{hasSeasonSummary ? seasonSummary : provider?.key !== lookupKey ? 'جاري التحقق من أرقام الموسم…' : fetched?.status === 'ambiguous' ? 'الاسم يطابق أكثر من لاعب؛ حدّد النادي لتأكيد الهوية.' : 'لم تصل أرقام موثقة لهذا الموسم. لن نعرض موسمًا آخر أو نستبدل القيم الغائبة بصفر.'}</p>
+              {provider?.key === lookupKey && fetched?.status !== 'ambiguous' && !hasSeasonSummary && (
+                <button type="button" onClick={() => setLookupRetry(value => value + 1)} className="text-xs underline" title="جلب بيانات البطاقة فقط دون إرسال السؤال مجددًا">إعادة جلب بيانات اللاعب</button>
+              )}
             </div>
           )}
         </div>
