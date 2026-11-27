@@ -15,7 +15,15 @@ type ObjectData = Record<string, any>;
 const list = (value: unknown): ObjectData[] => Array.isArray(value) ? value.filter(x => x && typeof x === 'object') : [];
 export const normalizePlayerName = (name: string) => name.normalize('NFKD').toLowerCase()
   .replace(/[\u0300-\u036f\u064b-\u065f\u0670\u0640]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي')
+  .replace(/ø/g, 'o').replace(/ł/g, 'l').replace(/đ/g, 'd').replace(/ß/g, 'ss')
   .replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
+// Search spellings only: an alias never supplies identity, statistics or a photo.
+// ESPN's exact unique athlete match and detail checks still apply below.
+const searchSpellings: Record<string, string> = {
+  'مارتن اوديغارد': 'Martin Ødegaard', 'مارتين اوديغارد': 'Martin Ødegaard',
+  'مارتن اوديجارد': 'Martin Ødegaard', 'مارتين اوديجارد': 'Martin Ødegaard',
+};
+export const playerLookupName = (name: string) => searchSpellings[normalizePlayerName(name)] || name;
 export function currentFootballSeason(now = new Date()) {
   const year = now.getUTCFullYear() - (now.getUTCMonth() < 6 ? 1 : 0);
   return `${year}-${year + 1}`;
@@ -139,11 +147,12 @@ async function commonsPhoto(entity: ObjectData | undefined, signal: AbortSignal)
 const cache = new Map<string, { until: number; value: PlayerData }>();
 const pending = new Map<string, Promise<PlayerData>>();
 export async function loadPlayerData(name: string, season = currentFootballSeason()): Promise<PlayerData> {
-  const key = normalizePlayerName(name) + ':' + season;
+  const lookup = playerLookupName(name);
+  const key = normalizePlayerName(lookup) + ':' + season;
   const existing = cache.get(key); if (existing && existing.until > Date.now()) return existing.value;
   const inflight = pending.get(key); if (inflight) return inflight;
   if (pending.size >= 64) return { status: 'unavailable', season, rows: [], checkedAt: new Date().toISOString() };
-  const task = lookupPlayerData(name, season).then(value => {
+  const task = lookupPlayerData(lookup, season).then(value => {
     if (cache.size >= 128) cache.delete(cache.keys().next().value!);
     cache.set(key, { until: Date.now() + (value.status === 'found' && value.rows.length > 0 ? 600000 : 15000), value }); return value;
   }).finally(() => pending.delete(key));

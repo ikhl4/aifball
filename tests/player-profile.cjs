@@ -80,3 +80,27 @@ test('a shared nickname requests disambiguation instead of choosing the retired 
  const service=load('lib/player-profile-data.ts',{},fake);
  assert.equal((await service.loadPlayerData('Javi Guerra','2026-2027')).status,'ambiguous');
 });
+test('Odegaard spelling folds preserve exact unique identity and reject two matching athletes', () => {
+ const hit={id:'203669',type:'player',sport:'soccer',displayName:'Martin Ødegaard'};
+ assert.equal(data.uniqueEspnPlayer({items:[hit]},['Martin Odegaard']).player.id,'203669');
+ assert.equal(data.uniqueEspnPlayer({items:[hit,{...hit,id:'999'}]},['Martin Odegaard']).ambiguous,true);
+ for(const name of ['مارتن اوديغارد','مارتن أوديغارد','مارتين أوديغارد','مارتن أوديجارد'])assert.equal(data.playerLookupName(name),'Martin Ødegaard');
+ assert.equal(data.playerLookupName('مارتن'),'مارتن');
+});
+test('Arabic and Latin Odegaard requests share verified data and photo without Arabic provider guesses', async () => {
+ let searches=0;
+ const fake=async url=>{
+  const u=new URL(String(url));let payload;
+  if(u.hostname==='www.wikidata.org'&&u.searchParams.get('action')==='wbsearchentities')payload={search:[{id:'Q16902219',label:'Martin Ødegaard',match:{text:'Martin Ødegaard'},description:'Norwegian footballer'},{id:'Q28718439',label:'Martin Ødegaard',description:'Norwegian composer'}]};
+  else if(u.hostname==='www.wikidata.org')payload={entities:{Q16902219:{labels:{en:{value:'Martin Ødegaard'},ar:{value:'مارتين أوديغارد'}},claims:{P31:[{mainsnak:{datavalue:{value:{id:'Q5'}}}}],P18:[{mainsnak:{datavalue:{value:'Portrait.jpg'}}}]}}}};
+  else if(u.hostname==='commons.wikimedia.org')payload={query:{pages:{1:{imageinfo:[{thumburl:'https://thumb.wikimedia.org/portrait.jpg',descriptionurl:'https://commons.wikimedia.org/wiki/File:Portrait.jpg',extmetadata:{Artist:{value:'Photographer'},LicenseShortName:{value:'CC BY-SA 4.0'}}}]}}}};
+  else if(u.pathname.endsWith('/search')){searches++;assert.equal(u.searchParams.get('query'),'Martin Ødegaard');payload={items:[{id:'203669',type:'player',sport:'soccer',displayName:'Martin Ødegaard',league:'eng.1',teamRelationships:[{core:{id:'359',isNational:false,displayName:'Arsenal'}}]}]};}
+  else if(u.pathname.endsWith('/overview'))payload={statistics:{names:['appearances','totalGoals','goalAssists'],splits:[{teamId:'359',leagueSlug:'eng.1',displayName:'2026-27 English Premier League',stats:['11','3','1']}]}};
+  else payload={athlete:{id:'203669',displayName:'Martin Ødegaard',team:{id:'359',isNational:false,displayName:'Arsenal'}}};
+  return {ok:true,json:async()=>payload};
+ };
+ const service=load('lib/player-profile-data.ts',{},fake);
+ const [a,b,c]=await Promise.all(['مارتن اوديغارد','Martin Odegaard','Martin Ødegaard'].map(n=>service.loadPlayerData(n,'2026-2027')));
+ assert.equal(a,b);assert.equal(b,c);assert.equal(searches,1);assert.equal(a.status,'found');
+ assert.equal(a.rows[0].matches,11);assert.equal(a.rows[0].goals,3);assert.equal(a.photo.artist,'Photographer');
+});

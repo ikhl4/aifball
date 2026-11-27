@@ -1,4 +1,5 @@
 import React from 'react';
+import SeasonText from './SeasonText';
 const paths:Record<string,React.ReactNode>={
  user:<><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></>,
  copy:<><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></>,
@@ -26,4 +27,4 @@ const paths:Record<string,React.ReactNode>={
 };
 export type AppIconName=keyof typeof paths;
 export default function AppIcon({name,size=20,className=''}:{name:AppIconName;size?:number;className?:string}){return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" className={`inline-block shrink-0 align-middle ${className}`}>{paths[name]||paths.pitch}</svg>;}
-export function SportIconText({text}:{text:string}){return <>{text.split(/(🏆|🏟️?|⚽)/u).map((part,i)=>/^(🏆|🏟️?|⚽)$/u.test(part)?<span key={i} role="img" aria-label={part==='🏆'?'بطولة':'ملعب'}><AppIcon name={part==='🏆'?'trophy':'pitch'} size={18} className="mx-1"/></span>:<React.Fragment key={i}>{part}</React.Fragment>)}</>;}
+export function SportIconText({text}:{text:string}){return <>{text.split(/(🏆|🏟️?|⚽)/u).map((part,i)=>/^(🏆|🏟️?|⚽)$/u.test(part)?<span key={i} role="img" aria-label={part==='🏆'?'بطولة':'ملعب'}><AppIcon name={part==='🏆'?'trophy':'pitch'} size={18} className="mx-1"/></span>:<SeasonText key={i} text={part}/>)}</>;}

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { PlayerData } from '../../lib/player-profile-data';
 import { footballNameInArabic } from '../../lib/football-names-ar';
 import { COMPETITIONS } from '../../lib/competitions';
+import SeasonText from './SeasonText';
 
 interface PlayerProfileProps {
   playerName: string;
@@ -250,7 +251,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
             {honours.map(({ label, value }) => (
               <div key={label} className={`rounded-xl border p-3 ${surface}`}>
                 <h4 className="mb-1 text-sm font-bold">{label}</h4>
-                <p className="whitespace-pre-line break-words text-sm leading-6 opacity-85">{value}</p>
+                <p className="whitespace-pre-line break-words text-sm leading-6 opacity-85"><SeasonText text={value} /></p>
               </div>
             ))}
           </div>
