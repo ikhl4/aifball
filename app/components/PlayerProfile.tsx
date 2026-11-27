@@ -155,6 +155,15 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
   });
   if (!playerName.trim()) return null;
 
+  // A source ambiguity cannot be resolved by model-supplied facts or images.
+  // Show the identity question before offering any season/statistics controls.
+  if (fetched?.status === 'ambiguous') return (
+    <section dir="rtl" aria-label="توضيح هوية اللاعب" className="w-full min-w-0 max-w-full space-y-2 rounded-2xl border border-emerald-700/20 p-3">
+      <h2 className="text-base font-extrabold break-words">{playerName}</h2>
+      <p role="status" className="text-sm opacity-80">{lookupStatus}</p>
+    </section>
+  );
+
   const showCareer = view === 'career' || (view === null && (careerFirst || !season));
   const showSeason = view === 'season' || (view === null && !showCareer);
   const surface = isDark ? 'bg-[#183b2b] border-emerald-700/40 text-white' : 'bg-[#f0f7f2] border-emerald-800/15 text-[#153c29]';
@@ -237,7 +246,7 @@ export default function PlayerProfile({ playerName, seasons, selectedSeason, det
               {hasSeasonSummary || !(suppliedDetails?.lookup_pending === 'true' && fetched?.status !== 'found') ? (
                 <p role="status" className="text-xs opacity-65">{hasSeasonSummary ? seasonSummary : lookupStatus}</p>
               ) : null}
-              {provider?.key === lookupKey && fetched?.status !== 'ambiguous' && !hasSeasonSummary && (
+              {provider?.key === lookupKey && !hasSeasonSummary && (
                 <button type="button" onClick={() => setLookupRetry(value => value + 1)} className="text-xs underline" title="جلب بيانات البطاقة فقط دون إرسال السؤال مجددًا">إعادة جلب بيانات اللاعب</button>
               )}
             </div>
