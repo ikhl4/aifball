@@ -55,13 +55,21 @@ export function normalizePlayerMarkup(text: string): string {
 
 /** Decode UTF-8 across arbitrary network boundaries and release/cancel on exit. */
 export async function consumeChatStream(stream: ReadableStream<Uint8Array>, onEvent: (event: ChatEvent) => boolean | void,
-  onChunk?: () => void) {
+  onChunk?: () => void, options: { idleTimeoutMs?: number } = {}) {
   const reader = stream.getReader(), decoder = new TextDecoder();
   let buffer = '', exhausted = false;
   const frame = (raw: string) => { const event = parseSSEFrame(raw); return event ? onEvent(event) !== false : true; };
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let result: ReadableStreamReadResult<Uint8Array>;
+      try {
+        result = await Promise.race([
+          reader.read(),
+          new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('CHAT_STREAM_IDLE')), options.idleTimeoutMs ?? 90000); }),
+        ]);
+      } finally { clearTimeout(timer); }
+      const { done, value } = result;
       if (done) { exhausted = true; buffer += decoder.decode(); break; }
       onChunk?.();
       buffer += decoder.decode(value, { stream: true });

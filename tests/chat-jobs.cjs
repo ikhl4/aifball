@@ -50,3 +50,14 @@ test('job polling forwards only the authenticated owner and rejects mismatched r
  const result=await route.GET(new Request('https://app.invalid/api/chat/jobs/'+id+'?owner=attacker'),{params:{id}});
  assert.ok(url.endsWith('?owner=verified-owner'));assert.equal(result.status,502);assert.equal(result.body.error,'invalid_job_response');
 });
+
+test('uncertain background-job acknowledgements never dispatch a replacement generation',async()=>{
+ const {startChatJob}=load('lib/chat-job-start.ts');
+ for(const fake of [async()=>{throw Error('offline');},async()=>response(502,{}),async()=>response(200,{id:'bad'}),async()=>response(503,{error:'background_service_unavailable'})]){
+  let calls=0;const result=await startChatJob({query:'test',idempotency_key:'unchanged'},new AbortController().signal,async(...args)=>{calls++;return fake(...args);});
+  assert.equal(result.kind,'blocked');assert.equal(result.reason,'uncertain');assert.equal(calls,1);
+ }
+ for(const error of ['auth_unavailable','background_jobs_unavailable'])assert.equal((await startChatJob({},new AbortController().signal,async()=>response(503,{error}))).kind,'direct');
+ assert.equal((await startChatJob({},new AbortController().signal,async()=>response(401,{}))).reason,'auth');
+ const started=await startChatJob({},new AbortController().signal,async()=>response(201,{id}));assert.equal(started.id,id);
+});

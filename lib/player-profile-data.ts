@@ -10,7 +10,8 @@ export type PlayerSeasonRow = {
 };
 export type PlayerPhoto = { url: string; source: string; artist: string; license: string; licenseUrl?: string };
 export type PlayerData = {
-  status: 'found' | 'not_found' | 'ambiguous' | 'unavailable';
+  status: 'found' | 'not_found' | 'ambiguous' | 'unavailable' | 'conflict';
+  identity?: { provider: 'ESPN'; id: string; league: string };
   canonicalName?: string; arabicName?: string; club?: string; nationality?: string;
   season: string; rows: PlayerSeasonRow[]; photo?: PlayerPhoto; source?: string; checkedAt: string;
 };
@@ -23,6 +24,8 @@ export const normalizePlayerName = (name: string) => name.normalize('NFKD').toLo
 // Search spellings only: an alias never supplies identity, statistics or a photo.
 // ESPN's exact unique athlete match and detail checks still apply below.
 const searchSpellings: Record<string, string> = {
+  'لوكاس بيرغفال': 'Lucas Bergvall', 'لوكاس بيرجفال': 'Lucas Bergvall',
+  'جوليان الفاريز': 'Julián Álvarez', 'خوليان الفاريز': 'Julián Álvarez',
   'مارتن اوديغارد': 'Martin Ødegaard', 'مارتين اوديغارد': 'Martin Ødegaard',
   'مارتن اوديجارد': 'Martin Ødegaard', 'مارتين اوديجارد': 'Martin Ødegaard',
   'سكوت مكتوميناي': 'Scott McTominay', 'سكوت ماكتوميناي': 'Scott McTominay',
@@ -159,6 +162,16 @@ async function commonsPhoto(entity: ObjectData | undefined, signal: AbortSignal)
     iiprop: 'url|extmetadata', iiurlwidth: '420', iiextmetadatafilter: 'Artist|LicenseShortName|LicenseUrl' });
   return normalizeCommonsPhoto(await json('https://commons.wikimedia.org/w/api.php?' + params, signal));
 }
+/** Cross-source media needs a matching name and must not contradict a known birth date. */
+export function entityMatchesAthlete(entity: ObjectData | undefined, athlete: ObjectData): boolean {
+  if (!entity || entity.ambiguous) return false;
+  const names = [entity.labels?.en?.value, ...list(entity.aliases?.en).map(a => a.value)];
+  if (!names.some(n => typeof n === 'string' && normalizePlayerName(n) === normalizePlayerName(athlete.displayName || ''))) return false;
+  const date = list(entity.claims?.P569).find(c => c.rank !== 'deprecated')?.mainsnak?.datavalue?.value?.time?.match(/^\+(\d{4}-\d{2}-\d{2})T/)?.[1];
+  const dob = typeof athlete.displayDOB === 'string' ? athlete.displayDOB.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/) : null;
+  const providerDate = dob ? `${dob[3]}-${dob[1].padStart(2, '0')}-${dob[2].padStart(2, '0')}` : undefined;
+  return !date || !providerDate || date === providerDate;
+}
 const cache = new Map<string, { until: number; value: PlayerData }>();
 const pending = new Map<string, Promise<PlayerData>>();
 export async function loadPlayerData(name: string, season = currentFootballSeason()): Promise<PlayerData> {
@@ -184,13 +197,21 @@ async function lookupPlayerData(name: string, season: string, clubHint?: string)
     const directSearch = !/[\u0600-\u06ff]/.test(name) ? json('https://site.web.api.espn.com/apis/common/v3/search?' + new URLSearchParams({ query: name, type: 'player', sport: 'soccer', limit: '4' }), signal) : undefined;
     const entity = directSearch ? undefined : await entityTask;
     const canonical = entity?.labels?.en?.value || name;
-    const search = directSearch ? await directSearch : await json('https://site.web.api.espn.com/apis/common/v3/search?' + new URLSearchParams({ query: canonical, type: 'player', sport: 'soccer', limit: '4' }), signal);
+    let search = directSearch ? await directSearch : await json('https://site.web.api.espn.com/apis/common/v3/search?' + new URLSearchParams({ query: canonical, type: 'player', sport: 'soccer', limit: '4' }), signal);
     let selected = uniqueEspnPlayer(search, [canonical, name], clubHint);
     if (!selected.player && !selected.ambiguous) {
       const aliases = await entityTask;
       if (aliases?.ambiguous && !clubHint) return { ...result, status: 'ambiguous' };
       const names = [aliases?.labels?.en?.value, ...list(aliases?.aliases?.en).map(alias => alias.value)].filter((value): value is string => typeof value === 'string');
       selected = uniqueEspnPlayer(search, [canonical, name, ...names], clubHint);
+      // The first search may have used a nickname. Retry once with the exact
+      // English label of the uniquely resolved entity, never guessed spellings.
+      const officialName = aliases?.labels?.en?.value;
+      if (!selected.player && !selected.ambiguous && !aliases?.ambiguous && typeof officialName === 'string' &&
+        !/[\u0600-\u06ff]/.test(officialName) && normalizePlayerName(officialName) !== normalizePlayerName(name)) {
+        search = await json('https://site.web.api.espn.com/apis/common/v3/search?' + new URLSearchParams({ query: officialName, type: 'player', sport: 'soccer', limit: '4' }), signal);
+        selected = uniqueEspnPlayer(search, [officialName, canonical, name, ...names], clubHint);
+      }
     }
     if (!selected.player) return { ...result, status: selected.ambiguous ? 'ambiguous' : 'not_found' };
     const candidate = selected.player;
@@ -198,12 +219,16 @@ async function lookupPlayerData(name: string, season: string, clubHint?: string)
     if (!league) return result;
     const endpoint = `https://site.web.api.espn.com/apis/common/v3/sports/soccer/${league}/athletes/${candidate.id}`;
     // A club-qualified ESPN identity does not prove a same-name Wikidata photo identity.
-    const photoTask = clubHint ? Promise.resolve(undefined) : entityTask.then(e => commonsPhoto(e, signal)).catch(() => undefined);
     const [detail, overview] = await Promise.all([json(endpoint + '?season=' + season.split('-')[0], signal), json(endpoint + '/overview?season=' + season.split('-')[0], signal).catch(() => ({}))]);
     const athlete = detail.athlete;
-    if (String(athlete?.id) !== String(candidate.id) || normalizePlayerName(athlete.displayName || '') !== normalizePlayerName(candidate.displayName)) return result;
+    if (String(athlete?.id) !== String(candidate.id) || normalizePlayerName(athlete.displayName || '') !== normalizePlayerName(candidate.displayName)) return { ...result, status: 'conflict' };
     const club = list(candidate.teamRelationships).map(r => r.core).find(t => t?.isNational === false) || (athlete.team?.isNational === false ? athlete.team : undefined);
-    if (clubHint && (!club || (athlete.team?.id && String(athlete.team.id) !== String(club.id)))) return result;
+    if ((clubHint && !club) || (club?.id && athlete.team?.id && String(athlete.team.id) !== String(club.id))) return { ...result, status: 'conflict' };
+    // Search may index a cup while the athlete endpoint resolves the domestic league.
+    // Accept that redirect only with the same verified club, ID and exact name.
+    if (detail.league?.slug && detail.league.slug !== league &&
+      (!club?.id || String(athlete.team?.id || '') !== String(club.id))) return { ...result, status: 'conflict' };
+    const resolvedLeague = /^[a-z0-9._-]{1,50}$/.test(detail.league?.slug || '') ? detail.league.slug : league;
     let rows = normalizePlayerRows(overview, detail, String(club?.id || ''), season);
     // Retrieve explicitly scoped appearance summaries in parallel, never treating starts as matches.
     const summaries = await Promise.all(rows.filter(row => row.matches === null).slice(0, 4).map(async row => {
@@ -215,9 +240,11 @@ async function lookupPlayerData(name: string, season: string, clubHint?: string)
     rows = rows.map(row => summaries.find(scoped => scoped?.league === row.league && scoped.matches !== null) || row);
     const resolvedEntity = await entityTask;
     if (resolvedEntity?.ambiguous && !clubHint) return { ...result, status: 'ambiguous' };
-    const photo = await photoTask;
+    const matchingEntity = !clubHint && entityMatchesAthlete(resolvedEntity, athlete) ? resolvedEntity : undefined;
+    const photo = await commonsPhoto(matchingEntity, signal).catch(() => undefined);
     return { ...result, status: 'found', canonicalName: athlete.displayName,
-      arabicName: clubHint ? undefined : resolvedEntity?.labels?.ar?.value, club: club?.displayName,
+      identity: { provider: 'ESPN', id: String(candidate.id), league: resolvedLeague },
+      arabicName: matchingEntity?.labels?.ar?.value, club: club?.displayName,
       nationality: athlete.citizenship, rows, photo,
       source: `https://www.espn.com/soccer/player/_/id/${candidate.id}` };
   } catch { return { ...result, status: 'unavailable' }; }

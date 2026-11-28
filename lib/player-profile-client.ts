@@ -15,7 +15,7 @@ export async function fetchPlayerProfile(params: URLSearchParams, signal: AbortS
       }
       const data = await response.json() as PlayerData;
       if (signal.aborted) return;
-      if (!data || !['found', 'not_found', 'ambiguous', 'unavailable'].includes(data.status) || !Array.isArray(data.rows)) return;
+      if (!data || !['found', 'not_found', 'ambiguous', 'unavailable', 'conflict'].includes(data.status) || !Array.isArray(data.rows)) return;
       if (data?.status === 'unavailable') continue;
       return data;
     } catch { if (signal.aborted) return; }

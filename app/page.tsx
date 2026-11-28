@@ -2,6 +2,7 @@
 'use client';
 
 import { pollChatJob } from '../lib/chat-jobs-client';
+import { startChatJob } from '../lib/chat-job-start';
 import { playerLookupSeed } from '../lib/chat-intent';
 
 import { consumeChatStream, createChatAnswer, normalizePlayerMarkup } from '../lib/chat-stream';
@@ -1015,34 +1016,46 @@ export default function FootPlayChat() {
 
   useEffect(() => {
     if (!authLoaded) return;
-    let saved: { jobId: string; sessionId: string } | null = null;
-    try { saved = JSON.parse(localStorage.getItem(DURABLE_JOB_KEY) || 'null'); } catch {}
-    if (!saved?.jobId || !saved?.sessionId) return;
-    if (!user?.id) {
-      if (activeRequestSession.current === saved.sessionId) setLoading(false);
-      setChatNotice('سجّل الدخول لاستكمال البحث المحفوظ.');
-      return;
-    }
-    durableJobRef.current = saved;
-    const controller = new AbortController();
-    activeRequest.current = controller;
-    // Restore the last session when the page was terminated while searching.
-    let session = sessionsRef.current.find(item => item.id === saved.sessionId);
-    if (!session) {
-      try {
-        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-        if (Array.isArray(stored)) session = stored.find((item: ChatSession) => item.id === saved!.sessionId && Array.isArray(item.messages));
-      } catch {}
-    }
-    if (session) {
-      activeRequestSession.current = saved.sessionId;
-      setCurrentSessionId(saved.sessionId);
-      setConversationId(session.conversationId);
-      setMessages(session.messages);
-      setLoading(true);
-    }
-    void pollDurableJob(saved.jobId, saved.sessionId, controller.signal);
-    return () => controller.abort();
+    let resumed: AbortController | null = null;
+    const resume = () => {
+      if (document.hidden || (activeRequest.current && !activeRequest.current.signal.aborted)) return;
+      let saved: { jobId: string; sessionId: string } | null = null;
+      try { saved = JSON.parse(localStorage.getItem(DURABLE_JOB_KEY) || 'null'); } catch {}
+      if (!saved?.jobId || !saved?.sessionId) return;
+      if (!user?.id) { setChatNotice('سجّل الدخول لاستكمال البحث المحفوظ.'); return; }
+      durableJobRef.current = saved;
+      const controller = new AbortController();
+      resumed = controller;
+      activeRequest.current = controller;
+      let session = sessionsRef.current.find(item => item.id === saved!.sessionId);
+      if (!session) {
+        try {
+          const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+          if (Array.isArray(stored)) session = stored.find((item: ChatSession) => item.id === saved!.sessionId && Array.isArray(item.messages));
+        } catch {}
+      }
+      if (session) {
+        activeRequestSession.current = saved.sessionId;
+        setCurrentSessionId(saved.sessionId);
+        setConversationId(session.conversationId);
+        setMessages(session.messages);
+        setLoading(true);
+      }
+      // Resume GET polling of the existing job; never resubmit the question.
+      void pollDurableJob(saved.jobId, saved.sessionId, controller.signal).finally(() => {
+        if (activeRequest.current === controller) activeRequest.current = null;
+      });
+    };
+    resume();
+    window.addEventListener('pageshow', resume);
+    window.addEventListener('online', resume);
+    document.addEventListener('visibilitychange', resume);
+    return () => {
+      window.removeEventListener('pageshow', resume);
+      window.removeEventListener('online', resume);
+      document.removeEventListener('visibilitychange', resume);
+      resumed?.abort();
+    };
   }, [pollDurableJob, authLoaded, user?.id]);
 
 
@@ -1424,27 +1437,22 @@ export default function FootPlayChat() {
       // If not configured, preserve the existing streaming Dify behavior.
       if (user?.id && files.length === 0) {
         const key = crypto.randomUUID();
-        const durable = await fetch('/api/chat/jobs', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, language, conversation_id: conversationId, idempotency_key: key }),
-          signal: controller.signal,
-        }).catch(() => null);
-        if (durable?.ok) {
-          const job: { id: string } = await durable.json();
-          if (job.id) {
-            const pending = { jobId: job.id, sessionId: id };
-            durableJobRef.current = pending;
-            try { localStorage.setItem(DURABLE_JOB_KEY, JSON.stringify(pending)); } catch { setChatNotice('تعذر حفظ البحث على هذا الجهاز؛ أبقِ الصفحة مفتوحة حتى يكتمل.'); }
-            // Polling is independent of the original request and resumes after reload.
-            durableHandled = true;
-            await pollDurableJob(job.id, id, controller.signal);
-            return;
-          }
+        const durable = await startChatJob({ query, language, conversation_id: conversationId, idempotency_key: key }, controller.signal);
+        if (durable.kind === 'started') {
+          const pending = { jobId: durable.id, sessionId: id };
+          durableJobRef.current = pending;
+          try { localStorage.setItem(DURABLE_JOB_KEY, JSON.stringify(pending)); } catch { setChatNotice('تعذر حفظ البحث على هذا الجهاز؛ أبقِ الصفحة مفتوحة حتى يكتمل.'); }
+          durableHandled = true;
+          await pollDurableJob(durable.id, id, controller.signal);
+          return;
         }
-        if (durable && !durable.ok && durable.status !== 503) {
-          setChatNotice('تعذر بدء البحث بالخلفية. سنستخدم الاتصال المباشر مؤقتًا؛ أبقِ الصفحة مفتوحة.');
-        } else if (!durable) {
-          setChatNotice('تعذر الوصول إلى خدمة البحث بالخلفية. سنحاول الاتصال المباشر.');
+        if (durable.kind === 'blocked') {
+          const notice = durable.reason === 'auth'
+            ? t('سجّل الدخول مجددًا لبدء البحث.', 'Sign in again to start the search.')
+            : t('تعذر تأكيد بدء البحث. لم نرسل طلبًا بديلًا تلقائيًا؛ تحقق من السجل قبل إعادة الإرسال.', 'Could not confirm the search started. No replacement request was sent automatically; check history before resending.');
+          setChatNotice(notice);
+          update((lookupSeed ? lookupSeed + '\n\n' : '') + notice);
+          return;
         }
       }
       const difyFiles: {

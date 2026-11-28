@@ -24,7 +24,7 @@ function renderProfile(status, requestQuery) {
       if (name === 'react') return react;
       if (name.endsWith('player-identity')) return identityModule.exports;
       if (name === 'react/jsx-runtime') return require(name);
-      if (name.endsWith('player-profile-status')) return { playerProfileStatus: () => 'الاسم يطابق أكثر من لاعب' };
+      if (name.endsWith('player-profile-status')) return { playerProfileStatus: () => status === 'conflict' ? 'المصدر يعرض بيانات متعارضة' : 'الاسم يطابق أكثر من لاعب' };
       if (name.endsWith('football-names-ar')) return { footballNameInArabic: x => x };
       if (name.endsWith('competitions')) return { COMPETITIONS: {} };
       if (name.endsWith('SeasonText')) return { default: ({ children }) => children };
@@ -58,3 +58,10 @@ test('a qualified identity with missing or conflicting source data does not ask 
   for (const marker of ['<img','<button','<select','<dd']) assert.ok(!html.includes(marker), marker);
  }
 });
+
+ test('a source conflict suppresses generated statistics and unverified media even without a club qualifier', () => {
+  const html = renderProfile('conflict');
+  assert.match(html, /حالة بيانات اللاعب/);
+  assert.match(html, /بيانات متعارضة/);
+  for (const marker of ['<img','<button','<select','<dd','example.org']) assert.ok(!html.includes(marker), marker);
+ });

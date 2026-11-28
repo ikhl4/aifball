@@ -176,3 +176,46 @@ test('club qualification narrows only exact source identities and never changes 
  assert.equal(data.uniqueEspnPlayer({items:[valencia,{...valencia,id:'3'}]},['Javi Guerra'],'Valencia').ambiguous,true);
  assert.equal(data.uniqueEspnPlayer({items:[{...valencia,teamRelationships:[{core:{displayName:'Valencia',isNational:true}}]}]},['Javi Guerra'],'Valencia').player,undefined);
 });
+
+test('cross-source photos reject mismatching names or conflicting known birth dates',()=>{
+ const entity={labels:{en:{value:'Lucas Bergvall'}},claims:{P569:[{mainsnak:{datavalue:{value:{time:'+2006-02-02T00:00:00Z'}}}}]}};
+ assert.equal(data.entityMatchesAthlete(entity,{displayName:'Lucas Bergvall',displayDOB:'2/2/2006'}),true);
+ assert.equal(data.entityMatchesAthlete(entity,{displayName:'Lucas Bergvall',displayDOB:'2/2/1982'}),false);
+ assert.equal(data.entityMatchesAthlete(entity,{displayName:'Other Player',displayDOB:'2/2/2006'}),false);
+ assert.equal(data.entityMatchesAthlete({ambiguous:true},{displayName:'Lucas Bergvall'}),false);
+});
+test('one source-derived canonical search can recover a nickname without fuzzy matching',async()=>{
+ const queries=[];
+ const fake=async url=>{
+  const u=new URL(String(url));
+  if(u.hostname==='www.wikidata.org')return {ok:true,json:async()=>u.searchParams.get('action')==='wbsearchentities'?{search:[{id:'Q1',label:'Nick Name',description:'football player'}]}:{entities:{Q1:{labels:{en:{value:'Official Player'}},claims:{P31:[{mainsnak:{datavalue:{value:{id:'Q5'}}}}]}}}}};
+  if(u.pathname.endsWith('/search')){queries.push(u.searchParams.get('query'));return {ok:true,json:async()=>({items:u.searchParams.get('query')==='Official Player'?[{id:'123',type:'player',sport:'soccer',displayName:'Official Player',league:'eng.1',teamRelationships:[{core:{id:'1',displayName:'Club',isNational:false}}]}]:[]})};}
+  if(u.pathname.endsWith('/overview'))return {ok:true,json:async()=>({})};
+  return {ok:true,json:async()=>({athlete:{id:'123',displayName:'Official Player',team:{id:'1',isNational:false}},league:{slug:'eng.1'}})};
+ };
+ const result=await load('lib/player-profile-data.ts',{},fake).loadPlayerData('Nick Name','2026-2027');
+ assert.equal(result.status,'found');assert.equal(result.identity.id,'123');assert.deepEqual(queries,['Nick Name','Official Player']);
+});
+test('conflicting provider identity, club or league never becomes a found card',async()=>{
+ for(const mismatch of ['id','club','league']){
+  const fake=async url=>{
+   const u=String(url);
+   if(u.includes('wikidata'))throw Error('optional unavailable');
+   if(u.includes('/search?'))return {ok:true,json:async()=>({items:[{id:'123',type:'player',sport:'soccer',displayName:'Exact Player',league:'eng.1',teamRelationships:[{core:{id:'1',displayName:'Club',isNational:false}}]}]})};
+   if(u.includes('/overview?'))return {ok:true,json:async()=>({})};
+   return {ok:true,json:async()=>({athlete:{id:mismatch==='id'?'456':'123',displayName:'Exact Player',team:{id:mismatch==='club'?'2':mismatch==='league'?undefined:'1'}},league:{slug:mismatch==='league'?'esp.1':'eng.1'}})};
+  };
+  const result=await load('lib/player-profile-data.ts',{},fake).loadPlayerData('Exact Player');assert.equal(result.status,'conflict',mismatch);assert.equal(result.rows.length,0);assert.equal(result.photo,undefined);
+ }
+});
+
+test('a cup search may resolve the domestic league only with the same exact player and club',async()=>{
+ const fake=async url=>{
+  if(String(url).includes('wikidata'))throw Error('optional');
+  if(String(url).includes('/search?'))return {ok:true,json:async()=>({items:[{id:'356379',type:'player',sport:'soccer',displayName:'Lucas Bergvall',league:'eng.fa',teamRelationships:[{core:{id:'367',isNational:false,displayName:'Tottenham Hotspur'}}]}]})};
+  if(String(url).includes('/overview?'))return {ok:true,json:async()=>({})};
+  return {ok:true,json:async()=>({athlete:{id:'356379',displayName:'Lucas Bergvall',team:{id:'367',isNational:false}},league:{slug:'eng.1'}})};
+ };
+ const profile=await load('lib/player-profile-data.ts',{},fake).loadPlayerData('Lucas Bergvall');
+ assert.equal(profile.status,'found');assert.equal(profile.identity.league,'eng.1');
+});
