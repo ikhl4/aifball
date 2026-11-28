@@ -1,6 +1,7 @@
 /** Public provider data only. Never infer a player's identity from the first search hit. */
 import { footballNameForSearch } from './football-names-ar';
 import { playerNameSearchHint } from './chat-intent';
+import { qualifiedPlayerLookup } from './player-identity';
 export type PlayerSeasonRow = {
   team: string; competition: string; league: string; source: string;
   matches: number | null; starts: number | null; substitutes: number | null;
@@ -41,12 +42,16 @@ export function seasonMatches(label: unknown, season: string): boolean {
   return end ? new RegExp(`\\b${start}[-–/](${end}|${end.slice(-2)})\\b`).test(label)
     : new RegExp(`\\b${start}\\b`).test(label) && !/\d{4}[-–/]\d{2,4}/.test(label);
 }
-export function uniqueEspnPlayer(payload: ObjectData, names: string[]) {
+export function uniqueEspnPlayer(payload: ObjectData, names: string[], clubHint?: string) {
   const exact = new Set(names.map(normalizePlayerName));
   const candidates = list(payload?.items).filter(item => item.type === 'player' && item.sport === 'soccer' &&
     /^\d{1,12}$/.test(String(item.id)) && [item.displayName, item.fullName].some(name => typeof name === 'string' && exact.has(normalizePlayerName(name))));
-  const ids = [...new Set(candidates.map(item => String(item.id)))];
-  return { player: ids.length === 1 ? candidates.find(item => String(item.id) === ids[0]) : undefined, ambiguous: ids.length > 1 };
+  const clubName = (value: string) => normalizePlayerName(value).replace(/\b(?:cf|fc)\b/g, '').trim();
+  const scoped = clubHint ? candidates.filter(item => list(item.teamRelationships).some(relation =>
+    relation.core?.isNational === false && typeof relation.core?.displayName === 'string' &&
+    clubName(relation.core.displayName) === clubName(clubHint))) : candidates;
+  const ids = [...new Set(scoped.map(item => String(item.id)))];
+  return { player: ids.length === 1 ? scoped.find(item => String(item.id) === ids[0]) : undefined, ambiguous: ids.length > 1 };
 }
 const integer = (value: unknown): number | null => {
   if (value === null || value === undefined || value === '' || !/^\d+$/.test(String(value))) return null;
@@ -157,19 +162,20 @@ async function commonsPhoto(entity: ObjectData | undefined, signal: AbortSignal)
 const cache = new Map<string, { until: number; value: PlayerData }>();
 const pending = new Map<string, Promise<PlayerData>>();
 export async function loadPlayerData(name: string, season = currentFootballSeason()): Promise<PlayerData> {
-  const lookup = playerLookupName(name);
-  const key = normalizePlayerName(lookup) + ':' + season;
+  const qualifier = qualifiedPlayerLookup(name);
+  const lookup = qualifier?.name || playerLookupName(name);
+  const key = normalizePlayerName(lookup) + ':' + season + ':' + (qualifier?.club || '');
   const existing = cache.get(key); if (existing && existing.until > Date.now()) return existing.value;
   const inflight = pending.get(key); if (inflight) return inflight;
   if (pending.size >= 64) return { status: 'unavailable', season, rows: [], checkedAt: new Date().toISOString() };
-  const task = lookupPlayerData(lookup, season).then(value => {
+  const task = lookupPlayerData(lookup, season, qualifier?.club).then(value => {
     if (cache.size >= 128) cache.delete(cache.keys().next().value!);
     if (value.status !== 'unavailable') cache.set(key, { until: Date.now() + (value.status === 'found' && value.rows.length > 0 ? 600000 : 15000), value });
     return value;
   }).finally(() => pending.delete(key));
   pending.set(key, task); return task;
 }
-async function lookupPlayerData(name: string, season: string): Promise<PlayerData> {
+async function lookupPlayerData(name: string, season: string, clubHint?: string): Promise<PlayerData> {
   const signal = AbortSignal.timeout(12000);
   const result: PlayerData = { status: 'not_found', season, rows: [], checkedAt: new Date().toISOString() };
   try {
@@ -179,23 +185,25 @@ async function lookupPlayerData(name: string, season: string): Promise<PlayerDat
     const entity = directSearch ? undefined : await entityTask;
     const canonical = entity?.labels?.en?.value || name;
     const search = directSearch ? await directSearch : await json('https://site.web.api.espn.com/apis/common/v3/search?' + new URLSearchParams({ query: canonical, type: 'player', sport: 'soccer', limit: '4' }), signal);
-    let selected = uniqueEspnPlayer(search, [canonical, name]);
+    let selected = uniqueEspnPlayer(search, [canonical, name], clubHint);
     if (!selected.player && !selected.ambiguous) {
       const aliases = await entityTask;
-      if (aliases?.ambiguous) return { ...result, status: 'ambiguous' };
+      if (aliases?.ambiguous && !clubHint) return { ...result, status: 'ambiguous' };
       const names = [aliases?.labels?.en?.value, ...list(aliases?.aliases?.en).map(alias => alias.value)].filter((value): value is string => typeof value === 'string');
-      selected = uniqueEspnPlayer(search, [canonical, name, ...names]);
+      selected = uniqueEspnPlayer(search, [canonical, name, ...names], clubHint);
     }
     if (!selected.player) return { ...result, status: selected.ambiguous ? 'ambiguous' : 'not_found' };
     const candidate = selected.player;
     const league = /^[a-z0-9._-]{1,50}$/.test(candidate.league || '') ? candidate.league : null;
     if (!league) return result;
     const endpoint = `https://site.web.api.espn.com/apis/common/v3/sports/soccer/${league}/athletes/${candidate.id}`;
-    const photoTask = entityTask.then(e => commonsPhoto(e, signal)).catch(() => undefined);
+    // A club-qualified ESPN identity does not prove a same-name Wikidata photo identity.
+    const photoTask = clubHint ? Promise.resolve(undefined) : entityTask.then(e => commonsPhoto(e, signal)).catch(() => undefined);
     const [detail, overview] = await Promise.all([json(endpoint + '?season=' + season.split('-')[0], signal), json(endpoint + '/overview?season=' + season.split('-')[0], signal).catch(() => ({}))]);
     const athlete = detail.athlete;
     if (String(athlete?.id) !== String(candidate.id) || normalizePlayerName(athlete.displayName || '') !== normalizePlayerName(candidate.displayName)) return result;
     const club = list(candidate.teamRelationships).map(r => r.core).find(t => t?.isNational === false) || (athlete.team?.isNational === false ? athlete.team : undefined);
+    if (clubHint && (!club || (athlete.team?.id && String(athlete.team.id) !== String(club.id)))) return result;
     let rows = normalizePlayerRows(overview, detail, String(club?.id || ''), season);
     // Retrieve explicitly scoped appearance summaries in parallel, never treating starts as matches.
     const summaries = await Promise.all(rows.filter(row => row.matches === null).slice(0, 4).map(async row => {
@@ -206,10 +214,10 @@ async function lookupPlayerData(name: string, season: string): Promise<PlayerDat
     }));
     rows = rows.map(row => summaries.find(scoped => scoped?.league === row.league && scoped.matches !== null) || row);
     const resolvedEntity = await entityTask;
-    if (resolvedEntity?.ambiguous) return { ...result, status: 'ambiguous' };
+    if (resolvedEntity?.ambiguous && !clubHint) return { ...result, status: 'ambiguous' };
     const photo = await photoTask;
     return { ...result, status: 'found', canonicalName: athlete.displayName,
-      arabicName: resolvedEntity?.labels?.ar?.value, club: club?.displayName,
+      arabicName: clubHint ? undefined : resolvedEntity?.labels?.ar?.value, club: club?.displayName,
       nationality: athlete.citizenship, rows, photo,
       source: `https://www.espn.com/soccer/player/_/id/${candidate.id}` };
   } catch { return { ...result, status: 'unavailable' }; }

@@ -20,3 +20,7 @@ test('Arabic group labels retain regional and hierarchical distinctions', () => 
   assert.equal(group('League A, Group B'), 'المستوى A، المجموعة B');
   assert.equal(group('League B / Group 2'), 'المستوى B / المجموعة 2');
 });
+
+test('Tottenham Hotspur is translated for Arabic profile headings and competition rows', () => {
+ assert.equal(name('Tottenham Hotspur'), 'توتنهام هوتسبير');
+});

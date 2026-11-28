@@ -4,7 +4,7 @@ const fs = require('node:fs'), ts = require('typescript'), vm = require('node:vm
 function load(file, mocks = {}, fetcher = fetch) {
  const m = { exports: {} };
  vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,
-  { exports: m.exports, module: m, require: name => mocks[name] || (name === './football-names-ar' ? load('lib/football-names-ar.ts') : name === './chat-intent' ? load('lib/chat-intent.ts') : {}), fetch: fetcher, URL, URLSearchParams, AbortSignal, AbortController, Date, setTimeout, clearTimeout, console });
+  { exports: m.exports, module: m, require: name => mocks[name] || (name === './football-names-ar' ? load('lib/football-names-ar.ts') : name === './chat-intent' ? load('lib/chat-intent.ts') : name === './player-identity' ? load('lib/player-identity.ts') : {}), fetch: fetcher, URL, URLSearchParams, AbortSignal, AbortController, Date, setTimeout, clearTimeout, console });
  return m.exports;
 }
 const data = load('lib/player-profile-data.ts');
@@ -158,4 +158,21 @@ test('Arabic and Latin Odegaard requests share verified data and photo without A
  const [a,b,c]=await Promise.all(['مارتن اوديغارد','Martin Odegaard','Martin Ødegaard'].map(n=>service.loadPlayerData(n,'2026-2027')));
  assert.equal(a,b);assert.equal(b,c);assert.equal(searches,1);assert.equal(a.status,'found');
  assert.equal(a.rows[0].matches,11);assert.equal(a.rows[0].goals,3);assert.equal(a.photo.artist,'Photographer');
+});
+
+test('club qualification narrows only exact source identities and never changes an unqualified lookup', () => {
+ const qualify = load('lib/player-identity.ts').qualifiedPlayerLookup;
+ for (const query of ['نعم خافي غيرا لاعب فالنسيا', 'Javi Guerra (Valencia)', 'خَافي غويرا لاعب فالنسيا']) {
+  assert.equal(qualify(query).name, 'Javi Guerra'); assert.equal(qualify(query).club, 'Valencia');
+ }
+ for (const query of ['خافي غيرا', 'خافي غيرا المعتزل', 'ليس خافي غيرا لاعب فالنسيا', 'Harry Kane']) assert.equal(qualify(query), undefined);
+ const hit = id => ({ id, displayName:'Javi Guerra', sport:'soccer', type:'player', league:'esp.1' });
+ const valencia = {...hit('1'), teamRelationships:[{core:{id:'94',displayName:'Valencia CF',isNational:false}}]};
+ const retired = {...hit('2'), teamRelationships:[{core:{id:'999',displayName:'Other Club',isNational:false}}]};
+ const payload = {items:[valencia,retired]};
+ assert.equal(data.uniqueEspnPlayer(payload,['Javi Guerra']).ambiguous,true);
+ assert.equal(data.uniqueEspnPlayer(payload,['Javi Guerra'],'Valencia').player.id,'1');
+ assert.equal(data.uniqueEspnPlayer(payload,['Javi Guerra'],'Napoli').player,undefined);
+ assert.equal(data.uniqueEspnPlayer({items:[valencia,{...valencia,id:'3'}]},['Javi Guerra'],'Valencia').ambiguous,true);
+ assert.equal(data.uniqueEspnPlayer({items:[{...valencia,teamRelationships:[{core:{displayName:'Valencia',isNational:true}}]}]},['Javi Guerra'],'Valencia').player,undefined);
 });

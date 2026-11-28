@@ -7,9 +7,11 @@ import { COMPETITIONS } from '../../lib/competitions';
 import SeasonText from './SeasonText';
 import { fetchPlayerProfile } from '../../lib/player-profile-client';
 import { playerProfileStatus } from '../../lib/player-profile-status';
+import { qualifiedPlayerLookup } from '../../lib/player-identity';
 
 interface PlayerProfileProps {
   playerName: string;
+  requestQuery?: string;
   seasons?: string;
   selectedSeason?: string;
   details?: Record<string, string>;
@@ -26,13 +28,14 @@ function safeSource(source?: string) {
   }
 }
 
-export default function PlayerProfile({ playerName, seasons, selectedSeason, details: suppliedDetails, isDark = true }: PlayerProfileProps) {
+export default function PlayerProfile({ playerName, requestQuery, seasons, selectedSeason, details: suppliedDetails, isDark = true }: PlayerProfileProps) {
   const available = [...new Set((seasons ?? '').split(',').map(value => value.trim())
     .filter(value => /^\d{4}(?:-\d{4})?$/.test(value)))].sort().reverse();
   const [selection, setSelection] = useState(selectedSeason ?? '');
   const inferredSeason = suppliedDetails?.current_season && /^\d{4}(?:-\d{4})?$/.test(suppliedDetails.current_season) ? suppliedDetails.current_season : undefined;
   const season = available.includes(selection) ? selection : (available[0] || inferredSeason);
-  const lookupName = suppliedDetails?.lookup_origin || suppliedDetails?.lookup_name || playerName;
+  const qualifier = qualifiedPlayerLookup(requestQuery || '');
+  const lookupName = qualifier ? `${qualifier.name} (${qualifier.club})` : suppliedDetails?.lookup_origin || suppliedDetails?.lookup_name || playerName;
   const [provider, setProvider] = useState<{ key: string; data?: PlayerData }>();
   const [lookupRetry, setLookupRetry] = useState(0);
   const lookupKey = lookupName + ':' + (season || '');

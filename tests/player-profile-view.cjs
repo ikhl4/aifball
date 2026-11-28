@@ -17,6 +17,7 @@ function renderProfile(status) {
   vm.runInNewContext(code, { exports: m.exports, module: m, URL, URLSearchParams, AbortController,
     require(name) {
       if (name === 'react') return react;
+      if (name.endsWith('player-identity')) return { qualifiedPlayerLookup: () => undefined };
       if (name === 'react/jsx-runtime') return require(name);
       if (name.endsWith('player-profile-status')) return { playerProfileStatus: () => 'الاسم يطابق أكثر من لاعب' };
       if (name.endsWith('football-names-ar')) return { footballNameInArabic: x => x };

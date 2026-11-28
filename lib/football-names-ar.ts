@@ -1,5 +1,6 @@
 // Presentation-only aliases. Unknown names retain their source spelling.
 const ARABIC_NAMES: Record<string, string> = {
+  "Tottenham Hotspur": "توتنهام هوتسبير",
   "Atlético de Madrid": "أتلتيكو مدريد",
   "Nottingham Forest": "نوتنغهام فورست",
   "Werder Bremen": "فيردر بريمن",
