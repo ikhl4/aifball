@@ -8,7 +8,7 @@ const base = new URL(value('--base'));
 if (!['http:', 'https:'].includes(base.protocol)) throw Error('Invalid base URL');
 const season = value('--season') && args.includes('--season') ? value('--season') : '2026-2027';
 const pairs = [
- ['بيرغفال', 'Lucas Bergvall'], ['سكوت ماكتوميناي', 'Scott McTominay'],
+ ['لوكاس بيرغفال', 'Lucas Bergvall'], ['سكوت ماكتوميناي', 'Scott McTominay'],
  ['هاري كين', 'Harry Kane'], ['آدم وارتون', 'Adam Wharton'],
  ['لينارت كارل', 'Lennart Karl'], ['لوسيان أغومي', 'Lucien Agoume'],
  ['نيكو باز', 'Nico Paz'], ['جوليان ألفاريز', 'Julian Alvarez'],

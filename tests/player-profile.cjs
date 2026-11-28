@@ -203,8 +203,19 @@ test('conflicting provider identity, club or league never becomes a found card',
    if(u.includes('wikidata'))throw Error('optional unavailable');
    if(u.includes('/search?'))return {ok:true,json:async()=>({items:[{id:'123',type:'player',sport:'soccer',displayName:'Exact Player',league:'eng.1',teamRelationships:[{core:{id:'1',displayName:'Club',isNational:false}}]}]})};
    if(u.includes('/overview?'))return {ok:true,json:async()=>({})};
-   return {ok:true,json:async()=>({athlete:{id:mismatch==='id'?'456':'123',displayName:'Exact Player',team:{id:mismatch==='club'?'2':'1'}},league:{slug:mismatch==='league'?'esp.1':'eng.1'}})};
+   return {ok:true,json:async()=>({athlete:{id:mismatch==='id'?'456':'123',displayName:'Exact Player',team:{id:mismatch==='club'?'2':mismatch==='league'?undefined:'1'}},league:{slug:mismatch==='league'?'esp.1':'eng.1'}})};
   };
   const result=await load('lib/player-profile-data.ts',{},fake).loadPlayerData('Exact Player');assert.equal(result.status,'conflict',mismatch);assert.equal(result.rows.length,0);assert.equal(result.photo,undefined);
  }
+});
+
+test('a cup search may resolve the domestic league only with the same exact player and club',async()=>{
+ const fake=async url=>{
+  if(String(url).includes('wikidata'))throw Error('optional');
+  if(String(url).includes('/search?'))return {ok:true,json:async()=>({items:[{id:'356379',type:'player',sport:'soccer',displayName:'Lucas Bergvall',league:'eng.fa',teamRelationships:[{core:{id:'367',isNational:false,displayName:'Tottenham Hotspur'}}]}]})};
+  if(String(url).includes('/overview?'))return {ok:true,json:async()=>({})};
+  return {ok:true,json:async()=>({athlete:{id:'356379',displayName:'Lucas Bergvall',team:{id:'367',isNational:false}},league:{slug:'eng.1'}})};
+ };
+ const profile=await load('lib/player-profile-data.ts',{},fake).loadPlayerData('Lucas Bergvall');
+ assert.equal(profile.status,'found');assert.equal(profile.identity.league,'eng.1');
 });

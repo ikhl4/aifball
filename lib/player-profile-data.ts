@@ -24,6 +24,8 @@ export const normalizePlayerName = (name: string) => name.normalize('NFKD').toLo
 // Search spellings only: an alias never supplies identity, statistics or a photo.
 // ESPN's exact unique athlete match and detail checks still apply below.
 const searchSpellings: Record<string, string> = {
+  'لوكاس بيرغفال': 'Lucas Bergvall', 'لوكاس بيرجفال': 'Lucas Bergvall',
+  'جوليان الفاريز': 'Julián Álvarez', 'خوليان الفاريز': 'Julián Álvarez',
   'مارتن اوديغارد': 'Martin Ødegaard', 'مارتين اوديغارد': 'Martin Ødegaard',
   'مارتن اوديجارد': 'Martin Ødegaard', 'مارتين اوديجارد': 'Martin Ødegaard',
   'سكوت مكتوميناي': 'Scott McTominay', 'سكوت ماكتوميناي': 'Scott McTominay',
@@ -219,10 +221,14 @@ async function lookupPlayerData(name: string, season: string, clubHint?: string)
     // A club-qualified ESPN identity does not prove a same-name Wikidata photo identity.
     const [detail, overview] = await Promise.all([json(endpoint + '?season=' + season.split('-')[0], signal), json(endpoint + '/overview?season=' + season.split('-')[0], signal).catch(() => ({}))]);
     const athlete = detail.athlete;
-    if (String(athlete?.id) !== String(candidate.id) || normalizePlayerName(athlete.displayName || '') !== normalizePlayerName(candidate.displayName) ||
-      (detail.league?.slug && detail.league.slug !== league)) return { ...result, status: 'conflict' };
+    if (String(athlete?.id) !== String(candidate.id) || normalizePlayerName(athlete.displayName || '') !== normalizePlayerName(candidate.displayName)) return { ...result, status: 'conflict' };
     const club = list(candidate.teamRelationships).map(r => r.core).find(t => t?.isNational === false) || (athlete.team?.isNational === false ? athlete.team : undefined);
     if ((clubHint && !club) || (club?.id && athlete.team?.id && String(athlete.team.id) !== String(club.id))) return { ...result, status: 'conflict' };
+    // Search may index a cup while the athlete endpoint resolves the domestic league.
+    // Accept that redirect only with the same verified club, ID and exact name.
+    if (detail.league?.slug && detail.league.slug !== league &&
+      (!club?.id || String(athlete.team?.id || '') !== String(club.id))) return { ...result, status: 'conflict' };
+    const resolvedLeague = /^[a-z0-9._-]{1,50}$/.test(detail.league?.slug || '') ? detail.league.slug : league;
     let rows = normalizePlayerRows(overview, detail, String(club?.id || ''), season);
     // Retrieve explicitly scoped appearance summaries in parallel, never treating starts as matches.
     const summaries = await Promise.all(rows.filter(row => row.matches === null).slice(0, 4).map(async row => {
@@ -237,7 +243,7 @@ async function lookupPlayerData(name: string, season: string, clubHint?: string)
     const matchingEntity = !clubHint && entityMatchesAthlete(resolvedEntity, athlete) ? resolvedEntity : undefined;
     const photo = await commonsPhoto(matchingEntity, signal).catch(() => undefined);
     return { ...result, status: 'found', canonicalName: athlete.displayName,
-      identity: { provider: 'ESPN', id: String(candidate.id), league },
+      identity: { provider: 'ESPN', id: String(candidate.id), league: resolvedLeague },
       arabicName: matchingEntity?.labels?.ar?.value, club: club?.displayName,
       nationality: athlete.citizenship, rows, photo,
       source: `https://www.espn.com/soccer/player/_/id/${candidate.id}` };

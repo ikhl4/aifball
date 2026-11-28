@@ -5,7 +5,7 @@ Branch: `feat/prelaunch-quality`; base: production `dd458b37a217b29604316437aec8
 ## Behavior
 
 - A missed ESPN search gets at most one extra search using the English label of a uniquely resolved Wikidata entity. This is a search hint, never proof of identity.
-- ESPN search/detail contradictions in athlete ID, name, league or known club ID yield `conflict` and a compact source-status card without statistics or photo.
+- ESPN search/detail contradictions in athlete ID, name or known club ID; a league redirect without a matching verified club also yields `conflict` and a compact source-status card without statistics or photo.
 - Cross-source media requires a matching exact name/alias; conflicting known birth dates reject the image. Missing birth dates still allow name-only matching; this does not prove every image identity independently.
 - Successful profile responses expose the provider athlete ID and league for repeatable audits. Existing per-competition scopes and unknown-value handling remain intact.
 - A lost/invalid job-start acknowledgement no longer automatically creates a second paid direct generation. Only an explicit pre-dispatch configuration-unavailable response permits direct fallback.
@@ -14,10 +14,12 @@ Branch: `feat/prelaunch-quality`; base: production `dd458b37a217b29604316437aec8
 
 ## Verification (2026-11-28)
 
-- 56 targeted tests pass, including identity conflicts, photo identity/date mismatch, canonical-name recovery, compact conflict rendering, uncertain-start handling, UTF-8 SSE and a silent-stream timeout.
-- Broad `.cjs` suite: 159/167 pass. The same eight failures occur at the unmodified production base (153/161 pass): analysis route forwarding; live-match date filtering; two highlight-publisher checks; recap rendering; two summary-prompt checks; training-library count. These failures require separate triage; they are not evidence of a launch-ready full suite.
+- 57 targeted tests pass, including identity conflicts, photo identity/date mismatch, canonical-name recovery, compact conflict rendering, uncertain-start handling, UTF-8 SSE and a silent-stream timeout.
+- Broad `.cjs` suite: 160/168 pass. The same eight failures occur at the unmodified production base (153/161 pass): analysis route forwarding; live-match date filtering; two highlight-publisher checks; recap rendering; two summary-prompt checks; training-library count. These failures require separate triage; they are not evidence of a launch-ready full suite.
 - TypeScript: 134 errors at baseline and preview; zero new unique diagnostics after normalizing line numbers. Build settings currently bypass type failures.
 - `git diff --check` passes.
+
+- Live preview audit initially caught valid cup-to-domestic league redirects being rejected. Corrected the guard: accept only the same exact player ID, name and known club; retain each statistics row’s own validated competition scope. Added the observed Bergvall redirect as a regression test. Full-name Arabic search hints added for Bergvall and Alvarez; no provider IDs or facts are hardcoded.
 
 ## Repeatable coverage check
 
