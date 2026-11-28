@@ -135,3 +135,10 @@ test('explicit player requests never seed a lookup with request words included i
  for(const q of ['راتب ميسي','بطاقة محمد نور','مسيرة نيكو باز','أرقام محمد نور','إحصائيات نيكو باز']){assert.equal(intent(q).playerCareer,true,q);assert.equal(intent(q).nameOnlyPlayer,false,q);}
  assert.equal(intent('أرقام الهلال').playerCareer,false);
 });
+
+test('a silent broken stream times out, preserves received text and cancels without another request', async()=>{
+ let cancelled=false;const accumulated=stream.createChatAnswer();let text='';
+ const body=new ReadableStream({start(c){c.enqueue(new TextEncoder().encode('data: {"event":"agent_message","answer":"جزء محفوظ"}\n\n'));},cancel(){cancelled=true;}});
+ await assert.rejects(stream.consumeChatStream(body,e=>{text=accumulated.apply(e)||text;},undefined,{idleTimeoutMs:10}),/CHAT_STREAM_IDLE/);
+ assert.equal(text,'جزء محفوظ');assert.equal(cancelled,true);assert.equal(body.locked,false);
+});
