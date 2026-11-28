@@ -160,10 +160,14 @@ export default function PlayerProfile({ playerName, requestQuery, seasons, selec
 
   // A source ambiguity cannot be resolved by model-supplied facts or images.
   // Show the identity question before offering any season/statistics controls.
-  if (fetched?.status === 'ambiguous') return (
-    <section dir="rtl" aria-label="توضيح هوية اللاعب" className="w-full min-w-0 max-w-full space-y-2 rounded-2xl border border-emerald-700/20 p-3">
+  if (fetched?.status === 'ambiguous' || (qualifier && provider?.key === lookupKey && fetched?.status !== 'found')) return (
+    <section dir="rtl" aria-label={qualifier ? "حالة بيانات اللاعب" : "توضيح هوية اللاعب"} className="w-full min-w-0 max-w-full space-y-2 rounded-2xl border border-emerald-700/20 p-3">
       <h2 className="text-base font-extrabold break-words">{playerName}</h2>
-      <p role="status" className="text-sm opacity-80">{lookupStatus}</p>
+      <p role="status" className="text-sm opacity-80">{qualifier
+        ? (!fetched || fetched.status === 'unavailable'
+          ? 'تم تحديد اللاعب والنادي، لكن تعذر الاتصال بمصدر بياناته مؤقتًا. حاول مجددًا لاحقًا.'
+          : 'تم تحديد اللاعب والنادي، لكن المصدر لم يُرجع سجلًا مطابقًا يمكن التحقق منه. لن نعرض أرقام لاعب آخر.')
+        : lookupStatus}</p>
     </section>
   );
 
