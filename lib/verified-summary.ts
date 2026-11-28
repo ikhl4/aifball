@@ -1,3 +1,4 @@
+import { createChatAnswer } from './chat-stream';
 import { findHighlightVideo } from './highlight-video';
 import { youtubeVideoId } from './summary-presentation';
 
@@ -59,12 +60,14 @@ export async function verifySummaryAnswer(answer: string, signal?: AbortSignal, 
 export function verifiedSummaryStream(upstream: ReadableStream<Uint8Array>, signal?: AbortSignal, verify = verifySummaryAnswer): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder(), decoder = new TextDecoder(); let reader: ReadableStreamDefaultReader<Uint8Array>;
   return new ReadableStream({ async start(out) {
+    const accumulated = createChatAnswer();
     reader = upstream.getReader(); let buffer = '', answer = '', meta: any = {}, end: any = null;
     const send = (e: any) => out.enqueue(encoder.encode('data: ' + JSON.stringify(e) + '\n\n'));
     const frame = (raw: string) => {
       const data = raw.split('\n').filter(l => l.startsWith('data:')).map(l => l.slice(5).trimStart()).join('\n');
       if (!data || data === '[DONE]') return; let e: any; try { e = JSON.parse(data); } catch { return; }
-      if (e.event === 'message' || e.event === 'agent_message') { answer += typeof e.answer === 'string' ? e.answer : ''; meta = { ...e, answer: undefined }; }
+      const next = accumulated.apply(e);
+      if (next !== null) { answer = next; meta = { ...e, answer: undefined }; }
       else if (e.event === 'message_end') end = e; else send(e);
     };
     try {

@@ -1,6 +1,11 @@
 
 'use client';
 
+import { pollChatJob } from '../lib/chat-jobs-client';
+import { playerLookupSeed } from '../lib/chat-intent';
+
+import { consumeChatStream, createChatAnswer, normalizePlayerMarkup } from '../lib/chat-stream';
+
 import { introArtwork } from './intro-artwork';
 
 import AppIcon, { SportIconText } from './components/AppIcon';
@@ -345,6 +350,7 @@ function renderFormattedText(
   userQuery?: string,
   isStreaming = false
 ): React.ReactNode[] {
+  text = normalizePlayerMarkup(text);
   const storyParts = splitAnalysisStory(text);
   if (storyParts.some(part => part.kind !== 'text')) {
     return storyParts.flatMap((part, index): React.ReactNode[] => {
@@ -591,7 +597,7 @@ function renderFormattedText(
         if (playerName) {
           elements.push(
             <div key={i} className="my-5">
-              <PlayerProfile playerName={playerName} seasons={attrs.seasons} selectedSeason={attrs.selected_season} details={attrs} isDark={isDark} />
+              <PlayerProfile playerName={playerName} requestQuery={userQuery} seasons={attrs.seasons} selectedSeason={attrs.selected_season} details={attrs} isDark={isDark} />
             </div>
           );
         }
@@ -896,24 +902,8 @@ function renderFormattedText(
   return elements;
 }
 
-function parseSSEFrame(frame: string): DataRecord | null {
-  const data = frame
-    .split(/\r?\n/)
-    .filter((line) => line.startsWith('data:'))
-    .map((line) => line.slice(5).trimStart())
-    .join('\n');
-
-  if (!data || data === '[DONE]') return null;
-
-  try {
-    return asRecord(JSON.parse(data));
-  } catch {
-    return null;
-  }
-}
-
 export default function FootPlayChat() {
-  const { user } = useUser();
+  const { user, isLoaded: authLoaded } = useUser();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -984,53 +974,66 @@ export default function FootPlayChat() {
   const durableJobRef = useRef<{ jobId: string; sessionId: string } | null>(null);
   const DURABLE_JOB_KEY = 'aifball-active-durable-job';
   const pollDurableJob = useCallback(async (jobId: string, sessionId: string, signal: AbortSignal) => {
-    while (!signal.aborted) {
-      try {
-        const response = await fetch('/api/chat/jobs/' + encodeURIComponent(jobId), { signal, cache: 'no-store' });
-        if (!response.ok) throw new Error('Job polling failed');
-        const job: { status: string; answer: string; conversation_id: string; error?: string } = await response.json();
-        const stored = sessionsRef.current.find(item => item.id === sessionId);
-        if (stored) {
-          const msgs = [...stored.messages];
-          if (msgs.length && msgs[msgs.length - 1].role === 'assistant') {
-            msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: job.answer ||
-              (job.status === 'failed' ? job.error || 'تعذر إكمال البحث.' : 'جاري البحث…') };
-            const entry = { ...stored, messages: msgs, conversationId: job.conversation_id || stored.conversationId,
-              updatedAt: new Date().toISOString() };
-            sessionsRef.current = [entry, ...sessionsRef.current.filter(item => item.id !== sessionId)];
-            setSessions([...sessionsRef.current]);
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionsRef.current)); } catch {}
-            if (activeRequestSession.current === sessionId) {
-              setMessages(msgs);
-              setConversationId(entry.conversationId);
-            }
-          }
-        }
-        if (job.status === 'completed' || job.status === 'failed') {
-          try { localStorage.removeItem(DURABLE_JOB_KEY); } catch {}
-          durableJobRef.current = null;
-          if (activeRequestSession.current === sessionId) {
-            activeRequestSession.current = null;
-            setLoading(false);
-          }
-          return;
-        }
-      } catch (error) {
-        if (signal.aborted) return;
-        // Transient network loss: keep the job identifier and retry.
-      }
-      await new Promise(resolve => setTimeout(resolve, 2500));
+    const result = await pollChatJob(jobId, { signal, onUpdate(job) {
+      const stored = sessionsRef.current.find(item => item.id === sessionId);
+      if (!stored) return;
+      const msgs = [...stored.messages];
+      if (!msgs.length || msgs[msgs.length - 1].role !== 'assistant') return;
+      const savedCard = msgs[msgs.length - 1].content.match(/^<aifball-player\b[^>]*\/?\s*>/i)?.[0];
+      const accumulated = createChatAnswer();
+      if (savedCard) accumulated.apply({ event: 'aifball_player_seed', answer: savedCard });
+      const content = job.answer ? accumulated.apply({ event: 'message_replace', answer: job.answer }) : undefined;
+      msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: content ||
+        (job.status === 'failed' ? (savedCard ? savedCard + '\n\n' : '') + 'تعذر إكمال البحث.' : savedCard || 'جاري البحث…') };
+      const entry = { ...stored, messages: msgs, conversationId: job.conversation_id || stored.conversationId, updatedAt: new Date().toISOString() };
+      sessionsRef.current = [entry, ...sessionsRef.current.filter(item => item.id !== sessionId)];
+      setSessions([...sessionsRef.current]);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionsRef.current)); } catch {}
+      if (activeRequestSession.current === sessionId) { setMessages(msgs); setConversationId(entry.conversationId); }
+    } });
+    if (result === 'aborted') {
+      if (activeRequestSession.current === sessionId) { activeRequestSession.current = null; setLoading(false); }
+      return;
+    }
+    if (result === 'completed' || result === 'failed' || result === 'missing') {
+      try { localStorage.removeItem(DURABLE_JOB_KEY); } catch {}
+      durableJobRef.current = null;
+    }
+    if (activeRequestSession.current === sessionId) {
+      activeRequestSession.current = null;
+      setLoading(false);
+      const notices = {
+        failed: 'تعذر إكمال البحث بالخلفية. يمكنك إعادة المحاولة.',
+        missing: 'لم يعد البحث المحفوظ متاحًا لهذا الحساب. يمكنك إعادة إرسال السؤال.',
+        unauthenticated: 'سجّل الدخول إلى الحساب نفسه لاستكمال البحث المحفوظ.',
+        unavailable: 'تعذر استرجاع البحث الآن. احتفظنا بمعرّفه للمحاولة عند عودتك.',
+        paused: 'البحث لم يكتمل بعد. احتفظنا بمعرّفه ويمكن استعادته عند عودتك.',
+      };
+      if (result !== 'completed') setChatNotice(notices[result]);
     }
   }, []);
 
   useEffect(() => {
+    if (!authLoaded) return;
     let saved: { jobId: string; sessionId: string } | null = null;
     try { saved = JSON.parse(localStorage.getItem(DURABLE_JOB_KEY) || 'null'); } catch {}
     if (!saved?.jobId || !saved?.sessionId) return;
+    if (!user?.id) {
+      if (activeRequestSession.current === saved.sessionId) setLoading(false);
+      setChatNotice('سجّل الدخول لاستكمال البحث المحفوظ.');
+      return;
+    }
     durableJobRef.current = saved;
     const controller = new AbortController();
+    activeRequest.current = controller;
     // Restore the last session when the page was terminated while searching.
-    const session = sessionsRef.current.find(item => item.id === saved.sessionId);
+    let session = sessionsRef.current.find(item => item.id === saved.sessionId);
+    if (!session) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        if (Array.isArray(stored)) session = stored.find((item: ChatSession) => item.id === saved!.sessionId && Array.isArray(item.messages));
+      } catch {}
+    }
     if (session) {
       activeRequestSession.current = saved.sessionId;
       setCurrentSessionId(saved.sessionId);
@@ -1040,7 +1043,7 @@ export default function FootPlayChat() {
     }
     void pollDurableJob(saved.jobId, saved.sessionId, controller.signal);
     return () => controller.abort();
-  }, [pollDurableJob]);
+  }, [pollDurableJob, authLoaded, user?.id]);
 
 
   const suggestionCards = language === 'ar' ? getDiscoveryQuestions(discoveryPage) : englishDiscoveryQuestions[discoveryPage % englishDiscoveryQuestions.length];
@@ -1367,9 +1370,10 @@ export default function FootPlayChat() {
       return;
     }
 
+    const lookupSeed = playerLookupSeed(query, { conversationId, hasImage: files.length > 0 });
     const initial: Message[] = [
       ...base,
-      { role: 'assistant', content: '', userQuery: query },
+      { role: 'assistant', content: lookupSeed, userQuery: query },
     ];
 
     setMessages(initial);
@@ -1390,7 +1394,7 @@ export default function FootPlayChat() {
     let responseDone = false;
     let durableHandled = false;
 
-    let answer = '';
+    let answer = lookupSeed;
     let conv = conversationId;
     let receivedAnswer = false;
     let latest = initial;
@@ -1430,7 +1434,7 @@ export default function FootPlayChat() {
           if (job.id) {
             const pending = { jobId: job.id, sessionId: id };
             durableJobRef.current = pending;
-            localStorage.setItem(DURABLE_JOB_KEY, JSON.stringify(pending));
+            try { localStorage.setItem(DURABLE_JOB_KEY, JSON.stringify(pending)); } catch { setChatNotice('تعذر حفظ البحث على هذا الجهاز؛ أبقِ الصفحة مفتوحة حتى يكتمل.'); }
             // Polling is independent of the original request and resumes after reload.
             durableHandled = true;
             await pollDurableJob(job.id, id, controller.signal);
@@ -1497,66 +1501,34 @@ export default function FootPlayChat() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       if (!res.body) throw new Error('لا يوجد تدفق استجابة من الخادم.');
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-
-      let buffer = '';
-      const handleFrame = (frame: string) => {
-        const event = parseSSEFrame(frame);
-        if (!event) return;
-
-        if (typeof event.conversation_id === 'string') {
+      const streamedAnswer = createChatAnswer();
+      if (lookupSeed) streamedAnswer.apply({ event: 'aifball_player_seed', answer: lookupSeed });
+      let workflowStarted = false;
+      await consumeChatStream(res.body, event => {
+        if (typeof event.conversation_id === 'string' && event.conversation_id) {
           conv = event.conversation_id;
-
-          if (activeRequestSession.current === id) {
-            setConversationId(conv);
-          }
+          if (activeRequestSession.current === id) setConversationId(conv);
         }
-
-        if (event.event === 'error') {
-          throw new Error(
-            typeof event.message === 'string'
-              ? event.message
-              : 'Dify stream error'
-          );
+        if (event.event === 'error' || (event.event === 'workflow_finished' &&
+            (event.data as DataRecord | undefined)?.status === 'failed')) {
+          throw new Error('Dify stream error');
         }
-
-        if (event.event === 'message_end') {
+        if (event.event === 'workflow_started') workflowStarted = true;
+        if (event.event === 'message_end' && !workflowStarted || event.event === 'workflow_finished') {
           responseDone = true;
+          return false;
         }
-
-        if (
-          (event.event === 'message' || event.event === 'agent_message') &&
-          typeof event.answer === 'string'
-        ) {
-          answer += event.answer;
-          if (firstAnswerMs === null && event.answer.length > 0) firstAnswerMs = performance.now() - started;
-          receivedAnswer = true;
-
-          update(
-            answer,
-            Math.max(1, Math.floor((performance.now() - started) / 1000))
-          );
+        const next = streamedAnswer.apply(event);
+        if (next !== null) {
+          answer = next;
+          if (firstAnswerMs === null && event.event !== 'aifball_player_seed' && answer.length > 0) firstAnswerMs = performance.now() - started;
+          receivedAnswer = answer.trim().length > 0;
+          update(answer, Math.max(1, Math.floor((performance.now() - started) / 1000)));
         }
-      };
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      }, () => {
         streamedChunks++;
         if (firstByteMs === null) firstByteMs = performance.now() - started;
-
-        buffer += decoder.decode(value, { stream: true });
-        const frames = buffer.split(/\r?\n\r?\n/);
-        buffer = frames.pop() ?? '';
-
-        for (const frame of frames) handleFrame(frame);
-        if (responseDone) break;
-      }
-
-      buffer += decoder.decode();
-
-      if (buffer.trim()) handleFrame(buffer);
+      });
 
       if (receivedAnswer && !responseDone) {
         update(`${answer}\n\n${t('انقطع الاتصال قبل اكتمال الرد.', 'The connection ended before the reply finished.')}`);
@@ -2128,7 +2100,7 @@ export default function FootPlayChat() {
                                 }`}
                               >
                                 <AppIcon name="clock" size={14} className="text-emerald-500"/>
-                                {t('زمن استقبال الإجابة', 'Response time')}{' '}
+                                {t('مدة توليد الرد', 'Reply generation time')}{' '}
                                 {language === 'en' ? msg.thinkingTime + ' s' : formatSeconds(msg.thinkingTime)}
                               </span>
                             </div>

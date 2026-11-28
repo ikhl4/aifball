@@ -8,7 +8,9 @@ import { ANALYTICS_LEAGUES, aggregateAnalytics, type AnalyticsMatch } from '../.
 import FootballTeamBadge from './FootballTeamBadge';
 import { matchDateInArabic, matchNumberInArabic } from '../../lib/match-display-ar';
 
-const MatchReport = dynamic(() => import('./MatchReport'));
+const MatchReport = dynamic(() => import('./MatchReport'), {
+  loading: () => <p role="status" className="my-5 rounded-xl border border-emerald-500/25 p-4 text-sm">جارٍ تجهيز تقرير المباراة…</p>,
+});
 const StandingsExplorer = dynamic(() => import('./StandingsExplorer'));
 type Payload = ReturnType<typeof aggregateAnalytics> & {
   matches: AnalyticsMatch[]; source: string; fetchedAt: string;
