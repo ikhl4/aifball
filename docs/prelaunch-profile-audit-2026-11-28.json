@@ -1,0 +1,318 @@
+{
+  "checkedAt": "2026-11-28T02:22:02.631Z",
+  "base": "https://aifball-3ugmwk8pc-ai-fball.vercel.app",
+  "season": "2026-2027",
+  "limits": [
+    "Structural and source-identity checks only; biography facts require independent review.",
+    "No paid chat POST requests, real Safari test, or signed-in background-job test."
+  ],
+  "total": 21,
+  "qualityFailures": 0,
+  "coverage": {
+    "scoped_statistics": 16,
+    "unavailable": 5
+  },
+  "results": [
+    {
+      "name": "لوكاس بيرغفال",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "356379",
+        "league": "eng.1"
+      },
+      "canonicalName": "Lucas Bergvall",
+      "club": "Tottenham Hotspur",
+      "coverage": "scoped_statistics",
+      "rows": 2,
+      "photo": true,
+      "ms": 9950,
+      "issues": []
+    },
+    {
+      "name": "Lucas Bergvall",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "356379",
+        "league": "eng.1"
+      },
+      "canonicalName": "Lucas Bergvall",
+      "club": "Tottenham Hotspur",
+      "coverage": "scoped_statistics",
+      "rows": 2,
+      "photo": true,
+      "ms": 9955,
+      "issues": []
+    },
+    {
+      "name": "Scott McTominay",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "255850",
+        "league": "ita.1"
+      },
+      "canonicalName": "Scott McTominay",
+      "club": "Napoli",
+      "coverage": "scoped_statistics",
+      "rows": 2,
+      "photo": false,
+      "ms": 637,
+      "issues": []
+    },
+    {
+      "name": "سكوت ماكتوميناي",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "255850",
+        "league": "ita.1"
+      },
+      "canonicalName": "Scott McTominay",
+      "club": "Napoli",
+      "coverage": "scoped_statistics",
+      "rows": 2,
+      "photo": false,
+      "ms": 787,
+      "issues": []
+    },
+    {
+      "name": "هاري كين",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "142200",
+        "league": "ger.1"
+      },
+      "canonicalName": "Harry Kane",
+      "club": "Bayern München",
+      "coverage": "scoped_statistics",
+      "rows": 3,
+      "photo": false,
+      "ms": 579,
+      "issues": []
+    },
+    {
+      "name": "Harry Kane",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "142200",
+        "league": "ger.1"
+      },
+      "canonicalName": "Harry Kane",
+      "club": "Bayern München",
+      "coverage": "scoped_statistics",
+      "rows": 3,
+      "photo": false,
+      "ms": 625,
+      "issues": []
+    },
+    {
+      "name": "آدم وارتون",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "333419",
+        "league": "eng.1"
+      },
+      "canonicalName": "Adam Wharton",
+      "club": "Crystal Palace",
+      "coverage": "scoped_statistics",
+      "rows": 3,
+      "photo": false,
+      "ms": 532,
+      "issues": []
+    },
+    {
+      "name": "Adam Wharton",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "333419",
+        "league": "eng.1"
+      },
+      "canonicalName": "Adam Wharton",
+      "club": "Crystal Palace",
+      "coverage": "scoped_statistics",
+      "rows": 3,
+      "photo": false,
+      "ms": 655,
+      "issues": []
+    },
+    {
+      "name": "لينارت كارل",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "402841",
+        "league": "ger.1"
+      },
+      "canonicalName": "Lennart Karl",
+      "club": "Bayern München",
+      "coverage": "scoped_statistics",
+      "rows": 3,
+      "photo": false,
+      "ms": 537,
+      "issues": []
+    },
+    {
+      "name": "Lennart Karl",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "402841",
+        "league": "ger.1"
+      },
+      "canonicalName": "Lennart Karl",
+      "club": "Bayern München",
+      "coverage": "scoped_statistics",
+      "rows": 3,
+      "photo": false,
+      "ms": 582,
+      "issues": []
+    },
+    {
+      "name": "لوسيان أغومي",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "282289",
+        "league": "esp.1"
+      },
+      "canonicalName": "Lucien Agoumé",
+      "club": "Sevilla",
+      "coverage": "scoped_statistics",
+      "rows": 1,
+      "photo": false,
+      "ms": 539,
+      "issues": []
+    },
+    {
+      "name": "Lucien Agoume",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "282289",
+        "league": "esp.1"
+      },
+      "canonicalName": "Lucien Agoumé",
+      "club": "Sevilla",
+      "coverage": "scoped_statistics",
+      "rows": 1,
+      "photo": false,
+      "ms": 598,
+      "issues": []
+    },
+    {
+      "name": "نيكو باز",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "337970",
+        "league": "ita.1"
+      },
+      "canonicalName": "Nico Paz",
+      "club": "Como",
+      "coverage": "scoped_statistics",
+      "rows": 2,
+      "photo": false,
+      "ms": 491,
+      "issues": []
+    },
+    {
+      "name": "Nico Paz",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "337970",
+        "league": "ita.1"
+      },
+      "canonicalName": "Nico Paz",
+      "club": "Como",
+      "coverage": "scoped_statistics",
+      "rows": 2,
+      "photo": false,
+      "ms": 510,
+      "issues": []
+    },
+    {
+      "name": "جوليان ألفاريز",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "277206",
+        "league": "esp.1"
+      },
+      "canonicalName": "Julián Álvarez",
+      "club": "Atlético de Madrid",
+      "coverage": "scoped_statistics",
+      "rows": 2,
+      "photo": false,
+      "ms": 641,
+      "issues": []
+    },
+    {
+      "name": "محمد نور",
+      "status": "ambiguous",
+      "coverage": "unavailable",
+      "rows": 0,
+      "photo": false,
+      "ms": 459,
+      "issues": []
+    },
+    {
+      "name": "Julian Alvarez",
+      "status": "found",
+      "identity": {
+        "provider": "ESPN",
+        "id": "277206",
+        "league": "esp.1"
+      },
+      "canonicalName": "Julián Álvarez",
+      "club": "Atlético de Madrid",
+      "coverage": "scoped_statistics",
+      "rows": 2,
+      "photo": false,
+      "ms": 739,
+      "issues": []
+    },
+    {
+      "name": "Mohammed Noor",
+      "status": "not_found",
+      "coverage": "unavailable",
+      "rows": 0,
+      "photo": false,
+      "ms": 488,
+      "issues": []
+    },
+    {
+      "name": "خافي غيرا",
+      "status": "ambiguous",
+      "coverage": "unavailable",
+      "rows": 0,
+      "photo": false,
+      "ms": 527,
+      "issues": []
+    },
+    {
+      "name": "Javi Guerra",
+      "status": "ambiguous",
+      "coverage": "unavailable",
+      "rows": 0,
+      "photo": false,
+      "ms": 461,
+      "issues": []
+    },
+    {
+      "name": "Javi Guerra (Valencia)",
+      "status": "not_found",
+      "coverage": "unavailable",
+      "rows": 0,
+      "photo": false,
+      "ms": 623,
+      "issues": []
+    }
+  ]
+}
